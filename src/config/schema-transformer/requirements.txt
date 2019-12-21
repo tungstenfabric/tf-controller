@@ -6,3 +6,4 @@ future
 six
 sandesh==0.1dev
 sandesh_common
+xmltodict
