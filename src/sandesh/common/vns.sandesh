@@ -556,7 +556,7 @@ enum Category {
     DISCOVERYCLIENT,
     UDP,
     CONFIG_CLIENT,
-    EQL,
+    K8S_CLIENT,
 }
 
 const map<Category, string> CategoryNames = {
@@ -578,7 +578,7 @@ const map<Category, string> CategoryNames = {
     Category.DISCOVERYCLIENT             : "DiscoveryClient",
     Category.UDP                         : "UDP",
     Category.CONFIG_CLIENT               : "ConfigClientManager",
-    Category.EQL                         : "EQL",
+    Category.K8S_CLIENT                  : "K8sClient",
 }
 
 const map<Module, list<Category>> ModuleCategoryMap = {
@@ -594,7 +594,7 @@ const map<Module, list<Category>> ModuleCategoryMap = {
                                  Category.TCP,
                                  Category.ROUTING_INSTANCE,
                                  Category.CONFIG_CLIENT,
-                                 Category.EQL,
+                                 Category.K8S_CLIENT,
                                 ],
     Module.VROUTER_AGENT      : [Category.DEFAULT,
                                  Category.XMPP,
