@@ -209,7 +209,7 @@ protected:
             const BgpPeerTest *peer, bool presence) const {
         const RoutingInstance *rtinstance= static_cast<const RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         const BgpTable *table = rtinstance->GetTable(Address::RTARGET);
         if (presence) {
             BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
@@ -275,7 +275,7 @@ protected:
                                      const string &peer_name) {
         string uuid =
             BgpConfigParser::session_uuid("bgpaas-server", peer_name, 1);
-        BgpPeerTest *peer = FindPeer(server, BgpConfigManager::kMasterInstance,
+        BgpPeerTest *peer = FindPeer(server, BgpConfigManager::kMasterInstance.c_str(),
                                      uuid);
         BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
         return peer;
@@ -301,7 +301,7 @@ protected:
 
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET);
         table->Enqueue(&req);
         task_util::WaitForIdle();
@@ -316,7 +316,7 @@ protected:
 
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET);
         table->Enqueue(&req);
         task_util::WaitForIdle();
@@ -342,7 +342,7 @@ protected:
 
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET6);
         table->Enqueue(&req);
         task_util::WaitForIdle();
@@ -357,7 +357,7 @@ protected:
 
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET6);
         table->Enqueue(&req);
         task_util::WaitForIdle();
@@ -366,7 +366,7 @@ protected:
     void VerifyInetRouteCount(BgpServer *server, size_t expected) {
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET);
         TASK_UTIL_EXPECT_EQ(expected, table->Size());
     }
@@ -378,7 +378,7 @@ protected:
         task_util::TaskSchedulerLock lock;
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET);
         Ip4Prefix prefix(Ip4Prefix::FromString(prefix_str));
         const InetTable::RequestKey key(prefix, NULL);
@@ -426,7 +426,7 @@ protected:
                                 const std::string &prefix_str) {
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET);
         Ip4Prefix prefix(Ip4Prefix::FromString(prefix_str));
         const InetTable::RequestKey key(prefix, NULL);
@@ -437,7 +437,7 @@ protected:
     void VerifyInet6RouteCount(BgpServer *server, size_t expected) {
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET6);
         TASK_UTIL_EXPECT_EQ(expected, table->Size());
     }
@@ -449,7 +449,7 @@ protected:
         task_util::TaskSchedulerLock lock;
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET6);
         Inet6Prefix prefix(Inet6Prefix::FromString(prefix_str));
         const Inet6Table::RequestKey key(prefix, NULL);
@@ -492,7 +492,7 @@ protected:
                                  const std::string &prefix_str) {
         RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
             server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
+                BgpConfigManager::kMasterInstance.c_str()));
         BgpTable *table = rtinstance->GetTable(Address::INET6);
         Inet6Prefix prefix(Inet6Prefix::FromString(prefix_str));
         const Inet6Table::RequestKey key(prefix, NULL);
@@ -953,13 +953,13 @@ void BGPaaSTest::SetUpControlNodes() {
 
     string uuid = BgpConfigParser::session_uuid("local", "remote", 1);
     TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
-        FindPeer(server_.get(), BgpConfigManager::kMasterInstance, uuid));
+        FindPeer(server_.get(), BgpConfigManager::kMasterInstance.c_str(), uuid));
     TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
-        FindPeer(server2_.get(), BgpConfigManager::kMasterInstance, uuid));
+        FindPeer(server2_.get(), BgpConfigManager::kMasterInstance.c_str(), uuid));
     BgpPeerTest *peer = FindPeer(server_.get(),
-            BgpConfigManager::kMasterInstance, uuid);
+            BgpConfigManager::kMasterInstance.c_str(), uuid);
     BgpPeerTest *peer2 = FindPeer(server2_.get(),
-            BgpConfigManager::kMasterInstance, uuid);
+            BgpConfigManager::kMasterInstance.c_str(), uuid);
     BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
     BGP_WAIT_FOR_PEER_STATE(peer2, StateMachine::ESTABLISHED);
 }
