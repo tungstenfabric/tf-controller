@@ -216,7 +216,7 @@ void ReConfigSignalHandler(const boost::system::error_code &error, int sig,
 int main(int argc, char *argv[]) {
     // Process options from command-line and configuration file.
     if (!options.Parse(evm, argc, argv)) {
-        CONTROL_NODE_EXIT("Invalid command line arguments");
+        exit(1);
     }
 
     srand(unsigned(time(NULL)));
@@ -245,6 +245,12 @@ int main(int argc, char *argv[]) {
                     options.syslog_facility(), module_name,
                     SandeshLevelTolog4Level(
                         Sandesh::StringToLevel(options.log_level())));
+    }
+
+    // Override some global constants if we're running K8s.
+    if (options.using_k8s_client())
+    {
+        BgpConfigManager::SetKMasterInstance("default-domain:default-project:ip-fabric:default");
     }
 
     int num_threads_to_tbb = TaskScheduler::GetDefaultThreadCount() +

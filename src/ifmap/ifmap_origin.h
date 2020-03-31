@@ -12,6 +12,7 @@ struct IFMapOrigin {
         MAP_SERVER,
         XMPP,
         CASSANDRA,
+        K8S
     };
     IFMapOrigin() : origin(UNKNOWN) { }
     IFMapOrigin(Origin in_origin) : origin(in_origin) { }
@@ -30,6 +31,8 @@ struct IFMapOrigin {
             return "Xmpp";
         } else if (origin == CASSANDRA) {
             return "Cassandra";
+        } else if (origin == K8S) {
+            return "Kubernetes";
         } else {
             return "NotSet";
         }

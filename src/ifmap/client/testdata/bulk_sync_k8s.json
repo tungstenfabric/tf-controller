@@ -1,0 +1,184 @@
+{
+  "items": [
+    {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "BgpAsAService",
+      "metadata": {
+        "annotations": {
+          "core.contrail.juniper.net/description": null,
+          "core.contrail.juniper.net/display-name": "BGPaaS FW OAM Resource"
+        },
+        "creationTimestamp": "2016-10-03T22:13:37.707393",
+        "generation": 1,
+        "name": "ZRDM3SEGW02_fw_oam_BgpAAS_name",
+        "resourceVersion": 1,
+        "uid": "0bf411b8-09fe-4d29-876a-3a6c69277264"
+      },
+      "spec": {
+        "autonomousSystem": 65001,
+        "bgpaasIpAddress": "107.239.88.80",
+        "bgpaasSessionAttributes": {
+          "addressFamilies": {
+            "family": [
+              "inet",
+              "inet6"
+            ]
+          },
+          "adminDown": false,
+          "authData": null,
+          "bgpRouter": null,
+          "familyAttributes": [],
+          "holdTime": 15,
+          "loopCount": 0,
+          "passive": true
+        },
+        "displayName": "BGPaaS FW OAM Resource",
+        "fqName": [
+          "default-domain",
+          "NGSG-23414-T-01",
+          "ZRDM3SEGW02_fw_oam_BgpAAS_name"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineInterfaceReferences": [
+          {
+            "attributes": null,
+            "uid": "ef36eac3-c5ba-4947-993a-6bc2c6b3d326"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachineInterface",
+      "metadata": {
+        "annotations": {
+          "core.contrail.juniper.net/description": null,
+          "core.contrail.juniper.net/display-name": "Test_Vertica2-vertica_private_network_port-wr4h2tycwav3"
+        },
+        "creationTimestamp": "2016-12-03T21:35:47.121380",
+        "generation": 1,
+        "name": "Test_Vertica2-vertica_private_network_port-wr4h2tycwav3",
+        "resourceVersion": 1,
+        "uid": "00034c86-7e94-486a-8deb-ad2e698ebf60"
+      },
+      "spec": {
+        "displayName": "Test_Vertica2-vertica_private_network_port-wr4h2tycwav3",
+        "fqName": [
+          "default-domain",
+          "rprb-26071-rdm3-BE",
+          "Test_Vertica2-vertica_private_network_port-wr4h2tycwav3"
+        ],
+        "virtualMachineInterfaceBindings": {
+          "hostId": "rdm3r19c010.rdm3.cci.att.com",
+          "vifType": "vrouter",
+          "vnicType": "normal"
+        },
+        "virtualMachineInterfaceDeviceOwner": "compute:rdm3-kvm-az01",
+        "virtualMachineInterfaceDisablePolicy": false,
+        "virtualMachineInterfaceMacAddresses": {
+          "macAddress": [
+            "02:00:03:4c:86:7e"
+          ]
+        }
+      },
+      "status": {
+        "state": "Success"
+      }
+    },
+    {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualNetwork",
+      "metadata": {
+        "annotations": {
+          "core.contrail.juniper.net/description": null,
+          "core.contrail.juniper.net/display-name": "svc-vn-left"
+        },
+        "creationTimestamp": "2016-12-22T01:06:34.765283",
+        "generation": 1,
+        "name": "svc-vn-left",
+        "resourceVersion": 1,
+        "uid": "00175ed1-fd8c-4e53-8c70-73e6f7a5e798"
+      },
+      "spec": {
+        "displayName": "svc-vn-left",
+        "floodUnknownUnicast": false,
+        "fqName": [
+          "default-domain",
+          "vMME-24474-Ericsson-WTC-Lab-vLCP1-4",
+          "svc-vn-left"
+        ],
+        "virtualNetworkNetworkId": 570
+      },
+      "status": {
+        "state": "Success"
+      }
+    },
+    {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualNetwork",
+      "metadata": {
+        "annotations": {
+          "core.contrail.juniper.net/description": null,
+          "core.contrail.juniper.net/display-name": "svc-vn-left"
+        },
+        "creationTimestamp": "2017-01-12T12:51:40.446568",
+        "generation": 1,
+        "name": "svc-vn-left",
+        "resourceVersion": 1,
+        "uid": "0021adc1-1e0a-4d00-8e29-f4061061ce9c"
+      },
+      "spec": {
+        "displayName": "svc-vn-left",
+        "floodUnknownUnicast": false,
+        "fqName": [
+          "default-domain",
+          "MNS-25180-L-06Shared",
+          "svc-vn-left"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    },
+    {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachineInterface",
+      "metadata": {
+        "annotations": {
+          "core.contrail.juniper.net/description": null,
+          "core.contrail.juniper.net/display-name": "ZRDM3SEGW02_module-0-fw_oam_oam_direct_2_port-dyzi37rbfzeo"
+        },
+        "creationTimestamp": "2016-10-03T22:13:00.950997",
+        "generation": 1,
+        "name": "ZRDM3SEGW02_module-0-fw_oam_oam_direct_2_port-dyzi37rbfzeo",
+        "resourceVersion": 1,
+        "uid": "ef36eac3-c5ba-4947-993a-6bc2c6b3d326"
+      },
+      "spec": {
+        "displayName": "ZRDM3SEGW02_module-0-fw_oam_oam_direct_2_port-dyzi37rbfzeo",
+        "fqName": [
+          "default-domain",
+          "NGSG-23414-T-01",
+          "ZRDM3SEGW02_module-0-fw_oam_oam_direct_2_port-dyzi37rbfzeo"
+        ],
+        "virtualMachineInterfaceBindings": {
+          "hostId": "rdm3r23c012.rdm3.cci.att.com",
+          "vifType": "vrouter",
+          "vnicType": "normal"
+        },
+        "virtualMachineInterfaceDeviceOwner": "compute:rdm3-kvm-az01",
+        "virtualMachineInterfaceDisablePolicy": false,
+        "virtualMachineInterfaceMacAddresses": {
+          "macAddress": [
+            "02:ef:36:ea:c3:c5"
+          ]
+        }
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  ]
+}

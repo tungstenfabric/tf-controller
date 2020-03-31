@@ -398,6 +398,7 @@ void AgentParam::ParseControllerServersArguments
                      boost::is_any_of(" "));
     }
     GetOptValue<string>(var_map, subcluster_name_, "CONTROL-NODE.subcluster_name");
+    GetOptValue<bool>(var_map, config_db_use_k8s_, "CONTROL-NODE.config_db_use_k8s");
 }
 
 void AgentParam::ParseDnsServersArguments
@@ -1718,7 +1719,8 @@ AgentParam::AgentParam(bool enable_flow_options,
         mvpn_ipv4_enable_(false),AgentMock_(false), cat_MockDPDK_(false),
         cat_kSocketDir_("/tmp/"),
         vr_object_high_watermark_(Agent::kDefaultHighWatermark),
-        loopback_ip_() {
+        loopback_ip_(),
+        config_db_use_k8s_(false) {
 
     uint32_t default_pkt0_tx_buffers = Agent::kPkt0TxBufferCount;
     uint32_t default_stale_interface_cleanup_timeout = Agent::kDefaultStaleInterfaceCleanupTimeout;
@@ -1935,6 +1937,7 @@ AgentParam::AgentParam(bool enable_flow_options,
          opt::value<std::vector<std::string> >()->multitoken(),
          "List of IPAddress:Port of Control node Servers")
         ("CONTROL-NODE.subcluster_name", opt::value<string>(), "Cluster identifier")
+        ("CONTROL-NODE.config_db_use_k8s", opt::bool_switch(&config_db_use_k8s_), "Using Kuberetes configuration database.")
         ("DEFAULT.collectors",
          opt::value<std::vector<std::string> >()->multitoken(),
          "Collector server list")

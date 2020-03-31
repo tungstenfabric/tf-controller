@@ -20,3 +20,4 @@ src/cat/test/*.json
 .tox
 .stestr
 testr.subunit
+pkg

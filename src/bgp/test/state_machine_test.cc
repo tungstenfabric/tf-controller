@@ -149,9 +149,9 @@ protected:
 
         string uuid = BgpConfigParser::session_uuid("A", "B", 1);
         TASK_UTIL_EXPECT_NE(server_.FindPeerByUuid(
-                                BgpConfigManager::kMasterInstance, uuid),
+                                BgpConfigManager::kMasterInstance.c_str(), uuid),
                             (BgpPeer *) NULL);
-        peer_ = server_.FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+        peer_ = server_.FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
         sm_ = peer_->state_machine();
         sm_->set_idle_hold_time(1);
 

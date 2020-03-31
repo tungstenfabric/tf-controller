@@ -162,7 +162,7 @@ protected:
                                      const string &peer_name) {
         string uuid =
             BgpConfigParser::session_uuid("bgpaas-server", peer_name, 1);
-        BgpPeerTest *peer = FindPeer(server, BgpConfigManager::kMasterInstance,
+        BgpPeerTest *peer = FindPeer(server, BgpConfigManager::kMasterInstance.c_str(),
                                      uuid);
         BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
         return peer;

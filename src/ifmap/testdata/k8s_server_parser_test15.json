@@ -1,0 +1,189 @@
+[
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachine",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+      },
+      "spec": {
+        "fqName": [
+          "vm1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "gsc",
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "gsc",
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachine",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+      },
+      "spec": {
+        "fqName": [
+          "vm1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "GlobalSystemConfig",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4b0c-b53f-0a036805575c"
+      },
+      "spec": {
+        "fqName": [
+          "gsc"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "gsc",
+          "vr1"
+        ],
+        "parent": {
+          "apiVersion": "core.contrail.juniper.net/v1alpha1",
+          "kind": "GlobalSystemConfig",
+          "uid": "8c5eeb87-0b08-4b0c-b53f-0a036805575c"
+        }
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "gsc",
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "PAUSED"
+  },
+  {
+    "type": "DELETED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "gsc",
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  }
+]

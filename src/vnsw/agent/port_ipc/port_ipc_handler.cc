@@ -1026,13 +1026,17 @@ bool PortIpcHandler::DeleteVmVnPort(const string &json, const string &vm,
     return true;
 }
 
-bool PortIpcHandler::GetVmVnCfgPort(const string &vm, string &info) const {
+bool PortIpcHandler::GetVmVnCfgPortByName(const string &vm, string &info) const {
     VmTable *vm_table = agent_->vm_table();
     boost::uuids::uuid vm_uuid = vm_table->GetVmUuid(vm);
     if (vm_uuid == nil_uuid()) {
         return false;
     }
 
+    return this->GetVmVnCfgPortByUUID(vm_uuid, info);
+}
+
+bool PortIpcHandler::GetVmVnCfgPortByUUID(const boost::uuids::uuid& vm_uuid, string &info) const {
     std::set<boost::uuids::uuid> vmi_uuid_set;
     if (!port_subscribe_table_->VmVnToVmiSet(vm_uuid, vmi_uuid_set))
         return false;
@@ -1050,7 +1054,6 @@ bool PortIpcHandler::GetVmVnCfgPort(const string &vm, string &info) const {
     info += ']';
 
     return true;
-
 }
 
 bool PortIpcHandler::MakeJsonFromVmiConfig(const boost::uuids::uuid &vmi_uuid,

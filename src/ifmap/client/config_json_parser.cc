@@ -351,8 +351,7 @@ void ConfigJsonParser::EnqueueListToTables(RequestList *req_list) const {
     }
 }
 
-bool ConfigJsonParser::Receive(const ConfigCass2JsonAdapter &adapter,
-                               bool add_change) {
+bool ConfigJsonParser::Receive(const ConfigCass2JsonAdapter &adapter, bool add_change) {
     RequestList req_list;
 
     if (adapter.document().HasParseError() || !adapter.document().IsObject()) {
@@ -366,7 +365,7 @@ bool ConfigJsonParser::Receive(const ConfigCass2JsonAdapter &adapter,
         return false;
     } else {
         auto_ptr<IFMapTable::RequestKey> key(new IFMapTable::RequestKey());
-        if (!ParseDocument(adapter, IFMapOrigin::CASSANDRA, &req_list, key.get(), add_change)) {
+        if (!ParseDocument(adapter, GetDbOrigin(), &req_list, key.get(), add_change)) {
             STLDeleteValues(&req_list);
             return false;
         }

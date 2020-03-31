@@ -115,9 +115,9 @@ protected:
         for (int j = 0; j < 3; j++) {
             string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
             TASK_UTIL_ASSERT_TRUE(a_->FindPeerByUuid(
-                BgpConfigManager::kMasterInstance, uuid) != NULL);
+                BgpConfigManager::kMasterInstance.c_str(), uuid) != NULL);
             peers_[j] = a_->FindPeerByUuid(
-                BgpConfigManager::kMasterInstance, uuid);
+                BgpConfigManager::kMasterInstance.c_str(), uuid);
             peers_[j]->set_is_ready_fnc(
                 boost::bind(&ShowRouteTestBase::IsReady, this));
         }
