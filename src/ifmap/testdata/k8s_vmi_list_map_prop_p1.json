@@ -1,0 +1,211 @@
+[
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "Domain",
+      "metadata": {
+        "uid": "1b7a7728-97e5-40f1-8970-10cc7c1ab52e"
+      },
+      "spec": {
+        "fqName": [
+          "default-domain"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "Project",
+      "metadata": {
+        "uid": "2f560900-2a1a-44c1-b248-6c87201fc8c6"
+      },
+      "spec": {
+        "fqName": [
+          "default-domain",
+          "service"
+        ],
+        "parent": {
+          "apiVersion": "core.contrail.juniper.net/v1alpha1",
+          "kind": "Domain",
+          "uid": "1b7a7728-97e5-40f1-8970-10cc7c1ab52e"
+        }
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachineInterface",
+      "metadata": {
+        "uid": "c4287577-b6af-4cca-a21d-6470a08af68a"
+      },
+      "spec": {
+        "fqName": [
+          "default-domain",
+          "service",
+          "c4287577-b6af-4cca-a21d-6470a08af68a"
+        ],
+        "virtualMachineInterfaceBindings": {
+          "key-value-pair": {
+            "hostId": "site.one.com",
+            "vifType": "vrouter"
+          }
+        },
+        "virtualMachineInterfaceFatFlowProtocols": {
+          "fat-flow-protocol": [
+            {
+              "port": 443,
+              "protocol": "TCP"
+            },
+            {
+              "port": 80,
+              "protocol": "UDP"
+            }
+          ]
+        },
+        "parent": {
+          "apiVersion": "core.contrail.juniper.net/v1alpha1",
+          "kind": "Project",
+          "uid": "2f560900-2a1a-44c1-b248-6c87201fc8c6"
+        }
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "PAUSED"
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachineInterface",
+      "metadata": {
+        "uid": "c4287577-b6af-4cca-a21d-6470a08af68a"
+      },
+      "spec": {
+        "fqName": [
+          "default-domain",
+          "service",
+          "c4287577-b6af-4cca-a21d-6470a08af68a"
+        ],
+        "virtualMachineInterfaceBindings": {
+          "key-value-pair": {
+            "hostId": "site.one.com"
+          }
+        },
+        "virtualMachineInterfaceFatFlowProtocols": {
+          "fat-flow-protocol": [
+            {
+              "port": 443,
+              "protocol": "TCP"
+            }
+          ]
+        },
+        "parent": {
+          "apiVersion": "core.contrail.juniper.net/v1alpha1",
+          "kind": "Project",
+          "uid": "2f560900-2a1a-44c1-b248-6c87201fc8c6"
+        }
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "PAUSED"
+  },
+  {
+    "type": "DELETED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachineInterface",
+      "metadata": {
+        "uid": "c4287577-b6af-4cca-a21d-6470a08af68a"
+      },
+      "spec": {
+        "fqName": [
+          "default-domain",
+          "service",
+          "c4287577-b6af-4cca-a21d-6470a08af68a"
+        ],
+        "virtualMachineInterfaceBindings": {
+          "key-value-pair": {
+            "hostId": "site.one.com"
+          }
+        },
+        "virtualMachineInterfaceFatFlowProtocols": {
+          "fat-flow-protocol": [
+            {
+              "port": 443,
+              "protocol": "TCP"
+            }
+          ]
+        },
+        "parent": {
+          "apiVersion": "core.contrail.juniper.net/v1alpha1",
+          "kind": "Project",
+          "uid": "2f560900-2a1a-44c1-b248-6c87201fc8c6"
+        }
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "DELETED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "Project",
+      "metadata": {
+        "uid": "2f560900-2a1a-44c1-b248-6c87201fc8c6"
+      },
+      "spec": {
+        "fqName": [
+          "default-domain",
+          "service"
+        ],
+        "parent": {
+          "apiVersion": "core.contrail.juniper.net/v1alpha1",
+          "kind": "Domain",
+          "uid": "1b7a7728-97e5-40f1-8970-10cc7c1ab52e"
+        }
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "DELETED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "Domain",
+      "metadata": {
+        "uid": "1b7a7728-97e5-40f1-8970-10cc7c1ab52e"
+      },
+      "spec": {
+        "fqName": [
+          "default-domain"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  }
+]

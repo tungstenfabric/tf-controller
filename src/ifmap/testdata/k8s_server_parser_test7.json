@@ -1,0 +1,128 @@
+[
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachine",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+      },
+      "spec": {
+        "fqName": [
+          "vm1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachine",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+      },
+      "spec": {
+        "fqName": [
+          "vm1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "DELETED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineReferences": [
+          {
+            "attributes": null,
+            "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualRouter",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4724-b53f-0a0368055374"
+      },
+      "spec": {
+        "fqName": [
+          "vr1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  }
+]

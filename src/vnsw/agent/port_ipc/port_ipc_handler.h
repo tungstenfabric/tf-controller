@@ -62,8 +62,8 @@ public:
                         string &err_msg);
     bool GetVmVnPort(const std::string &vm_uuid, const std::string &vmi_uuid,
                      std::string &info) const;
-    bool GetVmVnCfgPort(const string &vm, string &info) const;
-
+    bool GetVmVnCfgPortByName(const string &vm, string &info) const;
+    bool GetVmVnCfgPortByUUID(const boost::uuids::uuid& vm_uuid, string &info) const;
 
     boost::uuids::uuid VmVnToVmi(const boost::uuids::uuid &vm_uuid) const;
     bool MakeJsonFromVmi(const boost::uuids::uuid &vmi_uuid,

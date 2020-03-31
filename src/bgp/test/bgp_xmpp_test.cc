@@ -301,12 +301,12 @@ TEST_F(BgpXmppUnitTest, Connection) {
     task_util::WaitForIdle();
 
     string uuid = BgpConfigParser::session_uuid("A", "B", 1);
-    BgpPeer *channel_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+    BgpPeer *channel_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                             uuid);
     ASSERT_TRUE(channel_a != NULL);
     BGP_WAIT_FOR_PEER_STATE(channel_a, StateMachine::ESTABLISHED);
 
-    BgpPeer *channel_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+    BgpPeer *channel_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                             uuid);
     ASSERT_TRUE(channel_b != NULL);
     BGP_WAIT_FOR_PEER_STATE(channel_b, StateMachine::ESTABLISHED);

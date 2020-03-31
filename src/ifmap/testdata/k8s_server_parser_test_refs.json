@@ -1,0 +1,119 @@
+[
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "BgpAsAService",
+      "metadata": {
+        "annotations": {
+          "core.contrail.juniper.net/description": null,
+          "core.contrail.juniper.net/display-name": "BGPaaS FW OAM Resource"
+        },
+        "creationTimestamp": "2016-10-03T22:13:37.707393",
+        "generation": 1,
+        "name": "ZRDM3SEGW02_fw_oam_BgpAAS_name",
+        "resourceVersion": 1,
+        "uid": "0bf411b8-09fe-4d29-876a-3a6c69277264"
+      },
+      "spec": {
+        "autonomousSystem": 65001,
+        "bgpaasIpAddress": "107.239.88.80",
+        "bgpaasSessionAttributes": {
+          "addressFamilies": {
+            "family": [
+              "inet",
+              "inet6"
+            ]
+          },
+          "adminDown": false,
+          "authData": null,
+          "bgpRouter": null,
+          "familyAttributes": [],
+          "holdTime": 15,
+          "loopCount": 0,
+          "passive": true
+        },
+        "displayName": "BGPaaS FW OAM Resource",
+        "fqName": [
+          "default-domain",
+          "NGSG-23414-T-01",
+          "ZRDM3SEGW02_fw_oam_BgpAAS_name"
+        ],
+        "virtualMachineInterfaceReferences": [
+          {
+            "attributes": null,
+            "uid": "00034c86-7e94-486a-8deb-ad2e698ebf60"
+          }
+        ]
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineInterfaceReferences": [
+          {
+            "attributes": null,
+            "uid": "ef36eac3-c5ba-4947-993a-6bc2c6b3d326"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "PAUSED"
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "BgpAsAService",
+      "metadata": {
+        "annotations": {
+          "core.contrail.juniper.net/description": null,
+          "core.contrail.juniper.net/display-name": "BGPaaS FW OAM Resource CHANGED"
+        },
+        "creationTimestamp": "2016-10-03T22:13:37.707393",
+        "generation": 1,
+        "name": "ZRDM3SEGW02_fw_oam_BgpAAS_name",
+        "resourceVersion": 1,
+        "uid": "0bf411b8-09fe-4d29-876a-3a6c69277264"
+      },
+      "spec": {
+        "autonomousSystem": 65001,
+        "bgpaasIpAddress": "107.239.88.80",
+        "bgpaasSessionAttributes": {
+          "addressFamilies": {
+            "family": [
+              "inet",
+              "inet6"
+            ]
+          },
+          "adminDown": false,
+          "authData": null,
+          "bgpRouter": null,
+          "familyAttributes": [],
+          "holdTime": 15,
+          "loopCount": 0,
+          "passive": true
+        },
+        "displayName": "BGPaaS FW OAM Resource",
+        "fqName": [
+          "default-domain",
+          "NGSG-23414-T-01",
+          "ZRDM3SEGW02_fw_oam_BgpAAS_name"
+        ],
+        "virtualMachineInterfaceReference": {
+            "attributes": null,
+            "uid": "00034c86-7e94-486a-8deb-ad2e698ebf60"
+          }
+      },
+      "status": {
+        "state": "Success",
+        "virtualMachineInterfaceReferences": [
+          {
+            "attributes": null,
+            "uid": "ef36eac3-c5ba-4947-993a-6bc2c6b3d326"
+          }
+        ]
+      }
+    }
+  }
+]

@@ -89,6 +89,13 @@ int main(int argc, char *argv[]) {
     // Read agent parameters from config file and arguments
     params.Init(init_file, argv[0]);
 
+    // If running K8s, initialize defaults to be K8s compatible.
+    if (params.config_db_use_k8s()) {
+        Agent::set_fabric_vrf_name("default-domain:default-project:ip-fabric:default");
+        Agent::set_linklocal_vn_name("default-domain:default-project:link-local");
+        Agent::set_linklocal_vrf_name("default-domain:default-project:link-local:link-local");
+    }
+
     // Initialize TBB
     // Call to GetScheduler::GetInstance() will also create Task Scheduler
     TaskScheduler::Initialize(params.tbb_thread_count());

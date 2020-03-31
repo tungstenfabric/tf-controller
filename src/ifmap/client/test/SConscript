@@ -26,13 +26,6 @@ env.Append(LIBPATH = env['TOP'] + '/xml')
 env.Append(LIBPATH = env['TOP'] + '/xmpp')
 env.Append(LIBPATH = env['TOP'] + '/schema')
 
-etcd_incl = os.environ.get('CONTRAIL_ETCD_INCL');
-
-if etcd_incl:
-    env.Prepend(LIBS = [
-                    'etcdql', 'protobuf', 'grpc++', 'grpc', 'z'
-                   ])
-
 env.Prepend(LIBS = [
                     'ifmapio', 'bgp_schema', 'ifmap_vnc', 'ifmap_server',
                     'xmpp', 'peer_sandesh',
@@ -45,7 +38,8 @@ env.Prepend(LIBS = [
                     'config_client_mgr','ifmapio', 'libbgp_schema',
                     'libifmap_server', 'libifmap_vnc', 'cassandra_cql',
                     'cassandra', 'gendb', 'httpc',
-                    'SimpleAmqpClient', 'rabbitmq'
+                    'SimpleAmqpClient', 'rabbitmq',
+                    'k8s_client', 'restclient-cpp'
                    ])
 
 if platform.system() != 'Darwin':
@@ -55,16 +49,13 @@ config_json_parser_test = env.UnitTest('config_json_parser_test',
                                        ['config_json_parser_test.cc'])
 env.Alias('src/ifmap/client:config_json_parser_test', config_json_parser_test)
 
-if etcd_incl:
-    config_etcd_json_parser_test = env.UnitTest('config_etcd_json_parser_test',
-                                             ['config_etcd_json_parser_test.cc'])
-    env.Alias('src/ifmap/client:config_etcd_json_parser_test', 
-                                             config_etcd_json_parser_test)
+config_k8s_json_parser_test = env.UnitTest('config_k8s_json_parser_test',
+                                           ['config_k8s_json_parser_test.cc'])
+env.Alias('src/ifmap/client:config_k8s_json_parser_test', 
+          config_k8s_json_parser_test)
 
-    client_unit_tests = [config_json_parser_test,
-                         config_etcd_json_parser_test]
-else:
-    client_unit_tests = [config_json_parser_test]
+client_unit_tests = [config_json_parser_test,
+                     config_k8s_json_parser_test]
 
 client_test = env.TestSuite('ifmap-test', client_unit_tests)
 

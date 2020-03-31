@@ -154,9 +154,9 @@ IFMapTable *BgpServerAuthTestMock::FindTable(const string &table_type) {
 BgpPeer *BgpServerAuthTestMock::FindPeerByUuid(int line, const string &uuid) {
     std::cout << "FindPeerByUuid() called from line " << line << std::endl;
     TASK_UTIL_EXPECT_NE(static_cast<BgpPeer *>(NULL),
-        cn_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+        cn_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
     BgpPeer *peer =
-        cn_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+        cn_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
     EXPECT_TRUE(peer != NULL);
     return peer;
 }

@@ -566,6 +566,8 @@ public:
     float vr_object_high_watermark() const { return vr_object_high_watermark_; }
 
     const Ip4Address &loopback_ip() const { return loopback_ip_; }
+    //Determine if we're using K8s
+    bool config_db_use_k8s() const { return config_db_use_k8s_; }
 
 protected:
     void set_hypervisor_mode(HypervisorMode m) { hypervisor_mode_ = m; }
@@ -841,6 +843,8 @@ private:
     std::string cat_kSocketDir_;
     float vr_object_high_watermark_;
     Ip4Address loopback_ip_;
+    //K8s config database support
+    bool config_db_use_k8s_;
     DISALLOW_COPY_AND_ASSIGN(AgentParam);
 };
 

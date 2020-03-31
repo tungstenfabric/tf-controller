@@ -1,0 +1,62 @@
+[
+  {
+    "type": "ADDED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachine",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+      },
+      "spec": {
+        "fqName": [
+          "vm1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "PAUSED"
+  },
+  {
+    "type": "DELETED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachine",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+      },
+      "spec": {
+        "fqName": [
+          "vm1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  },
+  {
+    "type": "PAUSED"
+  },
+  {
+    "type": "MODIFIED",
+    "object": {
+      "apiVersion": "core.contrail.juniper.net/v1alpha1",
+      "kind": "VirtualMachine",
+      "metadata": {
+        "uid": "8c5eeb87-0b08-4725-b53f-0a0368055375"
+      },
+      "spec": {
+        "fqName": [
+          "vm1"
+        ]
+      },
+      "status": {
+        "state": "Success"
+      }
+    }
+  }
+]

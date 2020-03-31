@@ -228,9 +228,9 @@ BgpNullPeer::BgpNullPeer(BgpServerTest *server, int peer_id) {
     TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
                         static_cast<BgpPeerTest *>(
                         server->FindPeerByUuid(
-                            BgpConfigManager::kMasterInstance, uuid)));
+                            BgpConfigManager::kMasterInstance.c_str(), uuid)));
     peer_ = static_cast<BgpPeerTest *>(
-                server->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+                server->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                        uuid));
     peer_id_ = peer_id;
 }
@@ -540,10 +540,10 @@ void BgpStressTest::SetUp() {
     channel_manager_.reset(new BgpXmppChannelManagerMock(
                                     xmpp_server_test_, server_.get()));
     master_cfg_.reset(BgpTestUtil::CreateBgpInstanceConfig(
-        BgpConfigManager::kMasterInstance, "", ""));
+        BgpConfigManager::kMasterInstance.c_str(), "", ""));
     rtinstance_ = static_cast<RoutingInstance *>(
         server_->routing_instance_mgr()->GetRoutingInstance(
-            BgpConfigManager::kMasterInstance));
+            BgpConfigManager::kMasterInstance.c_str()));
     families_.push_back(Address::INET);
     families_.push_back(Address::INETVPN);
     families_.push_back(Address::INET6VPN);
@@ -712,7 +712,7 @@ XmppChannelConfig *BgpStressTest::CreateXmppChannelCfg(const char *address,
 }
 
 string BgpStressTest::GetInstanceName(int instance_id, int vn_id) {
-    if (!instance_id) return BgpConfigManager::kMasterInstance;
+    if (!instance_id) return BgpConfigManager::kMasterInstance.c_str();
     ostringstream out;
 
     out << "default-domain:admin";
@@ -738,7 +738,7 @@ void BgpStressTest::VerifyPeer(BgpServerTest *server, BgpNullPeer *npeer) {
                       GetRouterName(npeer->peer_id()), 1);
     TASK_UTIL_EXPECT_EQ(npeer->peer(), static_cast<BgpPeerTest *>(
                                  server->FindPeerByUuid(
-                                     BgpConfigManager::kMasterInstance, uuid)));
+                                     BgpConfigManager::kMasterInstance.c_str(), uuid)));
 
     if (npeer->peer()) {
         BGP_WAIT_FOR_PEER_STATE(npeer->peer(), StateMachine::ESTABLISHED);
@@ -1095,7 +1095,7 @@ void BgpStressTest::AddBgpInetRouteInternal(int family, int peer_id,
     if (peer_id >= (int) peers_.size() || !peers_[peer_id]) return;
     RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
         peer_servers_[peer_id]->routing_instance_mgr()->GetRoutingInstance(
-            BgpConfigManager::kMasterInstance));
+            BgpConfigManager::kMasterInstance.c_str()));
     BgpTable *table = rtinstance->GetTable(families_[family]);
     if (!table) return;
 
@@ -1318,7 +1318,7 @@ void BgpStressTest::DeleteBgpInetRouteInternal(int family, int peer_id,
     if (peer_id >= (int) peers_.size() || !peers_[peer_id]) return;
     RoutingInstance *rtinstance = static_cast<RoutingInstance *>(
         peer_servers_[peer_id]->routing_instance_mgr()->GetRoutingInstance(
-            BgpConfigManager::kMasterInstance));
+            BgpConfigManager::kMasterInstance.c_str()));
     BgpTable *table = rtinstance->GetTable(families_[family]);
     if (!table) return;
 

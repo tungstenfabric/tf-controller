@@ -1,0 +1,26 @@
+# -*- mode: python; -*-
+import os
+
+vpath = '#third_party/restclient-cpp'
+inspath = '#third_party'
+cpppath = '#build/include'
+libpath = '#build/lib'
+
+env = DefaultEnvironment()
+
+# Pull the cpprest repo (if not present), submodule source code and run make
+if not os.path.exists(Dir(vpath).abspath) or os.listdir(Dir(vpath).abspath) == []:
+    cmd = ('(cd ' + Dir(inspath).abspath + ' && ' + 
+           'git clone https://github.com/mrtazz/restclient-cpp.git && cd ' + Dir(vpath).abspath + ' && ' + 
+           'git checkout 77646d97fa05e6878d582026e33658719439cdfe && ')
+else:
+    cmd = '(cd ' + Dir(vpath).abspath + ' && '
+
+# TODO: set the version explicitly
+sub_cmd = './autogen.sh && ./configure --enable-shared=no --prefix=' + Dir('#build').abspath + ' && make install)'
+
+products = [ "#build/include/restclient-cpp/restclient.h",
+             "#build/include/restclient-cpp/connection.h",
+             str(File('#build/lib/librestclient-cpp.a')) ]
+
+librestclientcpp = env.Command(products, str(Dir(vpath)), cmd + sub_cmd)

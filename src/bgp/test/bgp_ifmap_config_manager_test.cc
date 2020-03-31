@@ -814,8 +814,8 @@ TEST_F(BgpIfmapConfigManagerTest, MasterPeeringUpdate1) {
     const BgpIfmapPeeringConfig *peering;
     char full_name[1024];
     snprintf(full_name, sizeof(full_name), "attr(%s:%s,%s:%s)",
-        BgpConfigManager::kMasterInstance, "local",
-        BgpConfigManager::kMasterInstance, "remote");
+        BgpConfigManager::kMasterInstance.c_str(), "local",
+        BgpConfigManager::kMasterInstance.c_str(), "remote");
 
     string content_a = FileRead(
         "controller/src/bgp/testdata/config_test_28a.xml");
@@ -863,8 +863,8 @@ TEST_F(BgpIfmapConfigManagerTest, MasterPeeringUpdate2) {
     const BgpIfmapPeeringConfig *peering;
     char full_name[1024];
     snprintf(full_name, sizeof(full_name), "attr(%s:%s,%s:%s)",
-        BgpConfigManager::kMasterInstance, "local",
-        BgpConfigManager::kMasterInstance, "remote");
+        BgpConfigManager::kMasterInstance.c_str(), "local",
+        BgpConfigManager::kMasterInstance.c_str(), "remote");
 
     string content_a = FileRead(
         "controller/src/bgp/testdata/config_test_29a.xml");
@@ -912,8 +912,8 @@ TEST_F(BgpIfmapConfigManagerTest, MasterPeeringUpdate3) {
     const BgpIfmapPeeringConfig *peering;
     char full_name[1024];
     snprintf(full_name, sizeof(full_name), "attr(%s:%s,%s:%s)",
-        BgpConfigManager::kMasterInstance, "local",
-        BgpConfigManager::kMasterInstance, "remote");
+        BgpConfigManager::kMasterInstance.c_str(), "local",
+        BgpConfigManager::kMasterInstance.c_str(), "remote");
 
     string content_a = FileRead(
         "controller/src/bgp/testdata/config_test_30a.xml");
@@ -1010,8 +1010,8 @@ static string GeneratePeeringConfig(const bitset<8> &session_mask) {
 TEST_F(BgpIfmapConfigManagerTest, MasterPeeringUpdate4) {
     char full_name[1024];
     snprintf(full_name, sizeof(full_name), "attr(%s:%s,%s:%s)",
-        BgpConfigManager::kMasterInstance, "local",
-        BgpConfigManager::kMasterInstance, "remote");
+        BgpConfigManager::kMasterInstance.c_str(), "local",
+        BgpConfigManager::kMasterInstance.c_str(), "remote");
 
     for (int idx = 1; idx <= 255; ++idx) {
         const BgpIfmapPeeringConfig *peering;
@@ -1063,8 +1063,8 @@ TEST_F(BgpIfmapConfigManagerTest, MasterPeeringUpdate4) {
 TEST_F(BgpIfmapConfigManagerTest, MasterPeeringUpdate5) {
     char full_name[1024];
     snprintf(full_name, sizeof(full_name), "attr(%s:%s,%s:%s)",
-        BgpConfigManager::kMasterInstance, "local",
-        BgpConfigManager::kMasterInstance, "remote");
+        BgpConfigManager::kMasterInstance.c_str(), "local",
+        BgpConfigManager::kMasterInstance.c_str(), "remote");
 
     for (int idx = 1; idx <= 254; ++idx) {
         const BgpIfmapPeeringConfig *peering;
@@ -1544,7 +1544,7 @@ TEST_F(BgpIfmapConfigManagerShowTest, ShowInstances1) {
     Sandesh::set_client_context(&sandesh_context);
 
     const char *instance_name_list[] = {
-        "blue", "green", "red", BgpConfigManager::kMasterInstance
+        "blue", "green", "red", BgpConfigManager::kMasterInstance.c_str()
     };
     vector<ShowBgpInstanceConfig> instance_list;
     BOOST_FOREACH(const char *instance_name, instance_name_list) {
@@ -1628,7 +1628,7 @@ TEST_F(BgpIfmapConfigManagerShowTest, ShowInstances2) {
     Sandesh::set_client_context(&sandesh_context);
 
     const char *instance_name_list[] = {
-        "blue-to-red", "red-to-blue", BgpConfigManager::kMasterInstance
+        "blue-to-red", "red-to-blue", BgpConfigManager::kMasterInstance.c_str()
     };
     vector<ShowBgpInstanceConfig> instance_list;
     BOOST_FOREACH(const char *instance_name, instance_name_list) {
@@ -1673,7 +1673,7 @@ TEST_F(BgpIfmapConfigManagerShowTest, ShowInstances3) {
     Sandesh::set_client_context(&sandesh_context);
 
     const char *instance_name_list[] = {
-        "blue-to-nat", BgpConfigManager::kMasterInstance
+        "blue-to-nat", BgpConfigManager::kMasterInstance.c_str()
     };
     vector<ShowBgpInstanceConfig> instance_list;
     BOOST_FOREACH(const char *instance_name, instance_name_list) {
@@ -1864,8 +1864,8 @@ TEST_F(BgpIfmapConfigManagerShowTest, ShowPeerings1) {
     BOOST_FOREACH(const char *peering_name, peering_name_list) {
         char full_name[1024];
         snprintf(full_name, sizeof(full_name), "attr(%s:%s,%s:%s)",
-            BgpConfigManager::kMasterInstance, "local",
-            BgpConfigManager::kMasterInstance, peering_name);
+            BgpConfigManager::kMasterInstance.c_str(), "local",
+            BgpConfigManager::kMasterInstance.c_str(), peering_name);
         const BgpIfmapPeeringConfig *config = FindPeeringConfig(full_name);
         ASSERT_TRUE(config != NULL);
         ShowBgpPeeringConfig peering;
@@ -1897,8 +1897,8 @@ TEST_F(BgpIfmapConfigManagerShowTest, ShowPeerings1) {
 TEST_F(BgpIfmapConfigManagerShowTest, ShowPeerings2) {
     char full_name[1024];
     snprintf(full_name, sizeof(full_name), "attr(%s:%s,%s:%s)",
-        BgpConfigManager::kMasterInstance, "local",
-        BgpConfigManager::kMasterInstance, "remote");
+        BgpConfigManager::kMasterInstance.c_str(), "local",
+        BgpConfigManager::kMasterInstance.c_str(), "remote");
 
     bitset<8> session_mask(7);
     string content = GeneratePeeringConfig(session_mask);
@@ -2422,7 +2422,7 @@ TEST_F(BgpIfmapConfigManagerShowTest, RoutingPolicy_Show_0) {
     Sandesh::set_client_context(&sandesh_context);
 
     const char *instance_name_list[] = {
-        "test", BgpConfigManager::kMasterInstance
+        "test", BgpConfigManager::kMasterInstance.c_str()
     };
     vector<ShowBgpInstanceConfig> instance_list;
     BOOST_FOREACH(const char *instance_name, instance_name_list) {
@@ -2520,7 +2520,7 @@ TEST_F(BgpIfmapConfigManagerShowTest, RoutingPolicy_Show_1) {
     Sandesh::set_client_context(&sandesh_context);
 
     const char *instance_name_list[] = {
-        "test", BgpConfigManager::kMasterInstance
+        "test", BgpConfigManager::kMasterInstance.c_str()
     };
     vector<ShowBgpInstanceConfig> instance_list;
     BOOST_FOREACH(const char *instance_name, instance_name_list) {
@@ -3006,7 +3006,7 @@ TEST_F(BgpIfmapConfigManagerShowTest, RouteAggregate_Show) {
     Sandesh::set_client_context(&sandesh_context);
 
     const char *instance_name_list[] = {
-        "test", BgpConfigManager::kMasterInstance
+        "test", BgpConfigManager::kMasterInstance.c_str()
     };
     vector<ShowBgpInstanceConfig> instance_list;
     BOOST_FOREACH(const char *instance_name, instance_name_list) {

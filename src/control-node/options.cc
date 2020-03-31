@@ -168,16 +168,16 @@ void Options::Initialize(EventManager &evm,
              "Config database server list")
         ("CONFIGDB.config_db_username",
              opt::value<string>()->default_value(""),
-             "ConfigDB user")
+             "ConfigDB user (Cassandraonly)")
         ("CONFIGDB.config_db_password",
              opt::value<string>()->default_value(""),
-             "ConfigDB password")
+             "ConfigDB password (Cassandra only)")
         ("CONFIGDB.config_db_use_ssl",
              opt::value<bool>()->default_value(false),
-             "Use SSL for Cassandra connection")
+             "Use SSL for K8s/Cassandra connection")
         ("CONFIGDB.config_db_ca_certs",
              opt::value<string>()->default_value(""),
-             "CA Certificate file for SSL Cassandra connection")
+             "CA Certificate file for SSL K8s/Cassandra connection")
         ("CONFIGDB.rabbitmq_server_list",
              opt::value<vector<string> >()->default_value(
              default_rabbitmq_server_list, default_rabbitmq_server),
@@ -207,9 +207,9 @@ void Options::Initialize(EventManager &evm,
              opt::value<string>()->default_value(""),
              "CA Certificate file for SSL RabbitMQ connection")
 
-        ("CONFIGDB.config_db_use_etcd",
+        ("CONFIGDB.config_db_use_k8s",
              opt::value<bool>()->default_value(false),
-             "Use etcd as the contrail DB client")
+             "Use Kubernetes as the contrail DB client")
         ;
 
     sandesh::options::AddOptions(&config, &sandesh_config_);
@@ -406,7 +406,7 @@ void Options::ParseConfigOptions(const boost::program_options::variables_map
                      configdb_options_.rabbitmq_ssl_ca_certs,
                      "CONFIGDB.rabbitmq_ssl_ca_certs");
     GetOptValue<bool>(var_map,
-                     configdb_options_.config_db_use_etcd,
-                     "CONFIGDB.config_db_use_etcd");
+                     configdb_options_.config_db_use_k8s,
+                     "CONFIGDB.config_db_use_k8s");
     configdb_chksum_ = GenerateHash(configdb_options_);
 }
