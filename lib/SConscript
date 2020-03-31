@@ -3,6 +3,7 @@ import platform
 from distutils.version import LooseVersion
 
 subdirs = [
+    'restclient-cpp',
     'gunit',
     'http_parser',
     'pugixml',
@@ -15,10 +16,6 @@ subdirs = [
     'ipfix',
     'tbb',
 ]
-
-etcd_incl = os.environ.get('CONTRAIL_ETCD_INCL')
-if etcd_incl:
-   subdirs += ['grpc',]
 
 (distname, version, _) = platform.dist()
 if distname in ['centos', 'redhat'] and LooseVersion(version) >= LooseVersion('7.0'):

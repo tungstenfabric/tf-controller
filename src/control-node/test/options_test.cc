@@ -566,7 +566,7 @@ TEST_F(OptionsTest, OverrideConfigdbOptionsFromCommandLine) {
     char argv_6[] = "--CONFIGDB.config_db_server_list=20.1.1.1:100 20.1.1.2:100";
     char argv_7[] = "--CONFIGDB.config_db_username=dbuser";
     char argv_8[] = "--CONFIGDB.config_db_password=dbpassword";
-    char argv_9[] = "--CONFIGDB.config_db_use_etcd=false";
+    char argv_9[] = "--CONFIGDB.config_db_use_k8s=false";
     argv[0] = argv_0;
     argv[1] = argv_1;
     argv[2] = argv_2;
@@ -585,7 +585,7 @@ TEST_F(OptionsTest, OverrideConfigdbOptionsFromCommandLine) {
     EXPECT_EQ(options_.rabbitmq_user(), "myuser");
     EXPECT_EQ(options_.rabbitmq_password(), "mynewpassword");
     EXPECT_EQ(options_.rabbitmq_ssl_enabled(), false);
-    EXPECT_EQ(options_.using_etcd_client(), false);
+    EXPECT_EQ(options_.using_k8s_client(), false);
 
     vector<string> rabbitmq_server_list;
     rabbitmq_server_list.push_back("10.1.1.1:100");
@@ -607,7 +607,7 @@ TEST_F(OptionsTest, CustomConfigDBFileAndOverrideFromCommandLine) {
         "rabbitmq_use_ssl=true\n"
         "rabbitmq_server_list=10.1.1.1:100 10.1.1.2:100\n"
         "config_db_server_list=20.1.1.1:100 20.1.1.2:100\n"
-        "config_db_use_etcd=true\n";
+        "config_db_use_k8s=true\n";
 
     ofstream config_file;
     config_file.open("./options_test_config_file.conf");
@@ -623,7 +623,7 @@ TEST_F(OptionsTest, CustomConfigDBFileAndOverrideFromCommandLine) {
     char argv_4[] = "--CONFIGDB.rabbitmq_use_ssl=false";
     char argv_5[] = "--CONFIGDB.rabbitmq_server_list=30.1.1.1:100 30.1.1.2:100";
     char argv_6[] = "--CONFIGDB.config_db_server_list=40.1.1.1:100 40.1.1.2:100";
-    char argv_7[] = "--CONFIGDB.config_db_use_etcd=false";
+    char argv_7[] = "--CONFIGDB.config_db_use_k8s=false";
     argv[0] = argv_0;
     argv[1] = argv_1;
     argv[2] = argv_2;
@@ -638,7 +638,7 @@ TEST_F(OptionsTest, CustomConfigDBFileAndOverrideFromCommandLine) {
     EXPECT_EQ(options_.rabbitmq_user(), "myuser");
     EXPECT_EQ(options_.rabbitmq_password(), "mynewpassword");
     EXPECT_EQ(options_.rabbitmq_ssl_enabled(), false);
-    EXPECT_EQ(options_.using_etcd_client(), false);
+    EXPECT_EQ(options_.using_k8s_client(), false);
 
     vector<string> rabbitmq_server_list;
     rabbitmq_server_list.push_back("30.1.1.1:100");
