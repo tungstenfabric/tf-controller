@@ -61,10 +61,12 @@ class RESTServer {
     void VmVnPortPostHandler(const struct RESTData&);
     void VmVnPortGetHandler(const struct RESTData&);
     void VmVnPortDeleteHandler(const struct RESTData&);
-    void VmVnPortCfgGetHandler(const struct RESTData& data);
+    void VmVnPortCfgGetByNameHandler(const struct RESTData& data);
+    void VmVnPortCfgGetByUUIDHandler(const struct RESTData& data);
 
  private:
-    friend class RestServerGetVmCfgTask;
+    friend class RestServerGetVmCfgByNameTask;
+    friend class RestServerGetVmCfgByUUIDTask;
 
     Agent *agent_;
     HttpServer *http_server_;

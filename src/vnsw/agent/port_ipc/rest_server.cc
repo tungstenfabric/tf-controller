@@ -24,9 +24,9 @@ using contrail::regex;
 using contrail::regex_match;
 using contrail::regex_search;
 
-class RestServerGetVmCfgTask : public Task {
+class RestServerGetVmCfgByNameTask : public Task {
 public:
-    RestServerGetVmCfgTask(PortIpcHandler *pih,
+    RestServerGetVmCfgByNameTask(PortIpcHandler *pih,
                             const struct RESTServer::RESTData& data):
         Task((TaskScheduler::GetInstance()->GetTaskId("Agent::RestApi")), 0),
         pih_(pih),
@@ -34,7 +34,7 @@ public:
         data_(data),
         context_(data_.session->get_context()) {
     }
-    virtual ~RestServerGetVmCfgTask() { }
+    virtual ~RestServerGetVmCfgByNameTask() { }
     virtual bool Run() {
         std::string info;
         const std::string client_ctx = data_.session->get_client_context(context_);
@@ -42,20 +42,59 @@ public:
         if ((!data_.session->set_client_context(context_, client_ctx)) ||
             (context_.empty()))
             return true;
-        if (pih_->GetVmVnCfgPort(vm_name_, info)) {
+        if (pih_->GetVmVnCfgPortByName(vm_name_, info)) {
             REST::SendResponse(data_.session, info, 200, context_);
         } else {
             REST::SendErrorResponse(data_.session, "{ Not Found }", 404, context_);
         }
         return true;
     }
-    std::string Description() const { return "RestServerGetVmCfgTask"; }
+    std::string Description() const { return "RestServerGetVmCfgByNameTask"; }
 private:
     const PortIpcHandler *pih_;
     std::string vm_name_;
     const struct RESTServer::RESTData& data_;
     const std::string context_;
-    DISALLOW_COPY_AND_ASSIGN(RestServerGetVmCfgTask);
+    DISALLOW_COPY_AND_ASSIGN(RestServerGetVmCfgByNameTask);
+};
+
+class RestServerGetVmCfgByUUIDTask : public Task {
+public:
+    RestServerGetVmCfgByUUIDTask(PortIpcHandler *pih,
+                            const struct RESTServer::RESTData& data):
+        Task((TaskScheduler::GetInstance()->GetTaskId("Agent::RestApi")), 0),
+        pih_(pih),
+        vm_uuid_((*data.match)[1]),
+        data_(data),
+        context_(data_.session->get_context()) {
+    }
+    virtual ~RestServerGetVmCfgByUUIDTask() { }
+    virtual bool Run() {
+        std::string info;
+        const std::string client_ctx = data_.session->get_client_context(context_);
+        // check session is not deleted
+        if ((!data_.session->set_client_context(context_, client_ctx)) ||
+            (context_.empty()))
+            return true;
+        
+        // convert string UUID into binary UUID
+        boost::uuids::string_generator string_gen;
+        boost::uuids::uuid uuid = string_gen(vm_uuid_);
+
+        if (pih_->GetVmVnCfgPortByUUID(uuid, info)) {
+            REST::SendResponse(data_.session, info, 200, context_);
+        } else {
+            REST::SendErrorResponse(data_.session, "{ Not Found }", 404, context_);
+        }
+        return true;
+    }
+    std::string Description() const { return "RestServerGetVmCfgByUUIDTask"; }
+private:
+    const PortIpcHandler *pih_;
+    std::string vm_uuid_;
+    const struct RESTServer::RESTData& data_;
+    const std::string context_;
+    DISALLOW_COPY_AND_ASSIGN(RestServerGetVmCfgByUUIDTask);
 };
 
 void RESTServer::VmPortPostHandler(const struct RESTData& data) {
@@ -197,11 +236,23 @@ void RESTServer::VmVnPortGetHandler(const struct RESTData& data) {
     }
 }
 
-void RESTServer::VmVnPortCfgGetHandler(const struct RESTData& data) {
+void RESTServer::VmVnPortCfgGetByNameHandler(const struct RESTData& data) {
     PortIpcHandler *pih = agent_->port_ipc_handler();
     if (pih) {
-        RestServerGetVmCfgTask *t =
-            new RestServerGetVmCfgTask(pih, data);
+        RestServerGetVmCfgByNameTask *t =
+            new RestServerGetVmCfgByNameTask(pih, data);
+        TaskScheduler *scheduler = TaskScheduler::GetInstance();
+        scheduler->Enqueue(t);
+    } else {
+        REST::SendErrorResponse(data.session, "{ Operation Not Supported }");
+    }
+}
+
+void RESTServer::VmVnPortCfgGetByUUIDHandler(const struct RESTData& data) {
+    PortIpcHandler *pih = agent_->port_ipc_handler();
+    if (pih) {
+        RestServerGetVmCfgByUUIDTask *t =
+            new RestServerGetVmCfgByUUIDTask(pih, data);
         TaskScheduler *scheduler = TaskScheduler::GetInstance();
         scheduler->Enqueue(t);
     } else {
@@ -290,7 +341,12 @@ const std::vector<RESTServer::HandlerSpecifier> RESTServer::RESTHandlers_ =
     (HandlerSpecifier(
         regex("/vm-cfg/(.*)"),
         HTTP_GET,
-        &RESTServer::VmVnPortCfgGetHandler))
+        &RESTServer::VmVnPortCfgGetByNameHandler))
+    (HandlerSpecifier(
+        regex("/vm-cfg-by-uuid/"
+            "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"),
+        HTTP_GET,
+        &RESTServer::VmVnPortCfgGetByUUIDHandler))
     (HandlerSpecifier(
         regex("/enable-port/"
             "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"),
