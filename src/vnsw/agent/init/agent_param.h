@@ -565,6 +565,9 @@ public:
 
     float vr_object_high_watermark() const { return vr_object_high_watermark_; }
 
+    //Determine if we're using K8s
+    bool config_db_use_k8s() const { return config_db_use_k8s_; }
+
 protected:
     void set_hypervisor_mode(HypervisorMode m) { hypervisor_mode_ = m; }
     virtual void InitFromSystem();
@@ -838,6 +841,8 @@ private:
     bool cat_MockDPDK_;
     std::string cat_kSocketDir_;
     float vr_object_high_watermark_;
+    //K8s config database support
+    bool config_db_use_k8s_;
     DISALLOW_COPY_AND_ASSIGN(AgentParam);
 };
 
