@@ -14,11 +14,8 @@ subdirs = [
     'openvswitch',
     'ipfix',
     'tbb',
+    'restclient-cpp',
 ]
-
-etcd_incl = os.environ.get('CONTRAIL_ETCD_INCL')
-if etcd_incl:
-   subdirs += ['grpc',]
 
 (distname, version, _) = platform.dist()
 if distname in ['centos', 'redhat'] and LooseVersion(version) >= LooseVersion('7.0'):

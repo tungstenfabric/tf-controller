@@ -874,7 +874,7 @@ public:
     const std::string &fabric_vn_name() const {return fabric_vn_name_; }
 
     const std::string &fabric_vrf_name() const { return fabric_vrf_name_; }
-    void set_fabric_vrf_name(const std::string &name) {
+    static void set_fabric_vrf_name(const std::string &name) {
         fabric_vrf_name_ = name;
     }
 
@@ -891,8 +891,13 @@ public:
     void set_fabric_policy_vrf(VrfEntry *vrf) { fabric_policy_vrf_ = vrf; }
 
     const std::string &linklocal_vn_name() {return link_local_vn_name_;}
+    static void set_linklocal_vn_name(const std::string& vn_name) { 
+        link_local_vn_name_ = vn_name; }
+ 
     const std::string &linklocal_vrf_name() {return link_local_vrf_name_;}
-
+    static void set_linklocal_vrf_name(const std::string& vrf_name) { 
+        link_local_vrf_name_ = vrf_name; }
+ 
     const std::string &vhost_interface_name() const;
     void set_vhost_interface_name(const std::string &name) {
         vhost_interface_name_ = name;
@@ -1607,8 +1612,8 @@ public:
     static std::string fabric_vrf_name_;
     static const std::string fabric_vn_name_;
     static std::string fabric_policy_vrf_name_;
-    static const std::string link_local_vrf_name_;
-    static const std::string link_local_vn_name_;
+    static std::string link_local_vrf_name_;
+    static std::string link_local_vn_name_;
     static const MacAddress vrrp_mac_;
     static const MacAddress pkt_interface_mac_;
     static const std::string bcast_mac_;

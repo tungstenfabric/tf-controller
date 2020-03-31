@@ -22,18 +22,14 @@ env.Prepend(CPPPATH = env['TOP'] + '/schema')
 env.Prepend(CPPPATH = env['TOP'] + '/sandesh/library')
 env.Prepend(CPPPATH = env['TOP'] + '/bgp')
 
-etcd_incl = os.environ.get('CONTRAIL_ETCD_INCL');
-
-if etcd_incl:
-    env.Prepend(LIBS = ['etcdql', 'protobuf', 'grpc++', 'grpc', 'z'])
-
 env.Prepend(LIBS=['ifmap_vnc', 'ifmap_server', 'ifmap_common', 'net', 'config_client_mgr',
                   'ifmapio', 'xmpp', 'sandeshvns', 'peer_sandesh',
                   'curl', 'process_info',
                   'db', 'io', 'base', 'cassandra_cql', 'SimpleAmqpClient', 'rabbitmq',
                   'cassandra', 'gendb', 'xml', 'pugixml', 'xml2',
                   'cpuinfo', 'nodeinfo',
-                  'boost_regex', 'boost_program_options','crypto', 'ssl', 'bgp_schema'])
+                  'boost_regex', 'boost_program_options','crypto', 'ssl', 'bgp_schema',
+                  'k8s_client', 'restclient-cpp'])
 
 env.Append(LIBS=['boost_chrono'])
 
