@@ -651,9 +651,9 @@ void GracefulRestartTest::Configure() {
                           "RTR" + boost::lexical_cast<string>(i), 1);
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
                             bgp_servers_[i]->FindPeerByUuid(
-                                BgpConfigManager::kMasterInstance, uuid));
+                                BgpConfigManager::kMasterInstance.c_str(), uuid));
         BgpPeerTest *peer = bgp_servers_[i]->FindPeerByUuid(
-                                BgpConfigManager::kMasterInstance, uuid);
+                                BgpConfigManager::kMasterInstance.c_str(), uuid);
         peer->set_id(i-1);
         bgp_peers_.push_back(peer);
     }
@@ -664,9 +664,9 @@ void GracefulRestartTest::Configure() {
                           "RTR" + boost::lexical_cast<string>(i), 1);
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
                             bgp_servers_[i]->FindPeerByUuid(
-                                BgpConfigManager::kMasterInstance, uuid));
+                                BgpConfigManager::kMasterInstance.c_str(), uuid));
         BgpPeerTest *peer = bgp_servers_[0]->FindPeerByUuid(
-                                BgpConfigManager::kMasterInstance, uuid);
+                                BgpConfigManager::kMasterInstance.c_str(), uuid);
         peer->set_id(i-1);
         bgp_server_peers_.push_back(peer);
     }
