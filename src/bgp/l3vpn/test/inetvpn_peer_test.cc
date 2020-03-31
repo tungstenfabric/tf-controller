@@ -147,14 +147,14 @@ protected:
         string b_name = instance_name + ":B";
 
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeer *>(NULL),
-            a_->FindPeer(BgpConfigManager::kMasterInstance, b_name));
+            a_->FindPeer(BgpConfigManager::kMasterInstance.c_str(), b_name));
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeer *>(NULL),
-            b_->FindPeer(BgpConfigManager::kMasterInstance, a_name));
+            b_->FindPeer(BgpConfigManager::kMasterInstance.c_str(), a_name));
 
         peer_b_ = dynamic_cast<BgpPeerTest *>(
-                      a_->FindPeer(BgpConfigManager::kMasterInstance, b_name));
+                      a_->FindPeer(BgpConfigManager::kMasterInstance.c_str(), b_name));
         peer_a_ = dynamic_cast<BgpPeerTest *>(
-                      b_->FindPeer(BgpConfigManager::kMasterInstance, a_name));
+                      b_->FindPeer(BgpConfigManager::kMasterInstance.c_str(), a_name));
         TASK_UTIL_EXPECT_EQ_MSG(StateMachine::ESTABLISHED, peer_a_->GetState(),
                                 "Is peer ready");
         TASK_UTIL_EXPECT_EQ_MSG(StateMachine::ESTABLISHED, peer_b_->GetState(),
@@ -794,7 +794,7 @@ class TestEnvironment : public ::testing::Environment {
 };
 
 INSTANTIATE_TEST_CASE_P(InetVpnPeerTestWithParams, L3VPNPeerTest,
-                   ::testing::Combine(
+                        ::testing::Combine(
                         ::testing::Values("IBGP", "EBGP"),
                         ::testing::Bool()));
 

@@ -65,15 +65,6 @@ env.Alias("control-node:node_mgr", sdist_gen)
 libcontrail_control_uve = env.Library('control_node_uve',
                                       ControlNodeSandeshGenSrcs);
 
-etcd_incl = os.environ.get('CONTRAIL_ETCD_INCL');
-
-if etcd_incl:
-    env.Prepend(LIBS=[
-                  'etcdql',
-                  'protobuf',
-                  'grpc++',
-                  'grpc', 'z'])
-
 env.Prepend(LIBS=['bgp',
                   'bgp_ifmap_config',
                   'bgp_schema',
@@ -125,7 +116,8 @@ env.Prepend(LIBS=['bgp',
                   'boost_chrono',
                   'boost_program_options',
                   'boost_filesystem',
-                  'crypto', 'ssl'])
+                  'crypto', 'ssl',
+                  'k8s_client', 'restclient-cpp' ])
 
 if platform.system() != 'Darwin':
     env.Append(LIBS=['rt'])
@@ -176,6 +168,7 @@ lib_process_info = File('../base/libprocess_info.a')
 lib_nodeinfo = File('../base/libnodeinfo.a')
 lib_base = File('../base/libbase.a')
 lib_extend_community = File('../bgp/extended-community/libextended_community.a')
+lib_restclient_cpp = File('../../lib/librestclient-cpp.a')
 
 if platform.system() != 'Darwin':
     env.Prepend(LINKFLAGS =
@@ -185,7 +178,7 @@ if platform.system() != 'Darwin':
                       '-lbgp_evpn', '-lbgp_ermvpn', '-lextended_community', '-lrtarget',
                       '-lifmap_server', '-lcpuinfo', '-lprocess_info', '-lnodeinfo',
                       '-lrouting_instance', '-lrouting_policy', '-lbgp_mvpn',
-                      '-lbase', '-Wl,--no-whole-archive'])
+                      '-lbase', '-lrestclient-cpp', '-Wl,--no-whole-archive'])
 else:
     env.Prepend(LINKFLAGS = ['-Wl,-force_load,' + lib_l3vpn.path])
     env.Prepend(LINKFLAGS = ['-Wl,-force_load,' + lib_inet.path])
@@ -202,6 +195,7 @@ else:
     env.Prepend(LINKFLAGS = ['-Wl,-force_load,' + lib_nodeinfo.path])
     env.Prepend(LINKFLAGS = ['-Wl,-force_load,' + lib_base.path])
     env.Prepend(LINKFLAGS = ['-Wl,-force_load,' + lib_extend_community.path])
+    env.Prepend(LINKFLAGS = ['-Wl,-force_load,' + lib_restclient_cpp.path])
 
 buildinfo_dep_libs = ['../bgp/libbgp.a', 
                       '../bgp/libbgp_ifmap_config.a',
@@ -219,7 +213,7 @@ buildinfo_dep_libs = ['../bgp/libbgp.a',
                       '../../lib/libifmapio.a', '../xmpp/libxmpp.a', '../xml/libxml.a', '../../lib/libsandeshvns.a', 
                       '../../lib/libsandesh.a', '../../lib/libhttp.a', '../../lib/libhttp_parser.a',
                       '../db/libdb.a', '../io/libio.a', '../base/libbase.a', '../base/libcpuinfo.a', '../base/libprocess_info.a',
-                      '../base/libnodeinfo.a', '../../lib/libpugixml.a',
+                      '../base/libnodeinfo.a', '../../lib/libpugixml.a', '../../lib/librestclient-cpp.a',
 		      ]
 
 env.GenerateBuildInfoCode(
@@ -245,6 +239,7 @@ env.Depends(ctrlnode, lib_mvpn)
 env.Depends(ctrlnode, lib_evpn)
 env.Depends(ctrlnode, lib_rtarget)
 env.Depends(ctrlnode, lib_ifmap_server)
+env.Depends(ctrlnode, lib_restclient_cpp)
 
 env.Alias('control-node', ctrlnode)
 env.Alias('contrail-control', ctrlnode)
