@@ -759,12 +759,12 @@ protected:
 
         string uuid = BgpConfigParser::session_uuid("X", "Y", 1);
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
-            bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
-        peer_x_ = bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+            bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
+        peer_x_ = bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                         uuid);
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
-            bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
-        peer_y_ = bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+            bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
+        peer_y_ = bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                         uuid);
         TASK_UTIL_EXPECT_TRUE(peer_x_->IsReady());
         TASK_UTIL_EXPECT_TRUE(peer_y_->IsReady());
@@ -1241,12 +1241,12 @@ TEST_P(BgpMvpnTwoControllerTest, ChangeIdentifier) {
     task_util::WaitForIdle();
         string uuid = BgpConfigParser::session_uuid("X", "Y", 1);
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
-            bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
-        peer_x_ = bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+            bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
+        peer_x_ = bs_x_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                         uuid);
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeerTest *>(NULL),
-            bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
-        peer_y_ = bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+            bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
+        peer_y_ = bs_y_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                         uuid);
         TASK_UTIL_EXPECT_TRUE(peer_x_->IsReady());
         TASK_UTIL_EXPECT_TRUE(peer_y_->IsReady());
