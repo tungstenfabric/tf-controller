@@ -777,8 +777,8 @@ void BgpServerUnitTest::SetupPeersWrongAsnConfig(int peer_count,
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
 
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeer *>(NULL),
-                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         ASSERT_TRUE(peer_a != NULL);
         // asn mismatch will happen in AS4Support capability so connection
@@ -798,8 +798,8 @@ void BgpServerUnitTest::VerifyPeers(int peer_count,
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
 
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeer *>(NULL),
-                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         ASSERT_TRUE(peer_a != NULL);
         TASK_UTIL_EXPECT_EQ(local_as_num1, peer_a->local_as());
@@ -807,8 +807,8 @@ void BgpServerUnitTest::VerifyPeers(int peer_count,
         BGP_WAIT_FOR_PEER_STATE(peer_a, StateMachine::ESTABLISHED);
 
         TASK_UTIL_EXPECT_NE(static_cast<BgpPeer *>(NULL),
-                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         ASSERT_TRUE(peer_b != NULL);
         TASK_UTIL_EXPECT_EQ(local_as_num2, peer_b->local_as());
@@ -818,9 +818,9 @@ void BgpServerUnitTest::VerifyPeers(int peer_count,
         if (verify_c) {
             uuid = BgpConfigParser::session_uuid("A", "C", j + 1);
             TASK_UTIL_EXPECT_NE(static_cast<BgpPeer *>(NULL),
-                c_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+                c_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
             BgpPeer *peer_c = c_->FindPeerByUuid(
-                                   BgpConfigManager::kMasterInstance, uuid);
+                                   BgpConfigManager::kMasterInstance.c_str(), uuid);
             ASSERT_TRUE(peer_c != NULL);
             TASK_UTIL_EXPECT_EQ(local_as_num2, peer_c->local_as());
             TASK_UTIL_EXPECT_EQ(peer_type, peer_c->PeerType());
@@ -916,9 +916,9 @@ TEST_P(BgpServerUnitTest, ChangeEnable4ByteAsn) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -942,9 +942,9 @@ TEST_P(BgpServerUnitTest, ChangeEnable4ByteAsn) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -974,9 +974,9 @@ TEST_P(BgpServerUnitTest, ChangeEnable4ByteAsn2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1000,9 +1000,9 @@ TEST_P(BgpServerUnitTest, ChangeEnable4ByteAsn2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1031,9 +1031,9 @@ TEST_P(BgpServerUnitTest, ChangeAsNumber1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1057,9 +1057,9 @@ TEST_P(BgpServerUnitTest, ChangeAsNumber1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1088,9 +1088,9 @@ TEST_P(BgpServerUnitTest, ChangeAsNumber2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1114,9 +1114,9 @@ TEST_P(BgpServerUnitTest, ChangeAsNumber2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1146,9 +1146,9 @@ TEST_P(BgpServerUnitTest, ChangeAsNumber3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1172,9 +1172,9 @@ TEST_P(BgpServerUnitTest, ChangeAsNumber3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1204,9 +1204,9 @@ TEST_P(BgpServerUnitTest, ChangeLocalAsNumber1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1230,9 +1230,9 @@ TEST_P(BgpServerUnitTest, ChangeLocalAsNumber1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1261,9 +1261,9 @@ TEST_P(BgpServerUnitTest, ChangeLocalAsNumber2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1287,9 +1287,9 @@ TEST_P(BgpServerUnitTest, ChangeLocalAsNumber2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1318,9 +1318,9 @@ TEST_P(BgpServerUnitTest, ChangeLocalAsNumber3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1344,9 +1344,9 @@ TEST_P(BgpServerUnitTest, ChangeLocalAsNumber3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1399,9 +1399,9 @@ TEST_P(BgpServerUnitTest, ASNUpdateNotification) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1427,9 +1427,9 @@ TEST_P(BgpServerUnitTest, ASNUpdateNotification) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1477,9 +1477,9 @@ TEST_P(BgpServerUnitTest, ChangePeerAddress) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1501,9 +1501,9 @@ TEST_P(BgpServerUnitTest, ChangePeerAddress) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1530,9 +1530,9 @@ TEST_P(BgpServerUnitTest, ChangeBgpIdentifier) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1554,9 +1554,9 @@ TEST_P(BgpServerUnitTest, ChangeBgpIdentifier) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1583,9 +1583,9 @@ TEST_P(BgpServerUnitTest, ChangePeerAddressFamilies) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1612,9 +1612,9 @@ TEST_P(BgpServerUnitTest, ChangePeerAddressFamilies) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1642,9 +1642,9 @@ TEST_P(BgpServerUnitTest, AdminDown) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1655,7 +1655,7 @@ TEST_P(BgpServerUnitTest, AdminDown) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         peer_a->SetAdminState(true);
     }
@@ -1665,9 +1665,9 @@ TEST_P(BgpServerUnitTest, AdminDown) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1678,7 +1678,7 @@ TEST_P(BgpServerUnitTest, AdminDown) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_b->get_rx_notification() >= 3);
     }
@@ -1688,7 +1688,7 @@ TEST_P(BgpServerUnitTest, AdminDown) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         peer_a->SetAdminState(false);
     }
@@ -1719,9 +1719,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->IsAdminDown());
         TASK_UTIL_EXPECT_TRUE(peer_b->IsAdminDown());
@@ -1766,9 +1766,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1790,9 +1790,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1839,9 +1839,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1863,9 +1863,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -1907,9 +1907,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown4) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->IsAdminDown());
         TASK_UTIL_EXPECT_TRUE(peer_b->IsAdminDown());
@@ -1954,9 +1954,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown5) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -1978,9 +1978,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown5) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -2027,9 +2027,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown6) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -2052,9 +2052,9 @@ TEST_P(BgpServerUnitTest, ConfigAdminDown6) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -2097,9 +2097,9 @@ TEST_P(BgpServerUnitTest, Passive1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->IsPassive());
         TASK_UTIL_EXPECT_TRUE(peer_b->IsPassive());
@@ -2129,9 +2129,9 @@ TEST_P(BgpServerUnitTest, Passive1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -2154,9 +2154,9 @@ TEST_P(BgpServerUnitTest, Passive1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -2191,9 +2191,9 @@ TEST_P(BgpServerUnitTest, Passive2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->IsPassive());
         TASK_UTIL_EXPECT_TRUE(peer_b->IsAdminDown());
@@ -2223,9 +2223,9 @@ TEST_P(BgpServerUnitTest, Passive2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -2251,9 +2251,9 @@ TEST_P(BgpServerUnitTest, Passive2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -2288,9 +2288,9 @@ TEST_P(BgpServerUnitTest, ResetStatsOnFlap) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         peer_a->SetAdminState(true);
         peer_b->SetAdminState(true);
@@ -2301,9 +2301,9 @@ TEST_P(BgpServerUnitTest, ResetStatsOnFlap) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_EQ(0, peer_a->get_rx_keepalive());
         TASK_UTIL_EXPECT_EQ(0, peer_a->get_tx_keepalive());
@@ -2339,9 +2339,9 @@ TEST_P(BgpServerUnitTest, DISABLED_ChangeBgpPort) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -2371,7 +2371,7 @@ TEST_P(BgpServerUnitTest, DISABLED_ChangeBgpPort) {
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
         TASK_UTIL_EXPECT_EQ(static_cast<BgpPeer *>(NULL),
-                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
     }
 
     //
@@ -2390,9 +2390,9 @@ TEST_P(BgpServerUnitTest, DISABLED_ChangeBgpPort) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_EQ(peers_a[j], peer_a);
@@ -2420,9 +2420,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation1) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_FALSE(peer_a->IsFamilyNegotiated(Address::INET));
         TASK_UTIL_EXPECT_FALSE(peer_b->IsFamilyNegotiated(Address::INET));
@@ -2459,9 +2459,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation2) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_FALSE(peer_a->IsFamilyNegotiated(Address::INET));
         TASK_UTIL_EXPECT_FALSE(peer_b->IsFamilyNegotiated(Address::INET));
@@ -2500,9 +2500,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation3) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_FALSE(peer_a->IsFamilyNegotiated(Address::INET));
         TASK_UTIL_EXPECT_FALSE(peer_b->IsFamilyNegotiated(Address::INET));
@@ -2543,9 +2543,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation4) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_FALSE(peer_a->IsFamilyNegotiated(Address::INET));
         TASK_UTIL_EXPECT_FALSE(peer_b->IsFamilyNegotiated(Address::INET));
@@ -2587,9 +2587,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation5) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_FALSE(peer_a->IsFamilyNegotiated(Address::INET));
         TASK_UTIL_EXPECT_FALSE(peer_b->IsFamilyNegotiated(Address::INET));
@@ -2634,9 +2634,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation6) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->IsFamilyNegotiated(Address::INET));
         TASK_UTIL_EXPECT_TRUE(peer_b->IsFamilyNegotiated(Address::INET));
@@ -2672,9 +2672,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation7) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE((peer_a->get_open_error() >= 1) ||
                               (peer_b->get_open_error() >= 1));
@@ -2705,9 +2705,9 @@ TEST_P(BgpServerUnitTest, AddressFamilyNegotiation8) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE((peer_a->get_open_error() >= 1) ||
                               (peer_b->get_open_error() >= 1));
@@ -2750,12 +2750,12 @@ TEST_P(BgpServerUnitTest, HoldTimeChange) {
         for (int j = 0; j < peer_count; j++) {
             string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
             BgpPeer *peer_a =
-                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
             const StateMachine *sm_a = GetPeerStateMachine(peer_a);
             TASK_UTIL_EXPECT_EQ(10 * idx, sm_a->hold_time());
 
             BgpPeer *peer_b =
-                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
             const StateMachine *sm_b = GetPeerStateMachine(peer_b);
             TASK_UTIL_EXPECT_EQ(10 * idx, sm_b->hold_time());
         }
@@ -2798,12 +2798,12 @@ TEST_P(BgpServerUnitTest, NeighborHoldTimeChange) {
         for (int j = 0; j < peer_count; j++) {
             string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
             BgpPeer *peer_a =
-                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
             const StateMachine *sm_a = GetPeerStateMachine(peer_a);
             TASK_UTIL_EXPECT_EQ(10 * idx, sm_a->hold_time());
 
             BgpPeer *peer_b =
-                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
             const StateMachine *sm_b = GetPeerStateMachine(peer_b);
             TASK_UTIL_EXPECT_EQ(10 * idx, sm_b->hold_time());
         }
@@ -2831,7 +2831,7 @@ TEST_P(BgpServerUnitTest, MissingPeerConfig) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_NE(peer_a->GetState(), StateMachine::ESTABLISHED);
     }
@@ -2856,7 +2856,7 @@ TEST_P(BgpServerUnitTest, DisableSessionQueue1) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_EQ(peer_a->GetState(), StateMachine::ACTIVE);
         TASK_UTIL_EXPECT_EQ(0, peer_a->get_hold_timer_expired());
@@ -2890,7 +2890,7 @@ TEST_P(BgpServerUnitTest, DisableSessionQueue2) {
     vector<size_t> a_connect_error(peer_count);
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         a_connect_error[j] = peer_a->get_connect_error();
     }
@@ -2902,7 +2902,7 @@ TEST_P(BgpServerUnitTest, DisableSessionQueue2) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(
             peer_a->get_connect_error() >= a_connect_error[j] + 3);
@@ -2928,7 +2928,7 @@ TEST_P(BgpServerUnitTest, ConnectError) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->get_connect_error() >= 3);
     }
@@ -2952,7 +2952,7 @@ TEST_P(BgpServerUnitTest, ConnectTimerExpired) {
 
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->get_connect_timer_expired() >= 3);
     }
@@ -2982,7 +2982,7 @@ TEST_P(BgpServerUnitTest, DeleteInProgress) {
     vector<BgpPeer *> peer_a_list;
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         peer_a_list.push_back(peer_a);
     }
@@ -3012,7 +3012,7 @@ TEST_P(BgpServerUnitTest, DeleteInProgress) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_b->get_rx_notification() >= 3);
     }
@@ -3104,9 +3104,9 @@ void BgpServerUnitTest::GRTestCommon(bool hard_reset,
     // in order to hold the state in idle after GR session restart..
     string uuid = BgpConfigParser::session_uuid("A", "B", 1);
     BgpPeerTest *peer_a = static_cast<BgpPeerTest *>(
-        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
     BgpPeerTest *peer_b = static_cast<BgpPeerTest *>(
-        b_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+        b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
     TASK_UTIL_EXPECT_TRUE(peer_b->IsReady());
 
     int subcode = hard_reset ? BgpProto::Notification::HardReset :
@@ -3221,7 +3221,7 @@ TEST_P(BgpServerUnitTest, CloseInProgress) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         peer_b->SetAdminState(true);
     }
@@ -3231,7 +3231,7 @@ TEST_P(BgpServerUnitTest, CloseInProgress) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         peer_b->SetAdminState(false);
         TASK_UTIL_EXPECT_TRUE(peer_b->get_rx_notification() >= 3);
@@ -3298,9 +3298,9 @@ TEST_P(BgpServerUnitTest, CloseDeferred) {
         for (int j = 0; j < peer_count; j++) {
             string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
             BgpPeer *peer_a =
-                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+                a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
             BgpPeer *peer_b =
-                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid);
+                b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid);
             if ((peer_a->GetState() != StateMachine::ESTABLISHED) ||
                 (peer_b->GetState() != StateMachine::ESTABLISHED)) {
                 established = false;
@@ -3320,7 +3320,7 @@ TEST_P(BgpServerUnitTest, CloseDeferred) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         peer_b->SetAdminState(true);
     }
@@ -3331,7 +3331,7 @@ TEST_P(BgpServerUnitTest, CloseDeferred) {
     vector<size_t> b_rx_notification(peer_count);
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         b_rx_notification[j] = peer_b->get_rx_notification();
         peer_b->SetAdminState(false);
@@ -3342,7 +3342,7 @@ TEST_P(BgpServerUnitTest, CloseDeferred) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(
             peer_b->get_rx_notification() >= b_rx_notification[j] + 3);
@@ -3381,11 +3381,11 @@ TEST_P(BgpServerUnitTest, CreateSessionFail) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         const StateMachine *sm_a = GetPeerStateMachine(peer_a);
         TASK_UTIL_EXPECT_TRUE(sm_a->connect_attempts() >= 3);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         const StateMachine *sm_b = GetPeerStateMachine(peer_b);
         TASK_UTIL_EXPECT_TRUE(sm_b->connect_attempts() >= 3);
@@ -3425,11 +3425,11 @@ TEST_P(BgpServerUnitTest, SocketOpenFail) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         const StateMachine *sm_a = GetPeerStateMachine(peer_a);
         TASK_UTIL_EXPECT_TRUE(sm_a->connect_attempts() >= 3);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         const StateMachine *sm_b = GetPeerStateMachine(peer_b);
         TASK_UTIL_EXPECT_TRUE(sm_b->connect_attempts() >= 3);
@@ -3467,9 +3467,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -3481,7 +3481,7 @@ TEST_P(BgpServerUnitTest, ClearNeighbor1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         BgpSandeshContext sandesh_context;
         sandesh_context.set_test_mode(true);
@@ -3508,9 +3508,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor1) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -3539,9 +3539,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -3553,7 +3553,7 @@ TEST_P(BgpServerUnitTest, ClearNeighbor2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         BgpSandeshContext sandesh_context;
         sandesh_context.set_test_mode(true);
@@ -3582,9 +3582,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor2) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_TRUE(peer_a->flap_count() > flap_count_a[j]);
         TASK_UTIL_EXPECT_TRUE(peer_b->flap_count() > flap_count_b[j]);
@@ -3611,9 +3611,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -3625,7 +3625,7 @@ TEST_P(BgpServerUnitTest, ClearNeighbor3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         BgpSandeshContext sandesh_context;
         sandesh_context.set_test_mode(true);
@@ -3652,9 +3652,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor3) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_EQ(peer_a->flap_count(), flap_count_a[j]);
         TASK_UTIL_EXPECT_EQ(peer_b->flap_count(), flap_count_b[j]);
@@ -3681,9 +3681,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor4) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -3717,9 +3717,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor4) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_EQ(peer_a->flap_count(), flap_count_a[j]);
         TASK_UTIL_EXPECT_EQ(peer_b->flap_count(), flap_count_b[j]);
@@ -3746,9 +3746,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor5) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         flap_count_a.push_back(peer_a->flap_count());
         flap_count_b.push_back(peer_b->flap_count());
@@ -3760,7 +3760,7 @@ TEST_P(BgpServerUnitTest, ClearNeighbor5) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         BgpSandeshContext sandesh_context;
         sandesh_context.bgp_server = a_.get();
@@ -3786,9 +3786,9 @@ TEST_P(BgpServerUnitTest, ClearNeighbor5) {
     //
     for (int j = 0; j < peer_count; j++) {
         string uuid = BgpConfigParser::session_uuid("A", "B", j + 1);
-        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_a = a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
-        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance,
+        BgpPeer *peer_b = b_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(),
                                              uuid);
         TASK_UTIL_EXPECT_EQ(peer_a->flap_count(), flap_count_a[j]);
         TASK_UTIL_EXPECT_EQ(peer_b->flap_count(), flap_count_b[j]);
@@ -4132,13 +4132,13 @@ TEST_P(BgpServerUnitTest, ClusterIdChange) {
 
     string uuid = BgpConfigParser::session_uuid("A", "B", 1);
     BgpPeerTest *peer_a = static_cast<BgpPeerTest *>(
-        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
     uuid = BgpConfigParser::session_uuid("A", "C", 1);
     BgpPeerTest *peer_ac = static_cast<BgpPeerTest *>(
-        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
     uuid = BgpConfigParser::session_uuid("B", "A", 1);
     BgpPeerTest *peer_b = static_cast<BgpPeerTest *>(
-        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance, uuid));
+        a_->FindPeerByUuid(BgpConfigManager::kMasterInstance.c_str(), uuid));
     const InetTable::RequestKey key1(prefix1, peer_ac);
 
     DBRequest req;

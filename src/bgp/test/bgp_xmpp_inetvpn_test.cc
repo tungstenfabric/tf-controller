@@ -914,7 +914,7 @@ protected:
     }
 
     const BgpPeer *VerifyPeerExists(BgpServerTestPtr s1, BgpServerTestPtr s2) {
-        const char *master = BgpConfigManager::kMasterInstance;
+        const char *master = BgpConfigManager::kMasterInstance.c_str();
         string name = string(master) + ":" + s2->localname();
         TASK_UTIL_EXPECT_TRUE(s1->FindMatchingPeer(master, name) != NULL);
         return s1->FindMatchingPeer(master, name);
