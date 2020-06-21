@@ -9,7 +9,7 @@ Simple CLI to generate Contrail config data in a Cassandra database.
 You can install ``contrail-db-loader`` inside a python virtualenv.
 First create the virtualenv and install ``contrail-db-loader`` from source.
 
-    $ git clone https://github.com/Juniper/contrail-controller.git
+    $ git clone https://github.com/tungstenfabric/tf-controller.git
     $ cd contrail-controller/src/config/utils/db-loader
     $ virtualenv --system-site-packages contrail-db-loader-venv
     $ source contrail-db-loader-venv/bin/activate
