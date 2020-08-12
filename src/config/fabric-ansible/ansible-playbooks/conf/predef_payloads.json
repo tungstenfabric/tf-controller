@@ -1457,6 +1457,12 @@
         },
         {
           "fq_name": [
+            "default-global-system-config", "dc-gateway"
+          ],
+          "name": "dc-gateway"
+        },
+        {
+          "fq_name": [
             "default-global-system-config", "assisted-replicator"
           ],
           "name": "assisted-replicator"
@@ -2532,6 +2538,12 @@
       "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "dc-gateway-spine" ],
       "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "dc-gateway" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dc-gateway-spine" ],
+      "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "telemetry" ]
     },
     {
@@ -2610,6 +2622,12 @@
       "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "dc-gateway-leaf" ],
       "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "dc-gateway" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dc-gateway-leaf" ],
+      "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "telemetry" ]
     },
     {
@@ -2658,6 +2676,12 @@
       "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "dci-gateway-spine" ],
       "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "dc-gateway" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dci-gateway-spine" ],
+      "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "telemetry" ]
     },
     {
@@ -2701,6 +2725,12 @@
       "from_fq_name": [ "default-global-system-config", "dci-gateway-leaf" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "vn-interconnect" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dci-gateway-leaf" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "dc-gateway" ]
     },
     {
       "from_type": "role-definition",
