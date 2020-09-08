@@ -1,0 +1,19 @@
+---
+- name: get node profile hint for physical routers in the fabric
+
+  hosts: localhost
+  gather_facts: no
+  connection: local
+
+  pre_tasks:
+    - name: Include global variables
+      include_vars: group_vars/all.yml
+
+  roles:
+    - Juniper.junos
+    - discover_role
+
+  tasks:
+
+    - set_fact:
+        output: "{{output }}"
