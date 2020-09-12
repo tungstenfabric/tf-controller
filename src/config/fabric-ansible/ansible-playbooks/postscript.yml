@@ -1,0 +1,14 @@
+- name: Postscript to execute after fabric ansible playbooks are installed
+  hosts: localhost
+  gather_facts: no
+  connection: local
+
+  vars:
+    password: "{{password}}"
+
+  pre_tasks:
+    - name: Include global variables
+      include_vars: group_vars/all.yml
+
+  roles:
+    - load_data
