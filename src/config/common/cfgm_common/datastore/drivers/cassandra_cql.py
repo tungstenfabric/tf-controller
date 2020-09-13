@@ -463,7 +463,7 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             column1 blob,
             value text,
             PRIMARY KEY (key, column1)
-          ) WITH CLUSTERING ORDER BY (column1 ASC)
+          ) WITH COMPACT STORAGE AND CLUSTERING ORDER BY (column1 ASC)
           """.format(cf_name)
         try:
             ses.execute(cql)
