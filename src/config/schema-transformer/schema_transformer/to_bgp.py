@@ -577,6 +577,12 @@ def parse_args(args_str):
         'cassandra_user': None,
         'cassandra_password': None,
     }
+    zookeeperopts = {
+        'zookeeper_ssl_enable': False,
+        'zookeeper_ssl_keyfile': '',
+        'zookeeper_ssl_certificate': '',
+        'zookeeper_ssl_ca_cert': '',
+    }
     sandeshopts = SandeshConfig.get_default_options()
 
     saved_conf_file = args.conf_file
@@ -593,6 +599,8 @@ def parse_args(args_str):
 
         if 'CASSANDRA' in config.sections():
             cassandraopts.update(dict(config.items('CASSANDRA')))
+        if 'ZOOKEEPER' in config.sections():
+                zookeeperopts.update(dict(config.items('ZOOKEEPER')))
         SandeshConfig.update_options(sandeshopts, config)
 
     # Override with CLI options
@@ -693,6 +701,16 @@ def parse_args(args_str):
                         help="Enable TLS for cassandra communication")
     parser.add_argument("--cassandra_ca_certs",
                         help="Cassandra CA certs")
+    parser.add_argument("--zookeeper_ssl_enable",
+                        help="Enable SSL in rest api server")
+    parser.add_argument("--zookeeper_insecure_enable",
+                        help="Enable insecure mode")
+    parser.add_argument("--zookeeper_ssl_certfile",
+                        help="Location of zookeeper ssl host certificate")
+    parser.add_argument("--zookeeper_ssl_keyfile",
+                        help="Location of zookeeper ssl private key")
+    parser.add_argument("--zookeeper_ssl_ca_cert", type=str,
+                        help="Location of zookeeper ssl CA certificate")
     SandeshConfig.add_parser_arguments(parser)
 
     args = parser.parse_args(remaining_argv)
@@ -703,6 +721,8 @@ def parse_args(args_str):
         args.collectors = args.collectors.split()
     args.sandesh_config = SandeshConfig.from_parser_arguments(args)
     args.cassandra_use_ssl = (str(args.cassandra_use_ssl).lower() == 'true')
+    args_obj.zookeeper_ssl_enable = (
+                str(args_obj.zookeeper_ssl_enable).lower() == 'true')
 
     return args
 # end parse_args
@@ -801,9 +821,20 @@ def main(args_str=None):
         host_ip = args.host_ip
     else:
         host_ip = socket.gethostbyname(socket.getfqdn())
-    _zookeeper_client = ZookeeperClient(client_pfx + "schema",
-                                        args.zk_server_ip,
-                                        host_ip, zk_timeout=args.zk_timeout)
+    if args.zookeeper_ssl_enable:
+        _zookeeper_client = ZookeeperClient(
+            client_pfx + "schema",
+            args.zk_server_ip,
+            host_ip, zk_timeout=args.zk_timeout,
+            zk_ssl_enable=args.zookeeper_ssl_enable,
+            zk_ssl_keyfile=args.zookeeper_ssl_keyfile,
+            zk_ssl_certificate=args.zookeeper_ssl_certificate,
+            zk_ssl_ca_cert=args.zookeeper_ssl_ca_cert)
+    else:
+        _zookeeper_client = ZookeeperClient(
+            client_pfx + "schema",
+            args.zk_server_ip,
+            host_ip, zk_timeout=args.zk_timeout)
     st_logger.notice("Waiting to be elected as master...")
     try:
         _zookeeper_client.master_election(zk_path_pfx + "/schema-transformer",
