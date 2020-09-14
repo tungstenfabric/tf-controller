@@ -360,14 +360,16 @@ class VncApiServer(object):
         if value in poss_values:
             return
 
-        res = re.match('[0-9]+:[0-9]+', value)
+        res = re.match('^(color:|0x030b:)?[0-9]{1,5}:[0-9]{1,10}$', value)
         if res is None:
             raise ValueError('Invalid community format %s. '
                              'Change to \'number:number\''
-                              % value)
+                             'or extended format color:number:number'
+                             % value)
 
-        asn = value.split(':')
-        if int(asn[0]) > 65535:
+        community = value.split(':')
+        asn = community[-2]
+        if int(asn) > 65535:
             raise ValueError('Out of range ASN value %s. '
                              'ASN values cannot exceed 65535.'
                              % value)
@@ -3505,7 +3507,11 @@ class VncApiServer(object):
             debug_obj_cache_types=debug_obj_cache_types,
             cassandra_use_ssl=self._args.cassandra_use_ssl,
             cassandra_ca_certs=self._args.cassandra_ca_certs,
-            cassandra_driver=self._args.cassandra_driver)
+            cassandra_driver=self._args.cassandra_driver,
+            zk_ssl_enable=self._args.zookeeper_ssl_enable,
+            zk_ssl_keyfile=self._args.zookeeper_ssl_keyfile,
+            zk_ssl_certificate=self._args.zookeeper_ssl_certificate,
+            zk_ssl_ca_cert=self._args.zookeeper_ssl_ca_cert)
 
 
         #TODO refacter db connection management.

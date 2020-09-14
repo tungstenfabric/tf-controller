@@ -465,7 +465,8 @@ class VncZkClient(object):
     _SUB_CLUSTER_MAX_ID_4_BYTES = (1 << 32) - 1
 
     def __init__(self, instance_id, zk_server_ip, host_ip, reset_config, db_prefix,
-                 sandesh_hdl, log_response_time=None):
+                 sandesh_hdl, log_response_time=None, zk_ssl_enable=False,
+                 zk_ssl_keyfile='', zk_ssl_certificate='', zk_ssl_ca_cert=''):
         self._db_prefix = db_prefix
         if db_prefix:
             client_pfx = db_prefix + '-'
@@ -491,8 +492,12 @@ class VncZkClient(object):
         while True:
             try:
                 self._zk_client = ZookeeperClient(client_name, zk_server_ip,
-                                           host_ip, self._sandesh,
-                                           log_response_time=log_response_time)
+                                                  host_ip, self._sandesh,
+                                                  log_response_time=log_response_time,
+                                                  zk_ssl_enable=zk_ssl_enable,
+                                                  zk_ssl_keyfile=zk_ssl_keyfile,
+                                                  zk_ssl_certificate=zk_ssl_certificate,
+                                                  zk_ssl_ca_cert=zk_ssl_ca_cert)
                 # set the lost callback to always reconnect
                 self._zk_client.set_lost_cb(self.reconnect_zk)
                 break
@@ -1005,7 +1010,9 @@ class VncDbClient(object):
                  db_prefix='', db_credential=None, obj_cache_entries=0,
                  obj_cache_exclude_types=None, debug_obj_cache_types=None,
                  db_engine='cassandra', cassandra_use_ssl=False,
-                 cassandra_ca_certs=None, cassandra_driver=None, **kwargs):
+                 cassandra_ca_certs=None, cassandra_driver=None,
+                 zk_ssl_enable=False, zk_ssl_keyfile=None,
+                 zk_ssl_certificate=None, zk_ssl_ca_cert=None, **kwargs):
         self._db_engine = db_engine
         self._api_svr_mgr = api_svr_mgr
         self._sandesh = api_svr_mgr._sandesh
@@ -1043,9 +1050,14 @@ class VncDbClient(object):
         self.config_log(msg, level=SandeshLevel.SYS_NOTICE)
 
         if db_engine == 'cassandra':
-            self._zk_db = VncZkClient(api_svr_mgr.get_worker_id(), zk_server_ip, host_ip,
+            self._zk_db = VncZkClient(api_svr_mgr.get_worker_id(),
+                                      zk_server_ip, host_ip,
                                       reset_config, db_prefix, self.config_log,
-                                      log_response_time=self.log_zk_response_time)
+                                      log_response_time=self.log_zk_response_time,
+                                      zk_ssl_enable=zk_ssl_enable,
+                                      zk_ssl_keyfile=zk_ssl_keyfile,
+                                      zk_ssl_certificate=zk_ssl_certificate,
+                                      zk_ssl_ca_cert=zk_ssl_ca_cert)
             def db_client_init():
                 msg = "Connecting to database on %s" % (db_srv_list)
                 self.config_log(msg, level=SandeshLevel.SYS_NOTICE)
