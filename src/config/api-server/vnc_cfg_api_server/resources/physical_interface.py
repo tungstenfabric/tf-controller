@@ -254,9 +254,9 @@ class PhysicalInterfaceServer(ResourceMixin, PhysicalInterface):
 
             if 'display_name' in interface_object:
                 if interface_name == interface_object['display_name']:
-                    return False, (403, msg)
                     msg = ("Display name already used in another interface: %s"
                            % physical_interface['uuid'])
+                    return False, (403, msg)
 
             # Need to check vlan only when request is for logical interfaces
             # and when the current physical_interface is the parent
