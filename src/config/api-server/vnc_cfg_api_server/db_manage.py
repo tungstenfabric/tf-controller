@@ -76,14 +76,16 @@ except ImportError:
     from vnc_cfg_ifmap import VncServerCassandraClient
 
 
-__version__ = "1.35"
+__version__ = "1.36"
 """
 NOTE: As that script is not self contained in a python package and as it
 supports multiple Contrail releases, it brings its own version that needs to be
 manually updated each time it is modified. We also maintain a change log list
 in that header:
+* 1.36:
+  - Repairing problems with auditing isolated k8s VNs
 * 1.35:
-  - Repairing problems with auditing isolated k8s VNs 
+  - Adding TLS support for ZookeeperClient
 * 1.34:
   - Do not report false positive missing VN for k8s floating ips
     not in floating ip pool
@@ -3116,8 +3118,18 @@ class DatabaseHealer(DatabaseManager):
             self._logger.info("Would allocate VN ID to %s", missing_ids)
         elif missing_ids and self._args.execute:
             obj_uuid_table = self._cf_dict['obj_uuid_table']
-            zk_client = ZookeeperClient(__name__, self._api_args.zk_server_ip,
-                                        self._api_args.listen_ip_addr)
+            if self._api_args.zookeeper_ssl_enable:
+                zk_client = ZookeeperClient(
+                    __name__, self._api_args.zk_server_ip,
+                    self._api_args.listen_ip_addr,
+                    self._api_args.zookeeper_ssl_enable,
+                    self._api_args.zookeeper_ssl_keyfile,
+                    self._api_args.zookeeper_ssl_certificate,
+                    self._api_args.zookeeper_ssl_ca_cert)
+            else:
+                zk_client = ZookeeperClient(
+                    __name__, self._api_args.zk_server_ip,
+                    self._api_args.listen_ip_addr)
             id_allocator = IndexAllocator(
                 zk_client, '%s/' % self.base_vn_id_zk_path, 1 << 24)
             bch = obj_uuid_table.batch()
@@ -3150,8 +3162,18 @@ class DatabaseHealer(DatabaseManager):
             self._logger.info("Would allocate SG ID to %s", missing_ids)
         elif missing_ids and self._args.execute:
             obj_uuid_table = self._cf_dict['obj_uuid_table']
-            zk_client = ZookeeperClient(__name__, self._api_args.zk_server_ip,
-                                        self._api_args.listen_ip_addr)
+            if self._api_args.zookeeper_ssl_enable:
+                zk_client = ZookeeperClient(
+                    __name__, self._api_args.zk_server_ip,
+                    self._api_args.listen_ip_addr,
+                    self._api_args.zookeeper_ssl_enable,
+                    self._api_args.zookeeper_ssl_keyfile,
+                    self._api_args.zookeeper_ssl_certificate,
+                    self._api_args.zookeeper_ssl_ca_cert)
+            else:
+                zk_client = ZookeeperClient(
+                    __name__, self._api_args.zk_server_ip,
+                    self._api_args.listen_ip_addr)
             id_allocator = IndexAllocator(zk_client,
                                           '%s/' % self.base_sg_id_zk_path,
                                           1 << 32)
