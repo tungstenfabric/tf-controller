@@ -3105,8 +3105,13 @@ class DatabaseHealer(DatabaseManager):
             self._logger.info("Would allocate VN ID to %s", missing_ids)
         elif missing_ids and self._args.execute:
             obj_uuid_table = self._cf_dict['obj_uuid_table']
-            zk_client = ZookeeperClient(__name__, self._api_args.zk_server_ip,
-                                        self._api_args.listen_ip_addr)
+            zk_client = ZookeeperClient(
+                __name__, self._api_args.zk_server_ip,
+                self._api_args.listen_ip_addr,
+                self._api_args.zookeeper_ssl_enable,
+                self._api_args.zookeeper_ssl_keyfile,
+                self._api_args.zookeeper_ssl_certificate,
+                self._api_args.zookeeper_ssl_ca_cert)
             id_allocator = IndexAllocator(
                 zk_client, '%s/' % self.base_vn_id_zk_path, 1 << 24)
             bch = obj_uuid_table.batch()
@@ -3140,7 +3145,12 @@ class DatabaseHealer(DatabaseManager):
         elif missing_ids and self._args.execute:
             obj_uuid_table = self._cf_dict['obj_uuid_table']
             zk_client = ZookeeperClient(__name__, self._api_args.zk_server_ip,
-                                        self._api_args.listen_ip_addr)
+                                        self._api_args.listen_ip_addr,
+                                        self._api_args.listen_ip_addr,
+                                        self._api_args.zookeeper_ssl_enable,
+                                        self._api_args.zookeeper_ssl_keyfile,
+                                        self._api_args.zookeeper_ssl_certificate,
+                                        self._api_args.zookeeper_ssl_ca_cert)
             id_allocator = IndexAllocator(zk_client,
                                           '%s/' % self.base_sg_id_zk_path,
                                           1 << 32)
