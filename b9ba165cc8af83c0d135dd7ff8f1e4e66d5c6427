@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ecfb39b7_ea14d3af",
+        "filename": "src/config/utils/vrouter_agent_debug_tool.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 705
+      },
+      "writtenOn": "2020-09-14T08:12:38Z",
+      "side": 1,
+      "message": "Please remove this extra space.\nRest of the changes looks fine.",
+      "revId": "b9ba165cc8af83c0d135dd7ff8f1e4e66d5c6427",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
