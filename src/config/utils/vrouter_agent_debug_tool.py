@@ -97,6 +97,7 @@ from urllib.error import URLError, HTTPError
 import paramiko
 import yaml
 import xml.etree.ElementTree as ET
+import stat
 
 sudo_prefix = 'sudo '
 deployment_map = {
@@ -178,18 +179,35 @@ class Debug(object):
             subprocess.call(cmd, shell=True)
 
     # end create_directories
+    def get_log_files(self, sftp_client, remote_dir, dest_dir):
+        try:
+            sftp_client.stat(remote_dir)
+        except IOError, e:
+            print('\nCopying logs: Failed (no file exists)')
+            return
+
+        for filename in sftp_client.listdir(remote_dir):
+            if stat.S_ISDIR(sftp_client.stat(remote_dir + filename).st_mode):
+                new_dest_dir = '%s/%s' % (dest_dir, filename)
+                new_remote_dir = '%s/%s/' % (remote_dir, filename)
+                cmd = sudo_prefix + 'mkdir %s' % new_dest_dir
+                subprocess.call(cmd, shell=True)
+                # recursive retrieval
+                self.get_log_files(sftp_client, new_remote_dir, new_dest_dir)
+            else:
+                src_file = '%s%s' % (remote_dir, filename)
+                dest_file = '%s/%s' % (dest_dir, filename)
+                sftp_client.get(src_file, dest_file)
+
+    # end get_log_files
 
     def copy_logs(self):
         print('\nTASK : copy vrouter-agent logs')
         # use ftp to copy logs from node where agent is running
         sftp_client = self._ssh_client.open_sftp()
         remote_dir = self._log_path
-        for filename in sftp_client.listdir(remote_dir):
-            if '.log' not in filename:
-                continue
-            src_file = '%s%s' % (remote_dir, filename)
-            dest_file = '%s/logs/%s' % (self._parent_dir, filename)
-            sftp_client.get(src_file, dest_file)
+        dest_dir = '%s/logs/' % self._parent_dir
+        self.get_log_files(sftp_client, remote_dir, dest_dir)
         sftp_client.close()
         print('\nCopying vrouter-agent logs : Success')
 
@@ -416,12 +434,8 @@ class Debug(object):
         # open ftp connection and copy logs
         sftp_client = self._ssh_client.open_sftp()
         remote_dir = self._log_path
-        for filename in sftp_client.listdir(remote_dir):
-            if '.log' not in filename:
-                continue
-            src_file = '%s%s' % (remote_dir, filename)
-            dest_file = '%s/%s' % (self._parent_dir, filename)
-            sftp_client.get(src_file, dest_file)
+        dest_dir = '%s/logs/' % self._parent_dir
+        self.get_log_files(sftp_client, remote_dir, dest_dir)
         sftp_client.close()
         print('\nCopying controller logs: Success')
 
