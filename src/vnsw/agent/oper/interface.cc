@@ -1289,6 +1289,32 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
         data.set_cfg_igmp_enable(vintf->cfg_igmp_enable());
         data.set_igmp_enabled(vintf->igmp_enabled());
         data.set_max_flows(vintf->max_flows());
+        data.set_mac_ip_learning_enable(vintf->mac_ip_learning_enable());
+        if (vintf->mac_ip_learning_enable()) {
+            std::vector<LearntMacIpSandeshList> mac_ip_list;
+            VmInterface::LearntMacIpSet::const_iterator it =
+                vintf->learnt_mac_ip_list().list_.begin();
+            while (it != vintf->learnt_mac_ip_list().list_.end()) {
+                const VmInterface::LearntMacIp &mac_ip = *it;
+                LearntMacIpSandeshList entry;
+                entry.set_ip_addr(mac_ip.ip_.to_string());
+                entry.set_mac_addr(mac_ip.mac_.ToString());
+                if (mac_ip.l2_installed_) {
+                    entry.set_l2_installed("Y");
+                } else {
+                    entry.set_l2_installed("N");
+                }
+                if (mac_ip.l3_installed_) {
+                    entry.set_l3_installed("Y");
+                } else {
+                    entry.set_l3_installed("N");
+                }
+                mac_ip_list.push_back(entry);
+                it++;
+            }
+            data.set_mac_ip_list(mac_ip_list);
+        }
+
         break;
     }
     case Interface::INET: {
