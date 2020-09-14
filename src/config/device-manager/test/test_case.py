@@ -197,18 +197,22 @@ class DMTestCase(test_common.TestCase):
     def create_router(self, name, mgmt_ip, vendor='juniper', product='mx',
             ignore_pr=False, role=None, ignore_bgp=False, rb_roles=None,
             node_profile=None, physical_role=None, overlay_role=None,
-            fabric=None, family='junos'):
+            fabric=None, family='junos', loopback_ip=None, asn_id=None, set_local_asn=False):
         bgp_router, pr = None, None
         if not ignore_bgp:
             bgp_router = BgpRouter(name=name,
                                    display_name=name+"-bgp",
                                    parent_obj=self._get_ip_fabric_ri_obj())
             params = BgpRouterParams()
-            params.address = mgmt_ip
+            params.address = loopback_ip if loopback_ip else mgmt_ip
             params.identifier = '1.1.1.1'
             params.address_families = AddressFamilies(['route-target',
                 'inet-vpn', 'e-vpn', 'inet6-vpn'])
-            params.autonomous_system = randint(0, 64512)
+            if not asn_id:
+               asn_id  = randint(0, 64512)
+            params.autonomous_system = asn_id
+            if set_local_asn:
+               params.local_autonomous_system = asn_id
             bgp_router.set_bgp_router_parameters(params)
             self._vnc_lib.bgp_router_create(bgp_router)
 
