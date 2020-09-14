@@ -394,7 +394,7 @@ class TestCassandraDriverCQL(unittest.TestCase):
               column1 blob,
               value text,
             PRIMARY KEY (key, column1)
-            ) WITH CLUSTERING ORDER BY (column1 ASC)
+            ) WITH COMPACT STORAGE AND CLUSTERING ORDER BY (column1 ASC)
             """,
             session.execute)
 
