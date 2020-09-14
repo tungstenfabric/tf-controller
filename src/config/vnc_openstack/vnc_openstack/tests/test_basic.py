@@ -685,7 +685,6 @@ class TestBasic(test_case.NeutronBackendTestCase):
                          vpg_zk_element_fq_name_str)
 
         # DELETE: Make sure VPG obj. gets deleted after port delete
-
         self.delete_resource('port', proj_uuid, port_dict['id'])
 
         # Ensure that VPG interface is deleted
