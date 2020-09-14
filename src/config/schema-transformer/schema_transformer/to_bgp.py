@@ -801,9 +801,14 @@ def main(args_str=None):
         host_ip = args.host_ip
     else:
         host_ip = socket.gethostbyname(socket.getfqdn())
-    _zookeeper_client = ZookeeperClient(client_pfx + "schema",
-                                        args.zk_server_ip,
-                                        host_ip, zk_timeout=args.zk_timeout)
+    _zookeeper_client = ZookeeperClient(
+        client_pfx + "schema",
+        args.zk_server_ip,
+        host_ip, zk_timeout=args.zk_timeout,
+        zk_ssl_enable=args.zookeeper_ssl_enable,
+        zk_ssl_keyfile=args.zookeeper_ssl_keyfile,
+        zk_ssl_certificate=args.zookeeper_ssl_certificate,
+        zk_ssl_ca_cert=args.zookeeper_ssl_ca_cert)
     st_logger.notice("Waiting to be elected as master...")
     try:
         _zookeeper_client.master_election(zk_path_pfx + "/schema-transformer",
