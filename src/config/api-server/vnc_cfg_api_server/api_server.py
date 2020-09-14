@@ -3505,7 +3505,11 @@ class VncApiServer(object):
             debug_obj_cache_types=debug_obj_cache_types,
             cassandra_use_ssl=self._args.cassandra_use_ssl,
             cassandra_ca_certs=self._args.cassandra_ca_certs,
-            cassandra_driver=self._args.cassandra_driver)
+            cassandra_driver=self._args.cassandra_driver,
+            zk_ssl_enable=self._args.zookeeper_ssl_enable,
+            zk_ssl_keyfile=self._args.zookeeper_ssl_keyfile,
+            zk_ssl_certificate=self._args.zookeeper_ssl_certificate,
+            zk_ssl_ca_cert=self._args.zookeeper_ssl_ca_cert)
 
 
         #TODO refacter db connection management.
