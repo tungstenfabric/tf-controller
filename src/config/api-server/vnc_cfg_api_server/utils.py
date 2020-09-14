@@ -139,6 +139,13 @@ def parse_args(args_str):
         'cassandra_password' : None,
         'cassandra_driver'   : (PY3 and 'cql' or 'thrift'),
     }
+    # zookeeper options
+    zookeeperopts = {
+        'zookeeper_ssl_enable': False,
+        'zookeeper_ssl_keyfile': None,
+        'zookeeper_ssl_certificate': None,
+        'zookeeper_ssl_ca_cert': None,
+    }
     # sandesh options
     sandeshopts = SandeshConfig.get_default_options()
 
@@ -166,6 +173,8 @@ def parse_args(args_str):
                     pass
         if 'CASSANDRA' in config.sections():
                 cassandraopts.update(dict(config.items('CASSANDRA')))
+        if 'ZOOKEEPER' in config.sections():
+                zookeeperopts.update(dict(config.items('ZOOKEEPER')))
         SandeshConfig.update_options(sandeshopts, config)
     # Override with CLI options
     # Don't surpress add_help here so it will handle -h
@@ -179,6 +188,7 @@ def parse_args(args_str):
     )
     defaults.update(ksopts)
     defaults.update(cassandraopts)
+    defaults.update(zookeeperopts)
     defaults.update(sandeshopts)
     parser.set_defaults(**defaults)
 
@@ -200,6 +210,21 @@ def parse_args(args_str):
     parser.add_argument(
         "--cassandra_ca_certs",
         help="Cassandra CA certs")
+    parser.add_argument(
+        "--zookeeper_ssl_enable",
+        help="Enable SSL in rest api server")
+    parser.add_argument(
+        "--zookeeper_insecure_enable",
+        help="Enable insecure mode")
+    parser.add_argument(
+        "--zookeeper_ssl_certfile",
+        help="Location of zookeeper ssl host certificate")
+    parser.add_argument(
+        "--zookeeper_ssl_keyfile",
+        help="Location of zookeeper ssl private key")
+    parser.add_argument(
+        "--zookeeper_ssl_ca_cert", type=str,
+        help="Location of zookeeper ssl CA certificate")
     parser.add_argument(
         "--redis_server_ip",
         help="IP address of redis server")
@@ -350,6 +375,7 @@ def parse_args(args_str):
     args_obj.sandesh_config = SandeshConfig.from_parser_arguments(args_obj)
     args_obj.cassandra_use_ssl = (str(args_obj.cassandra_use_ssl).lower() == 'true')
     args_obj.config_api_ssl_enable = (str(args_obj.config_api_ssl_enable).lower() == 'true')
+    args_obj.zookeeper_ssl_enable = (str(args_obj.zookeeper_ssl_enable).lower() == 'true')
     # convert log_local to a boolean
     if not isinstance(args_obj.log_local, bool):
         args_obj.log_local = bool(literal_eval(args_obj.log_local))
