@@ -114,7 +114,8 @@ public:
                        const std::string &vrf_name,
                        const IpAddress &ip_addr,
                        uint32_t ethernet_tag,
-                       EvpnRoutingData *data);
+                       EvpnRoutingData *data,
+                       uint8_t plen = 0);
 
     //Delete routines
     void DeleteOvsPeerMulticastRouteReq(const Peer *peer,

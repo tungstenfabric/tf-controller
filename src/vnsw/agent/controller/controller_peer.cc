@@ -1286,6 +1286,32 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
         return;
     }
 
+    // Add evpn type 5 route from bgp peer in Lr vrf
+    if ( vrf->vn() && vrf->vn()->vxlan_routing_vn() && vrf->routing_vrf() &&
+            MacAddress::FromString(mac_str).IsZero()) {
+        VnListType vn_list;
+        vn_list.insert(item->entry.virtual_network);
+
+        DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+        const Ip4Address dip_tunnel = Ip4Address::from_string(item->entry.nlri.address);
+        nh_req.key.reset(new TunnelNHKey(vrf->GetName(), agent_->router_id(), dip_tunnel,
+                                     false, TunnelType::VXLAN));
+        nh_req.data.reset(new TunnelNHData());
+        EvpnRoutingData *data =  new EvpnRoutingData(nh_req,
+                                 item->entry.security_group_list.security_group,
+                                 CommunityList(),
+                                 path_preference,
+                                 EcmpLoadBalance(),
+                                 tag_list,
+                                 vrf,
+                                 vrf->vxlan_id(), vn_list);
+        rt_table->AddType5Route(bgp_peer_id(),
+                                vrf_name,
+                                ip_addr,
+                                item->entry.nlri.ethernet_tag,
+                                data, plen);
+        return;
+    }
     // Route originated by us and reflected back by control-node
     // When encap is MPLS based, the nexthop can be found by label lookup
     // When encapsulation used is VXLAN, nexthop cannot be found from message
