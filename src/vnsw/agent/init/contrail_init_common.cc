@@ -192,21 +192,37 @@ void ContrailInitCommon::CreateInterfaces() {
         physical_transport = Interface::TRANSPORT_PMD;
     }
 
+    Interface *physical_intf = NULL;
+    BridgeAgentRouteTable *l2_table = agent()->fabric_l2_unicast_table();
     type = ComputeEncapType(agent_param()->eth_port_encap_type());
-    PhysicalInterface::Create(table, agent_param()->eth_port(),
-                              agent()->fabric_vrf_name(),
-                              PhysicalInterface::FABRIC, type,
-                              agent_param()->eth_port_no_arp(),
-                              boost::uuids::nil_uuid(),
-                              agent_param()->vhost_addr(),
-                              physical_transport);
-    PhysicalInterfaceKey physical_key(agent()->fabric_interface_name());
-    assert(table->FindActiveEntry(&physical_key));
+    for (std::size_t i = 0; i != agent_param()->eth_port_list().size(); ++i) {
+        PhysicalInterface::Create(table, agent_param()->eth_port_list()[i],
+                agent()->fabric_vrf_name(),
+                PhysicalInterface::FABRIC, type,
+                agent_param()->eth_port_no_arp(),
+                boost::uuids::nil_uuid(),
+                agent()->is_l3mh() ?
+                agent_param()->eth_port_addr_list()[i] :
+                agent_param()->vhost_addr(),
+                physical_transport);
+        PhysicalInterfaceKey physical_key(agent_param()->eth_port_list()[i]);
+        assert(table->FindActiveEntry(&physical_key));
+        physical_intf =
+            static_cast<Interface *>(table->FindActiveEntry(&physical_key));
+
+        // Add L2 receive routes for physical interface MACs to both vrf 0 and 1.
+        l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
+                agent()->fabric_vrf_name(), 0,
+                physical_intf->mac(), "");
+        l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
+                agent()->fabric_policy_vrf_name(), 0,
+                physical_intf->mac(), "");
+    }
 
     agent()->set_router_id(agent_param()->vhost_addr());
     agent()->set_vhost_prefix(agent_param()->vhost_prefix());
     agent()->set_vhost_prefix_len(agent_param()->vhost_plen());
-    agent()->set_vhost_default_gateway(agent_param()->vhost_gw());
+    agent()->set_vhost_default_gateway(agent_param()->gateway_list());
     if (agent_param()->crypt_port() != "") {
         type = ComputeEncapType(agent_param()->crypt_port_encap_type());
         PhysicalInterface::Create(table, agent_param()->crypt_port(),
@@ -238,24 +254,14 @@ void ContrailInitCommon::CreateInterfaces() {
     }
     assert(agent()->vhost_interface());
 
-    // Add L2 Receive route for vhost. We normally add L2 Receive route on
-    // VRF creation, but vhost is not present when fabric-vrf is created.
-    // So, add it now
-    BridgeAgentRouteTable *l2_table = agent()->fabric_l2_unicast_table();
-    const InetInterface *vhost = static_cast<const InetInterface *>
-        (agent()->vhost_interface());
-    l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
-                                    agent()->fabric_vrf_name(), 0,
-                                    vhost->xconnect()->mac(), "");
-    l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
-                                    agent()->fabric_policy_vrf_name(), 0,
-                                    vhost->xconnect()->mac(), "");
     // Add vhost labelled inet route
     InetUnicastAgentRouteTable *inet_mpls_table =
         static_cast<InetUnicastAgentRouteTable *>
         (agent()->fabric_vrf()->GetInet4MplsUnicastRouteTable());
-    inet_mpls_table->AddVhostMplsRoute(agent()->params()->vhost_addr(),
-                            agent()->fabric_rt_export_peer());
+    inet_mpls_table->AddVhostMplsRoute(agent()->is_l3mh() ?
+                                       agent()->params()->loopback_ip() :
+                                       agent()->params()->vhost_addr(),
+                                       agent()->fabric_rt_export_peer());
 
     agent()->InitXenLinkLocalIntf();
     if (agent_param()->isVmwareMode()) {

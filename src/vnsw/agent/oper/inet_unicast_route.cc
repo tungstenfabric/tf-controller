@@ -646,7 +646,8 @@ bool Inet4UnicastGatewayRoute::AddChangePathExtended(Agent *agent, AgentPath *pa
     InetUnicastAgentRouteTable *table = NULL;
     table = static_cast<InetUnicastAgentRouteTable *>
         (agent->vrf_table()->GetInet4UnicastRouteTable(vrf_name_));
-    InetUnicastRouteEntry *rt = table->FindRoute(gw_ip_);
+    IpAddress gw_ip = gw_list_[0]; /* PKC: Using first element for now */
+    InetUnicastRouteEntry *rt = table->FindRoute(gw_ip);
     if (rt == NULL || rt->plen() == 0) {
         path->set_unresolved(true);
     } else if (rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
@@ -657,7 +658,7 @@ bool Inet4UnicastGatewayRoute::AddChangePathExtended(Agent *agent, AgentPath *pa
         if (nh->get_interface()->vrf()->forwarding_vrf()) {
             nexthop_vrf = nh->get_interface()->vrf()->forwarding_vrf()->GetName();
         }
-        InetUnicastAgentRouteTable::AddArpReq(vrf_name_, gw_ip_.to_v4(),
+        InetUnicastAgentRouteTable::AddArpReq(vrf_name_, gw_ip.to_v4(),
                                               nexthop_vrf,
                                               nh->get_interface(), nh->PolicyEnabled(),
                                               vn_list_, sg_list_, tag_list_);
@@ -690,7 +691,7 @@ bool Inet4UnicastGatewayRoute::AddChangePathExtended(Agent *agent, AgentPath *pa
     }
 
     //Reset to new gateway route, no nexthop for indirect route
-    path->set_gw_ip(gw_ip_);
+    path->set_gw_ip(gw_ip);
     path->ResetDependantRoute(rt);
     if (rt) {
         path->set_tunnel_bmap(rt->GetActivePath()->tunnel_bmap());
@@ -1576,7 +1577,7 @@ void InetUnicastAgentRouteTable::DelVHostSubnetRecvRoute(const string &vm_vrf,
 static void AddGatewayRouteInternal(const Peer *peer,
                                     DBRequest *req, const string &vrf_name,
                                     const Ip4Address &dst_addr, uint8_t plen,
-                                    const Ip4Address &gw_ip,
+                                    const AddressList &gw_list,
                                     const VnListType &vn_name, uint32_t label,
                                     const SecurityGroupList &sg_list,
                                     const TagList &tag_list,
@@ -1585,7 +1586,7 @@ static void AddGatewayRouteInternal(const Peer *peer,
     req->oper = DBRequest::DB_ENTRY_ADD_CHANGE;
     req->key.reset(new InetUnicastRouteKey(peer,
                                            vrf_name, dst_addr, plen));
-    req->data.reset(new Inet4UnicastGatewayRoute(gw_ip, vrf_name,
+    req->data.reset(new Inet4UnicastGatewayRoute(gw_list, vrf_name,
                                                  vn_name, label, sg_list,
                                                  tag_list, communities,
                                                  native_encap));
@@ -1595,7 +1596,7 @@ void InetUnicastAgentRouteTable::AddGatewayRoute(const Peer *peer,
                                                  const string &vrf_name,
                                                  const Ip4Address &dst_addr,
                                                  uint8_t plen,
-                                                 const Ip4Address &gw_ip,
+                                                 const AddressList &gw_list,
                                                  const VnListType &vn_name,
                                                  uint32_t label,
                                                  const SecurityGroupList
@@ -1606,7 +1607,7 @@ void InetUnicastAgentRouteTable::AddGatewayRoute(const Peer *peer,
                                                  &communities,
                                                  bool native_encap) {
     DBRequest req;
-    AddGatewayRouteInternal(peer, &req, vrf_name, dst_addr, plen, gw_ip, vn_name,
+    AddGatewayRouteInternal(peer, &req, vrf_name, dst_addr, plen, gw_list, vn_name,
                             label, sg_list, tag_list, communities, native_encap);
     Inet4UnicastTableProcess(Agent::GetInstance(), vrf_name, req);
 }
@@ -1616,7 +1617,7 @@ InetUnicastAgentRouteTable::AddGatewayRouteReq(const Peer *peer,
                                                const string &vrf_name,
                                                const Ip4Address &dst_addr,
                                                uint8_t plen,
-                                               const Ip4Address &gw_ip,
+                                               const AddressList &gw_list,
                                                const VnListType &vn_list,
                                                uint32_t label,
                                                const SecurityGroupList
@@ -1627,7 +1628,7 @@ InetUnicastAgentRouteTable::AddGatewayRouteReq(const Peer *peer,
                                                &communities,
                                                bool native_encap) {
     DBRequest req;
-    AddGatewayRouteInternal(peer, &req, vrf_name, dst_addr, plen, gw_ip,
+    AddGatewayRouteInternal(peer, &req, vrf_name, dst_addr, plen, gw_list,
                             vn_list, label, sg_list, tag_list, communities,
                             native_encap);
     Inet4UnicastTableEnqueue(Agent::GetInstance(), &req);
@@ -1687,7 +1688,7 @@ InetUnicastAgentRouteTable::AddVrouterSubnetRoute(const IpAddress &dst_addr,
     VnListType vn_list;
     vn_list.insert(agent()->fabric_vn_name());
     const Ip4Address &gw = agent()->router_id();
-    table->AddGatewayRoute(peer, vrf_name, dst_addr.to_v4(), plen, gw, vn_list,
+    table->AddGatewayRoute(peer, vrf_name, dst_addr.to_v4(), plen, AddressList(1, gw), vn_list, /* PKC: Make it as a list */
                            MplsTable::kInvalidExportLabel, SecurityGroupList(),
                            TagList(), CommunityList(), true);
 }
