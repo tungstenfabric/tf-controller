@@ -489,7 +489,8 @@
                 "vendor": "Juniper",
                 "device_family": "",
                 "job_completion_weightage": 5,
-                "sequence_no": 10
+                "sequence_no": 10,
+                "recovery_playbook": true
               }
             ]
           },
