@@ -447,8 +447,16 @@ void AgentParam::ParseVirtualHostArguments
         }
     }
     ParseIpArgument(var_map, vhost_.gw_, "VIRTUAL-HOST-INTERFACE.gateway");
-    GetOptValue<string>(var_map, eth_port_,
+
+    eth_port_list_.clear();
+    GetOptValueIfNotDefaulted< vector<string> >(var_map, eth_port_list_,
                         "VIRTUAL-HOST-INTERFACE.physical_interface");
+    if (eth_port_list_.size() == 1) {
+        boost::split(eth_port_list_, eth_port_list_[0],
+                     boost::is_any_of(" "));
+    }
+
+    ParseIpArgument(var_map, loopback_ip_, "VIRTUAL-HOST-INTERFACE.loopback_ip");
 }
 
 void AgentParam::ParseDnsArguments
@@ -1295,15 +1303,18 @@ int AgentParam::Validate() {
     }
 
     // Validate ethernet port
-    if (eth_port_ == "") {
+    if (eth_port_list_.empty()) {
         LOG(ERROR, "Configuration error. eth_port not specified");
         return (EINVAL);
     }
 
     // Check if interface is already present
-    if (ValidateInterface(test_mode_, eth_port_, &eth_port_no_arp_,
-                          &eth_port_encap_type_) == false) {
-        return (ENODEV);
+    std::vector<std::string>::iterator iter;
+    for (iter = eth_port_list_.begin(); iter != eth_port_list_.end(); iter++) {
+        if (ValidateInterface(test_mode_, *iter, &eth_port_no_arp_,
+                    &eth_port_encap_type_) == false) {
+            return (ENODEV);
+        }
     }
 
     if (crypt_port_ != "") {
@@ -1435,11 +1446,16 @@ void AgentParam::LogConfig() const {
     LOG(DEBUG, "vhost IP Address            : " << vhost_.addr_.to_string()
         << "/" << vhost_.plen_);
     LOG(DEBUG, "vhost gateway               : " << vhost_.gw_.to_string());
-    LOG(DEBUG, "Ethernet port               : " << eth_port_);
+    std::string eth_port_list;
+    std::vector<std::string>::const_iterator iter;
+    for (iter = eth_port_list_.begin(); iter != eth_port_list_.end(); iter++) {
+        eth_port_list += *iter + " ";
+    }
+    LOG(DEBUG, "Ethernet ports              : " << eth_port_list);
+    LOG(DEBUG, "Loopback IP                 : " << loopback_ip_.to_string());
 
     std::string concat_servers;
     std::vector<string> list = controller_server_list();
-    std::vector<string>::iterator iter;
     for (iter = list.begin();
          iter != list.end(); iter++) {
          concat_servers += *iter + " ";
@@ -1631,7 +1647,7 @@ AgentParam::AgentParam(bool enable_flow_options,
         agent_mode_(agent_mode), gateway_mode_(NONE), vhost_(),
         pkt0_tx_buffer_count_(Agent::kPkt0TxBufferCount),
         measure_queue_delay_(false),
-        agent_name_(), eth_port_(),
+        agent_name_(),
         eth_port_no_arp_(false), eth_port_encap_type_(),
         crypt_port_(), crypt_port_no_arp_(true), crypt_port_encap_type_(),
         subcluster_name_(),
@@ -1714,7 +1730,8 @@ AgentParam::AgentParam(bool enable_flow_options,
         fabric_snat_hash_table_size_(Agent::kFabricSnatTableSize),
         mvpn_ipv4_enable_(false),AgentMock_(false), cat_MockDPDK_(false),
         cat_kSocketDir_("/tmp/"),
-        vr_object_high_watermark_(Agent::kDefaultHighWatermark) {
+        vr_object_high_watermark_(Agent::kDefaultHighWatermark),
+        loopback_name_(), loopback_ip_() {
 
     uint32_t default_pkt0_tx_buffers = Agent::kPkt0TxBufferCount;
     uint32_t default_stale_interface_cleanup_timeout = Agent::kDefaultStaleInterfaceCleanupTimeout;
@@ -2183,7 +2200,8 @@ AgentParam::AgentParam(bool enable_flow_options,
              "IP address and prefix in ip/prefix_len format")
             ("VIRTUAL-HOST-INTERFACE.gateway", opt::value<string>(),
              "Gateway IP address for virtual host")
-            ("VIRTUAL-HOST-INTERFACE.physical_interface", opt::value<string>(),
+            ("VIRTUAL-HOST-INTERFACE.physical_interface",
+             opt::value<std::vector<std::string> >()->multitoken(),
              "Physical interface name to which virtual host interface maps to")
             ("VIRTUAL-HOST-INTERFACE.compute_node_address",
              opt::value<std::vector<std::string> >()->multitoken(),
@@ -2195,6 +2213,8 @@ AgentParam::AgentParam(bool enable_flow_options,
              "Ethernet Port No-ARP")
             ("VIRTUAL-HOST-INTERFACE.eth_port_encap_type", opt::value<string>(),
              "Ethernet Port Encap Type")
+            ("VIRTUAL-HOST-INTERFACE.loopback_ip", opt::value<string>(),
+             "Compute Loopback IP")
             ;
         options_.add(vhost);
         config_file_options_.add(vhost);

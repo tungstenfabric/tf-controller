@@ -179,7 +179,8 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
         sub_type_ = inet_intf->sub_type();
         ip_ = inet_intf->ip_addr().to_ulong();
         if (sub_type_ == InetInterface::VHOST) {
-            InterfaceKSyncEntry tmp(ksync_obj_, inet_intf->xconnect());
+            //InterfaceKSyncEntry tmp(ksync_obj_, inet_intf->xconnect());
+            InterfaceKSyncEntry tmp(ksync_obj_, inet_intf->xconnect()[0]); /* PKC: Using only first element */
             xconnect_ = ksync_obj_->GetReference(&tmp);
             InterfaceKSyncEntry *xconnect = static_cast<InterfaceKSyncEntry *>
                 (xconnect_.get());
@@ -429,8 +430,9 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
         InetInterface *inet_interface = static_cast<InetInterface *>(intf);
         if (sub_type_ == InetInterface::VHOST) {
             KSyncEntryPtr xconnect = NULL;
-            if (inet_interface->xconnect()) {
-                InterfaceKSyncEntry tmp(ksync_obj_, inet_interface->xconnect());
+            if (!inet_interface->xconnect().empty()) {
+                //InterfaceKSyncEntry tmp(ksync_obj_, inet_interface->xconnect());
+                InterfaceKSyncEntry tmp(ksync_obj_, inet_interface->xconnect()[0]); /* PKC: Using only first element */
                 xconnect = ksync_obj_->GetReference(&tmp);
             }
             if (xconnect_ != xconnect) {
