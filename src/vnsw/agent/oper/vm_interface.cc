@@ -2414,7 +2414,7 @@ bool VmInterface::StaticRoute::AddL3(const Agent *agent,
 
         InetUnicastAgentRouteTable::AddGatewayRoute
             (peer, vrf_->GetName(), addr_.to_v4(), plen_,
-             gw_.to_v4(), vn_list, vmi->vrf_->table_label(),
+             AddressList(1, gw_.to_v4()), vn_list, vmi->vrf_->table_label(), /* PKC: Making it as a list */
              sg_id_list, tag_id_list, communities_, native_encap);
     } else {
         IpAddress dependent_ip;

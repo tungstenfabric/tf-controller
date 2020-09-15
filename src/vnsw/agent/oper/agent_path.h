@@ -963,7 +963,7 @@ private:
 
 class Inet4UnicastGatewayRoute : public AgentRouteData {
 public:
-    Inet4UnicastGatewayRoute(const IpAddress &gw_ip,
+    Inet4UnicastGatewayRoute(const AddressList &gw_list,
                              const std::string &vrf_name,
                              const VnListType &vn_list,
                              uint32_t label, const SecurityGroupList &sg,
@@ -971,7 +971,7 @@ public:
                              const CommunityList &communities,
                              bool native_encap):
         AgentRouteData(AgentRouteData::ADD_DEL_CHANGE, false, 0),
-        gw_ip_(gw_ip), vrf_name_(vrf_name), vn_list_(vn_list),
+        gw_list_(gw_list), vrf_name_(vrf_name), vn_list_(vn_list),
         mpls_label_(label), sg_list_(sg), tag_list_(tag), communities_(communities),
         native_encap_(native_encap) {
     }
@@ -981,7 +981,7 @@ public:
     virtual std::string ToString() const {return "gateway";}
 
 private:
-    IpAddress gw_ip_;
+    AddressList gw_list_;
     std::string vrf_name_;
     VnListType vn_list_;
     uint32_t mpls_label_;
