@@ -3239,6 +3239,102 @@ TEST_F(RouteTest, service_chain_evpn_local_remote_route) {
     client->WaitForIdle();
 }
 
+// Tests if AddEvpnEcmpRoute adds route with vn info
+TEST_F(RouteTest, evpn_ecmp_type5_add_remote_route) {
+    using boost::uuids::nil_uuid;
+    struct PortInfo input1[] = {
+        {"vnet1", 1, "1.1.1.10", "00:00:01:01:01:10", 1, 1},
+    };
+    IpamInfo ipam_info_1[] = {
+        {"1.1.1.0", 24, "1.1.1.254", true},
+    };
+
+    // Brdige vrf
+    AddIPAM("vn1", ipam_info_1, 1);
+    CreateVmportEnv(input1, 1);
+    AddLrVmiPort("lr-vmi-vn1", 91, "1.1.1.99", "vrf1", "vn1",
+            "instance_ip_1", 1);
+
+    Inet4TunnelRouteAdd(bgp_peer_, "vrf1",
+                        Ip4Address::from_string("1.1.1.20"), 32,
+                        Ip4Address::from_string("1.1.1.99"),
+                        (1 << TunnelType::MPLS_OVER_MPLS),
+                        MplsTable::kStartLabel,
+                        "vn1",
+                        SecurityGroupList(), TagList(), PathPreference());
+
+    client->WaitForIdle();
+    InetUnicastRouteEntry *local_inet_rt =
+        RouteGet("vrf1", Ip4Address::from_string("1.1.1.20"), 32);
+    client->WaitForIdle();
+    EXPECT_TRUE(local_inet_rt != NULL);
+
+    // creating lr routing vrf with name: domain:l3evpn_1:l3evpn_1
+    const char *routing_vrf_name = "domain:l3evpn_1:l3evpn_1";
+    AddRoutingVrf(1);
+    AddLrBridgeVrf("vn1", 1);
+
+    // checking routing vrf have valid VXLAN ID
+    VrfEntry *routing_vrf= VrfGet(routing_vrf_name);
+    EXPECT_TRUE(routing_vrf->vxlan_id() != VxLanTable::kInvalidvxlan_id);
+
+    //Creating CN type route for service-instance vrf and see if its added
+    //for the local port route
+    autogen::EnetItemType item;
+
+    // Adding remote route.
+    item.entry.nlri.af = BgpAf::L2Vpn;
+    item.entry.nlri.safi = BgpAf::Enet;
+    item.entry.nlri.address="1.1.1.20/32";
+    item.entry.nlri.ethernet_tag = 0;
+    autogen::EnetNextHopType nh1, nh2;
+    nh1.af = Address::INET;
+    nh1.address = "10.0.0.24";
+    nh1.label = routing_vrf->vxlan_id();
+    item.entry.next_hops.next_hop.push_back(nh1);
+    nh2.af = Address::INET;
+    nh2.address = "10.0.0.24";
+    nh2.label = routing_vrf->vxlan_id() + 1;
+    item.entry.next_hops.next_hop.push_back(nh2);
+    item.entry.med = 0;
+    item.entry.virtual_network = "vn3";
+    VnListType vn_list;
+    vn_list.insert(item.entry.virtual_network);
+
+    bgp_peer_->GetAgentXmppChannel()->AddEvpnEcmpRoute(routing_vrf_name,
+                      MacAddress::FromString( "00:00:00:00:00:00"),
+                      Ip4Address::from_string("1.1.1.20"), 32, &item, vn_list);
+    client->WaitForIdle();
+
+    EvpnRouteEntry *evpn_rt = EvpnRouteGet(routing_vrf_name,
+                                   MacAddress::FromString("00:00:00:00:00:00"),
+                                   Ip4Address::from_string("1.1.1.20"), 0);
+    client->WaitForIdle();
+    EXPECT_TRUE(evpn_rt != NULL);
+    EXPECT_TRUE(evpn_rt->GetActivePath()->dest_vn_list() == vn_list);
+
+    InetUnicastRouteEntry *inet_rt =
+        RouteGet(routing_vrf_name, Ip4Address::from_string("1.1.1.20"), 32);
+    client->WaitForIdle();
+    EXPECT_TRUE(inet_rt != NULL);
+    EXPECT_TRUE(inet_rt->GetActivePath()->origin_vn() == "vn1");
+
+    // Clean up
+    DelRoutingVrf(1);
+    DelIPAM("vn1");
+    DelNode("project", "admin");
+    DeleteVmportEnv(input1, 2, true);
+    DelLrVmiPort("lr-vmi-vn1", 91, "1.1.1.99", "vrf1", "vn1",
+            "instance_ip_1", 1);
+    client->WaitForIdle(5);
+    EXPECT_TRUE(VrfGet("vrf1") == NULL);
+    EXPECT_TRUE(agent_->oper_db()->vxlan_routing_manager()->vrf_mapper().
+            IsEmpty());
+    EXPECT_TRUE(agent_->oper_db()->vxlan_routing_manager()->vrf_mapper().
+            IsEmpty());
+    client->WaitForIdle();
+}
+
 int main(int argc, char *argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
     GETUSERARGS();
