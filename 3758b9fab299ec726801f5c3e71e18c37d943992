@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ccba2f38_4fe1e123",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/virtual_machine_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1838,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-09-15T20:18:20Z",
+      "side": 1,
+      "message": "def get_vlan_phy_links(cls, kvps\u003dNone, obj_dict\u003dNone):\n        vlan_id \u003d None\n        links \u003d None\n        is_untagged_vlan \u003d False\n        new_vlan \u003d None\n        if obj_dict:\n            # Read tagged vlan_id\n            new_vlan \u003d (obj_dict.get(\u0027virtual_machine_interface_properties\u0027) or {}\n                        ).get(\u0027sub_interface_vlan_tag\u0027) or 0\n\n            bindings \u003d obj_dict.get(\u0027virtual_machine_interface_bindings\u0027) or {}\n            if not bindings:\n                return False, (vlan_id, is_untagged_vlan, links)\n            kvps \u003d bindings.get(\u0027key_value_pair\u0027) or []\n\n        if kvps:\n            kvp_dict \u003d cls._kvp_to_dict(kvps)\n            vnic_type \u003d kvp_dict.get(\u0027vnic_type\u0027)\n            tor_port_vlan_id \u003d kvp_dict.get(\u0027tor_port_vlan_id\u0027, 0)\n            if vnic_type \u003d\u003d \u0027baremetal\u0027 and kvp_dict.get(\u0027profile\u0027):\n                # Process only if port profile exists and physical links are\n                # specified\n                phy_links \u003d json.loads(kvp_dict.get(\u0027profile\u0027))\n                if phy_links and phy_links.get(\u0027local_link_information\u0027):\n                    links \u003d phy_links[\u0027local_link_information\u0027]\n                    is_untagged_vlan \u003d False\n                    if tor_port_vlan_id:\n                        vlan_id \u003d tor_port_vlan_id\n                        is_untagged_vlan \u003d True\n                    else:\n                        vlan_id \u003d new_vlan\n\n         return True, (vlan_id, is_untagged_vlan, links)",
+      "revId": "3758b9fab299ec726801f5c3e71e18c37d943992",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
