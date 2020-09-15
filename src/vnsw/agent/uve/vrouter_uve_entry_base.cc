@@ -564,10 +564,15 @@ void VrouterUveEntryBase::BuildAgentConfig(VrouterAgent &vrouter_agent) {
     vhost_cfg.set_name(param->vhost_name());
     vhost_cfg.set_ip(param->vhost_addr().to_string());
     vhost_cfg.set_ip_prefix_len(param->vhost_plen());
-    vhost_cfg.set_gateway(param->vhost_gw().to_string());
+    std::vector<string> gateway_list;
+    for (std::vector<Ip4Address>::const_iterator iter = param->gateway_list().begin();
+         iter != param->gateway_list().end(); ++iter) {
+        gateway_list.push_back((*iter).to_string());
+    }
+    vhost_cfg.set_gateway(gateway_list);
     vrouter_agent.set_vhost_cfg(vhost_cfg);
 
-    vrouter_agent.set_eth_name(param->eth_port());
+    vrouter_agent.set_eth_name(param->eth_port_list());
 
     if (param->isKvmMode()) {
         hypervisor = "kvm";
@@ -610,6 +615,9 @@ void VrouterUveEntryBase::BuildAgentConfig(VrouterAgent &vrouter_agent) {
     vrouter_agent.set_bgpaas_enabled(
             agent_->oper_db()->bgp_as_a_service()->IsConfigured());
     vrouter_agent.set_port_mirror_enabled(MirrorTable::GetInstance()->IsConfigured());
+
+    vrouter_agent.set_loopback_name(param->loopback_name());
+    vrouter_agent.set_loopback_ip(param->loopback_ip().to_string());
 }
 
 

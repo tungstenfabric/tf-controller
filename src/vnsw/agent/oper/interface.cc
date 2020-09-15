@@ -411,8 +411,8 @@ void InterfaceTable::CreateVhost() {
                               agent()->fabric_vrf_name(),
                               params->vhost_addr(),
                               params->vhost_plen(),
-                              params->vhost_gw(),
-                              params->eth_port(),
+                              params->gateway_list(),
+                              params->eth_port_list(),
                               agent()->fabric_vn_name(), transport);
     } else {
         DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
@@ -438,7 +438,8 @@ void InterfaceTable::CreateVhostReq() {
                                  agent()->router_id(),
                                  agent()->vhost_prefix_len(),
                                  agent()->vhost_default_gateway(),
-                                 Agent::NullString(), agent_->fabric_vrf_name(),
+                                 std::vector<std::string>(),
+                                 agent_->fabric_vrf_name(),
                                  transport);
     } else {
         DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
@@ -1321,8 +1322,9 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
     case Interface::INET: {
         data.set_type("vhost");
         const InetInterface *intf = static_cast<const InetInterface*>(this);
-        if(intf->xconnect()) {
-           data.set_physical_interface(intf->xconnect()->name());
+        if(!intf->xconnect().empty()) {
+           //data.set_physical_interface(intf->xconnect()->name());
+           data.set_physical_interface(intf->xconnect()[0]->name()); /* PKC: Using first element now */
         }
         break;
      }
