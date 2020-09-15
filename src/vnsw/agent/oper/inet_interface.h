@@ -26,8 +26,8 @@ public:
 
     InetInterface(const std::string &name);
     InetInterface(const std::string &name, SubType sub_type, VrfEntry *vrf,
-                  const Ip4Address &ip_addr, int plen, const Ip4Address &gw,
-                  Interface *xconnect, const std::string &vn_name);
+                  const Ip4Address &ip_addr, int plen, const std::vector<Ip4Address> &gw,
+                  std::vector<Interface *> xconnect, const std::string &vn_name);
     virtual ~InetInterface() { }
 
     // DBTable virtual functions
@@ -38,7 +38,7 @@ public:
     virtual bool CmpInterface(const DBEntry &rhs) const;
     SubType sub_type() const { return sub_type_; }
     const Ip4Address &ip_addr() const { return ip_addr_; }
-    Interface *xconnect() const { return xconnect_.get(); }
+    const std::vector<Interface *> xconnect() const { return xconnect_; }
 
     void PostAdd();
     bool OnChange(InetInterfaceData *data);
@@ -57,13 +57,15 @@ public:
     static void Create(InterfaceTable *table, const std::string &ifname,
                        SubType sub_type, const std::string &vrf_name,
                        const Ip4Address &addr, int plen,
-                       const Ip4Address &gw, const std::string &xconnect,
+                       const std::vector<Ip4Address> &gw,
+                       const std::vector<std::string> &xconnect,
                        const std::string &vn_name,
                        Interface::Transport transport);
     static void CreateReq(InterfaceTable *table, const std::string &ifname,
                           SubType sub_type, const std::string &vrf_name,
                           const Ip4Address &addr, int plen,
-                          const Ip4Address &gw, const std::string &xconnect,
+                          const std::vector<Ip4Address> &gw,
+                          const std::vector<std::string> &xconnect,
                           const std::string &vn_name,
                           Interface::Transport transport);
     static void Delete(InterfaceTable *table, const std::string &ifname);
@@ -72,8 +74,8 @@ private:
     SubType sub_type_;
     Ip4Address ip_addr_;
     int plen_;
-    Ip4Address gw_;
-    InterfaceRef xconnect_;   // Physical interface for VHOST
+    std::vector<Ip4Address> gw_;
+    std::vector<Interface *> xconnect_;   // Physical interface for VHOST
     std::string vn_name_;
     DISALLOW_COPY_AND_ASSIGN(InetInterface);
 };
@@ -91,16 +93,16 @@ struct InetInterfaceKey : public InterfaceKey {
 struct InetInterfaceData : public InterfaceData {
     InetInterfaceData(InetInterface::SubType sub_type,
                       const std::string &vrf_name, const Ip4Address &addr,
-                      int plen, const Ip4Address &gw,
-                      const std::string &xconnect, const std::string vn_name,
+                      int plen, const std::vector<Ip4Address> &gw,
+                      const std::vector<std::string> &xconnect, const std::string vn_name,
                       Interface::Transport transport);
     virtual ~InetInterfaceData() { }
 
     InetInterface::SubType sub_type_;
     Ip4Address ip_addr_;
     int plen_;
-    Ip4Address gw_;
-    std::string xconnect_;
+    std::vector<Ip4Address> gw_;
+    std::vector<std::string> xconnect_;
     std::string vn_name_;
 };
 
