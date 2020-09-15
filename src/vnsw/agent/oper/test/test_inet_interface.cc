@@ -110,7 +110,8 @@ static void AddInterface(InetInterfaceTest *t, const char *ifname,
     InetInterface::CreateReq(t->interface_table_, ifname, sub_type, vrf,
                              Ip4Address::from_string(ip), plen,
                              Ip4Address::from_string(gw),
-                             client->param()->eth_port(), "TEST",
+                             //client->param()->eth_port(), "TEST",
+                             client->param()->eth_port_list()[0].c_str(), "TEST", /* PKC: Using only first element for now */
                              Interface::TRANSPORT_ETHERNET);
 }
 

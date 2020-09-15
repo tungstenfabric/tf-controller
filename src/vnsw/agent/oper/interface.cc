@@ -412,7 +412,8 @@ void InterfaceTable::CreateVhost() {
                               params->vhost_addr(),
                               params->vhost_plen(),
                               params->vhost_gw(),
-                              params->eth_port(),
+                              //params->eth_port(),
+                              params->eth_port_list()[0].c_str(), /* PKC: Using first element for now */
                               agent()->fabric_vn_name(), transport);
     } else {
         DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);

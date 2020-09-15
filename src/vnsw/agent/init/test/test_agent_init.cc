@@ -39,7 +39,11 @@ TEST_F(AgentParamTest, Agent_Conf_file_1) {
               Ip4Address::from_string("10.1.1.0").to_ulong());
     EXPECT_EQ(param.vhost_gw().to_ulong(),
               Ip4Address::from_string("10.1.1.254").to_ulong());
-    EXPECT_STREQ(param.eth_port().c_str(), "vnet0");
+    EXPECT_EQ(param.eth_port_list().size(), 2);
+    EXPECT_STREQ(param.eth_port_list()[0].c_str(), "vnet0");
+    EXPECT_STREQ(param.eth_port_list()[1].c_str(), "vnet1");
+    EXPECT_EQ(param.loopback_ip().to_ulong(),
+              Ip4Address::from_string("40.40.40.40").to_ulong());
 
     EXPECT_EQ(param.controller_server_list().size(), 1);
     std::vector<string>servers;

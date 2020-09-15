@@ -193,7 +193,8 @@ void ContrailInitCommon::CreateInterfaces() {
     }
 
     type = ComputeEncapType(agent_param()->eth_port_encap_type());
-    PhysicalInterface::Create(table, agent_param()->eth_port(),
+    //PhysicalInterface::Create(table, agent_param()->eth_port(),
+    PhysicalInterface::Create(table, agent_param()->eth_port_list()[0].c_str(), /* PKC: Using first element for now */
                               agent()->fabric_vrf_name(),
                               PhysicalInterface::FABRIC, type,
                               agent_param()->eth_port_no_arp(),

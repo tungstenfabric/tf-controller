@@ -651,7 +651,8 @@ TEST_F(UveVrouterUveTest, BandwidthTest_1) {
     uve.set_phy_band_in_bps(empty_map);
     uve.set_phy_band_out_bps(empty_map);
 
-    PhysicalInterfaceKey key(agent_->params()->eth_port());
+    //PhysicalInterfaceKey key(agent_->params()->eth_port());
+    PhysicalInterfaceKey key(agent_->params()->eth_port_list()[0].c_str()); /* PKC: Using only first element for now */
     Interface *intf = static_cast<Interface *>
         (agent_->interface_table()->FindActiveEntry(&key));
     EXPECT_TRUE((intf != NULL));
@@ -721,7 +722,8 @@ TEST_F(UveVrouterUveTest, BandwidthTest_2) {
     vr->clear_count();
     VrouterStatsAgent &uve = vr->prev_stats();
 
-    PhysicalInterfaceKey key(agent_->params()->eth_port());
+    //PhysicalInterfaceKey key(agent_->params()->eth_port());
+    PhysicalInterfaceKey key(agent_->params()->eth_port_list()[0].c_str()); /* PKC: Using only first element for now */
     Interface *intf = static_cast<Interface *>
         (agent_->interface_table()->FindActiveEntry(&key));
     EXPECT_TRUE((intf != NULL));
