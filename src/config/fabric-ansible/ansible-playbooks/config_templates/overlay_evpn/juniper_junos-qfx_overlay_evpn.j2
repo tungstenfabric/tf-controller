@@ -37,7 +37,40 @@ set groups {{cfg_group}} policy-options policy-statement {{vrf_export}} term t1 
 {%     endif %}
 {% endfor %}
 {% for bgp_elem in device_abstract_config.get('features', {}).get('overlay-bgp', {}).get('bgp', []) %}
+{%     set bgp_group_name = bgp_elem.get('name') %}
 {%     set families = bgp_elem.get('families', []) %}
+{%     set import_policy_list = bgp_elem.get('import_policy', []) %}
+{%     set peers_list = bgp_elem.get('peers', []) %}
+{%     if import_policy_list|length > 0 %}
+{%         for bgp_import_policy in import_policy_list %}
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} import {{bgp_import_policy}}
+{%         endfor %} {# /* dci bgp import policy */ #}
+{%         if 'evpn' in families and peers_list|length > 0 %}
+{%             for peer in peers_list %}
+{%                 set peer_as_number = peer.get('autonomous_system') %}
+{%                 if (peer_as_number|int) <= 65535 %}
+{%                     set peer_esi_rt = (peer_as_number|string) + ':7999999' %}
+{%                 else %}
+{%                     set peer_esi_rt = (peer_as_number|string) + 'L:7999' %}
+{%                 endif %}
+set groups {{cfg_group}} policy-options community community-esi-in-remote members target:{{peer_esi_rt}}
+{%             endfor %}
+set groups {{cfg_group}} policy-options policy-statement import-evpn-remote term esi-in-remote from community community-esi-in-remote
+set groups {{cfg_group}} policy-options policy-statement import-evpn-remote term esi-in-remote then accept
+set groups {{cfg_group}} policy-options policy-statement import-evpn-remote term default-term then reject
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} import import-evpn-remote
+{%         endif %} {# /* for dci, import remote fabric type1 RT for evpn */ #}
+{%         for bgp_policy in bgp_elem.get('policies', []) %}
+{%             set bgp_policy_name = bgp_policy.get('name') %}
+{%             for import_target in bgp_policy.get('import_targets', []) %}
+{%                 set community_target = import_target.replace(':', '_') %}
+set groups {{cfg_group}} policy-options policy-statement {{bgp_policy_name}} term t1 from community {{community_target}}
+set groups {{cfg_group}} policy-options community {{community_target}} members {{import_target | rtfilter}}
+{%             endfor %}
+set groups {{cfg_group}} policy-options policy-statement {{bgp_policy_name}} term t1 then accept
+{%         endfor %} {# /* dci bgp import policy for VN RT type 2, 3, 4 routes and LR type 5 routes */ #}
+{%     endif %} {# /* dci bgp import policy */ #}
+
 {%     for fam in families %}
 {%         if fam == 'evpn' %}
 {%             set route_distinguisher = bgp_elem.get('ip_address') %}
