@@ -3847,6 +3847,11 @@ class VncApiServer(object):
                 'rule_object':'watch',
                 'rule_field': '',
                 'rule_perms': [{'role_name':'*', 'role_crud':'R'}]
+	    },
+            {
+                'rule_object':'logical-router',
+                'rule_field': 'logical-router-gateway-external',
+                'rule_perms': [{'role_name':'*', 'role_crud':'R'}]
             },
         ]
 
