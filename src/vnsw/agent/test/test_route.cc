@@ -67,9 +67,9 @@ protected:
         default_dest_ip_ = Ip4Address::from_string("0.0.0.0");
 
         secondary_vhost_ip_ = Ip4Address::from_string("10.1.1.20");
-        if (agent_->vhost_default_gateway() != default_dest_ip_) {
+        if (agent_->vhost_default_gateway()[0] != default_dest_ip_) {
             is_gateway_configured = true;
-            fabric_gw_ip_ = agent_->vhost_default_gateway();
+            fabric_gw_ip_ = agent_->vhost_default_gateway()[0];
         } else {
             is_gateway_configured = false;
             fabric_gw_ip_ = Ip4Address::from_string("10.1.1.254");
@@ -201,7 +201,7 @@ protected:
                          const Ip4Address &server) {
         VnListType vn_list;
         agent_->fabric_inet4_unicast_table()->AddGatewayRouteReq
-            (agent_->local_peer(), vrf_name, ip, plen, server, vn_list,
+            (agent_->local_peer(), vrf_name, ip, plen, AddressList(1, server), vn_list, /* PKC: Making as a list */
              MplsTable::kInvalidLabel, SecurityGroupList(), TagList(),
              CommunityList(), true);
 
@@ -1187,7 +1187,7 @@ TEST_F(RouteTest, RemoteVmRoute_4) {
 
 TEST_F(RouteTest, RemoteVmRoute_5) {
     if (!is_gateway_configured) {
-        agent_->set_vhost_default_gateway(fabric_gw_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, fabric_gw_ip_)); /* PKC: Making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         fabric_gw_ip_);
         client->WaitForIdle();
@@ -1218,7 +1218,7 @@ TEST_F(RouteTest, RemoteVmRoute_5) {
     EXPECT_FALSE(RouteFind(vrf_name_, remote_vm_ip_, 32));
 
     if (!is_gateway_configured) {
-        agent_->set_vhost_default_gateway(default_dest_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, default_dest_ip_)); /* PKC: Making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         default_dest_ip_);
         client->WaitForIdle();
@@ -1235,7 +1235,7 @@ TEST_F(RouteTest, RemoteVmRoute_no_gw) {
     client->WaitForIdle();
 
     if (is_gateway_configured) {
-        agent_->set_vhost_default_gateway(default_dest_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, default_dest_ip_)); /* PKC: Making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         default_dest_ip_);
         client->WaitForIdle();
@@ -1251,7 +1251,7 @@ TEST_F(RouteTest, RemoteVmRoute_no_gw) {
         const TunnelNH *tun = static_cast<const TunnelNH *>(addr_nh);
         EXPECT_TRUE(tun->GetRt()->GetActiveNextHop()->GetType() == NextHop::DISCARD);
 
-        agent_->set_vhost_default_gateway(fabric_gw_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, fabric_gw_ip_)); /* PKC: Making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         fabric_gw_ip_);
         client->WaitForIdle();
@@ -1270,7 +1270,7 @@ TEST_F(RouteTest, RemoteVmRoute_no_gw) {
         client->WaitForIdle();
         EXPECT_TRUE(addr_nh->IsValid() == false);
 
-        agent_->set_vhost_default_gateway(default_dest_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, default_dest_ip_)); /* PKC: Making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         default_dest_ip_);
         client->WaitForIdle();
@@ -1281,7 +1281,7 @@ TEST_F(RouteTest, RemoteVmRoute_no_gw) {
     EXPECT_FALSE(RouteFind(vrf_name_, remote_vm_ip_, 32));
 
     if (is_gateway_configured) {
-        agent_->set_vhost_default_gateway(fabric_gw_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, fabric_gw_ip_)); /* PKC: Making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         fabric_gw_ip_);
         client->WaitForIdle();
@@ -1289,7 +1289,7 @@ TEST_F(RouteTest, RemoteVmRoute_no_gw) {
 }
 
 TEST_F(RouteTest, RemoteVmRoute_foreign_gw) {
-    agent_->set_vhost_default_gateway(foreign_gw_ip_);
+    agent_->set_vhost_default_gateway(AddressList(1, foreign_gw_ip_)); /* PKC: Making it as a list */
     AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                     foreign_gw_ip_);
     client->WaitForIdle();
@@ -1312,12 +1312,12 @@ TEST_F(RouteTest, RemoteVmRoute_foreign_gw) {
     EXPECT_FALSE(RouteFind(vrf_name_, remote_vm_ip_, 32));
 
     if (is_gateway_configured) {
-        agent_->set_vhost_default_gateway(fabric_gw_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, fabric_gw_ip_)); /* PKC: making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         fabric_gw_ip_);
         client->WaitForIdle();
     } else {
-        agent_->set_vhost_default_gateway(default_dest_ip_);
+        agent_->set_vhost_default_gateway(AddressList(1, default_dest_ip_)); /* PKC: making it as a list */
         AddGatewayRoute(agent_->fabric_vrf_name(), default_dest_ip_, 0,
                         default_dest_ip_);
         client->WaitForIdle();

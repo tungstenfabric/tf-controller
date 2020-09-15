@@ -435,7 +435,7 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
         InetInterface *inet_interface = static_cast<InetInterface *>(intf);
         if (sub_type_ == InetInterface::VHOST) {
             KSyncEntryPtr xconnect = NULL;
-            if (inet_interface->xconnect()) {
+            if (!inet_interface->xconnect()) {
                 InterfaceKSyncEntry tmp(ksync_obj_, inet_interface->xconnect());
                 xconnect = ksync_obj_->GetReference(&tmp);
             }
@@ -760,6 +760,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
 
         if (vmi_type_ == VmInterface::VHOST) {
             encoder.set_vifr_type(VIF_TYPE_HOST);
+            encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             if (xconnect_.get()) {
                 InterfaceKSyncEntry *xconnect =
                     static_cast<InterfaceKSyncEntry *>(xconnect_.get());
@@ -975,6 +976,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             break;
         case InetInterface::VHOST:
             encoder.set_vifr_type(VIF_TYPE_HOST);
+            encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             if (xconnect_.get()) {
                 InterfaceKSyncEntry *xconnect =
                    static_cast<InterfaceKSyncEntry *>(xconnect_.get());

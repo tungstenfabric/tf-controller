@@ -2324,21 +2324,21 @@ bool VmInterface::StaticRouteList::UpdateList
 }
 
 VmInterface::StaticRoute::StaticRoute() :
-    ListEntry(), VmInterfaceState(), vrf_(), addr_(), plen_(0), gw_(),
+    ListEntry(), VmInterfaceState(), vrf_(), addr_(), plen_(0), gw_list_(),
     communities_() {
 }
 
 VmInterface::StaticRoute::StaticRoute(const StaticRoute &rhs) :
     ListEntry(rhs.del_pending_),
     VmInterfaceState(rhs.l2_installed_, rhs.l3_installed_),
-    vrf_(rhs.vrf_), addr_(rhs.addr_), plen_(rhs.plen_), gw_(rhs.gw_),
+    vrf_(rhs.vrf_), addr_(rhs.addr_), plen_(rhs.plen_), gw_list_(rhs.gw_list_),
     communities_(rhs.communities_) {
 }
 
 VmInterface::StaticRoute::StaticRoute(const IpAddress &addr,
-                                      uint32_t plen, const IpAddress &gw,
+                                      uint32_t plen, const AddressList &gw_list,
                                       const CommunityList &communities) :
-    ListEntry(), VmInterfaceState(), vrf_(), addr_(addr), plen_(plen), gw_(gw),
+    ListEntry(), VmInterfaceState(), vrf_(), addr_(addr), plen_(plen), gw_list_(gw_list),
     communities_(communities) {
 }
 
@@ -2358,7 +2358,7 @@ bool VmInterface::StaticRoute::IsLess(const StaticRoute *rhs) const {
         return plen_ < rhs->plen_;
     }
 
-    return gw_ < rhs->gw_;
+    return gw_list_.size() < rhs->gw_list_.size();
 }
 
 void VmInterface::StaticRoute::Copy(const Agent *agent,
@@ -2392,7 +2392,7 @@ bool VmInterface::StaticRoute::AddL3(const Agent *agent,
         vn_name  = agent->fabric_vn_name();
     }
 
-    if (gw_.is_v4() && addr_.is_v4() && gw_.to_v4() != Ip4Address(0)) {
+    if (addr_.is_v4() && !gw_list_.empty() && gw_list_[0] != Ip4Address(0)) {
         SecurityGroupList sg_id_list;
         vmi->CopySgIdList(&sg_id_list);
 
@@ -2414,7 +2414,7 @@ bool VmInterface::StaticRoute::AddL3(const Agent *agent,
 
         InetUnicastAgentRouteTable::AddGatewayRoute
             (peer, vrf_->GetName(), addr_.to_v4(), plen_,
-             gw_.to_v4(), vn_list, vmi->vrf_->table_label(),
+             gw_list_, vn_list, vmi->vrf_->table_label(),
              sg_id_list, tag_id_list, communities_, native_encap);
     } else {
         IpAddress dependent_ip;
