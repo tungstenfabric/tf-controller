@@ -865,20 +865,6 @@ class PhysicalRouterDM(DBBaseDM):
         return dcis
     # end get_dci_list
 
-    def get_dci_bgp_neighbours(self):
-        if not self.has_rb_role('DCI-Gateway'):
-            return set()
-        pr_set = DataCenterInterconnectDM.get_dci_peers(self.uuid,
-                                                        self.fabric)
-        neigh = set()
-        for pr in pr_set:
-            if self.uuid == pr.uuid:
-                continue
-            if pr.bgp_router:
-                neigh.add(pr.bgp_router)
-        return neigh
-    # end get_dci_bgp_neighbours
-
     def verify_allocated_asn(self, fabric):
         self._logger.debug("physical router: verify allocated asn for %s" %
                            self.uuid)
@@ -3649,6 +3635,8 @@ class DataCenterInterconnectDM(DBBaseDM):
         self.virtual_networks = set()
         self.dst_lr_pr = {}
         self.src_lr_uuid = None
+        self.dci_mode = 'l3'
+        self.fabrics = set()
         obj = self.update(obj_dict)
         self.add_to_parent(obj)
     # end __init__
@@ -3665,28 +3653,140 @@ class DataCenterInterconnectDM(DBBaseDM):
             old_pr_list=self.get_connected_pr_ids(),
             new_pr_list=self.get_obj_connected_pr_ids(obj))
         self.update_multiple_refs('logical_router', obj)
+        self.update_multiple_refs('fabric', obj)
+        self.update_multiple_refs('virtual_network', obj)
+        self.dci_mode = obj.get('data_center_interconnect_mode',
+                                'l3')
         self.get_intrafabric_properties(obj)
         return obj
     # end update
 
+    def update_dci_import_policy(self, vn_uuid, import_policies,
+                                 abstract_policies, policy_name_obj=None):
+        vn_obj = VirtualNetworkDM.get(vn_uuid)
+        if not vn_obj:
+            return
+        if policy_name_obj is None:
+            policy_name_obj = vn_obj
+        _, imports = vn_obj.get_route_targets()
+        if imports and len(imports) > 0:
+            policy_name = DMUtils.get_dci_policy_name(policy_name_obj)
+            if policy_name not in import_policies:
+                import_policies.add(policy_name)
+                abstract_policies.append(
+                    AbstractDevXsd.PolicyParameters(
+                        name=policy_name,
+                        comment=DMUtils.get_dci_policy_comment(self),
+                        import_targets=list(imports)))
+    # end update_dci_import_policy
+
+    def get_dci_import_policies(self, pr_obj=None, lr_obj=None):
+        import_policies = set()
+        abstract_policies = []
+        if lr_obj is not None:
+            for lr_uuid in self.logical_routers:
+                if lr_obj.uuid == lr_uuid:
+                    continue
+                lr = LogicalRouterDM.get(lr_uuid)
+                if lr and lr.virtual_network:
+                    self.update_dci_import_policy(
+                        lr.virtual_network, import_policies,
+                        abstract_policies, lr)
+        else:
+            # for l2 mode dci, prepare policies
+            for vn_uuid in self.virtual_networks:
+                self.update_dci_import_policy(
+                    vn_uuid, import_policies, abstract_policies)
+
+        return import_policies, abstract_policies
+    # end get_dci_import_policies
+
     @classmethod
-    def get_dci_peers(cls, pr_uuid, fabric_uuid):
-        dci_list = list(cls._dict.values())
-        pr_list = []
-        for dci in dci_list or []:
+    def update_peer_dict(cls, neigh_bgpr_dict, neigh_bgpr_fabric, in_dci_name):
+        for peer_bgpr, fabric_name in neigh_bgpr_fabric.items():
+            if peer_bgpr not in neigh_bgpr_dict:
+                neigh_bgpr_dict[peer_bgpr] = {'dci_names': set(),
+                                              'fabric': fabric_name}
+            neigh_bgpr_dict[peer_bgpr]['dci_names'].add(in_dci_name)
+
+    @classmethod
+    def get_dci_peers(cls, pr_obj):
+        """Get neighbour bgp routers and dci lists.
+
+        It Processes all dci for input pr_obj, and returns two dictionary
+        - neigh_bgpr_dict has a key as peer bgp router belong to other fabric
+        and value is the dictionary of dci names and fabrics. dci_names is the
+        list of dci in which current pr_obj exists. fabrics is the list of
+        peer_fabrics exists in all list of dci.
+        - dci_dict has a key as dci name (either l2 or l3 mode)
+        who has current pr_obj. value is dictionary of
+        'import_policy': [<strin1>, <string2>],
+        'policies' : [Abstractcfg.PolicyParameters( name, comments,
+        import_targets:list), ].
+        : Args:
+        : pr_obj: physical router object whose dci list interested to process
+        : return:
+        : neigh_bgpr_dict, dci_dict
+        :
+        """
+        neigh_bgpr_dict = {}
+        dci_dict = {}
+        if not pr_obj or not pr_obj.has_rb_role('DCI-Gateway'):
+            return neigh_bgpr_dict, dci_dict
+        lpr_uuid = pr_obj.uuid
+        lfabric_uuid = pr_obj.fabric
+        for dci in list(cls._dict.values()) or []:
             if dci.is_this_inter_fabric() == False:
                 continue
-            prs = dci.get_connected_physical_routers(pr_uuid, fabric_uuid)
-            for pr in prs or []:
-                if pr.uuid == pr_uuid:
-                    pr_list += prs
-                    break
-        return set(pr_list)
+            neigh_bgpr_fabric = {}
+            import_policies = set()
+            abstract_policies = []
+            dci_include = False
+            if dci.dci_mode == 'l3':
+                for lr_uuid in dci.logical_routers:
+                    lr = LogicalRouterDM.get(lr_uuid)
+                    if not lr or not lr.physical_routers:
+                        continue
+                    for pr_uuid in lr.physical_routers:
+                        pr = PhysicalRouterDM.get(pr_uuid)
+                        if pr.has_rb_role("DCI-Gateway"):
+                            if (pr_uuid == lpr_uuid):
+                                if dci_include is False:
+                                    dci_include = True
+                                    import_policies, abstract_policies = \
+                                        dci.get_dci_import_policies(pr_obj,
+                                                                    lr)
+                            elif pr.fabric != lfabric_uuid and pr.bgp_router:
+                                fabric_obj = FabricDM(pr.fabric)
+                                if fabric_obj and fabric_obj.name:
+                                    neigh_bgpr_fabric[pr.bgp_router] = \
+                                        fabric_obj.name
+            elif dci.dci_mode == 'l2':
+                for f_uuid in dci.fabrics:
+                    if f_uuid == lfabric_uuid:
+                        dci_include = True
+                        import_policies, abstract_policies = \
+                            dci.get_dci_import_policies(pr_obj)
+                        continue
+                    fabric_obj = FabricDM.get(f_uuid)
+                    if not fabric_obj or not fabric_obj.physical_routers:
+                        continue
+                    for pr_uuid in fabric_obj.physical_routers:
+                        pr = PhysicalRouterDM.get(pr_uuid)
+                        if pr.has_rb_role("DCI-Gateway") and pr.bgp_router:
+                            neigh_bgpr_fabric[pr.bgp_router] = fabric_obj.name
+
+            if dci_include == True and len(neigh_bgpr_fabric) > 0:
+                cls.update_peer_dict(
+                    neigh_bgpr_dict, neigh_bgpr_fabric, dci.name)
+                dci_dict[dci.name] = {'import_policy': import_policies,
+                                      'policies': abstract_policies}
+        return neigh_bgpr_dict, dci_dict
     # end get_dci_peers
 
     def get_connected_lr_internal_vns(self, exclude_lr=None, pr_uuid=None):
         vn_list = []
-        if self.is_this_inter_fabric() == False:
+        if self.is_this_inter_fabric() is False:
             return vn_list
         for lr_uuid in self.logical_routers or []:
             if exclude_lr == lr_uuid:
@@ -3698,24 +3798,6 @@ class DataCenterInterconnectDM(DBBaseDM):
                     vn_list.append(vn)
         return vn_list
     # end get_connected_lr_internal_vns
-
-    def get_connected_physical_routers(self, local_pr_uuid,
-                                       local_fabric_uuid):
-        if not self.logical_routers or self.is_this_inter_fabric() == False:
-            return []
-        pr_list = []
-        for lr_uuid in self.logical_routers:
-            lr = LogicalRouterDM.get(lr_uuid)
-            if lr and lr.physical_routers:
-                prs = lr.physical_routers
-                for pr_uuid in prs:
-                    pr = PhysicalRouterDM.get(pr_uuid)
-                    if pr.has_rb_role("DCI-Gateway"):
-                        if (pr_uuid == local_pr_uuid) or \
-                                (pr.fabric != local_fabric_uuid):
-                            pr_list.append(pr)
-        return pr_list
-    # end get_connected_physical_routers
 
     def _find_lr_prs(self, lr_uuid):
         pr_id_list = set()
@@ -3774,7 +3856,6 @@ class DataCenterInterconnectDM(DBBaseDM):
         if self.dci_type != "intra_fabric":
             return
         self.update_multiple_refs('routing_policy', obj)
-        self.update_multiple_refs('virtual_network', obj)
         dpr_list = obj.get('destination_physical_router_list')
         if not dpr_list:
             return
@@ -4177,6 +4258,7 @@ class DataCenterInterconnectDM(DBBaseDM):
         obj.update_multiple_refs('logical_router', {})
         obj.update_multiple_refs('routing_policy', {})
         obj.update_multiple_refs('virtual_network', {})
+        obj.update_multiple_refs('fabric', {})
         del cls._dict[uuid]
     # end delete
 # end class DataCenterInterconnectDM
@@ -4200,6 +4282,7 @@ class FabricDM(DBBaseDM):
         self.trans_id = None
         self.trans_descr = ''
         self.physical_routers = set()
+        self.data_center_interconnects = set()
         self.update(obj_dict)
     # end __init__
 
@@ -4292,6 +4375,7 @@ class FabricDM(DBBaseDM):
         self.enterprise_style = obj.get('fabric_enterprise_style', True)
 
         self.update_multiple_refs('physical_router', obj)
+        self.update_multiple_refs('data_center_interconnect', obj)
 
         # Cache static underlay ASN values specified in onboarding
         # input YAML file
