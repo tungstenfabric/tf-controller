@@ -3,11 +3,14 @@
 #
 
 from __future__ import absolute_import
-import gevent
+
 from attrdict import AttrDict
 from cfgm_common.tests.test_common import retries
 from cfgm_common.tests.test_common import retry_exc_handler
-from vnc_api.vnc_api import *
+import gevent
+from vnc_api.vnc_api import DataCenterInterconnect, FabricNamespace, \
+    LogicalRouter, NamespaceValue, VirtualMachineInterface
+
 from .test_dm_ansible_common import TestAnsibleCommonDM
 from .test_dm_utils import FakeJobHandler
 
@@ -24,54 +27,46 @@ class TestDCI(TestAnsibleCommonDM):
         self.role_configs = []
         self.physical_routers = []
         self.set_encapsulation_priorities(['VXLAN', 'MPLSoUDP'])
-        project = self._vnc_lib.project_read(fq_name=['default-domain', 'default-project'])
+        project = self._vnc_lib.project_read(fq_name=['default-domain',
+                                                      'default-project'])
         project.set_vxlan_routing(True)
         self._vnc_lib.project_update(project)
         self.create_physical_roles(['spine'])
-        self.create_features(['overlay-bgp', 'l2-gateway','l3-gateway', 'vn-interconnect'])
+        self.create_features(['overlay-bgp', 'l2-gateway', 'l3-gateway',
+                              'vn-interconnect'])
         self.create_overlay_roles(['DCI-Gateway'])
         self.create_role_definitions([
             AttrDict({
                 'name': 'dci@spine',
                 'physical_role': 'spine',
                 'overlay_role': 'DCI-Gateway',
-                'features': ['overlay-bgp', 'l2-gateway','l3-gateway', 'vn-interconnect'],
+                'features': ['overlay-bgp', 'l2-gateway', 'l3-gateway',
+                             'vn-interconnect'],
                 'feature_configs': {'l3_gateway': {'use_gateway_ip': 'True'}}
             }),
         ])
-    #end _init_fabric_prs
+    # end _init_fabric_prs
 
     def test_dci_ibgp(self):
         self.init_fabric_prs()
 
         jt1 = self.create_job_template('job-template-1' + self.id())
-        jt2 = self.create_job_template('job-template-2' + self.id())
 
         fabric1 = self.create_fabric('fab1' + self.id())
         asn = 64512
         ns_fq_name = fabric1.fq_name + ["test_dci"]
         fabric_namespace1 = FabricNamespace(
-            name='test_dci',
-            fq_name=ns_fq_name,
-            parent_type='fabric',
-           fabric_namespace_type='ASN',
-            fabric_namespace_value=NamespaceValue(asn={
-                'asn': [asn]
-            })
-        )
+            name='test_dci', fq_name=ns_fq_name, parent_type='fabric',
+            fabric_namespace_type='ASN',
+            fabric_namespace_value=NamespaceValue(asn={'asn': [asn]}))
         self._vnc_lib.fabric_namespace_create(fabric_namespace1)
 
         fabric2 = self.create_fabric('fab2' + self.id())
         ns_fq_name2 = fabric2.fq_name + ["test_dci"]
         fabric_namespace2 = FabricNamespace(
-            name='test_dci2',
-            fq_name=ns_fq_name2,
-            parent_type='fabric',
-           fabric_namespace_type='ASN',
-            fabric_namespace_value=NamespaceValue(asn={
-                'asn': [asn]
-            })
-        )
+            name='test_dci2', fq_name=ns_fq_name2, parent_type='fabric',
+            fabric_namespace_type='ASN',
+            fabric_namespace_value=NamespaceValue(asn={'asn': [asn]}))
         self._vnc_lib.fabric_namespace_create(fabric_namespace2)
 
         np1, rc1 = self.create_node_profile(
@@ -92,9 +87,9 @@ class TestDCI(TestAnsibleCommonDM):
             rb_roles=['DCI-Gateway'],
             physical_role=self.physical_roles['spine'],
             overlay_role=self.overlay_roles['DCI-Gateway'],
-            fabric=fabric1, node_profile=np1, loopback_ip='30.30.0.22', asn_id=asn, set_local_asn=True)
+            fabric=fabric1, node_profile=np1, loopback_ip='30.30.0.22',
+            asn_id=asn, set_local_asn=True)
         self._vnc_lib.physical_router_update(pr1)
-
 
         br2, pr2 = self.create_router(
             'device-2' + self.id(), '7.7.7.8', product='qfx10002',
@@ -102,12 +97,14 @@ class TestDCI(TestAnsibleCommonDM):
             rb_roles=['DCI-Gateway'],
             physical_role=self.physical_roles['spine'],
             overlay_role=self.overlay_roles['DCI-Gateway'],
-            fabric=fabric2, node_profile=np1, loopback_ip='30.30.0.23', asn_id=asn, set_local_asn=True)
+            fabric=fabric2, node_profile=np1, loopback_ip='30.30.0.23',
+            asn_id=asn, set_local_asn=True)
         self._vnc_lib.physical_router_update(pr2)
 
         vn1_obj = self.create_vn('1', '1.1.1.0')
 
-        lr_fq_name = ['default-domain', 'default-project', 'lr-1' + self.id()]
+        lr_fq_name = ['default-domain', 'default-project',
+                      'lr-1' + self.id()]
         lr = LogicalRouter(fq_name=lr_fq_name, parent_type='project',
                            logical_router_type='vxlan-routing',
                            vxlan_network_identifier='3000')
@@ -124,14 +121,16 @@ class TestDCI(TestAnsibleCommonDM):
 
         vn2_obj = self.create_vn('2', '2.2.2.0')
 
-        lr2_fq_name = ['default-domain', 'default-project', 'lr-2' + self.id()]
+        lr2_fq_name = ['default-domain', 'default-project',
+                       'lr-2' + self.id()]
         lr2 = LogicalRouter(fq_name=lr2_fq_name, parent_type='project',
-                           logical_router_type='vxlan-routing',
-                           vxlan_network_identifier='4000')
+                            logical_router_type='vxlan-routing',
+                            vxlan_network_identifier='4000')
         lr2.set_physical_router(pr2)
 
         fq2_name = ['default-domain', 'default-project', 'vmi4-' + self.id()]
-        vmi4 = VirtualMachineInterface(fq_name=fq2_name, parent_type='project')
+        vmi4 = VirtualMachineInterface(fq_name=fq2_name,
+                                       parent_type='project')
         vmi4.set_virtual_network(vn2_obj)
         self._vnc_lib.virtual_machine_interface_create(vmi4)
         lr2.add_virtual_machine_interface(vmi4)
@@ -153,35 +152,22 @@ class TestDCI(TestAnsibleCommonDM):
 
     def test_dci_ebgp(self):
         self.init_fabric_prs()
-
         jt1 = self.create_job_template('job-template-1' + self.id())
-        jt2 = self.create_job_template('job-template-2' + self.id())
-
         fabric1 = self.create_fabric('fab1' + self.id())
         asn = 64599
         ns_fq_name = fabric1.fq_name + ["overlay_ibgp_asn"]
         fabric_namespace1 = FabricNamespace(
-            name='overlay_ibgp_asn',
-            fq_name=ns_fq_name,
-            parent_type='fabric',
-           fabric_namespace_type='ASN',
-            fabric_namespace_value=NamespaceValue(asn={
-                'asn': [asn]
-            })
-        )
+            name='overlay_ibgp_asn', fq_name=ns_fq_name, parent_type='fabric',
+            fabric_namespace_type='ASN',
+            fabric_namespace_value=NamespaceValue(asn={'asn': [asn]}))
         self._vnc_lib.fabric_namespace_create(fabric_namespace1)
 
         fabric2 = self.create_fabric('fab2' + self.id())
         ns_fq_name2 = fabric2.fq_name + ["overlay_ibgp_asn"]
         fabric_namespace2 = FabricNamespace(
-            name='overlay_ibgp_asn',
-            fq_name=ns_fq_name2,
-            parent_type='fabric',
-           fabric_namespace_type='ASN',
-            fabric_namespace_value=NamespaceValue(asn={
-                'asn': ['64598']
-            })
-        )
+            name='overlay_ibgp_asn', fq_name=ns_fq_name2,
+            parent_type='fabric', fabric_namespace_type='ASN',
+            fabric_namespace_value=NamespaceValue(asn={'asn': ['64598']}))
         self._vnc_lib.fabric_namespace_create(fabric_namespace2)
 
         np1, rc1 = self.create_node_profile(
@@ -202,7 +188,8 @@ class TestDCI(TestAnsibleCommonDM):
             rb_roles=['DCI-Gateway'],
             physical_role=self.physical_roles['spine'],
             overlay_role=self.overlay_roles['DCI-Gateway'],
-            fabric=fabric1, node_profile=np1, loopback_ip='30.30.0.22', asn_id=asn, set_local_asn=True)
+            fabric=fabric1, node_profile=np1, loopback_ip='30.30.0.22',
+            asn_id=asn, set_local_asn=True)
         self._vnc_lib.physical_router_update(pr1)
 
         br2, pr2 = self.create_router(
@@ -211,7 +198,8 @@ class TestDCI(TestAnsibleCommonDM):
             rb_roles=['DCI-Gateway'],
             physical_role=self.physical_roles['spine'],
             overlay_role=self.overlay_roles['DCI-Gateway'],
-            fabric=fabric2, node_profile=np1, loopback_ip='30.30.0.23', asn_id='64598', set_local_asn=True)
+            fabric=fabric2, node_profile=np1, loopback_ip='30.30.0.23',
+            asn_id='64598', set_local_asn=True)
         self._vnc_lib.physical_router_update(pr2)
 
         vn1_obj = self.create_vn('1', '1.1.1.0')
@@ -233,14 +221,16 @@ class TestDCI(TestAnsibleCommonDM):
 
         vn2_obj = self.create_vn('2', '2.2.2.0')
 
-        lr2_fq_name = ['default-domain', 'default-project', 'lr-2' + self.id()]
+        lr2_fq_name = ['default-domain', 'default-project',
+                       'lr-2' + self.id()]
         lr2 = LogicalRouter(fq_name=lr2_fq_name, parent_type='project',
-                           logical_router_type='vxlan-routing',
-                           vxlan_network_identifier='4000')
+                            logical_router_type='vxlan-routing',
+                            vxlan_network_identifier='4000')
         lr2.set_physical_router(pr2)
 
         fq2_name = ['default-domain', 'default-project', 'vmi4-' + self.id()]
-        vmi4 = VirtualMachineInterface(fq_name=fq2_name, parent_type='project')
+        vmi4 = VirtualMachineInterface(fq_name=fq2_name,
+                                       parent_type='project')
         vmi4.set_virtual_network(vn2_obj)
         self._vnc_lib.virtual_machine_interface_create(vmi4)
         lr2.add_virtual_machine_interface(vmi4)
@@ -272,30 +262,40 @@ class TestDCI(TestAnsibleCommonDM):
 
         ac1 = FakeJobHandler.get_dev_job_input(pr1.name)
         dac1 = ac1.get('device_abstract_config')
-        bgp_config1 = dac1.get('features', {}).get(
+        bgp_config = dac1.get('features', {}).get(
             'overlay-bgp', {}).get('bgp', [])
-        bgp_peer1 = bgp_config1[1].get('peers', [])
-        asn_config1 = dac1.get('features', {}).get('vn-interconnect', {}).get('routing_instances', [])
-        asn_import= asn_config1[0].get('import_targets')
+        for bgp in bgp_config:
+            if 'fab2' in bgp.get('name', ''):
+                bgp_config1 = bgp
+                break
+        bgp_peer1 = bgp_config1.get('peers', [])
+        asn_config1 = dac1.get('features', {}).get('vn-interconnect', {}).get(
+            'routing_instances', [])
+        asn_import = asn_config1[0].get('import_targets')
         asn_import.sort()
         ri.sort()
-        self.assertEqual(bgp_config1[1].get('ip_address'), '30.30.0.22')
+        self.assertEqual(bgp_config1.get('ip_address'), '30.30.0.22')
         self.assertEqual(bgp_peer1[0].get('ip_address'), '30.30.0.23')
-        self.assertEqual(bgp_config1[1].get('type_'), 'external')
+        self.assertEqual(bgp_config1.get('type_'), 'external')
         self.assertEqual(asn_import, ri)
 
         pr2.set_physical_router_product_name('qfx10002b')
         self._vnc_lib.physical_router_update(pr2)
         ac2 = FakeJobHandler.get_dev_job_input(pr2.name)
         dac2 = ac2.get('device_abstract_config')
-        bgp_config2 = dac2.get('features', {}).get(
+        bgp_config = dac2.get('features', {}).get(
             'overlay-bgp', {}).get('bgp', [])
-        bgp_peer2 = bgp_config2[1].get('peers', [])
-        asn_config2 = dac2.get('features', {}).get('vn-interconnect', {}).get('routing_instances', [])
-        asn_import2= asn_config2[0].get('import_targets')
+        for bgp in bgp_config:
+            if 'fab1' in bgp.get('name', ''):
+                bgp_config2 = bgp
+                break
+        bgp_peer2 = bgp_config2.get('peers', [])
+        asn_config2 = dac2.get('features', {}).get('vn-interconnect', {}).get(
+            'routing_instances', [])
+        asn_import2 = asn_config2[0].get('import_targets')
         asn_import2.sort()
-        self.assertEqual(bgp_config2[1].get('ip_address'), '30.30.0.23')
-        self.assertEqual(bgp_config2[1].get('type_'), 'external')
+        self.assertEqual(bgp_config2.get('ip_address'), '30.30.0.23')
+        self.assertEqual(bgp_config2.get('type_'), 'external')
         self.assertEqual(bgp_peer2[0].get('ip_address'), '30.30.0.22')
         self.assertEqual(asn_import2, ri)
 
@@ -309,15 +309,19 @@ class TestDCI(TestAnsibleCommonDM):
 
         ac1 = FakeJobHandler.get_dev_job_input(pr1.name)
         dac1 = ac1.get('device_abstract_config')
-        bgp_config1 = dac1.get('features', {}).get(
+        bgp_config = dac1.get('features', {}).get(
             'overlay-bgp', {}).get('bgp', [])
-        bgp_peer1 = bgp_config1[0].get('peers', [])
-
-        asn_config1 = dac1.get('features', {}).get('vn-interconnect', {}).get('routing_instances', [])
-        asn_import= asn_config1[0].get('import_targets')
+        for bgp in bgp_config:
+            if 'fab2' in bgp.get('name', ''):
+                bgp_config1 = bgp
+                break
+        bgp_peer1 = bgp_config1.get('peers', [])
+        asn_config1 = dac1.get('features', {}).get('vn-interconnect', {}).get(
+            'routing_instances', [])
+        asn_import = asn_config1[0].get('import_targets')
         asn_import.sort()
         ri.sort()
-        self.assertEqual(bgp_config1[0].get('ip_address'), '30.30.0.22')
+        self.assertEqual(bgp_config1.get('ip_address'), '30.30.0.22')
         self.assertEqual(bgp_peer1[0].get('ip_address'), '30.30.0.23')
         self.assertEqual(asn_import, ri)
 
@@ -325,13 +329,18 @@ class TestDCI(TestAnsibleCommonDM):
         self._vnc_lib.physical_router_update(pr2)
         ac2 = FakeJobHandler.get_dev_job_input(pr2.name)
         dac2 = ac2.get('device_abstract_config')
-        bgp_config2 = dac2.get('features', {}).get(
+        bgp_config = dac2.get('features', {}).get(
             'overlay-bgp', {}).get('bgp', [])
-        bgp_peer2 = bgp_config2[0].get('peers', [])
-        asn_config2 = dac2.get('features', {}).get('vn-interconnect', {}).get('routing_instances', [])
-        asn_import2= asn_config2[0].get('import_targets')
+        for bgp in bgp_config:
+            if 'fab1' in bgp.get('name', ''):
+                bgp_config2 = bgp
+                break
+        bgp_peer2 = bgp_config2.get('peers', [])
+        asn_config2 = dac2.get('features', {}).get('vn-interconnect', {}).get(
+            'routing_instances', [])
+        asn_import2 = asn_config2[0].get('import_targets')
         asn_import2.sort()
-        self.assertEqual(bgp_config2[0].get('ip_address'), '30.30.0.23')
+        self.assertEqual(bgp_config2.get('ip_address'), '30.30.0.23')
         self.assertEqual(bgp_peer2[0].get('ip_address'), '30.30.0.22')
         self.assertEqual(asn_import2, ri)
 
@@ -364,7 +373,8 @@ class TestDCI(TestAnsibleCommonDM):
         logical_interfaces_list = self._vnc_lib.logical_interfaces_list().get(
             'logical-interfaces', [])
         for logical_interface in logical_interfaces_list:
-            self._vnc_lib.logical_interface_delete(id=logical_interface['uuid'])
+            self._vnc_lib.logical_interface_delete(
+                id=logical_interface['uuid'])
         pi_list = self._vnc_lib.physical_interfaces_list().get(
             'physical-interfaces', [])
         for pi in pi_list:
