@@ -418,11 +418,17 @@ void EvpnAgentRouteTable::AddType5Route(const Peer *peer,
                                         const string &vrf_name,
                                         const IpAddress &ip_addr,
                                         uint32_t ethernet_tag,
-                                        EvpnRoutingData *data) {
+                                        EvpnRoutingData *data, uint8_t plen) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    req.key.reset(new EvpnRouteKey(peer, vrf_name, MacAddress(), ip_addr,
+    if ( !plen && !ip_addr.is_unspecified()) {
+        req.key.reset(new EvpnRouteKey(peer, vrf_name, MacAddress(), ip_addr,
                                    EvpnAgentRouteTable::ComputeHostIpPlen(ip_addr),
                                    ethernet_tag));
+    } else {
+        req.key.reset(new EvpnRouteKey(peer, vrf_name, MacAddress(), ip_addr,
+                                   plen,
+                                   ethernet_tag));
+    }
     req.data.reset(data);
 
     EvpnTableEnqueue(agent(), &req);

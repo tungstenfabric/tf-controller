@@ -10,7 +10,7 @@
 #include <io/test/event_manager_test.h>
 #include <tbb/task.h>
 #include <base/task.h>
-
+#include "net/bgp_af.h"
 #include <cmn/agent_cmn.h>
 
 #include "cfg/cfg_init.h"
@@ -36,6 +36,8 @@
 #include "control_node_mock.h"
 #include "xml/xml_pugi.h"
 #include "oper/vxlan_routing_manager.h"
+#include "controller/controller_init.h"
+#include <controller/controller_export.h>
 
 using namespace pugi;
 #define L3_VRF_OFFSET 100
@@ -116,6 +118,10 @@ protected:
         InetUnicastRouteEntry *rt =
             RouteGet(bridge_vrf, addr, plen);
         if (participate) {
+            InetUnicastRouteEntry *default_rt =
+            RouteGet(bridge_vrf, Ip4Address::from_string("0.0.0.0"), 0);
+            EXPECT_TRUE( default_rt == NULL);
+
             EXPECT_TRUE(rt->GetActivePath()->peer()->GetType() ==
                         Peer::EVPN_ROUTING_PEER);
             const VrfNH *nh = dynamic_cast<const VrfNH *>
@@ -207,8 +213,9 @@ TEST_F(VxlanRoutingTest, Basic) {
                     "vnet11", false);
     ValidateRouting("l3evpn_1", Ip4Address::from_string("2.2.2.20"), 32,
                     "vnet20", false);
+    // No subnet route is added as no bdidge vrf
     ValidateBridge("vrf1", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, false);
+                   Ip4Address::from_string("2.2.2.0"), 24, false);
     ValidateBridge("vrf1", "l3evpn_1",
                    Ip4Address::from_string("1.1.1.10"), 32, false);
     ValidateBridge("vrf1", "l3evpn_1",
@@ -234,8 +241,9 @@ TEST_F(VxlanRoutingTest, Route_1) {
                     "vnet11", true, "vn1");
     ValidateRouting("l3evpn_1", Ip4Address::from_string("2.2.2.20"), 32,
                     "vnet20", false);
+    // only one bridge vrf so no subnet route gets added for vn2
     ValidateBridge("vrf1", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+                   Ip4Address::from_string("2.2.2.0"), 24, false);
     ValidateBridge("vrf1", "l3evpn_1",
                    Ip4Address::from_string("1.1.1.10"), 32, true);
     ValidateBridge("vrf1", "l3evpn_1",
@@ -261,7 +269,7 @@ TEST_F(VxlanRoutingTest, Route_1) {
     ValidateRouting("l3evpn_1", Ip4Address::from_string("2.2.2.20"), 32,
                     "vnet20", false);
     ValidateBridge("vrf1", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+                   Ip4Address::from_string("2.2.2.0"), 24, false);
     ValidateBridge("vrf1", "l3evpn_1",
                    Ip4Address::from_string("1.1.1.10"), 32, true);
     ValidateBridge("vrf1", "l3evpn_1",
@@ -291,8 +299,9 @@ TEST_F(VxlanRoutingTest, Route_2) {
                     "vnet11", true, "vn1");
     ValidateRouting("l3evpn_1", Ip4Address::from_string("2.2.2.20"), 32,
                     "vnet20", false);
+    // only one bridge vrf so no subnet route gets added for vn2
     ValidateBridge("vrf1", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+                   Ip4Address::from_string("2.2.2.0"), 24, false);
     ValidateBridge("vrf1", "l3evpn_1",
                    Ip4Address::from_string("1.1.1.10"), 32, true);
     ValidateBridge("vrf1", "l3evpn_1",
@@ -322,10 +331,12 @@ TEST_F(VxlanRoutingTest, Route_3) {
                     "vnet11", true, "vn1");
     ValidateRouting("l3evpn_1", Ip4Address::from_string("2.2.2.20"), 32,
                     "vnet20", true, "vn2");
+    // validate subnet route for vn2 gets added to vrf1 inet table
     ValidateBridge("vrf1", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+                   Ip4Address::from_string("2.2.2.0"), 24, true);
+    // validate subnet route for vn1 gets added to vrf2 inet table
     ValidateBridge("vrf2", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+                   Ip4Address::from_string("1.1.1.0"), 24, true);
     ValidateBridge("vrf1", "l3evpn_1",
                    Ip4Address::from_string("1.1.1.10"), 32, true);
     ValidateBridge("vrf1", "l3evpn_1",
@@ -359,10 +370,12 @@ TEST_F(VxlanRoutingTest, Route_4) {
                     "vnet11", true, "vn1");
     ValidateRouting("l3evpn_1", Ip4Address::from_string("2.2.2.20"), 32,
                     "vnet20", true, "vn2");
-    ValidateBridge("vrf1", "l3evpn_2",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+    // only one bridge vn added in Lr 2, verify no subnet route
+    ValidateBridge("vrf1", "l3evpn_1",
+                   Ip4Address::from_string("2.2.2.0"), 24, false);
+    // only one bridge vn added in Lr 1, verify no subnet route
     ValidateBridge("vrf2", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+                   Ip4Address::from_string("1.1.1.0"), 24, false);
     ValidateBridge("vrf1", "l3evpn_2",
                    Ip4Address::from_string("1.1.1.10"), 32, true);
     ValidateBridge("vrf1", "l3evpn_2",
@@ -401,8 +414,9 @@ TEST_F(VxlanRoutingTest, Route_5) {
                     "100.1.1.11", true);
     ValidateRouting("l3evpn_1", Ip4Address::from_string("2.2.2.20"), 32,
                     "vnet20", false);
+    // only one bridge vn added , verify no subnet route
     ValidateBridge("vrf1", "l3evpn_1",
-                   Ip4Address::from_string("0.0.0.0"), 0, true);
+                   Ip4Address::from_string("2.2.2.0"), 24, false);
     ValidateBridge("vrf1", "l3evpn_1",
                    Ip4Address::from_string("1.1.1.10"), 32, true);
     ValidateBridge("vrf1", "l3evpn_1",
@@ -467,6 +481,167 @@ TEST_F(VxlanRoutingTest, Route_7) {
     DelLrBridgeVrf("vn1", 1);
     DelNode("logical-router", "l3evpn_1");
     DeleteEnvironment(true);
+}
+
+// Adding EVPN Type5 route to LR evpn table and verify it gets replicated
+// to bridge vrf tables
+TEST_F(VxlanRoutingTest, si_evpn_type5_route_add_local) {
+    bgp_peer_ = CreateBgpPeer("127.0.0.1", "remote");
+    using boost::uuids::nil_uuid;
+    struct PortInfo input1[] = {
+        {"vnet1", 1, "1.1.1.10", "00:00:01:01:01:10", 1, 1},
+    };
+    IpamInfo ipam_info_1[] = {
+        {"1.1.1.0", 24, "1.1.1.254", true},
+    };
+
+    struct PortInfo input2[] = {
+        {"vnet2", 20, "2.2.2.20", "00:00:02:02:02:20", 2, 20},
+    };
+    IpamInfo ipam_info_2[] = {
+        {"2.2.2.0", 24, "2.2.2.200", true},
+    };
+
+    struct PortInfo input3[] = {
+        {"vnet3", 30, "3.3.3.30", "00:00:03:03:03:30", 3, 30},
+    };
+    IpamInfo ipam_info_3[] = {
+        {"3.3.3.0", 24, "3.3.3.200", true},
+    };
+
+    // Bridge vrf
+    AddIPAM("vn1", ipam_info_1, 1);
+    AddIPAM("vn2", ipam_info_2, 1);
+    CreateVmportEnv(input1, 1);
+    CreateVmportEnv(input2, 1);
+    AddLrVmiPort("lr-vmi-vn1", 91, "1.1.1.99", "vrf1", "vn1",
+            "instance_ip_1", 1);
+    AddLrVmiPort("lr-vmi-vn2", 92, "2.2.2.99", "vrf2", "vn2",
+            "instance_ip_2", 2);
+
+    const char *routing_vrf_name = "l3evpn_1";
+    AddLrRoutingVrf(1);
+    AddLrBridgeVrf("vn1", 1);
+
+    EXPECT_TRUE(VmInterfaceGet(1)->logical_router_uuid() == nil_uuid());
+    EXPECT_TRUE(VmInterfaceGet(20)->logical_router_uuid() == nil_uuid());
+    EXPECT_TRUE(VmInterfaceGet(91)->logical_router_uuid() != nil_uuid());
+    ValidateRouting(routing_vrf_name, Ip4Address::from_string("1.1.1.10"), 32,
+            "vnet1", true, "vn1");
+    ValidateRouting(routing_vrf_name, Ip4Address::from_string("2.2.2.20"), 32,
+            "vnet2", false);
+
+    // check to see if the local port route added to the bridge vrf inet
+    ValidateBridge("vrf1", routing_vrf_name,
+            Ip4Address::from_string("1.1.1.10"), 32, true);
+
+    // since vn2 is not included in the LR,
+    // check to see no route add by peer:EVPN_ROUTING_PEER
+    ValidateBridge("vrf2", routing_vrf_name,
+            Ip4Address::from_string("2.2.2.20"), 32, false);
+
+    // checking routing vrf have valid VXLAN ID
+    VrfEntry *routing_vrf= VrfGet(routing_vrf_name);
+    EXPECT_TRUE(routing_vrf->vxlan_id() != VxLanTable::kInvalidvxlan_id);
+
+    // Test Type 5 route add/del in LR vrf
+    stringstream ss_node;
+    autogen::EnetItemType item;
+    SecurityGroupList sg;
+    item.entry.nlri.af = BgpAf::L2Vpn;
+    item.entry.nlri.safi = BgpAf::Enet;
+    item.entry.nlri.address="10.10.10.10";
+    item.entry.nlri.ethernet_tag = 0;
+    autogen::EnetNextHopType nh;
+    nh.af = Address::INET;
+    nh.address = "10.10.10.10";;
+    nh.label = routing_vrf->vxlan_id();
+    item.entry.next_hops.next_hop.push_back(nh);
+    item.entry.med = 0;
+
+    // Add type5 route 4.4.4.0/24 to lr evpn table
+    bgp_peer_->GetAgentXmppChannel()->AddEvpnRoute(routing_vrf_name,
+            "00:00:00:00:00:00",
+            Ip4Address::from_string("4.4.4.0"),
+            24, &item);
+    client->WaitForIdle();
+
+    // Validate route is copied to bridge vrf
+    InetUnicastRouteEntry *rt1 =
+        RouteGet(VrfGet("vrf1")->GetName(), Ip4Address::from_string("4.4.4.0"), 24);
+    EXPECT_TRUE( rt1 != NULL);
+
+    // Verify route for local vm port is still present
+    ValidateBridge("vrf1", routing_vrf_name,
+            Ip4Address::from_string("1.1.1.10"), 32, true);
+
+    AddIPAM("vn3", ipam_info_3, 1);
+    CreateVmportEnv(input3, 1);
+    AddLrVmiPort("lr-vmi-vn3", 93, "3.3.3.99", "vrf3", "vn3",
+            "instance_ip_3", 3);
+    client->WaitForIdle();
+    AddLrBridgeVrf("vn3", 1);
+    client->WaitForIdle();
+
+    // check to see if the subnet route for vn3 added to the bridge vrf vrf1 inet table
+    ValidateBridge("vrf1", routing_vrf_name,
+            Ip4Address::from_string("3.3.3.0"), 24, true);
+
+    // check to see if the subnet route for vn1 added to the bridge vrf vrf3 inet table
+    ValidateBridge("vrf3", routing_vrf_name,
+            Ip4Address::from_string("1.1.1.0"), 24, true);
+
+    // Verify type5 route added to Lr evpn table is copied to bdidge vrf, vrf3 inet table
+    InetUnicastRouteEntry *static_rt_vrf3 =
+        RouteGet("vrf3", Ip4Address::from_string("4.4.4.0"), 24);
+    EXPECT_TRUE( static_rt_vrf3 != NULL);
+
+    // Send rt delete in lr vrf and see route gets deleted in bridge vrf
+    EvpnAgentRouteTable *rt_table1 = static_cast<EvpnAgentRouteTable *>
+            (agent_->vrf_table()->GetEvpnRouteTable(routing_vrf_name));
+    rt_table1->DeleteReq(bgp_peer_->GetAgentXmppChannel()->bgp_peer_id(),
+        routing_vrf_name,
+        MacAddress::FromString("00:00:00:00:00:00"),
+        Ip4Address::from_string("4.4.4.0"),
+        24, 0,
+        new ControllerVmRoute(bgp_peer_->GetAgentXmppChannel()->bgp_peer_id()));
+    client->WaitForIdle();
+
+    InetUnicastRouteEntry *rt_del =
+        RouteGet("vrf1", Ip4Address::from_string("4.4.4.0"), 24);
+    EXPECT_TRUE( rt_del == NULL);
+
+    InetUnicastRouteEntry *rt_del_vrf3 =
+        RouteGet(VrfGet("vrf3")->GetName(), Ip4Address::from_string("4.4.4.0"), 24);
+    EXPECT_TRUE( rt_del_vrf3 == NULL);
+
+    // Clean up
+    DelLrRoutingVrf(1);
+    DelIPAM("vn1");
+    DelIPAM("vn2");
+    DelIPAM("vn3");
+    DelNode("project", "admin");
+    DeleteVmportEnv(input1, 2, true);
+    DeleteVmportEnv(input2, 1, true);
+    DeleteVmportEnv(input3, 1, true);
+    DelLrVmiPort("lr-vmi-vn1", 91, "1.1.1.99", "vrf1", "vn1",
+            "instance_ip_1", 1);
+    DelLrVmiPort("lr-vmi-vn2", 92, "2.2.2.99", "vrf2", "vn2",
+            "instance_ip_2", 2);
+    DelLrVmiPort("lr-vmi-vn3", 93, "3.3.3.99", "vrf3", "vn3",
+            "instance_ip_3", 3);
+    DeleteBgpPeer(bgp_peer_);
+    DelLrBridgeVrf("vn3", 1);
+    client->WaitForIdle(5);
+    EXPECT_TRUE(VrfGet("vrf1") == NULL);
+    EXPECT_TRUE(VrfGet("vrf2") == NULL);
+    EXPECT_TRUE(VrfGet("vrf3") == NULL);
+    EXPECT_TRUE(agent_->oper_db()->vxlan_routing_manager()->vrf_mapper().
+            IsEmpty());
+    EXPECT_TRUE(agent_->oper_db()->vxlan_routing_manager()->vrf_mapper().
+            IsEmpty());
+    client->WaitForIdle();
+
 }
 
 int main(int argc, char *argv[]) {
