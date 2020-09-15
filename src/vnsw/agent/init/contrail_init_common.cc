@@ -193,7 +193,8 @@ void ContrailInitCommon::CreateInterfaces() {
     }
 
     type = ComputeEncapType(agent_param()->eth_port_encap_type());
-    PhysicalInterface::Create(table, agent_param()->eth_port(),
+    //PhysicalInterface::Create(table, agent_param()->eth_port(),
+    PhysicalInterface::Create(table, agent_param()->eth_port_list()[0].c_str(), /* PKC: Using first element for now */
                               agent()->fabric_vrf_name(),
                               PhysicalInterface::FABRIC, type,
                               agent_param()->eth_port_no_arp(),
@@ -242,14 +243,18 @@ void ContrailInitCommon::CreateInterfaces() {
     // VRF creation, but vhost is not present when fabric-vrf is created.
     // So, add it now
     BridgeAgentRouteTable *l2_table = agent()->fabric_l2_unicast_table();
-    const InetInterface *vhost = static_cast<const InetInterface *>
-        (agent()->vhost_interface());
+    //const InetInterface *vhost = static_cast<const InetInterface *>
+    //    (agent()->vhost_interface());
     l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
                                     agent()->fabric_vrf_name(), 0,
-                                    vhost->xconnect()->mac(), "");
+                                    //vhost->xconnect()->mac(), "");
+                                    //vhost->xconnect()[0]->mac(), ""); /* PKC: Using only first element for now */
+                                    MacAddress::ZeroMac(), ""); /* PKC: Using only first element for now */
     l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
                                     agent()->fabric_policy_vrf_name(), 0,
-                                    vhost->xconnect()->mac(), "");
+                                    //vhost->xconnect()->mac(), "");
+                                    //vhost->xconnect()[0]->mac(), ""); /* PKC: Using only first element for now */
+                                    MacAddress::ZeroMac(), ""); /* PKC: Using only first element for now */
     // Add vhost labelled inet route
     InetUnicastAgentRouteTable *inet_mpls_table =
         static_cast<InetUnicastAgentRouteTable *>

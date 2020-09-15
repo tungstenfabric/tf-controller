@@ -1184,11 +1184,15 @@ TEST_F(CfgTest, Basic_1) {
     EXPECT_TRUE(phy_intf->persistent() == false);
     EXPECT_TRUE(phy_intf->subtype() == PhysicalInterface::FABRIC);
 
+    std::vector<std::string> xconnect_list;
+    xconnect_list.push_back(eth_intf);
     InetInterface::CreateReq(Agent::GetInstance()->interface_table(),
                              "vhost10", InetInterface::VHOST,
                              Agent::GetInstance()->fabric_vrf_name(),
-                             Ip4Address(0), 0, Ip4Address(0), eth_intf, "",
-                             Interface::TRANSPORT_ETHERNET);
+                             Ip4Address(0), 0, 
+                             std::vector<Ip4Address>(1, Ip4Address(0)),
+                             std::vector<std::string>(1, eth_intf),
+                             "", Interface::TRANSPORT_ETHERNET);
 
     client->WaitForIdle();
 
