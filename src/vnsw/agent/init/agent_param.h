@@ -187,7 +187,10 @@ public:
     }
     const Ip4Address &vhost_prefix() const { return vhost_.prefix_; }
     const int vhost_plen() const { return vhost_.plen_; }
-    const Ip4Address &vhost_gw() const { return vhost_.gw_; }
+    const Ip4Address &vhost_gw() const { return gateway_list_[0]; }
+    const AddressList &gateway_list() const {
+        return gateway_list_;
+    }
 
     const std::string &xen_ll_name() const { return xen_ll_.name_; }
     const void set_xen_ll_name(const std::string &name) {
@@ -199,9 +202,13 @@ public:
     const Ip4Address &xen_ll_gw() const { return xen_ll_.gw_; }
 
     const std::string &agent_name() const { return agent_name_; }
-    const std::string &eth_port() const { return eth_port_; }
+    const std::vector<std::string> &eth_port_list() const {return eth_port_list_;};
     const bool &eth_port_no_arp() const { return eth_port_no_arp_; }
     const std::string &eth_port_encap_type() const { return eth_port_encap_type_; }
+    const AddressList &eth_port_addr_list() const {
+        return eth_port_addr_list_;
+    }
+    void BuildAddrList(const std::string &val, AddressList& addr_list);
 
     const std::string &crypt_port() const { return crypt_port_; }
     const bool &crypt_port_no_arp() const { return crypt_port_no_arp_; }
@@ -565,6 +572,11 @@ public:
 
     float vr_object_high_watermark() const { return vr_object_high_watermark_; }
 
+    /* L3 Multihoming parameters */
+    const std::string &loopback_name() const { return loopback_name_; }
+    const Ip4Address &loopback_ip() const { return loopback_ip_; }
+
+
 protected:
     void set_hypervisor_mode(HypervisorMode m) { hypervisor_mode_ = m; }
     virtual void InitFromSystem();
@@ -687,7 +699,9 @@ private:
     bool measure_queue_delay_;
 
     std::string agent_name_;
-    std::string eth_port_;
+    std::vector<std::string> eth_port_list_;
+    AddressList eth_port_addr_list_;
+    AddressList gateway_list_;
     bool eth_port_no_arp_;
     std::string eth_port_encap_type_;
     std::string crypt_port_;
@@ -838,6 +852,10 @@ private:
     bool cat_MockDPDK_;
     std::string cat_kSocketDir_;
     float vr_object_high_watermark_;
+    /* L3 Multihoming parameters */
+    std::string loopback_name_;
+    Ip4Address loopback_ip_;
+
     DISALLOW_COPY_AND_ASSIGN(AgentParam);
 };
 

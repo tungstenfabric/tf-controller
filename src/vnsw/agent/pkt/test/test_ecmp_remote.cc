@@ -1100,8 +1100,8 @@ TEST_F(RemoteEcmpTest, EcmpReEval_3) {
 TEST_F(RemoteEcmpTest, DISABLE_VgwFlag) {
     InetInterface::CreateReq(agent_->interface_table(), "vgw1",
                             InetInterface::SIMPLE_GATEWAY, "vrf2",
-                            Ip4Address(0), 0, Ip4Address(0), Agent::NullString(),
-                            "", Interface::TRANSPORT_ETHERNET);
+                            Ip4Address(0), 0, std::vector<Ip4Address>(1, Ip4Address(0)),
+                            std::vector<std::string>(), "", Interface::TRANSPORT_ETHERNET);
     client->WaitForIdle();
 
     InetInterfaceKey *intf_key = new InetInterfaceKey("vgw1");

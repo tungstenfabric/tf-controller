@@ -1158,7 +1158,7 @@ int main(int argc, char *argv[]) {
                               "xmpp channel");
     if (Agent::GetInstance()->router_id_configured()) {
         src_ip = Agent::GetInstance()->router_id().to_ulong();
-        gw_ip = Agent::GetInstance()->vhost_default_gateway().to_ulong();
+        gw_ip = Agent::GetInstance()->vhost_default_gateway()[0].to_ulong(); /* PKC: Using first element for now */
     } else {
         LOG(DEBUG, "Router id not configured in config file");
         exit(0);

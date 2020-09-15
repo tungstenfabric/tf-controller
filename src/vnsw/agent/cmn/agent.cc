@@ -518,15 +518,21 @@ void Agent::CopyConfig(AgentParam *params) {
     InitializeFilteredParams();
 
     vhost_interface_name_ = params_->vhost_name();
-    ip_fabric_intf_name_ = params_->eth_port();
+    //ip_fabric_intf_name_ = params_->eth_port();
+    ip_fabric_intf_name_ = params_->eth_port_list()[0].c_str(); /* PKC: Using first element for now */
     crypt_intf_name_ = params_->crypt_port();
     host_name_ = params_->host_name();
     agent_name_ = params_->host_name();
     prog_name_ = params_->program_name();
     introspect_port_ = params_->http_server_port();
     prefix_len_ = params_->vhost_plen();
-    gateway_id_ = params_->vhost_gw();
+    gateway_list_ = params_->gateway_list();
     router_id_ = params_->vhost_addr();
+    loopback_ip_ = params_->loopback_ip();
+    if (params_->loopback_ip() != Ip4Address(0)) {
+        router_id_ = params_->loopback_ip();
+        is_l3mh_ = true;
+    }
     if (router_id_.to_ulong()) {
         router_id_configured_ = false;
     }
@@ -679,8 +685,9 @@ void Agent::InitXenLinkLocalIntf() {
     InetInterface::Create(intf_table_, params_->xen_ll_name(),
                           InetInterface::LINK_LOCAL, link_local_vrf_name_,
                           params_->xen_ll_addr(), params_->xen_ll_plen(),
-                          params_->xen_ll_gw(), NullString(), link_local_vrf_name_,
-                          Interface::TRANSPORT_ETHERNET);
+                          std::vector<Ip4Address>(1, params_->xen_ll_gw()),
+                          std::vector<std::string>(),
+                          link_local_vrf_name_, Interface::TRANSPORT_ETHERNET);
 }
 
 void Agent::InitPeers() {
@@ -758,7 +765,7 @@ Agent::Agent() :
     physical_device_table_(NULL), physical_device_vn_table_(NULL),
     config_manager_(), mirror_cfg_table_(NULL),
     intf_mirror_cfg_table_(NULL), router_id_(0), prefix_len_(0),
-    gateway_id_(0), compute_node_ip_(0), xs_cfg_addr_(""), xs_idx_(0),
+    gateway_list_(0), compute_node_ip_(0), xs_cfg_addr_(""), xs_idx_(0),
     xs_addr_(), xs_port_(),
     xs_stime_(), xs_auth_enable_(false), xs_dns_idx_(0), dns_addr_(),
     dns_port_(), dns_auth_enable_(false),
@@ -795,7 +802,8 @@ Agent::Agent() :
     tbb_keepawake_timeout_(kDefaultTbbKeepawakeTimeout),
     task_monitor_timeout_msec_(kDefaultTaskMonitorTimeout),
     vr_limit_high_watermark_(kDefaultHighWatermark),
-    vr_limit_low_watermark_(kDefaultLowWatermark) {
+    vr_limit_low_watermark_(kDefaultLowWatermark),
+    loopback_ip_(), is_l3mh_(false) {
 
     assert(singleton_ == NULL);
     singleton_ = this;
