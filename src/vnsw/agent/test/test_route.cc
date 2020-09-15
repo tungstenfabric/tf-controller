@@ -2995,9 +2995,9 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
             "vnet1", true);
     ValidateRouting(routing_vrf_name, Ip4Address::from_string("2.2.2.20"), 32,
             "vnet2", false);
-    // check to see if the default route added to the bridge vrf inet
+    // check to see if the default route is not added to the bridge vrf inet
     ValidateBridge("vrf1", routing_vrf_name,
-            Ip4Address::from_string("0.0.0.0"), 0, true);
+            Ip4Address::from_string("0.0.0.0"), 0, false);
 
     // check to see if the local port route added to the bridge vrf inet
     ValidateBridge("vrf1", routing_vrf_name,
