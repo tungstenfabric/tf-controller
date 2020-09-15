@@ -64,17 +64,22 @@ Interface *InetInterfaceKey::AllocEntry(const InterfaceTable *table,
     assert(vrf);
 
     Interface *xconnect = NULL;
+    std::vector<Interface *> xconnect_list;
     if (vhost_data->sub_type_ == InetInterface::VHOST) {
-        PhysicalInterfaceKey key(vhost_data->xconnect_);
-        xconnect = static_cast<Interface *>
-            (table->agent()->interface_table()->FindActiveEntry(&key));
-        assert(xconnect != NULL);
+        for (std::vector<string>::const_iterator it = vhost_data->xconnect_.begin();
+             it != vhost_data->xconnect_.end(); ++it) {
+            PhysicalInterfaceKey key(*it);
+            xconnect = static_cast<Interface *>
+                (table->agent()->interface_table()->FindActiveEntry(&key));
+            assert(xconnect != NULL);
+            xconnect_list.push_back(xconnect);
+        }
     }
 
     InetInterface *intf = new InetInterface(name_, vhost_data->sub_type_, vrf,
                                             vhost_data->ip_addr_,
                                             vhost_data->plen_, vhost_data->gw_,
-                                            xconnect, vhost_data->vn_name_);
+                                            xconnect_list, vhost_data->vn_name_);
     return intf;
 }
 
@@ -85,8 +90,8 @@ InterfaceKey *InetInterfaceKey::Clone() const {
 InetInterfaceData::InetInterfaceData(InetInterface::SubType sub_type,
                                      const std::string &vrf_name,
                                      const Ip4Address &addr, int plen,
-                                     const Ip4Address &gw,
-                                     const std::string &xconnect,
+                                     const std::vector<Ip4Address> &gw,
+                                     const std::vector<std::string> &xconnect,
                                      const std::string vn_name,
                                      Interface::Transport transport) :
     InterfaceData(NULL, NULL, transport), sub_type_(sub_type), ip_addr_(addr),
@@ -145,9 +150,12 @@ void InetInterface::DeActivateSimpleGateway() {
 
 // Add default route with given gateway
 static void AddDefaultRoute(Agent *agent, InetUnicastAgentRouteTable *table,
-                            const VrfEntry *vrf, const Interface *xconnect,
+                            const VrfEntry *vrf, const std::vector<Interface *> xconnect_list,
                             const Ip4Address &gw, const string &vn_name) {
-
+    Interface *xconnect = NULL; /* PKC: Using first element for now */
+    if (!xconnect_list.empty()) {
+        xconnect = xconnect_list[0]; /* PKC: Using first element for now */
+    }
     if (xconnect) {
         const PhysicalInterface *physical_intf =
             static_cast<const PhysicalInterface *>(xconnect);
@@ -163,7 +171,7 @@ static void AddDefaultRoute(Agent *agent, InetUnicastAgentRouteTable *table,
     VnListType vn_list;
     vn_list.insert(vn_name);
     table->AddGatewayRoute(agent->local_peer(),
-                           vrf->GetName(), Ip4Address(0), 0, gw, vn_list,
+                           vrf->GetName(), Ip4Address(0), 0, AddressList(1, gw), vn_list, /* PKC: Making gw as list */
                            MplsTable::kInvalidLabel, SecurityGroupList(),
                            TagList(), CommunityList(), true);
     return;
@@ -180,9 +188,13 @@ static void DeleteDefaultRoute(Agent *agent, InetUnicastAgentRouteTable *table,
 // - Resolve route for the subnet address
 static void AddHostRoutes(Agent *agent, InetUnicastAgentRouteTable *table,
                           const VrfEntry *vrf, const string &interface,
-                          const Interface *xconnect, const Ip4Address &addr,
+                          const std::vector<Interface *> xconnect_list,
+                          const Ip4Address &addr,
                           int plen, const string &vn_name) {
-
+    Interface *xconnect = NULL;
+    if (!xconnect_list.empty()) {
+        xconnect = xconnect_list[0]; /* PKC: Using first element for now */
+    }
     InetInterfaceKey intf_key(interface);
     table->AddVHostRecvRoute(agent->local_peer(), vrf->GetName(), intf_key,
                              addr, 32, vn_name, false, true);
@@ -226,8 +238,12 @@ static void AddHostRoutes(Agent *agent, InetUnicastAgentRouteTable *table,
 }
 
 static void DeleteHostRoutes(Agent *agent, InetUnicastAgentRouteTable *table,
-                             const VrfEntry *vrf, const Interface *xconnect,
+                             const VrfEntry *vrf, const std::vector<Interface *> xconnect_list,
                              const Ip4Address &addr, int plen) {
+    Interface *xconnect = NULL; /* PKC: Using first element for now */
+    if (!xconnect_list.empty()) {
+        xconnect = xconnect_list[0]; /* PKC: Using first element for now */
+    }
     table->Delete(agent->local_peer(), vrf->GetName(), addr, 32);
     const PhysicalInterface *physical_intf =
         static_cast<const PhysicalInterface *>(xconnect);
@@ -304,13 +320,15 @@ void InetInterface::ActivateHostInterface() {
     InetUnicastAgentRouteTable *uc_rt_table =
         (vrf_table->GetInet4UnicastRouteTable(vrf()->GetName()));
     if (ip_addr_.to_ulong()) {
-        AddHostRoutes(agent, uc_rt_table, vrf(), name(), xconnect_.get(),
+        AddHostRoutes(agent, uc_rt_table, vrf(), name(), xconnect_,
                       ip_addr_, plen_, vn_name_);
     }
     AddHostMulticastRoutes();
 
-    if (gw_.to_ulong()) {
-        AddDefaultRoute(agent, uc_rt_table, vrf(), xconnect_.get(), gw_,
+    //if (gw_.to_ulong()) {
+    if (gw_[0].to_ulong()) { /* PKC: Using the first element for now */
+        //AddDefaultRoute(agent, uc_rt_table, vrf(), xconnect_, gw_,
+        AddDefaultRoute(agent, uc_rt_table, vrf(), xconnect_, gw_[0], /* PKC: Using only first element for now */
                         vn_name_);
     }
 
@@ -327,13 +345,15 @@ void InetInterface::DeActivateHostInterface() {
     InetUnicastAgentRouteTable *uc_rt_table =
         (vrf_table->GetInet4UnicastRouteTable(vrf()->GetName()));
     if (ip_addr_.to_ulong()) {
-        DeleteHostRoutes(agent, uc_rt_table, vrf(), xconnect_.get(), ip_addr_,
+        DeleteHostRoutes(agent, uc_rt_table, vrf(), xconnect_, ip_addr_,
                          plen_);
     }
     DelHostMulticastRoutes();
 
-    if (gw_.to_ulong()) {
-        DeleteDefaultRoute(agent, uc_rt_table, vrf(), gw_);
+    // if (gw_.to_ulong()) {
+    if (gw_[0].to_ulong()) { /* PKC: Using the first element for now */
+        //DeleteDefaultRoute(agent, uc_rt_table, vrf(), gw_);
+        DeleteDefaultRoute(agent, uc_rt_table, vrf(), gw_[0]); /* PKC: Using only first element for now */
     }
 
     // Delete receive nexthops
@@ -354,7 +374,8 @@ InetInterface::InetInterface(const std::string &name) :
 
 InetInterface::InetInterface(const std::string &name, SubType sub_type,
                              VrfEntry *vrf, const Ip4Address &ip_addr, int plen,
-                             const Ip4Address &gw, Interface *xconnect,
+                             const std::vector<Ip4Address> &gw,
+                             const std::vector<Interface *> xconnect,
                              const std::string &vn_name) :
     Interface(Interface::INET, nil_uuid(), name, vrf, true, nil_uuid()),
     sub_type_(sub_type),
@@ -435,7 +456,7 @@ bool InetInterface::OnChange(InetInterfaceData *data) {
     if (ip_addr_ != data->ip_addr_ || plen_ != data->plen_) {
         // Delete routes based on old ip-addr and prefix
         if (ip_addr_.to_ulong()) {
-            DeleteHostRoutes(agent, uc_rt_table, vrf(), xconnect_.get(),
+            DeleteHostRoutes(agent, uc_rt_table, vrf(), xconnect_,
                              ip_addr_, plen_);
         }
 
@@ -444,28 +465,32 @@ bool InetInterface::OnChange(InetInterfaceData *data) {
         vn_name_ = data->vn_name_;
         // Add routes for new ip-address and prefix
         if (data->ip_addr_.to_ulong()) {
-            AddHostRoutes(agent, uc_rt_table, vrf(), name(), xconnect_.get(),
+            AddHostRoutes(agent, uc_rt_table, vrf(), name(), xconnect_,
                           ip_addr_, plen_, vn_name_);
         }
         ret = true;
     } else if (vn_name_ != data->vn_name_) {
         // Change in vn_name, update route with new VN Name
         vn_name_ = data->vn_name_;
-        AddHostRoutes(agent, uc_rt_table, vrf(), name(), xconnect_.get(),
+        AddHostRoutes(agent, uc_rt_table, vrf(), name(), xconnect_,
                       ip_addr_, plen_, vn_name_);
         ret = true;
     }
 
     if (gw_ != data->gw_) {
         // Delete routes based on old gateway
-        if (gw_.to_ulong()) {
-            DeleteDefaultRoute(agent, uc_rt_table, vrf(), gw_);
+        //if (gw_.to_ulong()) {
+        if (gw_[0].to_ulong()) { /* PKC: Using only first element for now */
+            //DeleteDefaultRoute(agent, uc_rt_table, vrf(), gw_);
+            DeleteDefaultRoute(agent, uc_rt_table, vrf(), gw_[0]);  /* PKC: Using only first element for now */
         }
 
         gw_ = data->gw_;
         // Add route for new gateway
-        if (gw_.to_ulong()) {
-            AddDefaultRoute(agent, uc_rt_table, vrf(), xconnect_.get(), gw_,
+        //if (gw_.to_ulong()) {
+        if (gw_[0].to_ulong()) { /* PKC: Using only first element for now */
+            //AddDefaultRoute(agent, uc_rt_table, vrf(), xconnect_, gw_,
+            AddDefaultRoute(agent, uc_rt_table, vrf(), xconnect_, gw_[0], /* PKC: Using only first element for now */
                             vn_name_);
         }
 
@@ -482,14 +507,14 @@ bool InetInterface::OnChange(InetInterfaceData *data) {
 void InetInterface::CreateReq(InterfaceTable *table, const std::string &ifname,
                               SubType sub_type, const std::string &vrf_name,
                               const Ip4Address &addr, int plen,
-                              const Ip4Address &gw,
-                              const std::string &xconnect,
+                              const std::vector<Ip4Address> &gw,
+                              const std::vector<std::string> &xconnect,
                               const std::string &vn_name,
                               Interface::Transport transport) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new InetInterfaceKey(ifname));
     req.data.reset(new InetInterfaceData(sub_type, vrf_name, Ip4Address(addr),
-                                         plen, Ip4Address(gw), xconnect,
+                                         plen, gw, xconnect,
                                          vn_name, transport));
     table->Enqueue(&req);
 }
@@ -498,14 +523,14 @@ void InetInterface::CreateReq(InterfaceTable *table, const std::string &ifname,
 void InetInterface::Create(InterfaceTable *table, const std::string &ifname,
                            SubType sub_type, const std::string &vrf_name,
                            const Ip4Address &addr, int plen,
-                           const Ip4Address &gw,
-                           const std::string &xconnect,
+                           const std::vector<Ip4Address> &gw,
+                           const std::vector<std::string> &xconnect,
                            const std::string &vn_name,
                            Interface::Transport transport) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new InetInterfaceKey(ifname));
     req.data.reset(new InetInterfaceData(sub_type, vrf_name, Ip4Address(addr),
-                                         plen, Ip4Address(gw), xconnect,
+                                         plen, gw, xconnect,
                                          vn_name, transport));
     table->Process(req);
 }

@@ -638,7 +638,7 @@ bool DhcpHandler::FindLeaseData() {
                 InetUnicastAgentRouteTable::FindResolveRoute(
                              vm_itf_->vrf()->GetName(), ip);
             if (rt) {
-                Ip4Address gw = agent()->vhost_default_gateway();
+                Ip4Address gw = agent()->vhost_default_gateway()[0]; /* PKC: Using first element now */
                 boost::system::error_code ec;
                 if (IsIp4SubnetMember(rt->addr().to_v4(),
                     Ip4Address::from_string("169.254.0.0", ec), rt->plen())) {

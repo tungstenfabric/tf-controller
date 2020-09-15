@@ -329,7 +329,7 @@ static void BuildStaticRouteList(VmInterfaceConfigData *data, IFMapNode *node) {
         if (add) {
             data->static_route_list_.list_.insert
                 (VmInterface::StaticRoute
-                 (ip, plen, gw, it->community_attributes.community_attribute));
+                 (ip, plen, AddressList(1, gw.to_v4()), it->community_attributes.community_attribute)); /* PKC: Making it as a list */
         }
     }
 }
