@@ -110,6 +110,14 @@
     </xsd:all>
 </xsd:complexType>
 
+<xsd:complexType name="PolicyParameters">
+    <xsd:all>
+        <xsd:element name="name" type="xsd:string"/>
+        <xsd:element name="comment" type="xsd:string"/>
+        <xsd:element name="import-targets" type="xsd:string" maxOccurs="unbounded"/>
+    </xsd:all>
+</xsd:complexType>
+
 <xsd:complexType name="Bgp">
     <xsd:all>
        <xsd:element name="comment" type="xsd:string"/>
@@ -127,6 +135,8 @@
        <xsd:element name="bfd" type="dac:Bfd"/>
        <xsd:element name="multihop" type="dac:MultiHop"/>
        <xsd:element name="routing-policies" type="dac:RoutingPolicyParameters"/>
+       <xsd:element name="import-policy" type="xsd:string" maxOccurs="unbounded"/>
+       <xsd:element name="policies" type="dac:PolicyParameters" maxOccurs="unbounded"/>
     </xsd:all>
 </xsd:complexType>
 

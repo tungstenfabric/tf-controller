@@ -8,7 +8,8 @@ from collections import OrderedDict
 
 from abstract_device_api.abstract_device_xsd import *
 
-from .db import BgpRouterDM, GlobalSystemConfigDM, PhysicalRouterDM
+from .db import BgpRouterDM, DataCenterInterconnectDM, \
+    GlobalSystemConfigDM, PhysicalRouterDM
 from .dm_utils import DMUtils
 from .feature_base import FeatureBase
 
@@ -72,17 +73,17 @@ class OverlayBgpFeature(FeatureBase):
     # end _add_hold_time_config
 
     def _get_config(self, bgp, external=False,
-                    is_RR=False):
+                    is_RR=False, name=None):
         config = Bgp()
 
         cluster_id = bgp.params.get('cluster_id')
         if cluster_id and not is_RR:
             config.set_cluster_id(cluster_id)
-
-        config.set_name(DMUtils.make_bgp_group_name(self._get_asn(bgp),
-                                                    external,
-                                                    is_RR))
-
+        if name is None:
+            config.set_name(DMUtils.make_bgp_group_name(
+                self._get_asn(bgp), external, is_RR))
+        else:
+            config.set_name(name)
         config.set_type('external' if external else 'internal')
 
         config.set_ip_address(bgp.params['address'])
@@ -127,6 +128,52 @@ class OverlayBgpFeature(FeatureBase):
             config.add_peers(peer_config)
     # end _add_peers
 
+    def _build_dci_bgp_groups(self, local_asn):
+        dci_bgp_groups = {}
+        neigh_bgpr_dict, dci_dict = \
+            DataCenterInterconnectDM.get_dci_peers(self._physical_router)
+
+        # create dci bgp group having common peer bgp routers
+        for dci_peer_uuid, dict_values in neigh_bgpr_dict.items():
+            peer = BgpRouterDM.get(dci_peer_uuid)
+            if not self._is_valid(peer):
+                continue
+            postfix = ''
+            if local_asn != self._get_asn(peer):
+                postfix = '-e'
+            else:
+                postfix = '-i'
+            dci_name_list = list(dict_values['dci_names'])
+            # using peer_fabric names as a bgp group.
+            fabric_name_list = list(dict_values['fabrics'])
+            fabric_name_list.sort()
+            bgp_gname = DMUtils.contrail_prefix() + \
+                "-".join(fabric_name_list) + postfix
+            if bgp_gname not in dci_bgp_groups:
+                dci_bgp_groups[bgp_gname] = {
+                    'peer_bgp_routers': OrderedDict(),
+                    'import_policy': set(),
+                    'policies': set()
+                }
+
+            for dci_name in dci_name_list:
+                if dci_name not in dci_dict:
+                    continue
+                dci_bgp_groups[bgp_gname]['peer_bgp_routers'][peer] = {}
+                # make sure no duplicate policies added per bgp group
+                if 'policies' in dci_dict[dci_name]:
+                    for i_policy in dci_dict[dci_name]['policies'] or []:
+                        if i_policy.get_name() not in \
+                                dci_bgp_groups[bgp_gname]['import_policy']:
+                            dci_bgp_groups[bgp_gname]['policies'].add(
+                                i_policy)
+                if 'import_policy' in dci_dict[dci_name]:
+                    dci_bgp_groups[bgp_gname]['import_policy'].update(
+                        dci_dict[dci_name]['import_policy'])
+
+        return dci_bgp_groups, neigh_bgpr_dict
+    # end _build_dci_bgp_groups
+
     def _build_bgp_config(self, feature_config):
         bgp_router = BgpRouterDM.get(self._physical_router.bgp_router)
         if not self._is_valid(bgp_router):
@@ -135,16 +182,15 @@ class OverlayBgpFeature(FeatureBase):
         ibgp_peers = OrderedDict()
         ebgp_peers = OrderedDict()
         rr_peers = OrderedDict()
-
         local_asn = self._get_asn(bgp_router)
 
-        # adding dci peers
-        dci_peers = self._physical_router.get_dci_bgp_neighbours()
+        dci_bgp_groups, neigh_bgpr_dict = self._build_dci_bgp_groups(
+            local_asn)
         bgp_peers_dict = bgp_router.bgp_routers
-        for dci_peer in dci_peers:
-            bgp_peers_dict[dci_peer] = {}
 
         for peer_uuid, attr in list(bgp_peers_dict.items()):
+            if peer_uuid in neigh_bgpr_dict:
+                continue
             peer = BgpRouterDM.get(peer_uuid)
             if not self._is_valid(peer):
                 continue
@@ -176,6 +222,18 @@ class OverlayBgpFeature(FeatureBase):
             rr = self._get_config(bgp_router, is_RR=True)
             self._add_peers(rr, bgp_router, rr_peers)
             feature_config.add_bgp(rr)
+
+        for dci_bgp_name, attr in list(dci_bgp_groups.items()):
+            dci_bgp = self._get_config(bgp_router,
+                                       external=dci_bgp_name.endswith('-e'),
+                                       is_RR=dci_bgp_name.endswith('-rr'),
+                                       name=dci_bgp_name)
+            self._add_peers(dci_bgp, bgp_router, attr['peer_bgp_routers'])
+            if len(attr['import_policy']) > 0:
+                dci_bgp.set_import_policy(list(attr['import_policy']))
+            if len(attr['policies']) > 0:
+                dci_bgp.set_policies(list(attr['policies']))
+            feature_config.add_bgp(dci_bgp)
 
     # end _build_bgp_config
 
