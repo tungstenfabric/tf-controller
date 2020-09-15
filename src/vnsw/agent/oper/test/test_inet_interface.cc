@@ -109,8 +109,8 @@ static void AddInterface(InetInterfaceTest *t, const char *ifname,
                          const char *ip, int plen, const char *gw) {
     InetInterface::CreateReq(t->interface_table_, ifname, sub_type, vrf,
                              Ip4Address::from_string(ip), plen,
-                             Ip4Address::from_string(gw),
-                             client->param()->eth_port(), "TEST",
+                             std::vector<Ip4Address>(1, Ip4Address::from_string(gw)),
+                             client->param()->eth_port_list(), "TEST",
                              Interface::TRANSPORT_ETHERNET);
 }
 
@@ -380,7 +380,9 @@ TEST_F(InetInterfaceTest, physical_eth_encap_1) {
     client->WaitForIdle();
 
     InetInterface::CreateReq(interface_table_, "vhost-1", InetInterface::VHOST,
-                             agent_->fabric_vrf_name(), ip, plen, gw, "phy-1",
+                             agent_->fabric_vrf_name(), ip, plen,
+                             std::vector<Ip4Address>(1, gw), 
+                             std::vector<std::string>(1, "phy-1"),
                              "TEST", Interface::TRANSPORT_ETHERNET);
     client->WaitForIdle();
 
@@ -416,7 +418,9 @@ TEST_F(InetInterfaceTest, physical_eth_raw_ip_1) {
     client->WaitForIdle();
 
     InetInterface::CreateReq(interface_table_, "vhost-1", InetInterface::VHOST,
-                             agent_->fabric_vrf_name(), ip, plen, gw, "phy-1",
+                             agent_->fabric_vrf_name(), ip, plen,
+                             std::vector<Ip4Address>(1, gw), 
+                             std::vector<std::string>(1, "phy-1"),
                              "TEST", Interface::TRANSPORT_ETHERNET);
     client->WaitForIdle();
 
@@ -453,7 +457,9 @@ TEST_F(InetInterfaceTest, physical_eth_no_arp_1) {
     client->WaitForIdle();
 
     InetInterface::CreateReq(interface_table_, "vhost-1", InetInterface::VHOST,
-                             agent_->fabric_vrf_name(), ip, plen, gw, "phy-1",
+                             agent_->fabric_vrf_name(), ip, plen,
+                             std::vector<Ip4Address>(1, gw), 
+                             std::vector<std::string>(1, "phy-1"),
                              "TEST", Interface::TRANSPORT_ETHERNET);
     client->WaitForIdle();
 
