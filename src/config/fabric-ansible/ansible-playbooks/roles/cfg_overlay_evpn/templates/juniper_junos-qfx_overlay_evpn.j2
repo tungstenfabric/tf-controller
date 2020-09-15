@@ -35,7 +35,26 @@ set groups {{cfg_group}} policy-options policy-statement {{vrf_export}} term t1 
 {%         endif %}
 {%     endfor %}
 {%     for bgp_elem in device_abstract_config.get('features', {}).get('overlay-bgp',{}).get('bgp', []) %}
+{%         set bgp_group_name = bgp_elem.get('name') %}
 {%         set families = bgp_elem.get('families', []) %}
+{%         set import_policy_list = bgp_elem.get('import_policy', []) %}
+{%         if import_policy_list|length > 0 %}
+{%             for bgp_import_policy in import_policy_list %}
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} import {{bgp_import_policy}}
+{%             endfor %} {# /* l2 dci and l3 dci bgp import policy */ #}
+{%             if 'evpn' in families %}
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} import import-evpn
+{%             endif %}
+{%             for bgp_policy in bgp_elem.get('policies', []) %}
+{%                 set bgp_policy_name = bgp_policy.get('name') %}
+{%                 for import_target in bgp_policy.get('import_targets', []) %}
+{%                     set community_target = import_target.replace(':', '_') %}
+set groups {{cfg_group}} policy-options policy-statement {{bgp_policy_name}} term t1 from community {{community_target}}
+set groups {{cfg_group}} policy-options community {{community_target}} members {{import_target | rtfilter}}
+{%                 endfor %}
+set groups {{cfg_group}} policy-options policy-statement {{bgp_policy_name}} term t1 then accept
+{%             endfor %} {# /* l2 dci bgp define policyfor vn RT for type 2 to 4 routes */ #}
+{%         endif %} {# /* bgp import policy */ #}
 {%         for fam in families %}
 {%             if fam == 'evpn' %}
 {%                 set route_distinguisher = bgp_elem.get('ip_address') %}
