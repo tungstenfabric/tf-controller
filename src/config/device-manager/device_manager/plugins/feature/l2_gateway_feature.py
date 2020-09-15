@@ -9,9 +9,8 @@ from collections import OrderedDict
 
 from abstract_device_api.abstract_device_xsd import *
 
-from .db import LogicalInterfaceDM, LogicalRouterDM,\
-    PhysicalInterfaceDM, PortProfileDM, VirtualNetworkDM, \
-    VirtualPortGroupDM
+from .db import LogicalInterfaceDM, LogicalRouterDM, PhysicalInterfaceDM, \
+    PortProfileDM, VirtualNetworkDM, VirtualPortGroupDM
 from .dm_utils import DMUtils
 from .feature_base import FeatureBase
 
@@ -192,6 +191,11 @@ class L2GatewayFeature(FeatureBase):
                                             vn_obj.vn_network_id, 'l2')
             export_targets, import_targets = self._get_export_import_targets(
                 vn_obj, ri_obj)
+            if import_targets:
+                # from Current VN's all L2 DCI objects, add remote peer fabric
+                # RTs (type 1 routes) to import targets
+                import_targets |= vn_obj.get_dci_peer_fabric_rt(
+                    self._physical_router)
             ri = self._build_ri_config(
                 vn_obj, ri_name, ri_obj, interfaces,
                 export_targets, import_targets, feature_config)

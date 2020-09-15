@@ -628,6 +628,17 @@ class DMUtils(object):
     # end extract_lr_uuid_from_internal_vn_name
 
     @classmethod
+    def get_dci_policy_name(cls, obj):
+        return "__contrail_%s_%s-import" % (obj.name, obj.uuid)
+    # end get_dci_policy_name
+
+    @classmethod
+    def get_dci_policy_comment(cls, dci):
+        return "/* %s DataCenter InterConnect: %s, UUID: %s */" % (
+            dci.dci_mode, dci.name, dci.uuid)
+    # end get_dci_policy_comment
+
+    @classmethod
     def get_dci_rib_group_name(cls, dci):
         return DMUtils.contrail_prefix() + 'rib_' + \
             dci.name.replace(' ', '_') + '_' + dci.uuid
