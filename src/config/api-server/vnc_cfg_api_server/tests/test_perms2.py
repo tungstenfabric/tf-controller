@@ -1691,6 +1691,25 @@ class TestPermissions(test_case.ApiServerTestCase):
             status_code, result = self.alice.vnc_lib._http_get('/documentation/index.html')
             self.assertThat(status_code, Equals(200))
 
+    def test_lr_rbac_default_rule(self):
+
+        rv = self.admin.vnc_lib.set_aaa_mode("rbac")
+        # Create  logical router as user alice
+        lr = LogicalRouter('router-test-v4-%s' % self.id(), self.alice.project_obj)
+        lr_uuid= self.alice.vnc_lib.logical_router_create(lr)
+
+        lr = self._vnc_lib.logical_router_read(id=lr.uuid)
+
+        #Enable GW external as user alice
+        lr.set_logical_router_gateway_external(True)
+
+        with ExpectedException(PermissionDenied) as e:
+            self.alice.vnc_lib.logical_router_update(lr)
+        logger.info('Unable to update LR external GW ... test passed')
+
+        #Enable GW external as user admin
+        self.admin.vnc_lib.logical_router_update(lr)
+
     def tearDown(self):
         super(TestPermissions, self).tearDown()
     # end tearDown
