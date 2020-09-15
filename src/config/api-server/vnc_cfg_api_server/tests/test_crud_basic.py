@@ -3993,7 +3993,6 @@ class TestDBAudit(test_case.ApiServerTestCase):
                 errors = db_checker.check_subnet_addr_alloc()
                 error_types = [type(x) for x in errors]
                 self.assertIn(db_manage.ZkVNMissingError, error_types)
-                self.assertIn(db_manage.ZkSubnetMissingError, error_types)
     # test_checker_zk_vn_missing
 
     def test_checker_zk_ip_extra(self):
