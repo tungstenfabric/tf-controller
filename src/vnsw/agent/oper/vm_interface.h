@@ -674,7 +674,7 @@ public:
     struct StaticRoute : ListEntry, VmInterfaceState {
         StaticRoute();
         StaticRoute(const StaticRoute &rhs);
-        StaticRoute(const IpAddress &addr, uint32_t plen, const IpAddress &gw,
+        StaticRoute(const IpAddress &addr, uint32_t plen, const AddressList &gw_list,
                     const CommunityList &communities);
         virtual ~StaticRoute();
 
@@ -690,7 +690,7 @@ public:
         mutable const VrfEntry *vrf_;
         IpAddress  addr_;
         uint32_t    plen_;
-        IpAddress  gw_;
+        AddressList gw_list_;
         CommunityList communities_;
     };
     typedef std::set<StaticRoute, StaticRoute> StaticRouteSet;

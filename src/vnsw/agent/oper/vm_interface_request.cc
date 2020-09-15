@@ -234,7 +234,7 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
     //Add default route pointing to gateway
     static_route_list_.list_.insert(
             VmInterface::StaticRoute(Ip4Address(0), 0,
-                                     agent->params()->vhost_gw(),
+                                     agent->params()->gateway_list(),
                                      CommunityList()));
 }
 
