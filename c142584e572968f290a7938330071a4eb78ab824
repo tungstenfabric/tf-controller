@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6adf19d8_65174648",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-16T05:49:33Z",
+      "side": 1,
+      "message": "Should work on all versions of flake.\nAt least tag on to the lastest version please",
+      "revId": "c142584e572968f290a7938330071a4eb78ab824",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9db7811f_334d0b8b",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-16T05:49:33Z",
+      "side": 1,
+      "message": "Why so many are being ignored? \nCould you take api-server ignores as reference?",
+      "revId": "c142584e572968f290a7938330071a4eb78ab824",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
