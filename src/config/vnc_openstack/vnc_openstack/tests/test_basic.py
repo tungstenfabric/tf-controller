@@ -402,6 +402,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self._vnc_lib.virtual_network_delete(id=vn_obj.uuid)
     # end test_baremetal_logical_interface_bindings
 
+    @unittest.skip("Flaky test in CI")
     def test_baremetal_bindings_with_vpg_and_multi_vlan(self):
         """This tests the VPG->PI and VPG->VMI association.
 
@@ -686,7 +687,6 @@ class TestBasic(test_case.NeutronBackendTestCase):
                          vpg_zk_element_fq_name_str)
 
         # DELETE: Make sure VPG obj. gets deleted after port delete
-
         self.delete_resource('port', proj_uuid, port_dict['id'])
 
         # Ensure that VPG interface is deleted
