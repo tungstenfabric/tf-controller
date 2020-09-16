@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3ac46633_b6b5fc72",
+        "filename": "src/config/api-server/vnc_cfg_api_server/db_manage.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-16T21:36:53Z",
+      "side": 1,
+      "message": "Please increase version",
+      "revId": "c3cf57875593a856d19cfc282e09cb8f292193e4",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "050674d8_f1fe3759",
+        "filename": "src/config/api-server/vnc_cfg_api_server/db_manage.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 3150,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-16T21:36:53Z",
+      "side": 1,
+      "message": "Is this making ssl params mandatory?",
+      "revId": "c3cf57875593a856d19cfc282e09cb8f292193e4",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b3dc1655_1600b346",
+        "filename": "src/config/api-server/vnc_cfg_api_server/utils.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-16T21:36:53Z",
+      "side": 1,
+      "message": "Shouldnt the default path of the file be None instead of empty string? or it doesnt matter if zookeeper_ssl_enable \u003d False? Please reconfirm!",
+      "revId": "c3cf57875593a856d19cfc282e09cb8f292193e4",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
