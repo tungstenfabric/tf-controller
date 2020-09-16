@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ddbd1e2f_c6d3522e",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/test_perms2.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1697,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-16T22:15:09Z",
+      "side": 1,
+      "message": "is that tab? remove please.",
+      "revId": "72a5ccb46cc2d8594b60fbf2aa1c86733293bbc5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "70c9e85b_a257b205",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/test_perms2.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1707,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-16T22:15:09Z",
+      "side": 1,
+      "message": "Ensure Exception is raised when trying with non-admin user",
+      "revId": "72a5ccb46cc2d8594b60fbf2aa1c86733293bbc5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
