@@ -2556,6 +2556,12 @@
       "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "dci-gateway-spine" ],
       "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "l2-gateway" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dci-gateway-spine" ],
+      "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "underlay-ip-clos" ]
     },
     {
@@ -2593,6 +2599,12 @@
       "from_fq_name": [ "default-global-system-config", "dci-gateway-leaf" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "l3-gateway" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dci-gateway-leaf" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "l2-gateway" ]
     },
     {
       "from_type": "role-definition",
