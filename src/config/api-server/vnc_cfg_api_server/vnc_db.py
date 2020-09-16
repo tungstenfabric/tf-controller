@@ -38,6 +38,8 @@ from cfgm_common.datastore import api as datastore_api
 from cfgm_common.vnc_kombu import VncKombuClient
 from cfgm_common.utils import cgitb_hook
 from cfgm_common.utils import shareinfo_from_perms2
+from cfgm_common.utils import _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX
+from cfgm_common.utils import _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX
 from cfgm_common import vnc_greenlets
 from cfgm_common import PERMS_RWX
 from cfgm_common import SGID_MIN_ALLOC
@@ -1326,117 +1328,6 @@ class VncDbClient(object):
             obj_dict['uuid'],
             {'sub_cluster_id': sub_cluster_id})
 
-    def _add_annotations_to_vpg(self, vpg_dict):
-        """Add annotations to VPG object during reinit."""
-        vmi_refs = vpg_dict.get('virtual_machine_interface_refs') or []
-
-        # check if annotations needs to be added to VPG
-        add_annotations_to_vpg = False
-        vpg_uuid = vpg_dict.get('uuid')
-        vpg_annotations = vpg_dict.get('annotations') or {}
-        vpg_kvps = vpg_annotations.get('key_value_pair') or []
-        vpg_parent = vpg_dict.get('parent_type')
-        if (len(vmi_refs) and
-            len(vmi_refs) != len(vpg_kvps) and
-                vpg_parent == 'fabric'):
-            add_annotations_to_vpg = True
-            # check that len of vpg_kvps is just +1 due to
-            # untagged vlan
-            if len(vmi_refs) + 1 == len(vpg_kvps):
-                untaggedvlan = list(filter(
-                    lambda x: isinstance(x.get('key'), type('str')) and
-                    x.get('key').endswith('untagged_vlan_id'), vpg_kvps))
-                if untaggedvlan:
-                    add_annotations_to_vpg = False
-        if not add_annotations_to_vpg:
-            return True, ''
-
-        # populate annotations in VPG for each VMI
-        (ok, fabrics) = self._object_db.object_read(
-            'fabric', [vpg_dict['parent_uuid']],
-            field_names=['fabric_enterprise_style'])
-        if not ok:
-            return ok, fabrics
-        if len(fabrics) > 1:
-            msg = "VPG (%s) cannot be part of multiple fabrics (%s)  " % (
-                  vpg_uuid, fabrics)
-            self.config_log(msg, level=SandeshLevel.SYS_ERR)
-            return False, ''
-        fabric = fabrics[0]
-        fabric_uuid = fabric.get('uuid')
-        validation = (
-            'enterprise' if
-            fabric.get('fabric_enterprise_style') else
-            'serviceprovider')
-        vmi_uuids = [vmi_ref.get('uuid') for vmi_ref in vmi_refs]
-        ok, vmi_infos = self._object_db.object_read(
-            'virtual-machine-interface', vmi_uuids,
-            field_names=[
-                'virtual_machine_interface_bindings',
-                'virtual_machine_interface_properties',
-                'virtual_network_refs'])
-        if not ok:
-            return ok, vmi_infos
-        annotations = []
-        for vmi_info in vmi_infos:
-            # vlan can be found in interface props or bindings
-            vmi_props = (vmi_info.get(
-                'virtual_machine_interface_properties') or {})
-            vmi_bindings = (vmi_info.get(
-                'virtual_machine_interface_bindings') or {})
-            vmi_uuid = vmi_info.get('uuid')
-            untagged_vlan = False
-            #retrieve vlan
-            vmi_vlan = vmi_props.get('sub_interface_vlan_tag')
-            # may be an untagged VLAN?
-            if not vmi_vlan:
-                vmi_bindings_kvps = vmi_bindings.get('key_value_pair') or []
-                for kvp in vmi_bindings_kvps:
-                    if (kvp.get('key') == 'tor_port_vlan_id'):
-                        vmi_vlan = kvp.get('value')
-                        untagged_vlan = True
-                        break
-                else:
-                    msg = ("VLAN-ID for VMI(%s) is not found when reiniting "
-                           "VPG (%s). Skip adding annotations to VPG" % (
-                          vmi_uuid, vpg_uuid))
-                    self.config_log(msg, level=SandeshLevel.SYS_ERR)
-                    continue
-
-            #retrieve VN
-            vn_refs = vmi_info.get('virtual_network_refs') or []
-            vn_uuids = [vn.get('uuid') for vn in vn_refs]
-            # enterprise style can not have more than one VN
-            if not vn_uuids or len(vn_uuids) > 1:
-                msg = ("Either no VNs (%s) or more than one VN "
-                       "for VMI (%s) with VLAN (%s) is unacceptable. "
-                       "Skip adding annotations to VPG (%s)" (
-                           vn_uuids, vmi_uuid, vmi_vlan, vpg_uuid))
-                self.config_log(msg, level=SandeshLevel.SYS_ERR)
-                continue
-            # format this VMIs annotations to add to VPG
-            this_kvps = [
-                {'key': 'validation:%s/vn:%s/vlan_id:%s' % (
-                    validation, vn_uuid, vmi_vlan),
-                 'value': vmi_uuid} for vn_uuid in vn_uuids]
-            if untagged_vlan:
-                # for untagged_vlan add extra annotation
-                this_kvps.append(
-                    {'key': 'validation:%s/untagged_vlan_id' % validation,
-                     'value': '%s:%s' % (vmi_vlan, vmi_uuid)})
-            annotations += this_kvps
-        # update VPG object with annotations
-        if annotations:
-            if not vpg_dict.get('annotations'):
-                # initialize annotations prop if no key-value pairs
-                # found in VPG dict
-                vpg_dict['annotations'] = {'key_value_pair': []}
-            # update this VMIs annotations to existing KV pairs in VPG
-            vpg_dict['annotations']['key_value_pair'] += (annotations)
-            self._object_db.object_update(
-                'virtual_port_group', vpg_uuid, vpg_dict)
-        return True, ''
-
     def _check_and_add_fabric_refs_to_lr(self, lr_dict):
 
         # this is to add fabric ref to LR object during cluster update
@@ -1512,12 +1403,123 @@ class VncDbClient(object):
                             'virtual_network', obj_uuid, obj_dict)
 
                 elif obj_type == 'virtual_machine_interface':
-                    device_owner = obj_dict.get('virtual_machine_interface_device_owner')
-                    li_back_refs = obj_dict.get('logical_interface_back_refs', [])
+                    device_owner = obj_dict.get(
+                        'virtual_machine_interface_device_owner')
+                    li_back_refs = obj_dict.get('logical_interface_back_refs',
+                        [])
                     if not device_owner and li_back_refs:
-                        obj_dict['virtual_machine_interface_device_owner'] = 'PhysicalRouter'
-                        self._object_db.object_update('virtual_machine_interface',
-                                                      obj_uuid, obj_dict)
+                        obj_dict['virtual_machine_interface_device_owner'] = \
+                            'PhysicalRouter'
+                        self._object_db.object_update(
+                            'virtual_machine_interface',
+                            obj_uuid, obj_dict)
+                    ok, result = self._api_svr_mgr._db_conn.dbe_read(
+                        obj_type='virtual_machine_interface',
+                        obj_id=obj_uuid,
+                        obj_fields=['virtual_port_group_back_refs'])
+                    if not ok:
+                        # dbe_read failed, continue processing next vmi
+                        continue
+                    vpg_ref = result.get('virtual_port_group_back_refs')
+                    if not vpg_ref:
+                        continue
+                    vpg_uuid = vpg_ref[0].get('uuid')
+
+                    # Read validation type
+                    ok, vpg_dict = self._api_svr_mgr._db_conn.dbe_read(
+                        obj_type='virtual-port-group', obj_id=vpg_uuid)
+                    if not ok:
+                        continue
+                    # Check for fabric to read from vpg
+                    fabric = None
+                    if 'parent_uuid' in vpg_dict:
+                        ok, fabric = self._api_svr_mgr._db_conn.dbe_read(
+                            obj_type='fabric',
+                            obj_id=vpg_dict['parent_uuid'],
+                            obj_fields=['fabric_enterprise_style'])
+                    if not fabric:
+                        continue
+                    fabric_uuid = fabric.get('uuid')
+                    fabric_enterprise_style = \
+                        (fabric.get('fabric_enterprise_style') or False)
+                    r_class = self.get_resource_class(obj_type)
+                    ok, vn_uuid = r_class.get_vn_id(obj_dict,
+                        self._api_svr_mgr._db_conn, vpg_uuid)
+                    if not ok:
+                        continue
+                    ok, (vlan_id, is_untagged_vlan, links) = r_class.get_vlan_phy_links(
+                        None, obj_dict)
+                    if not ok:
+                        continue
+
+                    if not fabric_enterprise_style:  # Service-provider
+                        untagged_validation_znode = os.path.join(
+                            _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                            'virtual-port-group:%s' % vpg_uuid,
+                            'untagged')
+                        tagged_validation_znode = os.path.join(
+                             _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                             'virtual-port-group:%s' % vpg_uuid,
+                             'virtual-network:%s' % vn_uuid,
+                             'vlan:%s' % vlan_id)
+                    else:  # Enterprise
+                        untagged_validation_znode = os.path.join(
+                            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                            'virtual-port-group:%s' % vpg_uuid,
+                            'untagged')
+                        tagged_vn_validation_znode = os.path.join(
+                            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                            'virtual-port-group:%s' % vpg_uuid,
+                            'virtual-network:%s' % vn_uuid)
+                        tagged_vlan_validation_znode = os.path.join(
+                            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                            'virtual-port-group:%s' % vpg_uuid,
+                            'vlan:%s' % vlan_id)
+                        tagged_fabric_vn_validation_znode = os.path.join(
+                            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                            'fabric:%s' % fabric_uuid,
+                            'virtual-network:%s' % vn_uuid)
+                        tagged_fabric_vlan_validation_znode = os.path.join(
+                            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                            'fabric:%s' % fabric_uuid,
+                            'vlan:%s' % vlan_id)
+
+                    try:
+                        if is_untagged_vlan:  # Untagged
+                            self._zk_db._zk_client.create_node(
+                                untagged_validation_znode, value=obj_uuid)
+                        else:  # Tagged
+                            if not fabric_enterprise_style:
+                                self._zk_db._zk_client.create_node(
+                                    tagged_validation_znode, value=obj_uuid)
+                            else:
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_vn_validation_znode,
+                                        value=vlan_id)
+                                except ResourceExistsError:
+                                    pass
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_vlan_validation_znode,
+                                        value=obj_uuid)
+                                except ResourceExistsError:
+                                    pass
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_fabric_vn_validation_znode,
+                                        value=vlan_id)
+                                except ResourceExistsError:
+                                    pass
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_fabric_vlan_validation_znode,
+                                        value=vn_uuid)
+                                except ResourceExistsError:
+                                    pass
+                    except ResourceExistsError:
+                        continue
+
                 elif obj_type == 'physical_router':
                     # Encrypt PR pwd if not already done
                     if obj_dict.get('physical_router_user_credentials') and \
@@ -1554,11 +1556,6 @@ class VncDbClient(object):
                     # associated with VPG is enterprise style.
                     vmi_refs = obj_dict.get('virtual_machine_interface_refs',
                                             [])
-
-                    # if vmi_refs are present, verify and add annotations
-                    # to VPG
-                    if vmi_refs:
-                        self._add_annotations_to_vpg(obj_dict)
 
                     port_profile_refs = obj_dict.get('port_profile_refs', [])
                     security_group_refs = obj_dict.get('security_group_refs', [])
