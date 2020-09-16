@@ -9,6 +9,7 @@ from cfgm_common.exceptions import BadRequest
 from cfgm_common.exceptions import PermissionDenied
 from testtools import ExpectedException
 from vnc_api.vnc_api import GlobalSystemConfig
+from vnc_api.vnc_api import ProviderDetails
 from vnc_api.vnc_api import RouteTargetList
 from vnc_api.vnc_api import VirtualNetwork
 from vnc_api.vnc_api import VirtualNetworkType
@@ -351,3 +352,60 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
         vxlan_id = vn.get_virtual_network_properties()\
             .get_vxlan_network_identifier()
         self.assertEqual(vn_network_id, vxlan_id)
+
+    def test_update_in_use_vn_to_provider_vn(self):
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+        self.api.virtual_network_create(vn_obj)
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+
+        vn_obj.set_provider_properties(ProviderDetails(params_dict={"segmentation_id": 100, "physical_network": "physnet1"}))
+        
+        with ExpectedException(PermissionDenied):
+            self.api.virtual_network_update(vn_obj)
+
+        updated_provider_properties = self.api.virtual_network_read(id=vn_obj.uuid).get_provider_properties()
+
+        self.assertEqual(100, updated_provider_properties.get_segmentation_id())
+        self.assertEqual("physnet1", updated_provider_properties.get_physical_network())
+
+    
+    def test_update_in_use_vn_to_provider_vn_without_physnet_label(self):
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+        self.api.virtual_network_create(vn_obj)
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+
+        vn_obj.set_provider_properties(ProviderDetails(params_dict={"segmentation_id": 100}))
+        with ExpectedException(PermissionDenied):
+            self.api.virtual_network_update(vn_obj)
+
+        updated_provider_properties = self.api.virtual_network_read(id=vn_obj.uuid).get_provider_properties()
+
+        self.assertEqual(None, updated_provider_properties)
+    
+    def test_update_in_use_vn_to_provider_vn_without_segmentation(self):
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+        self.api.virtual_network_create(vn_obj)
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+
+        vn_obj.set_provider_properties(ProviderDetails(params_dict={"physical_network": "physnet1"}))
+        with ExpectedException(PermissionDenied):
+            self.api.virtual_network_update(vn_obj)
+
+        updated_provider_properties = self.api.virtual_network_read(id=vn_obj.uuid).get_provider_properties()
+
+        self.assertEqual(None, updated_provider_properties)
+    
+    def test_update_in_use_provider_vn(self):
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+        vn_obj.set_provider_properties(ProviderDetails(params_dict={"segmentation_id": 100, "physical_network": "physnet1"}))
+        self.api.virtual_network_create(vn_obj)
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+
+        vn_obj.set_provider_properties(ProviderDetails(params_dict={"segmentation_id": 200, "physical_network": "physnet2"}))
+        with ExpectedException(PermissionDenied):
+            self.api.virtual_network_update(vn_obj)
+
+        updated_provider_properties = self.api.virtual_network_read(id=vn_obj.uuid).get_provider_properties()
+
+        self.assertEqual(100, updated_provider_properties.get_segmentation_id())
+        self.assertEqual("physnet1", updated_provider_properties.get_physical_network())
