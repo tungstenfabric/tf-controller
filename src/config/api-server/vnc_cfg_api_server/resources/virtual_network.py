@@ -159,10 +159,21 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
 
             old_properties = result.get('provider_properties')
             if 'virtual_machine_interface_back_refs' in result:
-                if old_properties != properties:
+                if old_properties and (old_properties != properties):
                     msg = ("Provider values can not be changed when VMs are "
-                           "already using")
+                        "already using")
                     return False, msg
+                if (not old_properties) and properties:
+                    segmentation_id = properties.get('segmentation_id', None)
+                    if segmentation_id == None or \
+                        (not isinstance(segmentation_id, int)) or \
+                            (not (0 <= segmentation_id <= 4094)):
+                        return (False, "Segmenation ID must be configured as integer in [0, 4094] to update")
+                    
+                    physical_network = properties.get('physical_network', None)
+                    if physical_network == None or \
+                        not isinstance(physical_network, str):
+                        return (False, "Physical Network must be configured as a string to update")
 
             if old_properties:
                 if 'segmentation_id' not in properties:
@@ -173,11 +184,16 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
                     properties['physical_network'] = old_properties.get(
                         'physical_network')
 
-        if 'segmentation_id' not in properties:
-            return (False, "Segmenation id must be configured")
+        segmentation_id = properties.get('segmentation_id', None)
+        if segmentation_id == None or \
+            (not isinstance(segmentation_id, int)) or \
+                (not (0 <= segmentation_id <= 4094)):
+            return (False, "Segmenation ID must be configured as integer in [0, 4094]")
 
-        if not properties.get('physical_network'):
-            return (False, "physical network must be configured")
+        physical_network = properties.get('physical_network', None)
+        if physical_network == None or \
+            not isinstance(physical_network, str):
+            return (False, "Physical Network must be configured as a string")
 
         return (True, '')
 
