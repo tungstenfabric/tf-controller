@@ -15,9 +15,9 @@ from unittest import skip
 from cfgm_common.exceptions import BadRequest
 from cfgm_common.exceptions import NoIdError
 from cfgm_common.tests import test_common
-from cfgm_common.zkclient import ZookeeperLock
+from cfgm_common.utils import _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX
+from cfgm_common.utils import _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX
 import gevent
-import mock
 from testtools import ExpectedException
 from vnc_api.exceptions import HttpError as vnc_api_HttpError
 from vnc_api.gen.resource_xsd import KeyValuePair
@@ -362,36 +362,6 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
             vmi_obj_dict[vmi_name] = self.api.virtual_machine_interface_read(
                 id=vmi_obj.uuid)
         return vmi_obj_dict
-
-    def test_zk_lock_vpg_annotations(self):
-        """Verify ZK path is based on VPG UUID."""
-        backup_zk_init = ZookeeperLock.__init__
-        backup_zk_enter = ZookeeperLock.__enter__
-
-        # mock enter of ZookeeperLock class to get access to configured
-        # zk_path and lock name
-        def mocked_enter(*args, **kwargs):
-            self.assertTrue(
-                hasattr(args[0], 'name'),
-                'ZK Lock object do not have name attr '
-                'Attr present: %s' % args[0].__dict__)
-            return backup_zk_enter(*args, **kwargs)
-
-        # mock init of ZookeeperLock class to get access to configured
-        # zk_path and lock name
-        def mocked_init(*args, **kwargs):
-            zk_path = kwargs.get('path') or ''
-            zk_lock_name = kwargs.get('name')
-            zk_spath = zk_path.split('/') or ['']
-            self.assertEqual(
-                zk_spath[-1], zk_lock_name,
-                'ZK Path (%s) do not include VPG UUID (%s)' % (
-                    zk_path, zk_lock_name))
-            return backup_zk_init(*args, **kwargs)
-
-        with mock.patch.object(ZookeeperLock, '__init__', mocked_init):
-            with mock.patch.object(ZookeeperLock, '__enter__', mocked_enter):
-                self.test_reinit_adds_enterprise_annotations()
 
     # New Case, attaching PI directly to VPG
     def test_add_and_delete_pis_at_vpg(self):
@@ -1937,46 +1907,53 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vmi1_obj = vmi_objs.get('%s-1' % test_id)
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
 
-        # fomat annotations to look for in VPG
-        vmi1_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn1_obj.uuid, vlan_1),
-            value=vmi1_obj.uuid)
-        # verify annotations are added
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-
         # verify that it has refs to two phy intf
         phy_refs = vpg_obj.get_physical_interface_refs()
         assert len(phy_refs) == 1
 
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
+        # Verify if Znodes are created for VMI
+        # Path for ZNode1 creation
+        mock_zk = self._api_server._db_conn._zk_db
+        if validation == 'serviceprovider':
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid,
+                'vlan:%s' % vlan_1)
+        else:
+            tagged_vlan_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid)
+            znode_vlan_1_id = mock_zk._zk_client.read_node(
+                tagged_vlan_validation_path)
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'vlan:%s' % znode_vlan_1_id)
 
-        # add one phy.int from VMI and ensure annotations remains
-        # same
+        # Read Znode1
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(tagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_1_uuid == vmi1_obj.uuid, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi1_obj.uuid
+
+        # add one phy.int from VMI
         kv_pairs = self._create_kv_pairs(
             [pi1_fq_name, pi2_fq_name], fabric_name, vpg_name)
         vmi1_obj.set_virtual_machine_interface_bindings(kv_pairs)
         self.api.virtual_machine_interface_update(vmi1_obj)
 
-        # verify annotations are added
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        # verify that it has refs to one phy intf
-        phy_refs = vpg_obj.get_physical_interface_refs()
-        assert len(phy_refs) == 2
-
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
+        # Read Znode1
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(tagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_1_uuid == vmi1_obj.uuid, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi1_obj.uuid
 
         # create a vmi with two phy int, untagged vlan case
         # this VMI addition replaces phy.int added previous
         # VMI. Per DM, this is the current implementation
+
         vmi_infos = [
             {'name': '%s-2' % test_id, 'vmi_id': '2',
              'parent_obj': proj_obj, 'vn': vn2_obj, 'vpg': vpg_obj.uuid,
@@ -1985,21 +1962,28 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vmi_objs = self._create_vmis(vmi_infos)
         vmi2_obj = vmi_objs.get('%s-2' % test_id)
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-
-        # fomat annotations to look for in VPG
-        vmi2_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%s' % (
-                validation, vn2_obj.uuid, vlan_2),
-            value=vmi2_obj.uuid)
-        vmi2_untagged_kvp = KeyValuePair(
-            key='validation:%s/untagged_vlan_id' % validation,
-            value='%s:%s' % (vlan_2, vmi2_obj.uuid))
-
-        # verify annotations are added
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
         # verify that it has refs to two phy intf
         phy_refs = vpg_obj.get_physical_interface_refs()
         assert len(phy_refs) == 1
+
+        # Path for ZNode2 creation
+        if validation == 'serviceprovider':
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+        else:
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+
+        # Read Znode2
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_2_uuid == vmi2_obj.uuid, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi2_obj.uuid
 
         # remove one phy.int from VMI and ensure annotations remains
         # same. this is untagged case
@@ -2013,19 +1997,6 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
         phy_refs = vpg_obj.get_physical_interface_refs()
         assert len(phy_refs) == 2
-
-        # verify annotations remains same
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
 
         # Delete VMIs from VPG
         self.api.virtual_machine_interface_delete(id=vmi1_obj.uuid)
@@ -2087,41 +2058,53 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vmi1_obj = vmi_objs.get('%s-1' % test_id)
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
 
-        # fomat annotations to look for in VPG
-        vmi1_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn1_obj.uuid, vlan_1),
-            value=vmi1_obj.uuid)
-        # verify annotations are added
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-
         # verify that it has refs to two phy intf
         phy_refs = vpg_obj.get_physical_interface_refs()
         assert len(phy_refs) == 2
 
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
+        # Verify if Znodes are created for VMI
+        mock_zk = self._api_server._db_conn._zk_db
+        # Path for ZNode1 creation
+        if validation == 'serviceprovider':
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid,
+                'vlan:%s' % vlan_1)
+        else:
+            tagged_vlan_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid)
+            znode_vlan_1_id = mock_zk._zk_client.read_node(
+                tagged_vlan_validation_path)
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'vlan:%s' % znode_vlan_1_id)
+
+        # Read Znode1
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(tagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_1_uuid == vmi1_obj.uuid, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi1_obj.uuid
 
         # remove one phy.int from VMI and ensure annotations remains
         # same
         kv_pairs = self._create_kv_pairs(pi1_fq_name, fabric_name, vpg_name)
         vmi1_obj.set_virtual_machine_interface_bindings(kv_pairs)
         self.api.virtual_machine_interface_update(vmi1_obj)
-
-        # verify annotations are added
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
+
         # verify that it has refs to one phy intf
         phy_refs = vpg_obj.get_physical_interface_refs()
         assert len(phy_refs) == 1
 
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
+        # Read Znode1
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(tagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_1_uuid == vmi1_obj.uuid, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi1_obj.uuid
 
         # create a vmi with two phy int, untagged vlan case
         # this VMI addition replaces phy.int added previous
@@ -2135,23 +2118,12 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vmi2_obj = vmi_objs.get('%s-2' % test_id)
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
 
-        # fomat annotations to look for in VPG
-        vmi2_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%s' % (
-                validation, vn2_obj.uuid, vlan_2),
-            value=vmi2_obj.uuid)
-        vmi2_untagged_kvp = KeyValuePair(
-            key='validation:%s/untagged_vlan_id' % validation,
-            value='%s:%s' % (vlan_2, vmi2_obj.uuid))
-
-        # verify annotations are added
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
         # verify that it has refs to two phy intf
         phy_refs = vpg_obj.get_physical_interface_refs()
         assert len(phy_refs) == 2
 
-        # remove one phy.int from VMI and ensure annotations remains
-        # same. this is untagged case
+        # remove one phy.int from VMI
+        # this is untagged case
         kv_pairs = self._create_kv_pairs(
             pi3_fq_name, fabric_name, vpg_name, tor_port_vlan_id=vlan_2)
         vmi2_obj.set_virtual_machine_interface_bindings(kv_pairs)
@@ -2162,18 +2134,24 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         phy_refs = vpg_obj.get_physical_interface_refs()
         assert len(phy_refs) == 1
 
-        # verify annotations remains same
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
+        # Path for ZNode2 creation
+        if validation == 'serviceprovider':
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+        else:
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+
+        # Read Znode2
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_2_uuid == vmi2_obj.uuid, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi2_obj.uuid
 
         # Delete VMIs from VPG
         self.api.virtual_machine_interface_delete(id=vmi1_obj.uuid)
@@ -2206,13 +2184,11 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         proj_obj, fabric_obj, pr_obj = self._create_prerequisites()
         esi_id = '00:11:22:33:44:55:66:77:88:99'
         vlan_1 = 42
-        validation = 'enterprise'
 
         esi_id = '00:11:22:33:44:55:66:77:88:99'
         vlan_1 = 42
         vlan_2 = '4094'
         vlan_3 = 4093
-        validation = 'enterprise'
         pi_name = self.id() + '_physical_interface1'
         pi = PhysicalInterface(name=pi_name,
                                parent_obj=pr_obj,
@@ -2254,6 +2230,25 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vpg_obj.add_virtual_machine_interface(vmi_obj_1)
         self.api.virtual_port_group_update(vpg_obj)
 
+        mock_zk = self._api_server._db_conn._zk_db
+        # Verify if Znode are created for VMI1
+        tagged_validation_node1 = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_obj.uuid,
+            'virtual-network:%s' % vn1.uuid)
+        znode_vlan_1_id = mock_zk._zk_client.read_node(
+            tagged_validation_node1)
+        validation_node1 = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_obj.uuid,
+            'vlan:%s' % znode_vlan_1_id)
+
+        # Read Znode
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
+        # Verify if correct Znodes are created
+        assert znode_vmi_1_uuid == vmi_uuid_1, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi_uuid_1
+
         # Attach Second VMI with untagged vlan
         vn2 = VirtualNetwork('vn2-%s' % (self.id()), parent_obj=proj_obj)
         self.api.virtual_network_create(vn2)
@@ -2275,6 +2270,17 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
         vpg_obj.add_virtual_machine_interface(vmi_obj_2)
         self.api.virtual_port_group_update(vpg_obj)
+
+        validation_node2 = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_obj.uuid,
+            'untagged')
+
+        # Read Znode
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(validation_node2)
+        # Verify if correct Znodes are created
+        assert znode_vmi_2_uuid == vmi_uuid_2, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi_uuid_2
 
         # Create another third VN with second tagged VMI
         vn3 = VirtualNetwork('vn3-%s' % (self.id()), parent_obj=proj_obj)
@@ -2300,86 +2306,45 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
         vpg_obj.add_virtual_machine_interface(vmi_obj_3)
         self.api.virtual_port_group_update(vpg_obj)
-
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
 
-        # fomat annotations to look for in VPG
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        vmi1_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn1.uuid, vlan_1),
-            value=vmi_uuid_1)
-        vmi2_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%s' % (
-                validation, vn2.uuid, vlan_2),
-            value=vmi_uuid_2)
-        vmi2_untagged_kvp = KeyValuePair(
-            key='validation:%s/untagged_vlan_id' % validation,
-            value='%s:%s' % (vlan_2, vmi_uuid_2))
-        vmi3_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn3.uuid, vlan_3),
-            value=vmi_uuid_3)
+        tagged_validation_node3 = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_obj.uuid,
+            'virtual-network:%s' % vn3.uuid)
+        znode_vlan_3_id = mock_zk._zk_client.read_node(
+            tagged_validation_node3)
+        validation_node3 = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_obj.uuid,
+            'vlan:%s' % znode_vlan_3_id)
 
-        # verify annotations are added
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
-        assert vmi3_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
+        # Read Znode
+        znode_vmi_3_uuid = mock_zk._zk_client.read_node(validation_node3)
+        # Verify if correct Znodes are created
+        assert znode_vmi_3_uuid == vmi_uuid_3, \
+            "Znode for VMI_3 (%s) doesn't exist" % vmi_uuid_3
 
-        # annotations to remove
-        updates = [{'field': 'annotations',
-                    'operation': 'delete',
-                    'position': kvp.key} for kvp in vpg_kvps]
-        # remote annotations at DB
-        self._api_server._db_conn._object_db.prop_collection_update(
-            'virtual_port_group', vpg_obj.uuid, updates)
-
-        # verify that annotations are removed from VPG
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
-        assert vmi3_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
+        # Delete all Znodes for VMI1, VMI2, VMI3
+        mock_zk._zk_client.delete_node(validation_node1, True)
+        mock_zk._zk_client.delete_node(validation_node2, True)
+        mock_zk._zk_client.delete_node(validation_node3, True)
 
         # API server DB reinit
         self._api_server._db_init_entries()
 
-        # verify that annoations are added back
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
-        assert vmi3_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
+        # Verify if Znodes are added back
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(validation_node2)
+        znode_vmi_3_uuid = mock_zk._zk_client.read_node(validation_node3)
+
+        # Verify if correct Znodes are created
+        assert znode_vmi_1_uuid == vmi_uuid_1, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi_uuid_1
+        assert znode_vmi_2_uuid == vmi_uuid_2, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi_uuid_2
+        assert znode_vmi_3_uuid == vmi_uuid_3, \
+            "Znode for VMI_3 (%s) doesn't exist" % vmi_uuid_3
 
         # Delete VMIs from VPG
         self.api.virtual_machine_interface_delete(id=vmi_uuid_1)
@@ -2399,7 +2364,6 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vlan_1 = 42
         vlan_2 = '4094'
         vlan_3 = 4093
-        validation = 'serviceprovider'
         pi_name = self.id() + '_physical_interface1'
         pi = PhysicalInterface(name=pi_name,
                                parent_obj=pr_obj,
@@ -2441,6 +2405,19 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vpg_obj.add_virtual_machine_interface(vmi_obj_1)
         self.api.virtual_port_group_update(vpg_obj)
 
+        mock_zk = self._api_server._db_conn._zk_db
+        # Verify if Znode are created for VMI1
+        validation_node1 = os.path.join(
+            _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_uuid,
+            'virtual-network:%s' % vn1.uuid,
+            'vlan:%s' % vlan_1)
+        # Read Znode
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
+        # Verify if correct Znodes are created
+        assert znode_vmi_1_uuid == vmi_uuid_1, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi_uuid_1
+
         # Attach Second VMI with untagged vlan
         vn2 = VirtualNetwork('vn2-%s' % (self.id()), parent_obj=proj_obj)
         self.api.virtual_network_create(vn2)
@@ -2463,6 +2440,17 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vpg_obj.add_virtual_machine_interface(vmi_obj_2)
         self.api.virtual_port_group_update(vpg_obj)
 
+        # Verify if Znode are created for VMI2
+        validation_node2 = os.path.join(
+            _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_uuid,
+            'untagged')
+
+        # Read Znode
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(validation_node2)
+        # Verify if correct Znodes are created
+        assert znode_vmi_2_uuid == vmi_uuid_2, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi_uuid_2
         # Create another third VN with second tagged VMI
         vn3 = VirtualNetwork('vn3-%s' % (self.id()), parent_obj=proj_obj)
         self.api.virtual_network_create(vn3)
@@ -2490,83 +2478,39 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
 
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
 
-        # fomat annotations to look for in VPG
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        vmi1_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn1.uuid, vlan_1),
-            value=vmi_uuid_1)
-        vmi2_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%s' % (
-                validation, vn2.uuid, vlan_2),
-            value=vmi_uuid_2)
-        vmi2_untagged_kvp = KeyValuePair(
-            key='validation:%s/untagged_vlan_id' % validation,
-            value='%s:%s' % (vlan_2, vmi_uuid_2))
-        vmi3_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn3.uuid, vlan_3),
-            value=vmi_uuid_3)
+        # Verify if Znode are created for VMI3
+        validation_node3 = os.path.join(
+            _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_uuid,
+            'virtual-network:%s' % vn3.uuid,
+            'vlan:%s' % vlan_3)
 
-        # verify annotations are added
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
-        assert vmi3_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
+        # Read Znode
+        znode_vmi_3_uuid = mock_zk._zk_client.read_node(validation_node3)
+        # Verify if correct Znodes are created
+        assert znode_vmi_3_uuid == vmi_uuid_3, \
+            "Znode for VMI_3 (%s) doesn't exist" % vmi_uuid_3
 
-        # annotations to remove
-        updates = [{'field': 'annotations',
-                    'operation': 'delete',
-                    'position': kvp.key} for kvp in vpg_kvps]
-        # remote annotations at DB
-        self._api_server._db_conn._object_db.prop_collection_update(
-            'virtual_port_group', vpg_obj.uuid, updates)
-
-        # verify that annotations are removed from VPG
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
-        assert vmi3_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
+        # Delete all Znodes for VMI1, VMI2, VMI3
+        mock_zk._zk_client.delete_node(validation_node1, True)
+        mock_zk._zk_client.delete_node(validation_node2, True)
+        mock_zk._zk_client.delete_node(validation_node3, True)
 
         # API server DB reinit
         self._api_server._db_init_entries()
 
-        # verify that annoations are added back
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
-        assert vmi3_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
+        # Verify if Znodes are added back
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(validation_node2)
+        znode_vmi_3_uuid = mock_zk._zk_client.read_node(validation_node3)
+
+        # Verify if correct Znodes are created
+        assert znode_vmi_1_uuid == vmi_uuid_1, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi_uuid_1
+        assert znode_vmi_2_uuid == vmi_uuid_2, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi_uuid_2
+        assert znode_vmi_3_uuid == vmi_uuid_3, \
+            "Znode for VMI_3 (%s) doesn't exist" % vmi_uuid_3
 
         # Delete VMIs from VPG
         self.api.virtual_machine_interface_delete(id=vmi_uuid_1)
@@ -2625,6 +2569,26 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vpg_obj.add_virtual_machine_interface(vmi_obj_1)
         self.api.virtual_port_group_update(vpg_obj)
 
+        mock_zk = self._api_server._db_conn._zk_db
+        # Verify if Znode are created for VMI1
+        vlan_validation_node1 = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_uuid,
+            'virtual-network:%s' % vn1.uuid)
+        znode_vlan_1_id = mock_zk._zk_client.read_node(
+            vlan_validation_node1)
+        tagged_validation_path = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_uuid,
+            'vlan:%s' % znode_vlan_1_id)
+
+        # Read Znode
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(
+            tagged_validation_path)
+        # Verify if correct Znodes are created
+        assert znode_vmi_1_uuid == vmi_uuid_1, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi_uuid_1
+
         # Attach Second VMI with untagged vlan
         vn2 = VirtualNetwork('vn2-%s' % (self.id()), parent_obj=proj_obj)
         self.api.virtual_network_create(vn2)
@@ -2647,63 +2611,46 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.virtual_port_group_update(vpg_obj)
 
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
+        # Verify if validation Znodes are created for both VMIs
+        # Path for ZNode creation
+        untagged_validation_path = os.path.join(
+            _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_obj.uuid,
+            'untagged')
 
-        # verify annotations are added
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        vmi1_kvp = KeyValuePair(
-            key='validation:enterprise/vn:%s/vlan_id:%d' % (
-                vn1.uuid, vlan_1),
-            value=vmi_uuid_1)
-        vmi2_kvp = KeyValuePair(
-            key='validation:enterprise/vn:%s/vlan_id:%s' % (
-                vn2.uuid, vlan_2),
-            value=vmi_uuid_2)
-        vmi2_untagged_kvp = KeyValuePair(
-            key='validation:enterprise/untagged_vlan_id',
-            value='%s:%s' % (vlan_2, vmi_uuid_2))
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
+        # Read Znode2
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_2_uuid == vmi_uuid_2, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi_uuid_2
 
         # Delete VMIs from VPG
         self.api.virtual_machine_interface_delete(id=vmi_uuid_1)
         self.api.virtual_machine_interface_delete(id=vmi_uuid_2)
 
-        # Verify annotations are removed when VMI is
-        # unassociated
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-
-        assert vmi1_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
+        # Read Znodes
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(tagged_validation_path)
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if Znodes are deleted
+        assert znode_vmi_1_uuid is None, \
+            "Znode for VMI_1 (%s) exists" % vmi_uuid_1
+        assert znode_vmi_2_uuid is None, \
+            "Znode for VMI_2 (%s) exists" % vmi_uuid_2
 
         self.api.virtual_port_group_delete(id=vpg_obj.uuid)
         self.api.physical_interface_delete(id=pi_uuid)
         self.api.physical_router_delete(id=pr_obj.uuid)
         self.api.fabric_delete(id=fabric_obj.uuid)
 
-    def test_sp_vpg_annotations(self):
-        """Verify annotations are added in the SP VPG."""
+    def test_sp_vpg_znode_validations(self):
+        """Verify Znodes are created in the SP VPG."""
         proj_obj, fabric_obj, pr_obj = self._create_prerequisites(
             enterprise_style_flag=False)
 
         esi_id = '00:11:22:33:44:55:66:77:88:99'
-        vlan_1 = 42
+        vlan_1 = '42'
         vlan_2 = '4094'
         pi_name = self.id() + '_physical_interface1'
         pi = PhysicalInterface(name=pi_name,
@@ -2768,50 +2715,41 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.virtual_port_group_update(vpg_obj)
 
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-
-        # verify annotations are added
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        vmi1_kvp = KeyValuePair(
-            key='validation:serviceprovider/vn:%s/vlan_id:%d' % (
-                vn1.uuid, vlan_1),
-            value=vmi_uuid_1)
-        vmi2_kvp = KeyValuePair(
-            key='validation:serviceprovider/vn:%s/vlan_id:%s' % (
-                vn2.uuid, vlan_2),
-            value=vmi_uuid_2)
-        vmi2_untagged_kvp = KeyValuePair(
-            key='validation:serviceprovider/untagged_vlan_id',
-            value='%s:%s' % (vlan_2, vmi_uuid_2))
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
+        # Verify if validation Znodes are created for both VMIs
+        # Path for ZNode creation
+        tagged_validation_path = os.path.join(
+            _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_uuid,
+            'virtual-network:%s' % vn1.uuid,
+            'vlan:%s' % vlan_1)
+        untagged_validation_path = os.path.join(
+            _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+            'virtual-port-group:%s' % vpg_uuid,
+            'untagged')
+        mock_zk = self._api_server._db_conn._zk_db
+        # Read Znodes
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(tagged_validation_path)
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if correct Znodes are created
+        assert znode_vmi_1_uuid == vmi_uuid_1, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi_uuid_1
+        assert znode_vmi_2_uuid == vmi_uuid_2, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi_uuid_2
 
         # Delete VMIs from VPG
         self.api.virtual_machine_interface_delete(id=vmi_uuid_1)
         self.api.virtual_machine_interface_delete(id=vmi_uuid_2)
 
-        # Verify annotations are removed when VMI is
-        # unassociated
-        vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-
-        assert vmi1_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
+        # Read Znodes
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(tagged_validation_path)
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if Znodes are deleted
+        assert znode_vmi_1_uuid is None, \
+            "Znode for VMI_1 (%s) exists" % vmi_uuid_1
+        assert znode_vmi_2_uuid is None, \
+            "Znode for VMI_2 (%s) exists" % vmi_uuid_2
 
         self.api.virtual_port_group_delete(id=vpg_obj.uuid)
         self.api.physical_interface_delete(id=pi_uuid)
@@ -2927,34 +2865,29 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         :42 - VMI1 (tagged)
         :4094 - VMI 2(untagged)
         :System Creates:
-        :    42 VMI-1 annotation
-        :    4094 VMI-2 annotation
-        :    4094 VMI-2 untagged annotation
+        :    42 VMI-1 Znode created
+        :    4094 VMI-2 Znode created
 
         :User changes vlan-ids
         :43 - VMI1 (tagged)
         :4093 - VMI 2 (untagged)
         :System Creates/Updates:
-        :    43 VMI-1 annotation
-        :    4093 VMI-2 annotation
-        :    4093 VMI-2 untagged annotation
-        :    42 VMI-1  annotation - removed
-        :    4094 VMI-2  annotation - removed
-        :    4094 VMI-2 untagged annotation - removed
+        :    42 VMI-1 Znode removed
+        :    4094 VMI-2 Znode removed
+        :    43 VMI-1 Znode created
+        :    4093 VMI-2 Znode created
 
         :User changes untagged to tagged
         :4093 - VMI 2 (tagged)
         :System Creates/Updates:
-        :    4093 - VMI-2 annotation (retains)
-        :    4093 VMI-2 untagged annotation - removed
-        :    43 VMI-1 annotation
+        :    4093 VMI-2 Znode removed
+        :    4093 VMI-2 Znode created
 
         :User changes tagged to untagged
         :43 - VMI1 (untagged)
         :System Creates/Updates:
-        :    43 VMI-1 annotation (retains)
-        :    4093 - VMI-2 annotation (retains)
-        :    43 - VMI-1 untagged annotation - added
+        :    43 VMI-1 Znode removed
+        :    43 VMI-1 Znode created
         """
         vlan_1 = 42
         vlan_2 = '4094'
@@ -2991,36 +2924,51 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
              'parent_obj': proj_obj, 'vn': vn2_obj, 'vpg': vpg_obj.uuid,
              'fabric': fabric_name, 'pis': pi2_fq_name,
              'vlan': vlan_2, 'is_untagged': True}]
+
         vmi_objs = self._create_vmis(vmi_infos)
         vmi1_obj = vmi_objs.get('%s-1' % test_id)
         vmi2_obj = vmi_objs.get('%s-2' % test_id)
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
 
-        # fomat annotations to look for in VPG
-        vmi1_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn1_obj.uuid, vlan_1),
-            value=vmi1_obj.uuid)
-        vmi2_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%s' % (
-                validation, vn2_obj.uuid, vlan_2),
-            value=vmi2_obj.uuid)
-        vmi2_untagged_kvp = KeyValuePair(
-            key='validation:%s/untagged_vlan_id' % validation,
-            value='%s:%s' % (vlan_2, vmi2_obj.uuid))
+        mock_zk = self._api_server._db_conn._zk_db
+        # Verify if Znodes are created for both VMIs
+        # Path for ZNode creation
+        if validation == 'serviceprovider':
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid,
+                'vlan:%s' % vlan_1)
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+        else:
+            tagged_vlan_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid)
+            znode_vlan_1_id = mock_zk._zk_client.read_node(
+                tagged_vlan_validation_path)
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'vlan:%s' % znode_vlan_1_id)
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
 
-        # verify annotations are added
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        assert vmi1_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
+        # Read Znodes
+        znode_vmi_1_uuid = mock_zk._zk_client.read_node(
+            tagged_validation_path)
+        znode_vmi_2_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if correct Znodes are created
+        assert znode_vmi_1_uuid == vmi1_obj.uuid, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi1_obj.uuid
+        assert znode_vmi_2_uuid == vmi2_obj.uuid, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi2_obj.uuid
 
         # update vlan-ID in both VMIs
         vmi_infos = [
@@ -3037,41 +2985,44 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         vmi2_obj = vmi_objs.get('%s-2' % test_id)
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
 
-        # fomat annotations to look for in VPG
-        vmi3_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%d' % (
-                validation, vn1_obj.uuid, vlan_3),
-            value=vmi1_obj.uuid)
-        vmi4_kvp = KeyValuePair(
-            key='validation:%s/vn:%s/vlan_id:%s' % (
-                validation, vn2_obj.uuid, vlan_4),
-            value=vmi2_obj.uuid)
-        vmi4_untagged_kvp = KeyValuePair(
-            key='validation:%s/untagged_vlan_id' % validation,
-            value='%s:%s' % (vlan_4, vmi2_obj.uuid))
+        # Verify if Znodes are created for both VMIs after VLAN update
+        # Path for ZNode creation
+        if validation == 'serviceprovider':
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid,
+                'vlan:%s' % vlan_3)
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+        else:
+            tagged_vlan_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn1_obj.uuid)
+            znode_vlan_2_id = mock_zk._zk_client.read_node(
+                tagged_vlan_validation_path)
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'vlan:%s' % znode_vlan_2_id)
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
 
-        # verify annotations are updated
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        # verify annotations are updated
-        assert vmi3_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi4_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi4_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi4_untagged_kvp, vpg_kvps)
-        assert vmi1_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi1_kvp, vpg_kvps)
-        assert vmi2_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_kvp, vpg_kvps)
-        assert vmi2_untagged_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi2_untagged_kvp, vpg_kvps)
+        # Read Znodes
+        znode_vmi_3_uuid = mock_zk._zk_client.read_node(
+            tagged_validation_path)
+        znode_vmi_4_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if correct Znodes are created
+        assert znode_vmi_3_uuid == vmi1_obj.uuid, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi1_obj.uuid
+        assert znode_vmi_4_uuid == vmi2_obj.uuid, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi2_obj.uuid
 
         # Change VLAN type from untagged to tagged
         vmi_infos = [
@@ -3079,23 +3030,36 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
              'vpg': vpg_obj.uuid,
              'fabric': fabric_name, 'pis': pi2_fq_name,
              'vlan': vlan_4, 'is_untagged': False}]
+
         vmi_objs = self._update_vmis(vmi_infos)
         vmi2_obj = vmi_objs.get('%s-2' % test_id)
-        # verify annotations are updated
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        # should persist
-        assert vmi3_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
-        assert vmi4_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi4_kvp, vpg_kvps)
-        # should have got removed
-        assert vmi4_untagged_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi4_untagged_kvp, vpg_kvps)
+
+        # Path for VMI2 after change of VLAN type
+        if validation == 'serviceprovider':
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn2_obj.uuid,
+                'vlan:%s' % vlan_4)
+        else:
+            tagged_vlan_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'virtual-network:%s' % vn2_obj.uuid)
+            znode_vlan_3_id = mock_zk._zk_client.read_node(
+                tagged_vlan_validation_path)
+            tagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'vlan:%s' % znode_vlan_3_id)
+
+        # Read Znode
+        znode_vmi_5_uuid = mock_zk._zk_client.read_node(
+            tagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_5_uuid == vmi2_obj.uuid, \
+            "Znode for VMI_2 (%s) doesn't exist" % vmi2_obj.uuid
 
         # Change VLAN type from tagged to untagged
         vmi_infos = [
@@ -3103,31 +3067,29 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
              'vpg': vpg_obj.uuid,
              'fabric': fabric_name, 'pis': pi1_fq_name,
              'vlan': '%s' % vlan_3, 'is_untagged': True}]
+
         vmi_objs = self._update_vmis(vmi_infos)
         vmi1_obj = vmi_objs.get('%s-1' % test_id)
-        # verify annotations are updated
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
-        vpg_annotations = vpg_obj.get_annotations() or KeyValuePairs()
-        vpg_kvps = vpg_annotations.get_key_value_pair() or []
-        # format new annoation
-        vmi3_untagged_kvp = KeyValuePair(
-            key='validation:%s/untagged_vlan_id' % validation,
-            value='%s:%s' % (vlan_3, vmi1_obj.uuid))
 
-        # newly created
-        assert vmi3_untagged_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi3_untagged_kvp, vpg_kvps)
-        # should persist
-        assert vmi3_kvp in vpg_kvps, \
-            "(%s) kv pair not found in vpg kvps (%s)" % (
-                vmi3_kvp, vpg_kvps)
-        assert vmi4_kvp in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi4_kvp, vpg_kvps)
-        assert vmi4_untagged_kvp not in vpg_kvps, \
-            "(%s) kv pair found in vpg kvps (%s)" % (
-                vmi4_untagged_kvp, vpg_kvps)
+        # Path for ZNode creation
+        if validation == 'serviceprovider':
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+        else:
+            untagged_validation_path = os.path.join(
+                _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX,
+                'virtual-port-group:%s' % vpg_obj.uuid,
+                'untagged')
+
+        # Read Znode
+        znode_vmi_6_uuid = mock_zk._zk_client.read_node(
+            untagged_validation_path)
+        # Verify if correct Znode is created
+        assert znode_vmi_6_uuid == vmi1_obj.uuid, \
+            "Znode for VMI_1 (%s) doesn't exist" % vmi1_obj.uuid
 
         self.api.virtual_machine_interface_delete(id=vmi1_obj.uuid)
         self.api.virtual_machine_interface_delete(id=vmi2_obj.uuid)
@@ -3141,15 +3103,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.project_delete(id=proj_obj.uuid)
 
     def test_update_vlan_in_vmi_in_same_vpg(self):
+
         # enterprise with fabric level validations
         validation = 'enterprise'
         proj_obj, fabric_obj, pr_obj = self._create_prerequisites()
-        self._test_update_vlan_in_vmi_in_same_vpg(
-            validation, proj_obj, fabric_obj, pr_obj)
-
-        # enterprise without fabric level validations
-        proj_obj, fabric_obj, pr_obj = self._create_prerequisites(
-            disable_vlan_vn_uniqueness_check=True)
         self._test_update_vlan_in_vmi_in_same_vpg(
             validation, proj_obj, fabric_obj, pr_obj)
 
@@ -3440,6 +3397,7 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.physical_router_delete(id=pr_obj.uuid)
         self.api.fabric_delete(id=fabric_obj.uuid)
 
+    @skip('disable_vlan_vn_uniqueness_check is deprecated')
     def test_disable_different_vn_on_same_vlan_across_vpgs_in_enterprise(self):
         """Verify disable_vlan_vn_uniqueness_check is True.
 
