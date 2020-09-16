@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d8fe5c19_c7647ba6",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 923
+      },
+      "writtenOn": "2020-09-16T21:23:36Z",
+      "side": 1,
+      "message": "Looking at the flake8 documentation (https://flake8.pycqa.org/en/latest/), it looks like we need to be using a version of flake8 that is the same as the python code we are executing.  If (from what I see in this tox.ini file) we are running python 3.6.x then we should be running flake8 version 3.6.x and not flake8 3.7.x or flake8 3.8.x.  From the web page, there is a note stating this:\n\n\"It is very important to install Flake8 on the correct version of Python for your needs. If you want Flake8 to properly parse new language features in Python 3.5 (for example), you need it to be installed on 3.5 for Flake8 to understand those features. In many ways, Flake8 is tied to the version of Python on which it runs.\"\n\nPlease advise what I should do.\n\nBy the way, api-server tox.ini file is also tagged to flake8 3.7.9.",
+      "parentUuid": "6adf19d8_65174648",
+      "revId": "c142584e572968f290a7938330071a4eb78ab824",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9db7811f_334d0b8b",
         "filename": "src/config/vnc_openstack/tox.ini",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2020-09-16T05:49:33Z",
       "side": 1,
       "message": "Why so many are being ignored? \nCould you take api-server ignores as reference?",
+      "revId": "c142584e572968f290a7938330071a4eb78ab824",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "45ccd057_5b5f5b14",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 923
+      },
+      "writtenOn": "2020-09-16T21:23:36Z",
+      "side": 1,
+      "message": "As I mentioned in our standup meeting today, please look at the commit message for my reasoning for the list of ignore items. I believe I started with the ignore list in api-server but it obvious grew as I tried to balance importance of a particular flake issue versus the benefit provided.\n\nPlease note I\u0027ve included F821 in the ignore list.  This one exposed the four coding errors that were detect after I made some pep8 failures; in particular removing \u0027import *\u0027 lines that hide the F821 problems detected.  These errors should be addressed in separate tickets.  I didn\u0027t want to try to fix them here since this ticket is strictly for pep8 issues.  I will create these tickets shortly.",
+      "parentUuid": "9db7811f_334d0b8b",
       "revId": "c142584e572968f290a7938330071a4eb78ab824",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
