@@ -159,10 +159,15 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
 
             old_properties = result.get('provider_properties')
             if 'virtual_machine_interface_back_refs' in result:
-                if old_properties != properties:
-                    msg = ("Provider values can not be changed when VMs are "
-                           "already using")
-                    return False, msg
+                # only one case is allowed to pass the next if:
+                # old VN is non-provider and update contains all provider network settings
+                if old_properties or \
+                    ('segmentation_id' not in properties) or \
+                        ('physical_network' not in properties):
+                    if old_properties != properties:
+                        msg = ("Provider values can not be changed when VMs are "
+                            "already using")
+                        return False, msg
 
             if old_properties:
                 if 'segmentation_id' not in properties:
