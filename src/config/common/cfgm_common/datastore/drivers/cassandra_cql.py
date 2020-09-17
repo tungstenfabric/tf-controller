@@ -666,16 +666,18 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
     def _Get_Range(self, cf_name, columns=None,
                    column_count=DEFAULT_COLUMN_COUNT,
                    include_timestamp=False):
+        if column_count != DEFAULT_COLUMN_COUNT:
+            self.options.logger(
+                "CQL driver does not support column_count for `get_range()`.",
+                level=SandeshLevel.SYS_NOTICE)
         ses = self.get_cf(cf_name)
-        res, arg, cql = {}, [column_count], """
+        res, cql = {}, """
         SELECT blobAsText(key), blobAsText(column1), value, WRITETIME(value)
         FROM "{}"
-        LIMIT ?
         """.format(cf_name)
-        pre = ses.prepare(cql)
         # TODO(sahid): If we could GROUP BY key we could probably
         # avoid this loop.
-        for key, column, value, timestamp in ses.execute(pre.bind(arg)):
+        for key, column, value, timestamp in ses.execute(cql):
             res.setdefault(key, Iter(
                 [],
                 # Filtering the columns using cassandra adds

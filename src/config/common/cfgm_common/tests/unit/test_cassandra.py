@@ -433,10 +433,7 @@ class TestCassandraDriverCQL(unittest.TestCase):
             """
             SELECT blobAsText(key), blobAsText(column1), value, WRITETIME(value)
             FROM "obj_uuid_table"
-            LIMIT ?
-            """, session.prepare)
-        session.prepare().bind.assert_called_once_with(
-            [100000])
+            """, session.execute)
 
     @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.Iter.get_next_items')
     def test_get(self, mock_Iter_get_next_items):
