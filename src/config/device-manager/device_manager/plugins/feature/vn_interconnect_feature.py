@@ -7,12 +7,13 @@
 from builtins import str
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    DhcpRelay, Feature, ForwardingOptions, IpAddress, RoutingInstance
+)
 import gevent
 from netaddr import IPAddress, IPNetwork
 
 from .db import DataCenterInterconnectDM, LogicalRouterDM, VirtualNetworkDM
-from .dm_utils import DMUtils
 from .feature_base import FeatureBase
 
 
@@ -24,6 +25,7 @@ class VnInterconnectFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """VN Interconnect Feature"""
         self.pi_map = None
         super(VnInterconnectFeature, self).__init__(
             logger, physical_router, configs)
@@ -230,7 +232,7 @@ class VnInterconnectFeature(FeatureBase):
 
             feature_config.add_routing_instances(ri)
 
-            if ri.get_virtual_network_is_internal() == True:
+            if ri.get_virtual_network_is_internal() is True:
                 internal_vn_ris.append(ri)
 
         rib_map, rp_list = \

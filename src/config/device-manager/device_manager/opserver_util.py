@@ -81,6 +81,7 @@ class OpServerUtils(object):
                      where=None, sort_fields=None, sort=None, limit=None,
                      filter=None, dir=None, is_service_instance=None,
                      session_type=None):
+            """Nested Query Class."""
             self.table = table
             self.start_time = start_time
             self.end_time = end_time
@@ -119,6 +120,7 @@ class OpServerUtils(object):
         value2 = None
 
         def __init__(self, name, value, op, value2=None, suffix=None):
+            """Nested Match Class."""
             self.name = name
             try:
                 self.value = json.loads(value)

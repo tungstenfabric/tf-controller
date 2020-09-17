@@ -6,11 +6,12 @@
 
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    DhcpRelay, Feature, ForwardingOptions, IpAddress, Vlan
+)
 
 from .db import NetworkIpamDM, PhysicalInterfaceDM, PortDM, TagDM, \
     VirtualNetworkDM
-from .dm_utils import DMUtils
 from .feature_base import FeatureBase
 
 
@@ -22,6 +23,7 @@ class InfraBMSAccessFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """Infra BMS Access Feature"""
         self.COMMENT_STR = "Underlay Infra BMS Access"
         self._pi_map = None
         self._forwarding_options_config = None
