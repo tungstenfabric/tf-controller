@@ -233,11 +233,21 @@
           "job_template_playbooks": {
             "playbook_info": [
               {
-                "device_family": "",
-                "multi_device_playbook": true,
                 "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/device_import.yml",
-                "vendor": "Juniper"
-              }
+                "multi_device_playbook": true,
+                "vendor": "Juniper”,
+                "device_family": "",
+                "job_completion_weightage": 50,
+                "sequence_no": 0
+              },
+              {
+                "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/topology_discovery.yml",
+                "multi_device_playbook": true,
+                "vendor": "Juniper”,
+                "device_family": "",
+                "job_completion_weightage": 50,
+                "sequence_no": 1
+              }            
             ]
           },
           "job_template_output_schema": "",
