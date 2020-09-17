@@ -12,10 +12,13 @@ port profile feature
 from builtins import str
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    Feature, LacpParams, PhysicalInterface, PortParameters, PortProfile,
+    StormControl
+)
 
 from .db import PhysicalInterfaceDM, PortProfileDM, StormControlProfileDM, \
-    VirtualMachineInterfaceDM, VirtualPortGroupDM
+    VirtualPortGroupDM
 from .feature_base import FeatureBase
 
 import gevent # noqa
@@ -29,6 +32,7 @@ class PortProfileFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """Port Profile Feature"""
         self.pi_list = None
         self.pp_map = None
         super(PortProfileFeature, self).__init__(logger, physical_router,
