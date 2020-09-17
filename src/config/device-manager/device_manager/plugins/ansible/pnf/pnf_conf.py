@@ -6,7 +6,10 @@
 
 from builtins import str
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    Bgp, LogicalInterface, Pim, PimInterface, PimRp, RoutingInstance,
+    RoutingInstanceProtocols, SecurityPolicy, SecurityZone
+)
 
 from .ansible_role_common import AnsibleRoleCommon
 from .db import BgpRouterDM, InstanceIpDM, LogicalInterfaceDM, \

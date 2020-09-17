@@ -5,7 +5,9 @@
 
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    Feature, Firewall, FirewallFilter, From, Subnet, Term, Then
+)
 import netaddr
 
 from .db import AccessControlListDM, LogicalInterfaceDM, SecurityGroupDM, \
@@ -21,6 +23,7 @@ class SecurityGroupFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """Security Group Feature"""
         self.pi_map = None
         self.sg_pis = None
         self.firewall_config = None
