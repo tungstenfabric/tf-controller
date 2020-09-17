@@ -4,7 +4,9 @@
 
 """Assisted Replicator Feature Implementation."""
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    AssistedReplicator, Feature, RoutingInstance, Vlan
+)
 
 from .db import IntentMapDM, VirtualNetworkDM
 from .dm_utils import DMUtils
@@ -19,6 +21,7 @@ class AssistedReplicatorFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """Assisted Replicator Feature"""
         super(AssistedReplicatorFeature, self).__init__(
             logger, physical_router, configs)
     # end __init__

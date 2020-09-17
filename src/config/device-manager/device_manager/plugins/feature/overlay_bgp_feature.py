@@ -6,7 +6,9 @@
 
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    Bgp, Feature, Subnet
+)
 
 from .db import BgpRouterDM, GlobalSystemConfigDM, PhysicalRouterDM
 from .dm_utils import DMUtils
@@ -21,6 +23,7 @@ class OverlayBgpFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """Overlay BGP Feature"""
         super(OverlayBgpFeature, self).__init__(logger, physical_router,
                                                 configs)
     # end __init__
