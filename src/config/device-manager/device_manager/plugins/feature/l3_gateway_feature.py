@@ -7,7 +7,9 @@
 from builtins import str
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    Feature, RoutingInstance, Vlan
+)
 
 from .db import LogicalRouterDM, VirtualMachineInterfaceDM, VirtualNetworkDM
 from .dm_utils import DMUtils
@@ -24,6 +26,7 @@ class L3GatewayFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """L3 Gateway Feature"""
         self.pi_map = None
         super(L3GatewayFeature, self).__init__(
             logger, physical_router, configs)
@@ -47,7 +50,7 @@ class L3GatewayFeature(FeatureBase):
         if lr_uuid:
             lr = LogicalRouterDM.get(lr_uuid)
             if lr:
-                if lr.is_master == True:
+                if lr.is_master is True:
                     is_master_vn = True
         ri = RoutingInstance(
             name=ri_name, virtual_network_mode='l3',

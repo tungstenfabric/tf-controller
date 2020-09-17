@@ -18,12 +18,9 @@ from vnc_api.gen.resource_client import (
     VirtualNetwork
 )
 from vnc_api.gen.resource_xsd import (
-    IpamSubnets,
     IpamSubnetType,
     PermType2,
-    SubnetListType,
     SubnetType,
-    VirtualNetworkType,
     VnSubnetsType
 )
 
@@ -33,6 +30,7 @@ class FabricManager(object):
     _instance = None
 
     def __init__(self, args, logger, vnc_api):
+        """Fabric Manager"""
         FabricManager._instance = self
         self._fabric_ansible_dir = args.fabric_ansible_dir
         self._logger = logger
@@ -105,12 +103,12 @@ class FabricManager(object):
     # Load init data for job playbooks like JobTemplates, Tags, etc
     def _load_init_data(self):
         """
-        Load init data for job playbooks.
-
-        This function loads init data from a data file specified by the
-        argument '--fabric_ansible_dir' to the database. The data file
-        must be in JSON format and follow the format below
-
+        Load init data for job playbooks.This function loads init data
+        from a data file specified by the argument '--fabric_ansible_dir'
+        to the database.
+        """
+        """
+        The data file must be in JSON format and follow the format below
         "my payload": {
             "object_type": "tag"
             "objects": [

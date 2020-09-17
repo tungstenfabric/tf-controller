@@ -7,7 +7,9 @@
 from builtins import str
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    Feature, LinkAggrGroup, PortParameters, RoutingInstance, Vlan
+)
 
 from .db import LogicalInterfaceDM, LogicalRouterDM, PhysicalInterfaceDM, \
     PortProfileDM, VirtualNetworkDM, VirtualPortGroupDM
@@ -25,6 +27,7 @@ class L2GatewayFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """L2 Gateway Feature"""
         # Augment pi_map to also include
         # member links of aes so as to add to feature config
         self.pi_map = None
@@ -47,7 +50,7 @@ class L2GatewayFeature(FeatureBase):
         if lr_uuid:
             lr = LogicalRouterDM.get(lr_uuid)
             if lr:
-                if lr.is_master == True:
+                if lr.is_master is True:
                     is_master_vn = True
 
         ri = RoutingInstance(
