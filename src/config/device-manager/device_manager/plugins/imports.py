@@ -6,7 +6,7 @@
 # imported before DeviceConf invokes plugin registrations.
 # Please add an entry here if there is a new plugin
 #
-
+# flake8: noqa
 
 def import_plugins():
     from .juniper_conf import JuniperConf

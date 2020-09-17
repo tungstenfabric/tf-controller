@@ -11,7 +11,10 @@ telemetry feature
 
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    CollectorParams, EnabledInterfaceParams, Feature, PhysicalInterface,
+    SflowProfile, Telemetry
+)
 
 from .db import FlowNodeDM, PhysicalInterfaceDM, SflowProfileDM, \
     TelemetryProfileDM
@@ -26,6 +29,7 @@ class TelemetryFeature(FeatureBase):
     # end feature_name
 
     def __init__(self, logger, physical_router, configs):
+        """Telemetry Feature"""
         self.pi_list = None
         self.telemetry_map = None
         super(TelemetryFeature, self).__init__(logger, physical_router,
