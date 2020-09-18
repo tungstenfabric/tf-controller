@@ -360,14 +360,16 @@ class VncApiServer(object):
         if value in poss_values:
             return
 
-        res = re.match('[0-9]+:[0-9]+', value)
+        # will match numbers number:number and wildcards *:* / .*:.*
+        res = re.match('(\.?\*?|[0-9]+):(\.?\*?|[0-9]+)', value)
         if res is None:
             raise ValueError('Invalid community format %s. '
                              'Change to \'number:number\''
                               % value)
 
         asn = value.split(':')
-        if int(asn[0]) > 65535:
+        if unicode(asn[0], 'utf-8').isnumeric() and int(asn[0]) > 65535:
+            # check if ans is not an wildcard and then if fits in range
             raise ValueError('Out of range ASN value %s. '
                              'ASN values cannot exceed 65535.'
                              % value)
