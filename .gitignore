@@ -5,7 +5,6 @@ build
 gen
 *.egg-info
 *.log
-*.db
 dist
 .*.sw*
 .project
