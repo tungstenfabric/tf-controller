@@ -337,7 +337,9 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             connector.cluster.EXEC_PROFILE_DEFAULT: ExecutionProfile(
                 # TODO(sahid): Do we really want QUORUM when counting?
                 consistency_level=self.ConsistencyLevel,
-                row_factory=self.RowFactory),
+                row_factory=self.RowFactory,
+                request_timeout=120,
+            ),
         }
 
         # Addresses, ports related options
