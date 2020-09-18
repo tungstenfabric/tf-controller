@@ -360,7 +360,7 @@ class VncApiServer(object):
         if value in poss_values:
             return
 
-        res = re.match('[0-9]+:[0-9]+', value)
+        res = re.match('(\.?\*?|[0-9]+):(\.?\*?|[0-9]+)', value)
         if res is None:
             raise ValueError('Invalid community format %s. '
                              'Change to \'number:number\''
