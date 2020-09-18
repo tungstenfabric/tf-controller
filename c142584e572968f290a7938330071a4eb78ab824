@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "6dfc4e4e_6f92c00f",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-18T01:30:57Z",
+      "side": 1,
+      "message": "api-server is using flake 3.7.9 because it do not support 3.8.x. we had a break during https://contrail-jws.atlassian.net/browse/CEM-15654\nHowever Am not aware of flake8 recommendation to run respective version of flake8 for the given python version. \nIn that case, we might to adopt \"python\u003cversion\u003e -m pip install flake8\" suggested by flake8 documentation. Could you create a follow up task (jira task) to investigate and implement that?",
+      "parentUuid": "d8fe5c19_c7647ba6",
+      "revId": "c142584e572968f290a7938330071a4eb78ab824",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "9db7811f_334d0b8b",
         "filename": "src/config/vnc_openstack/tox.ini",
         "patchSetId": 1
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "As I mentioned in our standup meeting today, please look at the commit message for my reasoning for the list of ignore items. I believe I started with the ignore list in api-server but it obvious grew as I tried to balance importance of a particular flake issue versus the benefit provided.\n\nPlease note I\u0027ve included F821 in the ignore list.  This one exposed the four coding errors that were detect after I made some pep8 failures; in particular removing \u0027import *\u0027 lines that hide the F821 problems detected.  These errors should be addressed in separate tickets.  I didn\u0027t want to try to fix them here since this ticket is strictly for pep8 issues.  I will create these tickets shortly.",
       "parentUuid": "9db7811f_334d0b8b",
+      "revId": "c142584e572968f290a7938330071a4eb78ab824",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8c0e04dd_59904ce6",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-18T01:30:57Z",
+      "side": 1,
+      "message": "please do not ignore any violation just because it do not affects execution. Idea of this change is to ensure our codes follow certain standards. \nAgree its a painful to start with. but once they\u0027re in place, it\u0027s going to make our code clean.\nIf you feel its too many changes to handle at one go, please create follow up Jira tasks to fix them subsequently \nI\u0027d suggest to atleast fix F821 and include it as a part of R2011.",
+      "parentUuid": "45ccd057_5b5f5b14",
       "revId": "c142584e572968f290a7938330071a4eb78ab824",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
