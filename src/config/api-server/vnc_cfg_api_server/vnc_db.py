@@ -265,7 +265,7 @@ class VncServerCassandraClient(VncCassandraClient):
 class VncServerKombuClient(VncKombuClient):
     def __init__(self, db_client_mgr, rabbit_ip, rabbit_port,
                  rabbit_user, rabbit_password, rabbit_vhost, rabbit_ha_mode,
-                 host_ip, rabbit_health_check_interval, **kwargs):
+                 host_ip, rabbit_health_check_interval, worker_id, **kwargs):
         self._event_dispatcher = EventDispatcher(
             db_client_mgr=db_client_mgr,
             spawn_dispatch_greenlet=True
@@ -273,8 +273,8 @@ class VncServerKombuClient(VncKombuClient):
         self._db_client_mgr = db_client_mgr
         self._sandesh = db_client_mgr._sandesh
         listen_port = db_client_mgr.get_server_port()
-        q_name = 'vnc_config.%s-%s' % (socket.getfqdn(host_ip),
-            listen_port)
+        q_name = 'vnc_config.%s-%s-%s' % (socket.getfqdn(host_ip),
+            listen_port, worker_id)
         super(VncServerKombuClient, self).__init__(
             rabbit_ip, rabbit_port, rabbit_user, rabbit_password, rabbit_vhost,
             rabbit_ha_mode, q_name, self._dbe_subscribe_callback,
@@ -1073,7 +1073,7 @@ class VncDbClient(object):
         self._msgbus = VncServerKombuClient(self, rabbit_servers,
             rabbit_port, rabbit_user, rabbit_password,
             rabbit_vhost, rabbit_ha_mode, host_ip,
-            health_check_interval, **kwargs)
+            health_check_interval, api_svr_mgr.get_worker_id(), **kwargs)
 
     def log_db_response_time(self, db, response_time, oper,
                              level=SandeshLevel.SYS_DEBUG):
