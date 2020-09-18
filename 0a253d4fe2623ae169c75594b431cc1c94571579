@@ -1,0 +1,763 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "25d67abb_ee2962c2",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/discover_os_computes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 387,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "This is not only Create now. I think we should go with CommandClient or something like this.",
+      "range": {
+        "startLine": 387,
+        "startChar": 26,
+        "endLine": 387,
+        "endChar": 42
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f7bc9063_f9f7f5d3",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Fix imports",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 89
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e459c357_6849431a",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Remove spaces",
+      "range": {
+        "startLine": 164,
+        "startChar": 0,
+        "endLine": 164,
+        "endChar": 8
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "73c679a6_76da9aa9",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "This comment is not valid anymore. Just remove this",
+      "range": {
+        "startLine": 174,
+        "startChar": 4,
+        "endLine": 174,
+        "endChar": 34
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cc68ed0a_e73553bf",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "spaces",
+      "range": {
+        "startLine": 228,
+        "startChar": 0,
+        "endLine": 228,
+        "endChar": 12
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "738a7db9_6b6de781",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "spaces",
+      "range": {
+        "startLine": 231,
+        "startChar": 0,
+        "endLine": 231,
+        "endChar": 12
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bdfcbff7_a0edeaef",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "spaces",
+      "range": {
+        "startLine": 239,
+        "startChar": 0,
+        "endLine": 239,
+        "endChar": 12
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b4a706d0_df841742",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "I made a mistake: I forgot that every resource of the list of resources returned by Contrail Command is wrapped with RESOURCE TYPE DICT. For example we can receive the following list:\n\n[\n   {\n      \"node\": {\n         \"uuid\": some_uuid,\n         \"name\": some_name,\n         \"parent_name\": some_parent_name\n         etc.\n      }\n   },\n   {\n      \"node\": {\n         \"uuid\": some_uuid,\n         \"name\": some_name,\n         \"parent_name\": some_parent_name\n         etc.\n      },\n   }\n]\n\nAfter creating new resources I decided to add them to this list as well so next resources are also included when checking if the resource is not already present in the DB. The problem is that resources returned from SYNC response look like this:\n\n[\n   {\n      \"uuid\": some_uuid,\n      \"name\": some_name,\n      \"parent_name\": some_parent_name\n   },\n   {\n      \"uuid\": some_uuid,\n      \"name\": some_name,\n      \"parent_name\": some_parent_name\n   }\n]\n\nThey are not wrapped with resource type. So when we extend the list of existing_nodes we suddenly get a list that looks like this:\n\n[\n   {\n      \"node\": {\n         \"uuid\": some_uuid,\n         \"name\": some_name,\n         \"parent_name\": some_parent_name\n         etc.\n      }\n   },\n   {\n      \"node\": {\n         \"uuid\": some_uuid,\n         \"name\": some_name,\n         \"parent_name\": some_parent_name\n         etc.\n      },\n   },\n   {\n      \"uuid\": some_uuid,\n      \"name\": some_name,\n      \"parent_name\": some_parent_name\n   },\n   {\n      \"uuid\": some_uuid,\n      \"name\": some_name,\n      \"parent_name\": some_parent_name\n   }\n]\n\nIt will cause problems when we iterate over the list because some UUIDs need to be reached like this:\n\nexisting_nodes[0][\"node\"][\"uuid\"]\n\nand some like this:\n\nexisting_nodes[0][\"uuid\"]\n\nWe need to stick to one option. Either always wrap these objects with {\"RESOURCE NAME\": } dict or unwrap objects that we received from list_cc_resource",
+      "range": {
+        "startLine": 289,
+        "startChar": 8,
+        "endLine": 291,
+        "endChar": 66
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c3b3d9b5_38740273",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Tags need to be created first so we could specify tag references.\n\nPossibly SYNC sorts resources properly to create them in correct order but I think we don\u0027t need to grab them in a single resource.",
+      "range": {
+        "startLine": 305,
+        "startChar": 12,
+        "endLine": 305,
+        "endChar": 66
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2d93761_e899d47e",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Perhaps we should make sure that there was only one object in response.",
+      "range": {
+        "startLine": 308,
+        "startChar": 12,
+        "endLine": 308,
+        "endChar": 51
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74c08fd8_e83f55fa",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Please wrap this with {\"resources\": []} instead of doing that in get_cc_node_payload",
+      "range": {
+        "startLine": 340,
+        "startChar": 23,
+        "endLine": 340,
+        "endChar": 53
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "808d6de1_93864889",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "This is example response from creating node:\n\n[{\"data\":{\"display_name\":\"green-node\",\"fq_name\":[\"default-global-system-config\",\"green-node\"],\"id_perms\":{\"enable\":true,\"permissions\":{\"group\":\"cloud-admin-group\",\"group_access\":7,\"other_access\":7,\"owner\":\"cloud-admin\",\"owner_access\":7},\"user_visible\":true,\"uuid\":{\"uuid_mslong\":5946575715623718317,\"uuid_lslong\":9780376651739983405}},\"name\":\"green-node\",\"parent_type\":\"global-system-config\",\"parent_uuid\":\"beefbeef-beef-beef-beef-beefbeef0001\",\"perms2\":{\"global_access\":0,\"owner\":\"admin\",\"owner_access\":7,\"share\":[]},\"uuid\":\"52867b1b-67b7-4dad-87ba-e0bf007c6e2d\",\"to\":[\"default-global-system-config\",\"kek2\"]},\"kind\":\"node\",\"operation\":\"CREATE\"}]\n\nList of created resources.\n\nEach of resource dictionaries contains 3 keys:\n\ndata - it\u0027s the data of the object: uuid, parent_type, name etc.\nkind - resource type\noperation - operation used by sync",
+      "range": {
+        "startLine": 348,
+        "startChar": 25,
+        "endLine": 348,
+        "endChar": 36
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b68e1569_dd54fcd4",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Please add a test case for resource that doesn\u0027t have name to verify if name will be generated from hostname or from mac_address",
+      "range": {
+        "startLine": 366,
+        "startChar": 4,
+        "endLine": 366,
+        "endChar": 39
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c52b3368_4e24e566",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 391,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Check if returning none instead of empty response won\u0027t cause any issues.",
+      "range": {
+        "startLine": 391,
+        "startChar": 12,
+        "endLine": 391,
+        "endChar": 23
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "18c62ee5_334176d0",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 394,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Remove spaces",
+      "range": {
+        "startLine": 394,
+        "startChar": 0,
+        "endLine": 394,
+        "endChar": 8
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "efde7f7d_ab800eaf",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Spaces",
+      "range": {
+        "startLine": 405,
+        "startChar": 0,
+        "endLine": 405,
+        "endChar": 8
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "218272f0_27e90f9e",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 414,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Spaces",
+      "range": {
+        "startLine": 414,
+        "startChar": 0,
+        "endLine": 414,
+        "endChar": 12
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8ecaafea_53202986",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Spaces",
+      "range": {
+        "startLine": 418,
+        "startChar": 0,
+        "endLine": 418,
+        "endChar": 8
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7587d52f_0b37ecc4",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Spaces",
+      "range": {
+        "startLine": 433,
+        "startChar": 0,
+        "endLine": 433,
+        "endChar": 8
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d191e20a_e3a7df06",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Spaces",
+      "range": {
+        "startLine": 440,
+        "startChar": 0,
+        "endLine": 440,
+        "endChar": 8
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9588379b_e7ea1fff",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/assert_dictionaries.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Rename this to make it a bit more obvious and add docummentation for this.\n\nThis function is a helper to check if all fields from expected dictionary exist in actual dictionary.\n\nRight now it compares only 4 values:\n\n- dictionaries - checks if all keys from left dictionary exist in right dictionary. Then compares all values from left dict with corresponding values from right list,\n- lists - checks if length is equal and if values are equal\n- strings\n- ints\n\nDue to dictionaries and lists comparison is recursive with keeping the rules described above.\n\nAny other value types that appears in the expected dictionary will raise NotImplemented exception.",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 1,
+        "endChar": 42
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3d55e8d3_b4e1ca59",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/fake_cc_client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "IMO this option can be removed unless you will create additional import nodes unit test that will check the behaviour for the situation where sync fails. You would have to try to make an sync error using Contrail Command so you don\u0027t need to do that.",
+      "range": {
+        "startLine": 9,
+        "startChar": 12,
+        "endLine": 9,
+        "endChar": 35
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "282e32bc_0e5f6e84",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/fake_cc_client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "The workflow changed during writing tests:\n\nInstead of point 2, 3, 4 Fake CC Client reads the payload/kind argument and finds first matching payload/kind from the AcceptRequest list. If it won\u0027t find any matching request it will raise an exception.\n\nThere is no response code anymore. There is just response.",
+      "range": {
+        "startLine": 58,
+        "startChar": 7,
+        "endLine": 69,
+        "endChar": 74
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f16d8f98_8a25a484",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/fake_cc_client.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Force this to print its string representation.\n\nMake one test fail to see if the message will have AcceptRequest description instead of “Missing 1 function calls: [\u003cfake_cc_client.GetAcceptRequest instance at 0x113b81230\u003e]”",
+      "range": {
+        "startLine": 156,
+        "startChar": 45,
+        "endLine": 156,
+        "endChar": 67
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "84565ecc_e346ef1e",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Fix imports",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 38
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6394b668_a3854513",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Either use these consts or remove them",
+      "range": {
+        "startLine": 9,
+        "startChar": 0,
+        "endLine": 12,
+        "endChar": 25
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "830a9213_158a1214",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "It\u0027s not required anymore",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 34
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1a1a37f6_fe740f2c",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Import function returns only information about created nodes. It doesn\u0027t return port or tag data so I think we can just separate testing the response to a few separate test cases that will check only the response for a few situations and don\u0027t check this response anywhere else.",
+      "range": {
+        "startLine": 70,
+        "startChar": 8,
+        "endLine": 70,
+        "endChar": 25
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0386970e_daae052c",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Remove this comment",
+      "range": {
+        "startLine": 316,
+        "startChar": 8,
+        "endLine": 316,
+        "endChar": 56
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c67a16a5_2df03e0e",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Please check in Contrail Command if this is definitely true.\n\nIf not create a proper test to cover this situation and if yes then we should create a bug for this I think.",
+      "range": {
+        "startLine": 423,
+        "startChar": 4,
+        "endLine": 426,
+        "endChar": 9
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "be57a489_fd068ee7",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Complete those tests",
+      "range": {
+        "startLine": 776,
+        "startChar": 0,
+        "endLine": 781,
+        "endChar": 12
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0f337893_e4226e6d",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 962,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Complete this test",
+      "range": {
+        "startLine": 962,
+        "startChar": 8,
+        "endLine": 962,
+        "endChar": 24
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "eeb1bb19_b84e7739",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/test/units/test_import_nodes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 998,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-09-18T18:34:08Z",
+      "side": 1,
+      "message": "Finish",
+      "range": {
+        "startLine": 998,
+        "startChar": 8,
+        "endLine": 998,
+        "endChar": 12
+      },
+      "revId": "0a253d4fe2623ae169c75594b431cc1c94571579",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
