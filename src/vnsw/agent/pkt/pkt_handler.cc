@@ -303,7 +303,8 @@ PktHandler::PktModuleName PktHandler::ParsePacket(const AgentHdr &hdr,
 
 
     if (hdr.cmd == AgentHdr::TRAP_MAC_MOVE ||
-        hdr.cmd == AgentHdr::TRAP_MAC_LEARN) {
+        hdr.cmd == AgentHdr::TRAP_MAC_LEARN ||
+        hdr.cmd == AgentHdr::TRAP_MAC_IP_LEARNING) {
         return MAC_LEARNING;
     }
 
@@ -898,6 +899,13 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
     if (pkt_info->ether_type == ETHERTYPE_ARP) {
         pkt_info->arp = (ether_arp *) (pkt + len);
         pkt_type = PktType::ARP;
+        union {
+            uint8_t data[sizeof(in_addr_t)];
+            in_addr_t addr;
+        } bytes;
+        memcpy(bytes.data, pkt_info->arp->arp_spa, sizeof(in_addr_t));
+        in_addr_t spa = ntohl(bytes.addr);
+        pkt_info->ip_saddr = IpAddress(Ip4Address(spa));
         return len;
     }
 

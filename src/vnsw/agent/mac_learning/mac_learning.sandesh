@@ -13,6 +13,14 @@ traceobject sandesh MacAging {
     5: string msg;
 }
 
+traceobject sandesh MacIpLearning {
+    1: string vrf;
+    2: string ip;
+    3: string mac;
+    4: string intf;
+    5: string msg;
+}
+
 struct SandeshMacEntry {
     1: string vrf;
     2: string mac;
