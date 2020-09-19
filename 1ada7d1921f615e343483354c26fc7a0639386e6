@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6c27b3d2_a4979aa8",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 474
+      },
+      "writtenOn": "2020-09-19T17:08:52Z",
+      "side": 1,
+      "message": "yes done, removed TODO",
+      "parentUuid": "77e9ea0a_87bde981",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "4daf634f_327046bb",
         "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
         "patchSetId": 8
@@ -33,6 +51,24 @@
       "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4f4c87d_18d68a18",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 474
+      },
+      "writtenOn": "2020-09-19T17:08:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4daf634f_327046bb",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "1bb4d0d3_200d497e",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 474
+      },
+      "writtenOn": "2020-09-19T17:08:52Z",
+      "side": 1,
+      "message": "yes",
+      "parentUuid": "d01a4865_c321eae9",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ae886e75_2b929795",
         "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
         "patchSetId": 8
@@ -64,6 +118,24 @@
       "writtenOn": "2020-09-19T16:03:59Z",
       "side": 1,
       "message": "Check if it is better to call StopHealthCheckService rather than StopTask. I had issue with this in cem15367",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8a06f037_4b28a0ad",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 474
+      },
+      "writtenOn": "2020-09-19T17:08:52Z",
+      "side": 1,
+      "message": "let us discuss this as I think that calling stop task avoids health check  processing in mac learning context.",
+      "parentUuid": "ae886e75_2b929795",
       "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
