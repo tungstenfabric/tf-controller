@@ -4,7 +4,7 @@
 {%- endif %}
 {%- set rt_interfaces_payloads = [] %}
 {%- for phy_interface in rt_interfaces_list or [] %}
-{%-     if phy_interface.name | regex_search('^em|^vme|^fxp') %}
+{%-     if phy_interface.name | regex_search('^em|^vme|^fxp|^re0') %}
 {%-         set physical_interface_mac_address = phy_interface.get('current-physical-address') %}
 {%-         if 'logical-interface' in phy_interface %}
 {%-             if phy_interface['logical-interface'] is mapping %}
