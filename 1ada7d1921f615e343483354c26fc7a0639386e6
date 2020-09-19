@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "77e9ea0a_87bde981",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 695
+      },
+      "writtenOn": "2020-09-19T16:03:59Z",
+      "side": 1,
+      "message": "Needed? seems to be done below?",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4daf634f_327046bb",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 695
+      },
+      "writtenOn": "2020-09-19T16:03:59Z",
+      "side": 1,
+      "message": "Nit. extra space.",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d01a4865_c321eae9",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 695
+      },
+      "writtenOn": "2020-09-19T16:03:59Z",
+      "side": 1,
+      "message": "This is actually adding to VMI list?",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ae886e75_2b929795",
+        "filename": "src/vnsw/agent/mac_learning/mac_ip_learning.cc",
+        "patchSetId": 8
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 695
+      },
+      "writtenOn": "2020-09-19T16:03:59Z",
+      "side": 1,
+      "message": "Check if it is better to call StopHealthCheckService rather than StopTask. I had issue with this in cem15367",
+      "revId": "1ada7d1921f615e343483354c26fc7a0639386e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
