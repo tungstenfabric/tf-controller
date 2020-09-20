@@ -2577,18 +2577,18 @@ TEST_F(RouteTest, NonEcmpToEcmpConversion) {
     Ip4Address ip = Ip4Address::from_string("2.1.1.1");
     InetUnicastRouteEntry *rt = RouteGet("vrf8", ip, 32);
     EXPECT_TRUE(rt != NULL);
-    // 3 paths due to interface and a path by InetEvpnPeer
-    EXPECT_TRUE(rt->GetPathList().size() == 4);
+    // 3 paths due to interface and two patha by InetEvpnPeer
+    EXPECT_TRUE(rt->GetPathList().size() == 5);
     EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::INTERFACE);
 
     CreateVmportWithEcmp(input2, 3);
     client->WaitForIdle();
-    EXPECT_TRUE(rt->GetPathList().size() == 5);
+    EXPECT_TRUE(rt->GetPathList().size() == 6);
     EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
 
     CreateVmportEnv(input2, 3);
     client->WaitForIdle();
-    EXPECT_TRUE(rt->GetPathList().size() == 4);
+    EXPECT_TRUE(rt->GetPathList().size() == 5);
     EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::INTERFACE);
 
     DeleteVmportEnv(input2, 3, true);
@@ -3107,6 +3107,7 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
     EXPECT_TRUE( si_vrf != NULL);
     WAIT_FOR(1000, 1000, (si_vrf->si_vn_ref() == NULL));
     DelVrf(si_to_routing_vn_vrf_name);
+    DelLrBridgeVrf("vn1", 1);
     DelRoutingVrf(1);
     DelIPAM("vn1");
     DelIPAM("vn2");

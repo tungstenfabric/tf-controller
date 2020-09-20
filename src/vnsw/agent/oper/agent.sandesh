@@ -185,6 +185,20 @@ struct BondInterface {
    3: string intf_status;
 }
 
+/**
+ * Structure definition of learnt mac ip entries
+ */
+
+struct LearntMacIpSandeshList {
+    /** ip address of learnt mac-ip */
+    1: string ip_addr;
+    /** mac address of learnt mac-ip */
+    2: string mac_addr;
+    /** boolean value which indicates if l2 routes are installed */
+    3: string l2_installed;
+    /** boolean value which indicates if l3 routes are installed */
+    4: string l3_installed;
+}
 struct ItfSandeshData {
     /** Index value for interface in oper db table */
     1: i32 index;
@@ -335,6 +349,8 @@ struct ItfSandeshData {
    67: i32 max_flows;
    68: list<string> policy_set_fwaas_list;
    69: list<BondInterface> bond_interface_list;
+   70: bool mac_ip_learning_enable;
+   71: list<LearntMacIpSandeshList> mac_ip_list;
 }
 
 /**
@@ -427,6 +443,8 @@ struct VnSandeshData {
     22: i32 max_flows;
     /** List of multicast-policy(s) associated with virtual network */
     23: list<MulticastPolicyLink> mp_list;
+    24: bool mac_ip_learning_enable;
+    25: string health_check_uuid;
 }
 
 /**

@@ -1096,11 +1096,13 @@ static void BuildVn(VmInterfaceConfigData *data,
         }
         BuildTagList(tag_list, adj_node);
     }
+
+    data->mac_ip_learning_enable_ = vn->mac_ip_learning_enable();
 }
 
 static void FillHbsInfo(VmInterfaceConfigData *data,
                          IFMapNode *vn_node) {
-    //Reset the hbs interface 
+    //Reset the hbs interface
     data->hbs_intf_type_ =  VmInterface::HBS_INTF_INVALID;
 
     if (vn_node == NULL) {

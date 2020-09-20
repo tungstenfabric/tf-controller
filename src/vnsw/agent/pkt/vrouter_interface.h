@@ -48,6 +48,7 @@ public:
         vr_cmd_list_[AGENT_TRAP_ROUTER_ALERT] = AgentHdr::TRAP_ROUTER_ALERT;
         vr_cmd_list_[AGENT_TRAP_MAC_LEARN] = AgentHdr::TRAP_MAC_LEARN;
         vr_cmd_list_[AGENT_TRAP_MAC_MOVE] = AgentHdr::TRAP_MAC_MOVE;
+        vr_cmd_list_[AGENT_TRAP_MAC_IP_LEARNING] = AgentHdr::TRAP_MAC_IP_LEARNING;
         vr_cmd_list_[AGENT_TRAP_BFD] = AgentHdr::TRAP_BFD;
         // Init and populate vector for translating command params from vrouter
         // to agent
