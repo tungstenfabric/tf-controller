@@ -90,6 +90,7 @@ class NetworkPolicyST(ResourceBaseST):
     # end update
 
     def add_rules(self, entries):
+        retain_as_path_changed = False
         if entries is None:
             if not self.rules:
                 return False
@@ -97,6 +98,7 @@ class NetworkPolicyST(ResourceBaseST):
         else:
             if self.rules == entries.policy_rule:
                 return False
+            rules_backup = self.rules
             self.rules = entries.policy_rule
         np_set = set()
         si_set = set()
@@ -107,6 +109,17 @@ class NetworkPolicyST(ResourceBaseST):
                     prule.action_list.mirror_to.analyzer_name):
                 si_set.add(prule.action_list.mirror_to.analyzer_name)
             if prule.action_list.apply_service:
+                for backup_rule in rules_backup:
+                    try:
+                        backup_retain_path = (backup_rule.action_list.
+                                              service_properties.
+                                              retain_as_path)
+                        retain_path = (prule.action_list.
+                                       service_properties.retain_as_path)
+                        if backup_retain_path != retain_path:
+                            retain_as_path_changed = True
+                    except AttributeError:
+                        continue
                 si_set = si_set.union(prule.action_list.apply_service)
             for addr in prule.src_addresses + prule.dst_addresses:
                 if addr.network_policy:
@@ -130,13 +143,24 @@ class NetworkPolicyST(ResourceBaseST):
             if policy:
                 policy.network_policys = policy_set
         self.referred_policies = np_set
-        self.update_service_instances(si_set)
+        self.update_service_instances(si_set, retain_as_path_changed)
         self.update_subnet_only_rules()
         return True
     # end add_rules
 
-    def update_service_instances(self, si_set):
+    def update_service_instances(self, si_set, retain_as_path_changed=False):
         old_si_set = self.service_instances
+        if retain_as_path_changed:
+            vns = list(self.virtual_networks)
+            left_vn = vns[0]
+            right_vn = vns[1]
+            npvn = ResourceBaseST.get_obj_type_map().get(
+                'virtual_network').get(left_vn)
+            list(npvn.service_chains.values())[0][0].created = False
+            npvn = ResourceBaseST.get_obj_type_map().get(
+                'virtual_network').get(right_vn)
+            list(npvn.service_chains.values())[0][0].created = False
+
         for si_name in old_si_set - si_set:
             si_list = self._service_instances.get(si_name)
             if si_list:
