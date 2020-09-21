@@ -1913,6 +1913,27 @@
           ],
           "name": "default-telemetry-profile-3",
           "telemetry_profile_is_default": true
+        },
+        {
+          "fq_name": [
+            "default-domain", "default-project", "default-telemetry-profile-4"
+          ],
+          "name": "default-telemetry-profile-4",
+          "telemetry_profile_is_default": true
+        },
+        {
+          "fq_name": [
+            "default-domain", "default-project", "default-telemetry-profile-5"
+          ],
+          "name": "default-telemetry-profile-5",
+          "telemetry_profile_is_default": true
+        },
+        {
+          "fq_name": [
+            "default-domain", "default-project", "default-telemetry-profile-6"
+          ],
+          "name": "default-telemetry-profile-6",
+          "telemetry_profile_is_default": true
         }
       ]
     },
