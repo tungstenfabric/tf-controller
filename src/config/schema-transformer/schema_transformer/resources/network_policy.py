@@ -2,6 +2,7 @@
 # Copyright (c) 2019 Juniper Networks, Inc. All rights reserved.
 #
 
+import copy
 import itertools
 
 from vnc_api.gen.resource_xsd import VirtualNetworkPolicyType
@@ -31,6 +32,7 @@ class NetworkPolicyST(ResourceBaseST):
         self.security_logging_objects = set()
         # policies referred in this policy as src or dst
         self.referred_policies = set()
+        self.retain_as_path_rules = set()
         # policies referring to this policy as src or dst
         self.update(obj)
         for vn_ref in self.obj.get_virtual_network_back_refs() or []:
@@ -90,6 +92,7 @@ class NetworkPolicyST(ResourceBaseST):
     # end update
 
     def add_rules(self, entries):
+        retain_as_path_changed = False
         if entries is None:
             if not self.rules:
                 return False
@@ -97,8 +100,11 @@ class NetworkPolicyST(ResourceBaseST):
         else:
             if self.rules == entries.policy_rule:
                 return False
+            original_retain_path_rules = copy.deepcopy(
+                self.retain_as_path_rules)
             self.rules = entries.policy_rule
         np_set = set()
+        retain_set = set()
         si_set = set()
         for prule in self.rules:
             if prule.action_list is None:
@@ -107,6 +113,21 @@ class NetworkPolicyST(ResourceBaseST):
                     prule.action_list.mirror_to.analyzer_name):
                 si_set.add(prule.action_list.mirror_to.analyzer_name)
             if prule.action_list.apply_service:
+                try:
+                    retain_path = (prule.action_list.
+                                   service_properties.retain_as_path)
+                    self.retain_as_path_rules.add(prule)
+                    retain_set.add(prule)
+                    if not retain_as_path_changed:
+                        for orig_rule in original_retain_path_rules:
+                            orig_retain_path = (orig_rule.action_list.
+                                                service_properties.
+                                                retain_as_path)
+                            if orig_retain_path != retain_path:
+                                retain_as_path_changed = True
+                                break
+                except AttributeError:
+                    pass
                 si_set = si_set.union(prule.action_list.apply_service)
             for addr in prule.src_addresses + prule.dst_addresses:
                 if addr.network_policy:
@@ -130,13 +151,25 @@ class NetworkPolicyST(ResourceBaseST):
             if policy:
                 policy.network_policys = policy_set
         self.referred_policies = np_set
-        self.update_service_instances(si_set)
+        self.retain_as_path_rules = retain_set
+        self.update_service_instances(si_set, retain_as_path_changed)
         self.update_subnet_only_rules()
         return True
     # end add_rules
 
-    def update_service_instances(self, si_set):
+    def update_service_instances(self, si_set, retain_as_path_changed=False):
         old_si_set = self.service_instances
+        if retain_as_path_changed:
+            vns = list(self.virtual_networks)
+            left_vn = vns[0]
+            right_vn = vns[1]
+            npvn = ResourceBaseST.get_obj_type_map().get(
+                'virtual_network').get(left_vn)
+            list(npvn.service_chains.values())[0][0].created = False
+            npvn = ResourceBaseST.get_obj_type_map().get(
+                'virtual_network').get(right_vn)
+            list(npvn.service_chains.values())[0][0].created = False
+
         for si_name in old_si_set - si_set:
             si_list = self._service_instances.get(si_name)
             if si_list:
