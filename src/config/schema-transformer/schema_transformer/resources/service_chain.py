@@ -302,6 +302,7 @@ class ServiceChain(ResourceBaseST):
 
     def _create(self, si_info):
         self.partially_created = True
+        _retain_as_path = False
         vn1_obj = ResourceBaseST.get_obj_type_map().get(
             'virtual_network').locate(self.left_vn)
         vn2_obj = ResourceBaseST.get_obj_type_map().get(
@@ -341,6 +342,9 @@ class ServiceChain(ResourceBaseST):
 
             service_name1 = vn1_obj.get_service_name(self.name, service)
             service_name2 = vn2_obj.get_service_name(self.name, service)
+
+            si = ResourceBaseST.get_obj_type_map().get(
+                'service_instance').get(service)
             has_pnf = (si_info[service]['virtualization_type'] ==
                        'physical-device')
             ri_obj = ResourceBaseST.get_obj_type_map().get(
@@ -366,6 +370,22 @@ class ServiceChain(ResourceBaseST):
             self._logger.info("service chain %s: creating %s chain" %
                               (self.name, mode))
 
+            # Assumming there is one network policy in Service Instance
+            net_policys = list(si.network_policys)
+            if len(net_policys) != 0:
+                first_policy = net_policys[0]
+                policy_st = ResourceBaseST.get_obj_type_map().get(
+                    'network_policy').get(first_policy)
+                if policy_st:
+                    # extract retain as path value
+                    policy_obj = policy_st.obj
+                    policy_entries = policy_obj.network_policy_entries
+                    policy_rule = policy_entries.policy_rule[0]
+                    if policy_rule:
+                        rule_ac_list = policy_rule.get_action_list()
+                        np_serv_props = rule_ac_list.get_service_properties()
+                        if np_serv_props:
+                            _retain_as_path = np_serv_props.retain_as_path
             if not nat_service:
                 ri_obj = ResourceBaseST.get_obj_type_map().get(
                     'routing_instance').create(service_name2, vn2_obj, has_pnf)
@@ -411,8 +431,16 @@ class ServiceChain(ResourceBaseST):
                         last_service_instance)
                 if not result:
                     return
-            self._vnc_lib.routing_instance_update(service_ri1.obj)
+
+            if service_ri1:
+                service_ri1.add_service_info(
+                    vn2_obj, service_instance=service,
+                    retain_as_path=_retain_as_path)
+                self._vnc_lib.routing_instance_update(service_ri1.obj)
             if service_ri2:
+                service_ri2.add_service_info(
+                    vn1_obj, service_instance=service,
+                    retain_as_path=_retain_as_path)
                 self._vnc_lib.routing_instance_update(service_ri2.obj)
             first_service_instance = False
 
