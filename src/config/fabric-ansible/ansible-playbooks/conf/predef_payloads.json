@@ -1923,6 +1923,27 @@
           ],
           "name": "default-telemetry-profile-3",
           "telemetry_profile_is_default": true
+        },
+        {
+          "fq_name": [
+            "default-domain", "default-project", "default-telemetry-profile-4"
+          ],
+          "name": "default-telemetry-profile-4",
+          "telemetry_profile_is_default": true
+        },
+        {
+          "fq_name": [
+            "default-domain", "default-project", "default-telemetry-profile-5"
+          ],
+          "name": "default-telemetry-profile-5",
+          "telemetry_profile_is_default": true
+        },
+        {
+          "fq_name": [
+            "default-domain", "default-project", "default-telemetry-profile-6"
+          ],
+          "name": "default-telemetry-profile-6",
+          "telemetry_profile_is_default": true
         }
       ]
     },
@@ -1960,6 +1981,71 @@
           "sflow_parameters": {
             "enabled_interface_type": "access",
             "stats_collection_frequency": {}
+          }
+        }
+      ]
+    },
+    {
+      "object_type": "grpc-profile",
+      "objects": [
+        {
+          "fq_name": [
+            "default-domain", "default-project", "grpc-default-profile"
+          ],
+          "name": "grpc-default-profile",
+          "grpc_profile_is_default": true,
+          "grpc_parameters": {
+            "allow_clients": {
+              "subnet": [
+                {
+                  "ip_prefix": "0.0.0.0",
+                  "ip_prefix_len": 0
+                }
+              ]
+            },
+            "enabled_sensor_params": {
+              "physical_health": true,
+              "interface_health": true,
+              "control_plane_health": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "object_type": "snmp-profile",
+      "objects": [
+        {
+          "fq_name": [
+            "default-domain", "default-project", "snmp-default-profile"
+          ],
+          "name": "snmp-default-profile",
+          "snmp_profile_is_default": true,
+          "snmp_parameters": {
+            "enabled_sensor_params": {
+              "physical_health": true,
+              "interface_health": true,
+              "control_plane_health": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "object_type": "netconf-profile",
+      "objects": [
+        {
+          "fq_name": [
+            "default-domain", "default-project", "netconf-default-profile"
+          ],
+          "name": "netconf-default-profile",
+          "netconf_profile_is_default": true,
+          "netconf_parameters": {
+            "enabled_sensor_params": {
+              "physical_health": true,
+              "interface_health": true,
+              "control_plane_health": true
+            }
           }
         }
       ]
@@ -3443,6 +3529,24 @@
       "from_fq_name": [ "default-domain", "default-project", "default-telemetry-profile-3" ],
       "to_type": "sflow-profile",
       "to_fq_name": [ "default-domain", "default-project", "sflow-access-interfaces" ]
+    },
+    {
+      "from_type": "telemetry-profile",
+      "from_fq_name": [ "default-domain", "default-project", "default-telemetry-profile-4" ],
+      "to_type": "grpc-profile",
+      "to_fq_name": [ "default-domain", "default-project", "grpc-default-profile" ]
+    },
+    {
+      "from_type": "telemetry-profile",
+      "from_fq_name": [ "default-domain", "default-project", "default-telemetry-profile-5" ],
+      "to_type": "snmp-profile",
+      "to_fq_name": [ "default-domain", "default-project", "snmp-default-profile" ]
+    },
+    {
+      "from_type": "telemetry-profile",
+      "from_fq_name": [ "default-domain", "default-project", "default-telemetry-profile-6" ],
+      "to_type": "netconf-profile",
+      "to_fq_name": [ "default-domain", "default-project", "netconf-default-profile" ]
     },
     {
       "from_type": "device-functional-group",
