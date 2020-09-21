@@ -37,7 +37,7 @@ from .db import AccessControlListDM, BgpRouterDM, DataCenterInterconnectDM, \
     FabricNamespaceDM, FeatureConfigDM, FeatureDM, \
     FeatureFlagDM, FloatingIpDM, \
     FloatingIpPoolDM, FlowNodeDM, GlobalSystemConfigDM, \
-    GlobalVRouterConfigDM, \
+    GlobalVRouterConfigDM, GrpcProfileDM, \
     InstanceIpDM, IntentMapDM, InterfaceRouteTableDM, \
     LinkAggregationGroupDM, LogicalInterfaceDM, \
     LogicalRouterDM, NetworkDeviceConfigDM, NetworkIpamDM, NodeProfileDM, \
@@ -451,6 +451,7 @@ class DeviceManager(object):
         StormControlProfileDM.locate_all()
         TelemetryProfileDM.locate_all()
         SflowProfileDM.locate_all()
+        GrpcProfileDM.locate_all()
         ServiceInstanceDM.locate_all()
         ServiceApplianceSetDM.locate_all()
         ServiceApplianceDM.locate_all()
