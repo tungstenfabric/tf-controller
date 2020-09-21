@@ -86,7 +86,7 @@ class VerifyServicePolicy(VerifyPolicy):
         if sci is None:
             raise Exception('Service chain info not found for %s' % fq_name)
         expected_attrs = expected.__dict__
-        sci_attrs = expected.__dict__
+        sci_attrs = sci.__dict__
         self.assertEqual(list(expected_attrs.keys()), list(sci_attrs.keys()))
         for attr in list(expected_attrs.keys()):
             if attr == 'service_chain_address':
@@ -645,6 +645,7 @@ class TestServicePolicy(STTestCase, VerifyServicePolicy):
             routing_instance=':'.join(self.get_ri_name(vn1_obj)),
             service_chain_address='0.255.255.252',
             service_instance=si_name)
+
         self.check_service_chain_info(self.get_ri_name(vn2_obj, sc_ri_name),
                                       sci)
         sci = ServiceChainInfo(
@@ -2472,4 +2473,72 @@ class TestServicePolicy(STTestCase, VerifyServicePolicy):
         self.delete_vn(fq_name=vn1_obj.get_fq_name())
 
     # end test_routing_policy_primary_ri_ref_present
+
+    def test_retain_as_path_populated_in_ri(self):
+        # create  vn1
+        vn1_name = self.id() + 'vn1'
+        vn1_obj = self.create_virtual_network(vn1_name,
+                                              ['10.0.0.0/24', '1000::/16'])
+        # create vn2
+        vn2_name = self.id() + 'vn2'
+        vn2_obj = self.create_virtual_network(vn2_name,
+                                              ['20.0.0.0/24', '2000::/16'])
+
+        # Create service policy
+        service_name = self.id() + 's1'
+        np = self.create_network_policy(vn1_obj, vn2_obj,
+                                        [service_name], version=2,
+                                        retain_as_path=True)
+
+        seq = SequenceType(1, 1)
+        vnp = VirtualNetworkPolicyType(seq)
+
+        vn1_obj.set_network_policy(np, vnp)
+        vn2_obj.set_network_policy(np, vnp)
+        self._vnc_lib.virtual_network_update(vn1_obj)
+        self._vnc_lib.virtual_network_update(vn2_obj)
+
+        sc = self.wait_to_get_sc()
+        sc_ri_name = 'service-' + sc + '-default-domain_default-project_' + \
+                     service_name
+
+        self.check_ri_ref_present(self.get_ri_name(vn1_obj),
+                                  self.get_ri_name(vn1_obj, sc_ri_name))
+        self.check_ri_ref_present(self.get_ri_name(vn2_obj, sc_ri_name),
+                                  self.get_ri_name(vn2_obj))
+
+        si_name = 'default-domain:default-project:' + service_name
+        v4_service_chain_address = '0.255.255.250'
+        sci_first_ri = ServiceChainInfo(
+            service_chain_id=sc,
+            prefix=['20.0.0.0/24'],
+            routing_instance=':'.join(self.get_ri_name(vn2_obj)),
+            service_chain_address=v4_service_chain_address,
+            service_instance=si_name, retain_as_path=True)
+
+        sci_second_ri = ServiceChainInfo(
+            service_chain_id=sc,
+            prefix=['10.0.0.0/24'],
+            routing_instance=':'.join(self.get_ri_name(vn1_obj)),
+            service_chain_address=v4_service_chain_address,
+            service_instance=si_name, retain_as_path=True)
+
+        self.check_service_chain_info(self.get_ri_name(vn1_obj, sc_ri_name),
+                                      sci_first_ri)
+
+        self.check_service_chain_info(self.get_ri_name(vn2_obj, sc_ri_name),
+                                      sci_second_ri)
+
+        vn1_obj.del_network_policy(np)
+        vn2_obj.del_network_policy(np)
+        self._vnc_lib.virtual_network_update(vn1_obj)
+        self._vnc_lib.virtual_network_update(vn2_obj)
+        self.check_ri_refs_are_deleted(fq_name=self.get_ri_name(vn1_obj))
+
+        self.delete_network_policy(np)
+        self._vnc_lib.virtual_network_delete(fq_name=vn1_obj.get_fq_name())
+        self._vnc_lib.virtual_network_delete(fq_name=vn2_obj.get_fq_name())
+        self.check_vn_is_deleted(uuid=vn1_obj.uuid)
+        self.check_ri_is_deleted(fq_name=self.get_ri_name(vn2_obj))
+    # test_retain_as_path_populated_in_ri
 # end class TestServicePolicy
