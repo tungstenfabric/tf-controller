@@ -18,11 +18,13 @@ import gevent
 from netaddr import IPAddress, IPNetwork
 from vnc_api.vnc_api import FloatingIp, FloatingIpPool, InterfaceMirrorType
 from vnc_api.vnc_api import IpamSubnetType, MirrorActionType, NetworkIpam
-from vnc_api.vnc_api import NoIdError, PolicyBasedForwardingRuleType, PortType
+from vnc_api.vnc_api import NoIdError
+from vnc_api.vnc_api import PolicyBasedForwardingRuleType, PortType
 from vnc_api.vnc_api import RouteAggregate, RouteListType, RouteTargetList
 from vnc_api.vnc_api import RoutingPolicy, RoutingPolicyServiceInstanceType
 from vnc_api.vnc_api import RoutingPolicyType, SequenceType
 from vnc_api.vnc_api import ServiceChainInfo, ServiceInterfaceTag
+from vnc_api.vnc_api import ServicePropertiesType
 from vnc_api.vnc_api import SubnetType, VirtualMachine, VirtualMachineInterface
 from vnc_api.vnc_api import VirtualMachineInterfacePropertiesType
 from vnc_api.vnc_api import VirtualNetwork, VirtualNetworkPolicyType
@@ -52,6 +54,20 @@ class VerifyServicePolicy(VerifyPolicy):
                     raise Exception('Service chain not created')
                 return sc.name
         raise Exception('Service chain not found')
+
+    @retries(8, 2)
+    def wait_to_get_routing_instances_in_service_vn(self, left_vn=None,
+                                                    right_vn=None, ri_count=4):
+        left_vn_obj = self._vnc_lib.virtual_network_read(
+            id=left_vn.uuid, exclude_children=False)
+        right_vn_obj = self._vnc_lib.virtual_network_read(
+            id=right_vn.uuid, exclude_children=False)
+
+        if (len(left_vn_obj.routing_instances) == ri_count and
+                len(right_vn_obj.routing_instances) == ri_count):
+            return
+        else:
+            raise Exception('Service RIs not created!')
 
     @retries(5)
     def check_evpn_service_chain_prefix_match(self, fq_name, prefix):
@@ -86,7 +102,7 @@ class VerifyServicePolicy(VerifyPolicy):
         if sci is None:
             raise Exception('Service chain info not found for %s' % fq_name)
         expected_attrs = expected.__dict__
-        sci_attrs = expected.__dict__
+        sci_attrs = sci.__dict__
         self.assertEqual(list(expected_attrs.keys()), list(sci_attrs.keys()))
         for attr in list(expected_attrs.keys()):
             if attr == 'service_chain_address':
@@ -645,6 +661,7 @@ class TestServicePolicy(STTestCase, VerifyServicePolicy):
             routing_instance=':'.join(self.get_ri_name(vn1_obj)),
             service_chain_address='0.255.255.252',
             service_instance=si_name)
+
         self.check_service_chain_info(self.get_ri_name(vn2_obj, sc_ri_name),
                                       sci)
         sci = ServiceChainInfo(
@@ -2472,4 +2489,162 @@ class TestServicePolicy(STTestCase, VerifyServicePolicy):
         self.delete_vn(fq_name=vn1_obj.get_fq_name())
 
     # end test_routing_policy_primary_ri_ref_present
+
+    def test_retain_as_path_populated_in_ri(self):
+        # create  vn1
+        vn1_name = self.id() + 'vn1'
+        vn1_obj = self.create_virtual_network(vn1_name,
+                                              ['10.0.0.0/24', '1000::/16'])
+        # create vn2
+        vn2_name = self.id() + 'vn2'
+        vn2_obj = self.create_virtual_network(vn2_name,
+                                              ['20.0.0.0/24', '2000::/16'])
+
+        # Create service policy
+        service_name_1 = self.id() + 's1'
+        service_name_2 = self.id() + 's2'
+        service_name_3 = self.id() + 's3'
+        np = self.create_network_policy(vn1_obj, vn2_obj,
+                                        list([service_name_1, service_name_2,
+                                              service_name_3]),
+                                        version=2, service_mode='in-network',
+                                        retain_as_path=True)
+
+        seq = SequenceType(1, 1)
+        vnp = VirtualNetworkPolicyType(seq)
+
+        vn1_obj.set_network_policy(np, vnp)
+        vn2_obj.set_network_policy(np, vnp)
+        self._vnc_lib.virtual_network_update(vn1_obj)
+        self._vnc_lib.virtual_network_update(vn2_obj)
+
+        sc = self.wait_to_get_sc()
+        self.wait_to_get_routing_instances_in_service_vn(
+            left_vn=vn1_obj, right_vn=vn2_obj, ri_count=4)
+
+        sc_ri_name_1 = 'service-' + sc + '-default-domain_default-project_' + \
+            service_name_1
+
+        sc_ri_name_2 = 'service-' + sc + '-default-domain_default-project_' + \
+            service_name_2
+
+        sc_ri_name_3 = 'service-' + sc + '-default-domain_default-project_' + \
+            service_name_3
+
+        # Check RIs for all 3 SIs
+        si_name_1 = 'default-domain:default-project:' + service_name_1
+        si_name_2 = 'default-domain:default-project:' + service_name_2
+        si_name_3 = 'default-domain:default-project:' + service_name_3
+
+        def check_ri_refs_for_service_vms():
+            left_vn = self._vnc_lib.virtual_network_read(id=vn1_obj.uuid)
+            right_vn = self._vnc_lib.virtual_network_read(id=vn2_obj.uuid)
+            left_vn_ri_refs = \
+                [ref['to'] for ref in left_vn.get_routing_instances()]
+            right_vn_ri_refs = \
+                [ref['to'] for ref in right_vn.get_routing_instances()]
+
+            self.assertTrue(len(left_vn_ri_refs) == 4)
+            self.assertTrue(len(right_vn_ri_refs) == 4)
+            self.assertTrue(
+                self.get_ri_name(left_vn, sc_ri_name_1)
+                in left_vn_ri_refs)
+            self.assertTrue(
+                self.get_ri_name(left_vn, sc_ri_name_1)
+                in left_vn_ri_refs)
+            self.assertTrue(
+                self.get_ri_name(left_vn, sc_ri_name_1)
+                in left_vn_ri_refs)
+
+            self.assertTrue(
+                self.get_ri_name(left_vn, sc_ri_name_1)
+                in left_vn_ri_refs)
+            self.assertTrue(self.get_ri_name(
+                left_vn, sc_ri_name_1)
+                in left_vn_ri_refs)
+            self.assertTrue(self.get_ri_name(
+                left_vn, sc_ri_name_1)
+                in left_vn_ri_refs)
+
+        check_ri_refs_for_service_vms()
+
+        def create_si_objs_and_check_si_info(sc_addr_1, sc_addr_2,
+                                             _retain_as_path, si_name,
+                                             sc_ri_name):
+
+            sci_first_ri = ServiceChainInfo(
+                service_chain_id=sc,
+                source_routing_instance=':'.join(self.get_ri_name(vn1_obj)),
+                prefix=['20.0.0.0/24'],
+                routing_instance=':'.join(self.get_ri_name(vn2_obj)),
+                service_chain_address=sc_addr_1,
+                service_instance=si_name, retain_as_path=_retain_as_path)
+
+            sci_second_ri = ServiceChainInfo(
+                source_routing_instance=':'.join(self.get_ri_name(vn2_obj)),
+                service_chain_id=sc,
+                prefix=['10.0.0.0/24'],
+                routing_instance=':'.join(self.get_ri_name(vn1_obj)),
+                service_chain_address=sc_addr_2,
+                service_instance=si_name, retain_as_path=_retain_as_path)
+
+            self.check_service_chain_info(
+                self.get_ri_name(vn1_obj, sc_ri_name),
+                sci_first_ri)
+
+            self.check_service_chain_info(
+                self.get_ri_name(vn2_obj, sc_ri_name),
+                sci_second_ri)
+
+        create_si_objs_and_check_si_info(
+            '0.255.255.252', '0.255.255.251',
+            True, si_name_1, sc_ri_name_1)
+
+        create_si_objs_and_check_si_info(
+            '0.255.255.250', '0.255.255.249',
+            True, si_name_2, sc_ri_name_2)
+
+        create_si_objs_and_check_si_info(
+            '0.255.255.248', '0.255.255.247',
+            True, si_name_3, sc_ri_name_3)
+
+        # Now update the policy with retain as path as true
+        np_policy_rule = np.get_network_policy_entries().policy_rule[0]
+        np_action_list = np_policy_rule.action_list
+        np_action_list.set_service_properties(
+            ServicePropertiesType(retain_as_path=False))
+        np.set_network_policy_entries(np.get_network_policy_entries())
+        self._vnc_lib.network_policy_update(np)
+        sc = self.wait_to_get_sc()
+        self.wait_to_get_routing_instances_in_service_vn(
+            left_vn=vn1_obj, right_vn=vn2_obj, ri_count=4)
+
+        check_ri_refs_for_service_vms()
+
+        # recheck sc infos for all 6 ris
+        create_si_objs_and_check_si_info(
+            '0.255.255.252', '0.255.255.251',
+            False, si_name_1, sc_ri_name_1)
+
+        create_si_objs_and_check_si_info(
+            '0.255.255.250', '0.255.255.249',
+            False, si_name_2, sc_ri_name_2)
+
+        create_si_objs_and_check_si_info(
+            '0.255.255.248', '0.255.255.247',
+            False, si_name_3, sc_ri_name_3)
+
+        # tear down all objects
+        vn1_obj.del_network_policy(np)
+        vn2_obj.del_network_policy(np)
+        self._vnc_lib.virtual_network_update(vn1_obj)
+        self._vnc_lib.virtual_network_update(vn2_obj)
+        self.check_ri_refs_are_deleted(fq_name=self.get_ri_name(vn1_obj))
+
+        self.delete_network_policy(np)
+        self._vnc_lib.virtual_network_delete(fq_name=vn1_obj.get_fq_name())
+        self._vnc_lib.virtual_network_delete(fq_name=vn2_obj.get_fq_name())
+        self.check_vn_is_deleted(uuid=vn1_obj.uuid)
+        self.check_ri_is_deleted(fq_name=self.get_ri_name(vn2_obj))
+    # test_retain_as_path_populated_in_ri
 # end class TestServicePolicy
