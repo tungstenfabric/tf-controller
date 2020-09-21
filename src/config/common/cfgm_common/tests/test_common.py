@@ -917,7 +917,8 @@ class TestCase(testtools.TestCase, fixtures.TestWithFixtures):
         return service_instance.get_fq_name_str()
 
     def create_network_policy(self, vn1, vn2, service_list=None, mirror_service=None,
-                              auto_policy=False, create_right_port = True, **kwargs):
+                              auto_policy=False, create_right_port=True, 
+                              retain_as_path=False, **kwargs):
         vn1_name = vn1 if isinstance(vn1, basestring) else vn1.get_fq_name_str()
         vn2_name = vn2 if isinstance(vn2, basestring) else vn2.get_fq_name_str()
 
@@ -944,7 +945,11 @@ class TestCase(testtools.TestCase, fixtures.TestWithFixtures):
             action_list.apply_service=service_name_list
         else:
             action_list.simple_action='pass'
-
+        
+        if mirror_service or service_list:
+            action_list.service_properties = ServicePropertiesType(
+                retain_as_path=retain_as_path)
+        
         prule = PolicyRuleType(direction="<>", protocol="any",
                                src_addresses=[addr1], dst_addresses=[addr2],
                                src_ports=[port], dst_ports=[port],
