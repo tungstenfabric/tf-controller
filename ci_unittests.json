@@ -294,7 +294,7 @@
           "src/contrail-analytics/contrail-opserver:test",
           "src/contrail-analytics/contrail-query-engine:test",
           "src/contrail-api-client/schema:test",
-          "src/contrail-analytics/contrail-topology:test",
+          "src/contrail-analytics/tf-topology:test",
           "controller/src/vcenter-import:test"
         ],
         "misc_test_targets" : [ ]
