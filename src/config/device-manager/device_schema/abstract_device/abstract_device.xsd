@@ -263,10 +263,18 @@
     </xsd:all>
 </xsd:complexType>
 
+<xsd:complexType name="GrpcProfile">
+    <xsd:all>
+        <xsd:element name="name" type="xsd:string"/>
+        <xsd:element name="allow-clients" type="dac:Subnet" maxOccurs="unbounded"/>
+    </xsd:all>
+</xsd:complexType>
+
 <xsd:complexType name="Telemetry">
     <xsd:all>
         <xsd:element name="name" type="xsd:string"/>
         <xsd:element name="sflow-profile" type="dac:SflowProfile"/>
+        <xsd:element name="grpc-profile" type="dac:GrpcProfile"/>
     </xsd:all>
 </xsd:complexType>
 
