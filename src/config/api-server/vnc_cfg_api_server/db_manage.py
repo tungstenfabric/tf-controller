@@ -76,12 +76,14 @@ except ImportError:
     from vnc_cfg_ifmap import VncServerCassandraClient
 
 
-__version__ = "1.34"
+__version__ = "1.35"
 """
 NOTE: As that script is not self contained in a python package and as it
 supports multiple Contrail releases, it brings its own version that needs to be
 manually updated each time it is modified. We also maintain a change log list
 in that header:
+* 1.35:
+  - Repairing problems with auditing isolated k8s VNs 
 * 1.34:
   - Do not report false positive missing VN for k8s floating ips
     not in floating ip pool
@@ -1121,8 +1123,17 @@ class DatabaseManager(object):
         # and has IIP
         for (vn_id, sn_id) in renamed_keys:
             if vn_id in cassandra_all_vns:
-                cassandra_all_vns[sn_id] = copy.deepcopy(
-                    cassandra_all_vns[vn_id])
+                if sn_id in cassandra_all_vns:
+                    for key in cassandra_all_vns[vn_id]:
+                        try:
+                            cassandra_all_vns[sn_id][key]['addrs'].extend(
+                                cassandra_all_vns[vn_id][key]['addrs'])
+                        except KeyError:
+                            cassandra_all_vns[sn_id][key] = \
+                                cassandra_all_vns[vn_id][key]
+                else:
+                    cassandra_all_vns[sn_id] = copy.deepcopy(
+                        cassandra_all_vns[vn_id])
                 del cassandra_all_vns[vn_id]
         return ret_errors
 
