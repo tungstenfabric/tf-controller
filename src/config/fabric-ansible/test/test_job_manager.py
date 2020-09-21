@@ -105,6 +105,51 @@ class TestJobManager(test_case.JobTestCase):
         self.assertEqual(wm.result_handler.job_result_status,
                          JobStatus.SUCCESS)
 
+    # Test for job with a recovery playbook
+    def test_execute_job_with_recovery(self):
+        # Create a job template
+        play_info_1 = PlaybookInfoType(
+            playbook_uri='job_manager_test_error.yml',
+            vendor='Juniper',
+            device_family='MX',
+            sequence_no=0)
+        play_info_2 = PlaybookInfoType(
+            playbook_uri='job_manager_test_recovery.yml',
+            vendor='Juniper',
+            device_family='QFX',
+            sequence_no=1,
+            recovery_playbook=True)
+
+        playbooks_list = PlaybookInfoListType([play_info_1, play_info_2])
+
+        job_template = JobTemplate(job_template_type='workflow',
+                                   job_template_multi_device_job=False,
+                                   job_template_playbooks=playbooks_list,
+                                   name='Test_template_with_recovery')
+
+        job_template_uuid = self._vnc_lib.job_template_create(job_template)
+
+        # Mock creation of a process
+        self.mock_play_book_execution(rc=42)
+
+        # Mock sandesh
+        TestJobManagerUtils.mock_sandesh_check()
+
+        # getting details required for job manager execution
+        job_input_json, log_utils = TestJobManagerUtils.get_min_details(
+            job_template_uuid)
+
+        wm = WFManager(log_utils.get_config_logger(), self._vnc_lib,
+                       job_input_json, log_utils, self.fake_zk_client)
+        wm.start_job()
+
+        self.assertEqual(wm.result_handler.job_result_status,
+                         JobStatus.FAILURE)
+
+        expected_job_result_message = "Finished cleaning up after the error"
+        self.assertTrue(wm.result_handler.job_result_message,
+                        expected_job_result_message)
+
     # to test the case when only device vendor is passed in job_template_input
     def test_execute_job_with_vendor_only(self):
         play_info = PlaybookInfoType(playbook_uri='job_manager_test.yaml',
@@ -293,11 +338,11 @@ class TestJobManager(test_case.JobTestCase):
 
         return job_input_json, log_utils
 
-    def mock_play_book_execution(self):
+    def mock_play_book_execution(self, rc=0):
         mock_subprocess32 = flexmock(subprocess32)
         playbook_id = uuid.uuid4()
         mock_unique_pb_id = flexmock(uuid)
-        fake_process = flexmock(returncode=0, pid=123)
+        fake_process = flexmock(returncode=rc, pid=123)
         fake_process.should_receive('wait')
         mock_subprocess32.should_receive('Popen').and_return(
             fake_process)
@@ -316,4 +361,3 @@ class TestJobManager(test_case.JobTestCase):
         fake_resp = flexmock(status_code=123)
         fake_request = flexmock(requests).should_receive(
                            'post').and_return(fake_resp)
-
