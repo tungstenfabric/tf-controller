@@ -32,12 +32,12 @@ class TelemetryFeature(FeatureBase):
                                                configs)
     # end __init__
 
-    def _add_to_telemetry_map(self, telemetry_name, telemetry_obj):
-        if telemetry_name in self.telemetry_map:
-            return
-        else:
-            self.telemetry_map[telemetry_name] = telemetry_obj
-    # end _add_to_telemetry_map
+    def _get_or_add_to_telemetry_map(self, telemetry_name):
+        if telemetry_name not in self.telemetry_map:
+            tp = Telemetry(name=telemetry_name)
+            self.telemetry_map[telemetry_name] = tp
+        return self.telemetry_map[telemetry_name]
+    # end _get_or_add_to_telemetry_map
 
     def _build_telemetry_interface_config(self, interface,
                                           telemetry_profile_name,
@@ -49,6 +49,7 @@ class TelemetryFeature(FeatureBase):
                 telemetry_profile_name,
                 sflow_profile_name,
                 sflow_profile_params)
+
     # end _build_telemetry_interface_config
 
     def _build_sflow_interface_config(self, interface,
@@ -98,7 +99,7 @@ class TelemetryFeature(FeatureBase):
 
     def _build_telemetry_config(self, tp_name, sflow_name, sflow_params):
 
-        tp = Telemetry(name=tp_name)
+        tp = self._get_or_add_to_telemetry_map(tp_name)
         collector_ip_addr = None
 
         sflow_profile_obj = SflowProfile(name=sflow_name)
@@ -156,8 +157,32 @@ class TelemetryFeature(FeatureBase):
                 collector_params)
 
         tp.set_sflow_profile(sflow_profile_obj)
-        self._add_to_telemetry_map(tp_name, tp)
     # end _build_telemetry_config
+
+    def _build_telemetry_grpc_config(self, tp_name,
+                                     grpc_profile_name,
+                                     grpc_profile_params):
+
+        snets = []
+        allow_clients_subnets = []
+
+        tp = self._get_or_add_to_telemetry_map(tp_name)
+        grpc_profile_obj = GrpcProfile(name=grpc_profile_name)
+
+        allow_clients_list = grpc_profile_params.get('allow_clients')
+        if allow_clients_list:
+            allow_clients_subnets = allow_clients_list.get_subnet()
+        for allow_clients_subnet in allow_clients_subnets:
+            prefix = allow_clients_subnet.get_ip_prefix()
+            prefix_len = allow_clients_subnet.get_ip_prefix_len()
+            snet = Subnet(prefix=prefix,
+                          prefix_len=prefix_len)
+            snets.append(snet)
+        grpc_profile_obj.set_allow_clients(snets)
+
+        tp.set_grpc_profile(grpc_profile_obj)
+
+    # end _build_telemetry_grpc_config
 
     def feature_config(self, **kwargs):
         self.pi_list = set()
@@ -169,10 +194,13 @@ class TelemetryFeature(FeatureBase):
         tp = TelemetryProfileDM.get(tp_uuid)
         sflow_profile_params = None
         sflow_profile_name = ''
+        grpc_profile_params = None
+        grpc_profile_name = ''
         tp_name = ''
 
         if tp:
             tp_name = tp.fq_name[-1] + "-" + tp.fq_name[-2]
+
             sflow_uuid = tp.sflow_profile
             sflow_profile = SflowProfileDM.get(sflow_uuid)
             if sflow_profile:
@@ -181,11 +209,24 @@ class TelemetryFeature(FeatureBase):
                 sflow_profile_name = sflow_profile.fq_name[-1] + \
                     "-" + sflow_profile.fq_name[-2]
 
-        for interface_uuid in pr.physical_interfaces:
-            interface = PhysicalInterfaceDM.get(interface_uuid)
-            self._build_telemetry_interface_config(interface, tp_name,
-                                                   sflow_profile_name,
-                                                   sflow_profile_params)
+            for interface_uuid in pr.physical_interfaces:
+                interface = PhysicalInterfaceDM.get(interface_uuid)
+                self._build_telemetry_interface_config(interface, tp_name,
+                                                       sflow_profile_name,
+                                                       sflow_profile_params)
+
+            grpc_uuid = tp.grpc_profile
+            grpc_profile = GrpcProfileDM.get(grpc_uuid)
+
+            if grpc_profile:
+                grpc_profile_params = grpc_profile.grpc_params
+                grpc_profile_name = grpc_profile.fq_name[-1] + \
+                    "-" + grpc_profile.fq_name[-2]
+
+
+                self._build_telemetry_grpc_config(tp_name,
+                                                  grpc_profile_name,
+                                                  grpc_profile_params)
 
         for pi in self.pi_list:
             feature_config.add_physical_interfaces(pi)
