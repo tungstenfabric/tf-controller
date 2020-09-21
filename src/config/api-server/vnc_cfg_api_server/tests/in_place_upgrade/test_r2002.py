@@ -1223,6 +1223,8 @@ class TestInPlaceUpgradeR2002(test_case.InPlaceUpgradeTestCase):
             'virtual_router_type': 'embedded',
             'virtual_router_dpdk_enabled': True,
             'virtual_router_ip_address': '10.100.124.12',
+            'virtual_router_sriov_physical_networks': KeyValuePairs(
+                [KeyValuePair(key='physnet1', value='eth0')]),
             'annotations': {},
             'display_name': 'some string',
         }
