@@ -4754,6 +4754,7 @@ class TelemetryProfileDM(DBBaseDM):
     def __init__(self, uuid, obj_dict=None):
         self.uuid = uuid
         self.sflow_profile = None
+        self.grpc_profile = None
         self.physical_routers = set()
         self.update(obj_dict)
     # end __init__
@@ -4765,10 +4766,12 @@ class TelemetryProfileDM(DBBaseDM):
         self.fq_name = obj['fq_name']
         self.update_multiple_refs('physical_router', obj)
         self.update_single_ref('sflow_profile', obj)
+        self.update_single_ref('grpc_profile', obj)
     # end update
 
     def delete_obj(self):
         self.update_single_ref('sflow_profile', {})
+        self.update_single_ref('grpc_profile', {})
         self.update_multiple_refs('physical_router', {})
     # end delete_obj
 # end class TelemetryProfileDM
@@ -4797,6 +4800,31 @@ class SflowProfileDM(DBBaseDM):
         self.update_multiple_refs('telemetry_profile', {})
     # end delete_obj
 # end class SflowProfileDM
+
+
+class GrpcProfileDM(DBBaseDM):
+    _dict = {}
+    obj_type = 'grpc_profile'
+
+    def __init__(self, uuid, obj_dict=None):
+        self.uuid = uuid
+        self.telemetry_profiles = set()
+        self.update(obj_dict)
+    # end __init__
+
+    def update(self, obj=None):
+        if obj is None:
+            obj = self.read_obj(self.uuid)
+        self.name = obj['fq_name'][-1]
+        self.fq_name = obj['fq_name']
+        self.grpc_params = obj.get('grpc_parameters')
+        self.update_multiple_refs('telemetry_profile', obj)
+    # end update
+
+    def delete_obj(self):
+        self.update_multiple_refs('telemetry_profile', {})
+    # end delete_obj
+# end class GrpcProfileDM
 
 
 class FlowNodeDM(DBBaseDM):
