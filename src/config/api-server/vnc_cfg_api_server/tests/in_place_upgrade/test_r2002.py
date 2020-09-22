@@ -268,6 +268,81 @@ class TestInPlaceUpgradeR2002(test_case.InPlaceUpgradeTestCase):
         obj = self.set_properties(SflowProfile, prop_map)
         self.assertSchemaObjCreateOrUpdate(obj)
 
+    def test_grpc_profile_create(self):
+        project = self._project_fetch_or_create(self.id())
+
+        allow_clients = SubnetListType([SubnetType("10.0.0.0", 24)])
+        enabled_sensor_params = EnabledSensorParams(
+            physical_health=True,
+            interface_health=True,
+            control_plane_health=True,
+            service_layer_health=True
+        )
+
+        grpc_params = GrpcParameters(
+            allow_clients=allow_clients,
+            enabled_sensor_params=enabled_sensor_params,
+            secure_mode='cleartext'
+            )
+        prop_map = {'name': 'grpc-{}'.format(self.id()),
+                    'annotations': {},
+                    'parent_obj': project,
+                    'parent_type': 'project',
+                    'display_name': 'grpc profile',
+                    'grpc_parameters': grpc_params,
+                    'grpc_profile_is_default': False}
+
+        obj = self.set_properties(GrpcProfile, prop_map)
+        self.assertSchemaObjCreateOrUpdate(obj)
+
+    def test_snmp_profile_create(self):
+        project = self._project_fetch_or_create(self.id())
+
+        enabled_sensor_params = EnabledSensorParams(
+            physical_health=True,
+            interface_health=True,
+            control_plane_health=True,
+            service_layer_health=True
+        )
+
+        snmp_params = SnmpParameters(
+            enabled_sensor_params=enabled_sensor_params
+            )
+        prop_map = {'name': 'snmp-{}'.format(self.id()),
+                    'annotations': {},
+                    'parent_obj': project,
+                    'parent_type': 'project',
+                    'display_name': 'snmp profile',
+                    'snmp_parameters': snmp_params,
+                    'snmp_profile_is_default': False}
+
+        obj = self.set_properties(SnmpProfile, prop_map)
+        self.assertSchemaObjCreateOrUpdate(obj)
+
+    def test_netconf_profile_create(self):
+        project = self._project_fetch_or_create(self.id())
+
+        enabled_sensor_params = EnabledSensorParams(
+            physical_health=True,
+            interface_health=True,
+            control_plane_health=True,
+            service_layer_health=True
+        )
+
+        ncnf_params = NetconfParameters(
+            enabled_sensor_params=enabled_sensor_params
+            )
+        prop_map = {'name': 'ncnf-{}'.format(self.id()),
+                    'annotations': {},
+                    'parent_obj': project,
+                    'parent_type': 'project',
+                    'display_name': 'netconf profile',
+                    'netconf_parameters': ncnf_params,
+                    'netconf_profile_is_default': False}
+
+        obj = self.set_properties(NetconfProfile, prop_map)
+        self.assertSchemaObjCreateOrUpdate(obj)
+
     def test_routing_instance_create(self):
         project = self._project_fetch_or_create(self.id())
         vn = VirtualNetwork(name='vn-{}'.format(self.id()), parent_obj=project)
