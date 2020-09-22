@@ -2995,9 +2995,9 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
             "vnet1", true);
     ValidateRouting(routing_vrf_name, Ip4Address::from_string("2.2.2.20"), 32,
             "vnet2", false);
-    // check to see if the default route added to the bridge vrf inet
+    // check to see if the default route is not added to the bridge vrf inet
     ValidateBridge("vrf1", routing_vrf_name,
-            Ip4Address::from_string("0.0.0.0"), 0, true);
+            Ip4Address::from_string("0.0.0.0"), 0, false);
 
     // check to see if the local port route added to the bridge vrf inet
     ValidateBridge("vrf1", routing_vrf_name,
@@ -3319,12 +3319,23 @@ TEST_F(RouteTest, evpn_ecmp_type5_add_remote_route) {
     EXPECT_TRUE(inet_rt->GetActivePath()->origin_vn() == "vn1");
 
     // Clean up
-    DelRoutingVrf(1);
+    EvpnAgentRouteTable *rt_table = static_cast<EvpnAgentRouteTable *>
+            (agent_->vrf_table()->GetEvpnRouteTable(routing_vrf_name));
+    rt_table->DeleteReq(bgp_peer_->GetAgentXmppChannel()->bgp_peer_id(),
+        routing_vrf_name,
+        MacAddress::FromString("00:00:00:00:00:00"),
+        Ip4Address::from_string("1.1.1.20"),
+        32, 0,
+        new ControllerVmRoute(bgp_peer_->GetAgentXmppChannel()->bgp_peer_id()));
+    client->WaitForIdle();
     DelIPAM("vn1");
     DelNode("project", "admin");
     DeleteVmportEnv(input1, 2, true);
     DelLrVmiPort("lr-vmi-vn1", 91, "1.1.1.99", "vrf1", "vn1",
             "instance_ip_1", 1);
+    DelLrBridgeVrf("vn1", 1);
+    client->WaitForIdle();
+    DelRoutingVrf(1);
     client->WaitForIdle(5);
     EXPECT_TRUE(VrfGet("vrf1") == NULL);
     EXPECT_TRUE(agent_->oper_db()->vxlan_routing_manager()->vrf_mapper().

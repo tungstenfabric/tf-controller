@@ -174,6 +174,8 @@ public:
 
     void RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
                        DBTableBase *partition);
+    void RoutingVrfRouteWalkDone(DBTable::DBTableWalkRef walk_ref,
+                                          DBTableBase *partition);
     //TODO better way to release logical router from lr_vrf_info_map_
     //Easier way will be to add logical router in db and trigger delete of this
     //via LR delete in same.
@@ -186,6 +188,7 @@ public:
 private:
     friend class VxlanRoutingManager;
     void WalkBridgeVrfs(const RoutedVrfInfo &routing_vrf_info);
+    void WalkRoutingVrf(const boost::uuids::uuid &uuid, const VnEntry *vn, bool update, bool withdraw);
     void WalkEvpnTable(EvpnAgentRouteTable *table);
     //Using VN's Lr uuid identify the routing vrf
     const VrfEntry *GetRoutingVrfUsingVn(const VnEntry *vn);
@@ -229,8 +232,12 @@ public:
     void VrfNotify(DBTablePartBase *partition, DBEntryBase *e);
     void VmiNotify(DBTablePartBase *partition, DBEntryBase *e);
     bool RouteNotify(DBTablePartBase *partition, DBEntryBase *e);
-    void HandleDefaultRoute(const VrfEntry *vrf, bool bridge_vrf=false);
+    bool RouteNotifyInLrEvpnTable(DBTablePartBase *partition,
+                                    DBEntryBase *e,const boost::uuids::uuid &uuid,
+                                    const VnEntry *vn, bool update=false, bool withdraw=false);
+    void HandleSubnetRoute(const VrfEntry *vrf, bool bridge_vrf=false);
     void FillSandeshInfo(VxlanRoutingResp *resp);
+    void DeleteSubnetRoute(const VrfEntry *vrf,VnIpam *ipam = NULL);
     DBTable::ListenerId vn_listener_id() const {
         return vn_listener_id_;
     }
@@ -249,8 +256,7 @@ public:
 
 private:
     friend class VxlanRoutingRouteWalker;
-    void DeleteDefaultRoute(const VrfEntry *vrf);
-    void UpdateDefaultRoute(const VrfEntry *vrf,
+    void UpdateSubnetRoute(const VrfEntry *vrf,
                             const VrfEntry *routing_vrf);
     void DeleteInetRoute(DBTablePartBase *partition, DBEntryBase *e);
     void UpdateInetRoute(DBTablePartBase *partition, DBEntryBase *e,
@@ -259,6 +265,7 @@ private:
                               const AgentRoute *rt,
                               const AgentPath *path,
                               const VrfEntry *routing_vrf);
+
     bool InetRouteNotify(DBTablePartBase *partition, DBEntryBase *e);
     bool EvpnRouteNotify(DBTablePartBase *partition, DBEntryBase *e);
     bool EvpnType5RouteNotify(DBTablePartBase *partition, DBEntryBase *e);

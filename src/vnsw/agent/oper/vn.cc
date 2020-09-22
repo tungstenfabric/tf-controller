@@ -32,6 +32,7 @@
 #include <oper/agent_route_resync.h>
 #include <oper/qos_config.h>
 #include <filter/acl.h>
+#include <oper/vxlan_routing_manager.h>
 
 using namespace autogen;
 using namespace std;
@@ -610,6 +611,7 @@ void VnEntry::DelSubnetRoute(VnIpam *ipam) {
             (agent->local_peer(), vrf_->GetName(),
              ipam->GetV6SubnetAddress(), ipam->plen, NULL);
     }
+    agent_->oper_db()->vxlan_routing_manager()->DeleteSubnetRoute(vrf_.get(), ipam);
 }
 
 void VnEntry::AllocWalker() {
