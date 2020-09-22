@@ -6910,7 +6910,7 @@ class DBInterface(object):
                         except NoIdError:
                             self._raise_contrail_exception('SubPortNotFound',
                                                            trunk_id=id,
-                                                           port_id=sp_id)
+                                                           port_id=sp['port_id'])
                         trunk.del_virtual_machine_interface(sub_port)
                         trunk_port.del_virtual_machine_interface(sub_port)
                         self._vnc_lib.virtual_machine_interface_update(
