@@ -5,15 +5,15 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-from cfgm_common.exceptions import RefsExistError
-from vnc_api.vnc_api import *
 from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import *
+from cfgm_common.exceptions import RefsExistError
+import configparser
+import argparse
+import sys
+from builtins import object
 
 
 class GlobalVrouterConfigProvisioner(object):
@@ -34,69 +34,75 @@ class GlobalVrouterConfigProvisioner(object):
 
         port_trans_pool_list = []
         if self._args.snat_list:
-            port=None
-            protocol=None
+            port = None
+            protocol = None
             for proto_port in self._args.snat_list:
-                port_count=''
-                port_range_obj=None
+                port_count = ''
+                port_range_obj = None
                 protocol = proto_port.split(':')[0]
                 port = proto_port.split(':')[1]
                 if '-' in port:
-                    port_range_obj = PortType(start_port=int(port.split('-')[0]),
-                                              end_port=int(port.split('-')[1]))
+                    port_range_obj = PortType(
+                        start_port=int(
+                            port.split('-')[0]),
+                        end_port=int(
+                            port.split('-')[1]))
                 else:
                     port_count = port
 
-                port_trans_pool_obj = PortTranslationPool(protocol = protocol,
-                                                          port_range = port_range_obj,
-                                                          port_count = port_count)
+                port_trans_pool_obj = PortTranslationPool(
+                    protocol=protocol, port_range=port_range_obj, port_count=port_count)
                 port_trans_pool_list.append(port_trans_pool_obj)
 
         port_trans_pools_obj = PortTranslationPools(port_trans_pool_list)
 
         try:
-            current_config=self._vnc_lib.global_vrouter_config_read(
-                                fq_name=['default-global-system-config',
-                                         'default-global-vrouter-config'])
+            current_config = self._vnc_lib.global_vrouter_config_read(
+                fq_name=['default-global-system-config',
+                         'default-global-vrouter-config'])
         except Exception as e:
             try:
                 if self._args.oper == "add":
-                    conf_obj=GlobalVrouterConfig(flow_export_rate=self._args.flow_export_rate)
+                    conf_obj = GlobalVrouterConfig(
+                        flow_export_rate=self._args.flow_export_rate)
                     conf_obj.set_port_translation_pools(port_trans_pools_obj)
-                    result=self._vnc_lib.global_vrouter_config_create(conf_obj)
-                    print('Created.UUID is %s'%(result))
+                    result = self._vnc_lib.global_vrouter_config_create(
+                        conf_obj)
+                    print('Created.UUID is %s' % (result))
                 return
             except RefsExistError:
                 print("Already created!")
 
         existing_snat_pools = current_config.get_port_translation_pools()
         if not existing_snat_pools:
-             existing_snat_pools = PortTranslationPools([])
+            existing_snat_pools = PortTranslationPools([])
         if port_trans_pool_list:
             for snat_pool in port_trans_pool_list:
-                if not self.check_dup_snat_pool(snat_pool, existing_snat_pools):
+                if not self.check_dup_snat_pool(
+                        snat_pool, existing_snat_pools):
                     existing_snat_pools.add_port_translation_pool(snat_pool)
 
         if self._args.oper != "add":
-            conf_obj=GlobalVrouterConfig()
+            conf_obj = GlobalVrouterConfig()
         else:
-            conf_obj=GlobalVrouterConfig(flow_export_rate=self._args.flow_export_rate)
+            conf_obj = GlobalVrouterConfig(
+                flow_export_rate=self._args.flow_export_rate)
             conf_obj.set_port_translation_pools(existing_snat_pools)
 
-        result=self._vnc_lib.global_vrouter_config_update(conf_obj)
-        print('Updated.%s'%(result))
+        result = self._vnc_lib.global_vrouter_config_update(conf_obj)
+        print('Updated.%s' % (result))
     # end __init__
 
     def check_dup_snat_pool(self, snat_pool, existing_snat_pools):
         for pool_obj in existing_snat_pools.get_port_translation_pool():
             if snat_pool.get_port_count() and pool_obj.get_port_count():
                 if snat_pool.get_port_count() == pool_obj.get_port_count() and \
-                    snat_pool.get_protocol() == pool_obj.get_protocol():
+                        snat_pool.get_protocol() == pool_obj.get_protocol():
                     return True
             elif snat_pool.get_port_range() and pool_obj.get_port_range():
                 if snat_pool.get_protocol() == pool_obj.get_protocol() and \
-                    snat_pool.get_port_range().start_port == pool_obj.get_port_range().start_port and \
-                    snat_pool.get_port_range().end_port == pool_obj.get_port_range().end_port:
+                        snat_pool.get_port_range().start_port == pool_obj.get_port_range().start_port and \
+                        snat_pool.get_port_range().end_port == pool_obj.get_port_range().end_port:
                     return True
         return False
 
@@ -154,7 +160,7 @@ class GlobalVrouterConfigProvisioner(object):
 
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--flow_export_rate", type=int, required=True,
             help="Flow export rate to the collector")
@@ -168,15 +174,17 @@ class GlobalVrouterConfigProvisioner(object):
         parser.add_argument(
             "--admin_tenant_name", help="Tenant name for keystone admin user")
         parser.add_argument(
-            "--snat_list", help="Protocol port range or port count list for distributed snat",
-            nargs='+', type=str)
+            "--snat_list",
+            help="Protocol port range or port count list for distributed snat",
+            nargs='+',
+            type=str)
         group = parser.add_mutually_exclusive_group()
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
         self._args = parser.parse_args(remaining_argv)
     # end _parse_args
 
@@ -186,6 +194,7 @@ class GlobalVrouterConfigProvisioner(object):
 def main(args_str=None):
     GlobalVrouterConfigProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

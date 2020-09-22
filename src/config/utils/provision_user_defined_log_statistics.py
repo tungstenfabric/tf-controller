@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#This is a python based script for configuring user-defined-log-statistics
+# This is a python based script for configuring user-defined-log-statistics
 # from commandline
 # Usage :
 # ./provision_user_defined_log_statistics.py --conf /etc/contrail/contrail-schema.conf --conf /etc/contrail/contrail-keystone-auth.conf -h
@@ -55,16 +55,16 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import argparse
-import configparser
-import sys
+standard_library.install_aliases()  # noqa
 
-from vnc_api.vnc_api import *
-from vnc_api.gen.resource_xsd import UserDefinedLogStat
-from vnc_api.gen.resource_client import GlobalSystemConfig
 from vnc_admin_api import VncApiAdmin
+from vnc_api.gen.resource_client import GlobalSystemConfig
+from vnc_api.gen.resource_xsd import UserDefinedLogStat
+from vnc_api.vnc_api import *
+import sys
+import configparser
+import argparse
+from builtins import object
 
 
 class VncProvisioner(object):
@@ -76,28 +76,29 @@ class VncProvisioner(object):
         self._parse_args(args_str)
 
         self._vnc_lib = VncApiAdmin(self._args.use_admin_api,
-                               self._args.admin_user,
-                               self._args.admin_password,
-                               self._args.admin_tenant_name,
-                               self._args.api_server_ip,
-                               self._args.api_server_port, '/')
+                                    self._args.admin_user,
+                                    self._args.admin_password,
+                                    self._args.admin_tenant_name,
+                                    self._args.api_server_ip,
+                                    self._args.api_server_port, '/')
         vnc = self._vnc_lib
         gsc_uuid = vnc.global_system_configs_list()['global-system-configs'][
-                                                    0]['uuid']
+            0]['uuid']
         gsc = vnc.global_system_config_read(id=gsc_uuid)
 
         if hasattr(self._args, 'add'):
             print('Add -> ', ', '.join(self._args.add))
-            g=GlobalSystemConfig()
+            g = GlobalSystemConfig()
             g.add_user_defined_log_statistics(UserDefinedLogStat(
-                                                        *self._args.add))
+                *self._args.add))
             vnc.global_system_config_update(g)
         elif hasattr(self._args, 'delete'):
             print('Delete -> ', ', '.join(self._args.delete))
             if gsc.user_defined_log_statistics:
-                gsc.user_defined_log_statistics.statlist = [x for x in gsc.user_defined_log_statistics.statlist if x.name not in self._args.delete]
+                gsc.user_defined_log_statistics.statlist = [
+                    x for x in gsc.user_defined_log_statistics.statlist if x.name not in self._args.delete]
                 gsc.set_user_defined_log_statistics(
-                        gsc.user_defined_log_statistics)
+                    gsc.user_defined_log_statistics)
                 vnc.global_system_config_update(gsc)
         elif hasattr(self._args, 'list'):
             print('ls -> ', ', '.join(self._args.list))
@@ -105,7 +106,8 @@ class VncProvisioner(object):
             if gsc.user_defined_log_statistics:
                 for x in gsc.user_defined_log_statistics.statlist:
                     if self._chk2print(x.name):
-                        print('Name: "%s", Pattern: "%s"' % (x.name, x.pattern))
+                        print('Name: "%s", Pattern: "%s"' %
+                              (x.name, x.pattern))
     # end __init__
 
     def _chk2print(self, n):
@@ -129,8 +131,8 @@ class VncProvisioner(object):
         args, remaining_argv = conf_parser.parse_known_args(args_str.split())
 
         defaults = {
-            #'public_vn_name': 'default-domain:'
-            #'default-project:default-virtual-network',
+            # 'public_vn_name': 'default-domain:'
+            # 'default-project:default-virtual-network',
             'api_server_ip': '127.0.0.1',
             'api_server_port': '8082',
         }
@@ -181,9 +183,9 @@ class VncProvisioner(object):
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
     # end _parse_args
@@ -194,6 +196,7 @@ class VncProvisioner(object):
 def main(args_str=None):
     VncProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

@@ -5,15 +5,16 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import time
-import argparse
-from six.moves import configparser
-from vnc_api.vnc_api import *
-from vnc_admin_api import VncApiAdmin
+standard_library.install_aliases()  # noqa
+
 from cfgm_common.exceptions import *
+from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import *
+from six.moves import configparser
+import argparse
+import time
+import sys
+from builtins import object
 
 
 class AnalyticsNodeProvisioner(object):
@@ -37,7 +38,7 @@ class AnalyticsNodeProvisioner(object):
                     auth_host=self._args.openstack_ip,
                     api_server_use_ssl=self._args.api_server_use_ssl)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -53,8 +54,8 @@ class AnalyticsNodeProvisioner(object):
         elif self._args.oper == 'del':
             self.del_analytics_node()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
@@ -109,11 +110,14 @@ class AnalyticsNodeProvisioner(object):
         parser.set_defaults(**defaults)
 
         parser.add_argument(
-            "--host_name", help="hostname name of analytics node", required=True)
-        parser.add_argument("--host_ip", help="IP address of analytics node", required=True)
+            "--host_name",
+            help="hostname name of analytics node",
+            required=True)
+        parser.add_argument(
+            "--host_ip", help="IP address of analytics node", required=True)
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper", default='add',
             help="Provision operation to be done(add or del)")
@@ -130,9 +134,9 @@ class AnalyticsNodeProvisioner(object):
             "--api_server_ip", help="IP address of api server",
             nargs='+', type=str)
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -174,6 +178,7 @@ class AnalyticsNodeProvisioner(object):
 def main(args_str=None):
     AnalyticsNodeProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

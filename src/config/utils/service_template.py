@@ -2,22 +2,23 @@
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
+
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import os
-import sys
-import errno
-import pprint
-import subprocess
-import time
+standard_library.install_aliases()  # noqa
+
+from svc_monitor import svc_monitor
+from vnc_api.vnc_api import *
 import argparse
+import time
+import subprocess
+import pprint
+import errno
+import sys
+import os
+from builtins import object
 
 sys.path.insert(0, os.path.realpath('/usr/lib/python2.7/site-packages'))
-
-from vnc_api.vnc_api import *
-from svc_monitor import svc_monitor
 
 
 class ServiceTemplateCmd(object):
@@ -114,7 +115,7 @@ class ServiceTemplateCmd(object):
         list_parser = subparsers.add_parser('list')
         list_parser.set_defaults(func=self.list_st)
         self._args = parser.parse_args(remaining_argv)
-        
+
     # end _parse_args
 
     # create service template
@@ -136,7 +137,8 @@ class ServiceTemplateCmd(object):
             svc_properties.set_flavor(self._args.flavor)
         svc_properties.set_service_scaling(True)
         svc_properties.set_service_type(self._args.svc_type)
-        svc_properties.set_service_virtualisation_type(self._args.svc_virt_type)
+        svc_properties.set_service_virtualisation_type(
+            self._args.svc_virt_type)
 
         # set interface list
         for itf in self._if_list:
@@ -155,16 +157,16 @@ class ServiceTemplateCmd(object):
             print("Deleting service template %s" % (self._args.template_name))
             self._vnc_lib.service_template_delete(fq_name=self._st_fq_name)
         except NoIdError:
-            print("Error: Service template %s not found"\
-                % (self._args.template_name))
+            print("Error: Service template %s not found"
+                  % (self._args.template_name))
             return
-    #_delete_st
+    # _delete_st
 
     def list_st(self):
         print("Listing service templates")
         templates = self._vnc_lib.service_templates_list()
         pprint.pprint(templates)
-    #_list_st
+    # _list_st
 
 # end class ServiceTemplateCmd
 
@@ -173,6 +175,7 @@ def main(args_str=None):
     st = ServiceTemplateCmd(args_str)
     st._args.func()
 # end main
+
 
 if __name__ == "__main__":
     main()

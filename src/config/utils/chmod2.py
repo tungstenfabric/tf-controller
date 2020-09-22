@@ -1,17 +1,20 @@
-from __future__ import print_function
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 
 # Show and change object ownership and permissions2 fields
 #
+
+from __future__ import print_function
+
 from builtins import str
 from builtins import object
 import argparse
 import uuid as __uuid
 import os
-import cfgm_common.exceptions
+import sys
 
-from vnc_api.vnc_api import *
+import cfgm_common.exceptions
+from vnc_api.vnc_api import VncApi
 
 
 class VncChmod(object):
@@ -24,7 +27,7 @@ class VncChmod(object):
             description="Show and change object permissions2 and ownership")
         parser.add_argument(
             '--server', help="API server address in the form ip:port",
-            default = '127.0.0.1:8082')
+            default='127.0.0.1:8082')
         parser.add_argument('--type', help="object type eg. virtual-network")
         parser.add_argument(
             '--name',
@@ -33,18 +36,18 @@ class VncChmod(object):
         parser.add_argument(
             '--uuid',
             help="Object UUID eg f1401b7c-e387-4eec-a46c-230dfd695fae")
-        parser.add_argument('--user',  help="User Name")
-        parser.add_argument('--role',  help="Role Name")
+        parser.add_argument('--user', help="User Name")
+        parser.add_argument('--role', help="Role Name")
         parser.add_argument('--owner', help="Set owner tenant")
         parser.add_argument('--owner-access', help="Set owner access")
         parser.add_argument('--global-access', help="Set global access")
         parser.add_argument('--share-list', help="Set share list")
         parser.add_argument(
-            '--os-username',  help="Keystone User Name", default=None)
+            '--os-username', help="Keystone User Name", default=None)
         parser.add_argument(
-            '--os-password',  help="Keystone User Password", default=None)
+            '--os-password', help="Keystone User Password", default=None)
         parser.add_argument(
-            '--os-tenant-name',  help="Keystone Tenant Name", default=None)
+            '--os-tenant-name', help="Keystone Tenant Name", default=None)
 
         self.args = parser.parse_args()
         self.opts = vars(self.args)
@@ -72,23 +75,33 @@ class VncChmod(object):
     # end
 # end
 
+
 def print_perms(obj_perms):
-    share_perms = ['%s:%d' % (x.tenant, x.tenant_access) for x in obj_perms.share]
+    share_perms = ['%s:%d' % (x.tenant, x.tenant_access)
+                   for x in obj_perms.share]
     return '%s/%d %d %s' \
         % (obj_perms.owner, obj_perms.owner_access,
            obj_perms.global_access, share_perms)
 # end print_perms
 
-def set_perms(obj, owner=None, owner_access=None, share=None, global_access=None):
+
+def set_perms(
+        obj,
+        owner=None,
+        owner_access=None,
+        share=None,
+        global_access=None):
     global vnc
     try:
-        rv = vnc.chmod(obj.get_uuid(), owner, owner_access, share, global_access)
-        if rv == None:
+        rv = vnc.chmod(obj.get_uuid(), owner,
+                       owner_access, share, global_access)
+        if rv is None:
             print('Error in setting perms')
     except cfgm_common.exceptions.PermissionDenied:
         print('Permission denied!')
         sys.exit(1)
 # end set_perms
+
 
 chmod = VncChmod()
 chmod.parse_args()
@@ -98,7 +111,7 @@ args = chmod.args
 # Validate API server information
 server = chmod.args.server.split(':')
 if len(server) != 2:
-    print('API server address must be of the form ip:port,'\
+    print('API server address must be of the form ip:port,'
           'for example 127.0.0.1:8082')
     sys.exit(1)
 if chmod.args.uuid:
@@ -171,27 +184,33 @@ except cfgm_common.exceptions.PermissionDenied:
     sys.exit(1)
 
 # write to API server
-if args.owner or args.owner_access or args.global_access is not None or args.share_list is not None:
+if (args.owner or args.owner_access or
+        args.global_access is not None or args.share_list is not None):
     # update needed
 
     share_list = None
     if args.share_list is not None:
-       # reset share list
-       share_list = []
+        # reset share list
+        share_list = []
     if args.share_list and args.share_list != '':
-       "tenantA:rwx, tenantB:rwx, tenant:tenantA:rwx, domain:domainA:rwx ...."
-       shares = args.share_list.split(",")
-       for item in shares:
-           x = item.rsplit(":", 1)
-           try:
-               share_list.append((x[0], int(x[1])))
-           except ValueError:
-               print('share list is tuple of <uuid:octal-perms>, for example "0ed5ea...700:7"')
-               sys.exit(1)
-    set_perms(obj,
-        owner = chmod.args.owner,
-        owner_access = int(chmod.args.owner_access) if chmod.args.owner_access else None,
-        global_access = int(chmod.args.global_access) if chmod.args.global_access else None,
-        share = share_list)
+        "tenantA:rwx, tenantB:rwx, tenant:tenantA:rwx, domain:domainA:rwx ...."
+        shares = args.share_list.split(",")
+        for item in shares:
+            x = item.rsplit(":", 1)
+            try:
+                share_list.append((x[0], int(x[1])))
+            except ValueError:
+                print(
+                    'share list is tuple of <uuid:octal-perms>, ',
+                    'for example "0ed5ea...700:7"')
+                sys.exit(1)
+    set_perms(
+        obj,
+        owner=chmod.args.owner,
+        owner_access=int(
+            chmod.args.owner_access) if chmod.args.owner_access else None,
+        global_access=int(
+            chmod.args.global_access) if chmod.args.global_access else None,
+        share=share_list)
     obj = method(fq_name_str=chmod.args.name)
     print('New perms %s' % print_perms(obj.get_perms2()))

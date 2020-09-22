@@ -2,24 +2,25 @@
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
+
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import os
-import sys
-import errno
-import pprint
-import subprocess
-import time
+standard_library.install_aliases()  # noqa
+
+from novaclient import exceptions as nc_exc
+from novaclient import client as nc
+from svc_monitor import svc_monitor
+from vnc_api.vnc_api import *
 import argparse
+import time
+import subprocess
+import pprint
+import errno
+import sys
+import os
+from builtins import object
 
 sys.path.insert(0, os.path.realpath('/usr/lib/python2.7/site-packages'))
-
-from vnc_api.vnc_api import *
-from svc_monitor import svc_monitor
-from novaclient import client as nc
-from novaclient import exceptions as nc_exc
 
 
 class ServiceInstanceCmd(object):
@@ -50,10 +51,12 @@ class ServiceInstanceCmd(object):
                                      self._args.mgmt_vn]
 
         self._novaclient_init()
-        self._vnc_lib = VncApi('u', 'p',
-                               api_server_host=self._args.api_server_ip,
-                               api_server_port=self._args.api_server_port,
-                               api_server_use_ssl=self._args.api_server_use_ssl)
+        self._vnc_lib = VncApi(
+            'u',
+            'p',
+            api_server_host=self._args.api_server_ip,
+            api_server_port=self._args.api_server_port,
+            api_server_use_ssl=self._args.api_server_use_ssl)
     # end __init__
 
     def _parse_args(self, args_str):
@@ -116,7 +119,7 @@ class ServiceInstanceCmd(object):
             "--left_vn", help="name of left vn [default: none]")
         create_parser.add_argument(
             "--right_vn", help="name of right vn [default: none]")
-        create_parser.add_argument("--max_instances", type=int,  default=1,
+        create_parser.add_argument("--max_instances", type=int, default=1,
                                    help="max instances to launch [default: 1]")
         create_parser.add_argument(
             "--auto_scale", action="store_true", default=False,
@@ -153,12 +156,12 @@ class ServiceInstanceCmd(object):
                 fq_name=self._st_fq_name)
             st_prop = st_obj.get_service_template_properties()
             if st_prop is None:
-                print("Error: Service template %s properties not found"\
-                    % (self._args.template_name))
+                print("Error: Service template %s properties not found"
+                      % (self._args.template_name))
                 return
         except NoIdError:
-            print("Error: Service template %s not found"\
-                % (self._args.template_name))
+            print("Error: Service template %s not found"
+                  % (self._args.template_name))
             return
 
         if st_prop.get_image_name():
@@ -182,18 +185,19 @@ class ServiceInstanceCmd(object):
                 self._vnc_lib.virtual_network_read(
                     fq_name=self._right_vn_fq_name)
             except NoIdError:
-                print("Error: Right VN %s not found" % (self._right_vn_fq_name))
+                print("Error: Right VN %s not found" %
+                      (self._right_vn_fq_name))
                 return
         if self._args.mgmt_vn:
             try:
                 self._vnc_lib.virtual_network_read(
                     fq_name=self._mgmt_vn_fq_name)
             except NoIdError:
-                print("Error: Management VN %s not found" % (self._mgmt_vn_fq_name))
+                print("Error: Management VN %s not found" %
+                      (self._mgmt_vn_fq_name))
                 return
         else:
             self._mgmt_vn_fq_name = []
-
 
         # create si
         print("Creating service instance %s" % (self._args.instance_name))
@@ -248,6 +252,7 @@ def main(args_str=None):
     si = ServiceInstanceCmd(args_str)
     si._args.func()
 # end main
+
 
 if __name__ == "__main__":
     main()

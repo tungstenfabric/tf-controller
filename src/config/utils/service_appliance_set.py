@@ -5,16 +5,17 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import time
-import argparse
-import configparser
-import json
+standard_library.install_aliases()  # noqa
 
-from vnc_api.vnc_api import *
 from cfgm_common.exceptions import *
+from vnc_api.vnc_api import *
+import json
+import configparser
+import argparse
+import time
+import sys
+from builtins import object
+
 
 class SASProvisioner(object):
 
@@ -35,7 +36,7 @@ class SASProvisioner(object):
                     self._args.api_server_port, '/',
                     auth_host=self._args.openstack_ip)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -51,8 +52,8 @@ class SASProvisioner(object):
         elif self._args.oper == 'del':
             self.del_sas()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
@@ -71,7 +72,8 @@ class SASProvisioner(object):
 
         conf_parser.add_argument("-c", "--conf_file",
                                  help="Specify config file", metavar="FILE")
-        args, remaining_argv = conf_parser.parse_known_args(args_str.split('|'))
+        args, remaining_argv = conf_parser.parse_known_args(
+            args_str.split('|'))
 
         defaults = {
             'api_server_ip': '127.0.0.1',
@@ -106,10 +108,13 @@ class SASProvisioner(object):
 
         parser.add_argument(
             "--name", help="name of service appliance set", required=True)
-        parser.add_argument("--driver", help="python module of the lbaas provider")
-        parser.add_argument("--properties",
-                help="JSON dictionary of config params for the lbaas provider",
-                type=json.loads, default=json.loads("{}"))
+        parser.add_argument(
+            "--driver", help="python module of the lbaas provider")
+        parser.add_argument(
+            "--properties",
+            help="JSON dictionary of config params for the lbaas provider",
+            type=json.loads,
+            default=json.loads("{}"))
         parser.add_argument(
             "--api_server_ip", help="IP address of api server", required=True)
         parser.add_argument("--api_server_port", help="Port of api server")
@@ -138,14 +143,15 @@ class SASProvisioner(object):
         sas_obj = ServiceApplianceSet(self._args.name, gsc_obj)
 
         try:
-            sa_set_obj = self._vnc_lib.service_appliance_set_read(fq_name=sa_set_fq_name)
+            sa_set_obj = self._vnc_lib.service_appliance_set_read(
+                fq_name=sa_set_fq_name)
             return
         except NoIdError:
             pass
         sas_obj.set_service_appliance_driver(self._args.driver)
         kvp_array = []
-        for r,c in self._args.properties.items():
-            kvp = KeyValuePair(r,c)
+        for r, c in self._args.properties.items():
+            kvp = KeyValuePair(r, c)
             kvp_array.append(kvp)
         kvps = KeyValuePairs()
         if kvp_array:
@@ -161,7 +167,8 @@ class SASProvisioner(object):
         default_gsc_fq_name = [default_gsc_name]
         sa_set_fq_name = [default_gsc_name, self._args.name]
 
-        sa_set_obj = self._vnc_lib.service_appliance_set_delete(fq_name=sa_set_fq_name)
+        sa_set_obj = self._vnc_lib.service_appliance_set_delete(
+            fq_name=sa_set_fq_name)
     # end del_sas
 
 # end class SASProvisioner
@@ -170,6 +177,7 @@ class SASProvisioner(object):
 def main(args_str=None):
     SASProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

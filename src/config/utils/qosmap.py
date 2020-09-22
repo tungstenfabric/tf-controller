@@ -5,16 +5,18 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import range
-from builtins import object
-import os
-import subprocess
-import sys
-import argparse
-import configparser
-import tempfile
+standard_library.install_aliases()  # noqa
+
 from shutil import move
+import tempfile
+import configparser
+import argparse
+import sys
+import subprocess
+import os
+from builtins import object
+from builtins import range
+
 
 class QosmapProv(object):
 
@@ -53,7 +55,8 @@ class QosmapProv(object):
         if self._args.interface_list:
             self.ifname_list = self._args.interface_list
         else:
-            self.ifname_list.append(config.get('VIRTUAL-HOST-INTERFACE', 'physical_interface'))
+            self.ifname_list.append(config.get(
+                'VIRTUAL-HOST-INTERFACE', 'physical_interface'))
 
         for i in range(8):
             self.bandwidth.append('0')
@@ -62,7 +65,8 @@ class QosmapProv(object):
         for section in config.sections():
 
             if "PG-" in section:
-                # For one to one mapping priority group is same as traffic class
+                # For one to one mapping priority group is same as traffic
+                # class
                 self.qos_scheduling_config = True
                 priority_id = section.strip('[]').split('-')[1]
                 scheduling = config.get(section, 'scheduling')
@@ -90,14 +94,14 @@ class QosmapProv(object):
             return False
 
         return outwithoutreturn
-    #end execute_command
+    # end execute_command
 
     def replace(self, file_path, pattern, subst):
-        #Create temp file
+        # Create temp file
         stat = os.stat(file_path)
         mode, uid, gid = stat[0], stat[4], stat[5]
         fh, abs_path = tempfile.mkstemp()
-        with open(abs_path,'w') as new_file:
+        with open(abs_path, 'w') as new_file:
             with open(file_path) as old_file:
                 for line in old_file:
                     if line.strip().startswith(pattern):
@@ -106,7 +110,7 @@ class QosmapProv(object):
                     else:
                         new_file.write(line)
         os.close(fh)
-        #Remove original file
+        # Remove original file
         os.remove(file_path)
         move(abs_path, file_path)
         os.chmod(file_path, mode)
@@ -154,32 +158,37 @@ class QosmapProv(object):
         for intf in intf_list:
             file_path = "/sys/class/net/" + intf + "/queues/"
             if os.path.exists(file_path):
-                    num_tx_queue_cmd = "cd %s;ls -l | grep tx- | wc -l " % (file_path)
-                    num_tx_queues = self.execute_command(num_tx_queue_cmd)
+                num_tx_queue_cmd = "cd %s;ls -l | grep tx- | wc -l " % (
+                    file_path)
+                num_tx_queues = self.execute_command(num_tx_queue_cmd)
             else:
-                    print("Path for interface queue %s does not exist" % file_path)
-                    return True
-            if (num_tx_queues and num_tx_queues !='0'):
+                print("Path for interface queue %s does not exist" % file_path)
+                return True
+            if (num_tx_queues and num_tx_queues != '0'):
                 for i in range(int(num_tx_queues)):
                     file_str = "tx-%s/xps_cpus" % i
                     filename = file_path + file_str
                     xps_cpu_file = os.path.isfile(filename)
                     if (not xps_cpu_file):
-                        print("xps_cpu file not found %s on compute %s while disabling Xmit-Packet-Steering" % (xps_cpu_file, compute_host_string))
+                        print(
+                            "xps_cpu file not found %s on compute %s while disabling Xmit-Packet-Steering" %
+                            (xps_cpu_file, compute_host_string))
                         return True
                     cmd = "echo 0 > %s" % filename
                     self.execute_command(cmd)
             else:
-                print("Error: No tx queues found for file paths %s " % (file_path))
+                print("Error: No tx queues found for file paths %s " %
+                      (file_path))
                 return True
 
 # end class QosmapProv
+
 
 def main(args_str=None):
     conf_file = "/etc/contrail/contrail-vrouter-agent.conf"
     QosmapProv(conf_file, args_str)
 # end main
 
+
 if __name__ == "__main__":
     main()
-

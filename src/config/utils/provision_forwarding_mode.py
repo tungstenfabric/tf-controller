@@ -5,14 +5,15 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-from vnc_api.vnc_api import *
+
 from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import *
+import configparser
+import argparse
+import sys
+from builtins import object
 
 
 class ForwardingModeSetup(object):
@@ -30,27 +31,28 @@ class ForwardingModeSetup(object):
             self._args.api_server_ip,
             self._args.api_server_port, '/',
             api_server_use_ssl=self._args.api_server_use_ssl)
-        
+
         #import pdb;pdb.set_trace()
         vxlan_id = self._args.vxlan_id
         vn_name = self._args.vn_name
         forwarding_mode = self._args.forwarding_mode
         project_fq_name_str = self._args.project_fq_name
         project_fq_name = project_fq_name_str.split(':')
-        
-        #Figure out VN
+
+        # Figure out VN
         vni_list = self._vnc_lib.virtual_networks_list(
-                        parent_fq_name = project_fq_name)['virtual-networks']
+            parent_fq_name=project_fq_name)['virtual-networks']
         found = False
         for vni_record in vni_list:
             if (vni_record['fq_name'][0] == project_fq_name[0] and
-                vni_record['fq_name'][1] == project_fq_name[1] and 
-                vni_record['fq_name'][2] == vn_name):
+                vni_record['fq_name'][1] == project_fq_name[1] and
+                    vni_record['fq_name'][2] == vn_name):
                 vni_obj = self._vnc_lib.virtual_network_read(
-                                    id = vni_record['uuid'])
+                    id=vni_record['uuid'])
                 vni_obj_properties = vni_obj.get_virtual_network_properties() or VirtualNetworkType()
                 if (vxlan_id is not None):
-                    vni_obj_properties.set_vxlan_network_identifier(int(vxlan_id))
+                    vni_obj_properties.set_vxlan_network_identifier(
+                        int(vxlan_id))
                 if (forwarding_mode is not None):
                     vni_obj_properties.set_forwarding_mode(forwarding_mode)
                 vni_obj.set_virtual_network_properties(vni_obj_properties)
@@ -58,14 +60,14 @@ class ForwardingModeSetup(object):
                 found = True
 
         if not found:
-            print("No Virtual Network  %s" %(vn_name))
+            print("No Virtual Network  %s" % (vn_name))
             sys.exit(1)
-        
+
     # end __init__
-    
+
     def _parse_args(self, args_str):
         '''
-        Eg. python provision_forwarding_mode.py 
+        Eg. python provision_forwarding_mode.py
                                         --project_fq_name 'default-domain:admin'
                                         --vn_name vn1
                                         --vxlan_id 100
@@ -87,7 +89,7 @@ class ForwardingModeSetup(object):
             'oper': 'add',
             'control_names': [],
             'route_table_name': 'CustomRouteTable',
-            'project_fq_name' : 'default-domain:admin',
+            'project_fq_name': 'default-domain:admin',
         }
         ksopts = {
             'admin_user': 'user1',
@@ -111,7 +113,9 @@ class ForwardingModeSetup(object):
         parser.add_argument(
             "--vn_name", help="VN Name", required=True)
         parser.add_argument(
-            "--project_fq_name", help="Fully qualified name of the Project", required=True)
+            "--project_fq_name",
+            help="Fully qualified name of the Project",
+            required=True)
         parser.add_argument(
             "--vxlan_id", help="VxLan ID")
         parser.add_argument("--api_server_port", help="Port of api server")
@@ -127,19 +131,20 @@ class ForwardingModeSetup(object):
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
     # end _parse_args
 
-# end class ForwardingModeSetup 
+# end class ForwardingModeSetup
 
 
 def main(args_str=None):
     ForwardingModeSetup(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

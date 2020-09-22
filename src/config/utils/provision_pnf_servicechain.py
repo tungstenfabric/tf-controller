@@ -5,19 +5,21 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import time
-import argparse
-import configparser
-import json
+standard_library.install_aliases()  # noqa
 
-from vnc_api.vnc_api import *
 from cfgm_common.exceptions import *
+from vnc_api.vnc_api import *
+import json
+import configparser
+import argparse
+import time
+import sys
+from builtins import object
+
 
 # Provision a PNF service chain
 # Populate provision_pnf_servicechain.ini appropriately
+
 
 class PnfScProvisioner(object):
 
@@ -38,7 +40,7 @@ class PnfScProvisioner(object):
                     self._args.api_server_port, '/',
                     auth_host=self._args.api_server_ip)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -54,8 +56,8 @@ class PnfScProvisioner(object):
         elif self._args.oper == 'del':
             self.del_pnf()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
@@ -71,7 +73,8 @@ class PnfScProvisioner(object):
 
         conf_parser.add_argument("-c", "--conf_file",
                                  help="Specify config file", metavar="FILE")
-        args, remaining_argv = conf_parser.parse_known_args(args_str.split('|'))
+        args, remaining_argv = conf_parser.parse_known_args(
+            args_str.split('|'))
 
         defaults = {
             'api_server_ip': '127.0.0.1',
@@ -111,7 +114,7 @@ class PnfScProvisioner(object):
 
         try:
             sas_obj = self._vnc_lib.service_appliance_set_read(
-                    fq_name=sa_set_fq_name)
+                fq_name=sa_set_fq_name)
             print("Service Appliance Set Exists " + (sas_obj.uuid))
             return
         except NoIdError:
@@ -119,11 +122,11 @@ class PnfScProvisioner(object):
 
         if self._args.virtualization_type is not None:
             sas_obj.set_service_appliance_set_virtualization_type(
-                    self._args.virtualization_type)
+                self._args.virtualization_type)
         kvp_array = []
         try:
-            for r,c in self._args.properties.items():
-                kvp = KeyValuePair(r,c)
+            for r, c in self._args.properties.items():
+                kvp = KeyValuePair(r, c)
                 kvp_array.append(kvp)
             kvps = KeyValuePairs()
             if kvp_array:
@@ -145,8 +148,8 @@ class PnfScProvisioner(object):
         try:
             self._vnc_lib.service_appliance_set_delete(fq_name=sa_set_fq_name)
         except NoIdError:
-            print("Error: Service Appliance Set does not exist %s"\
-                                                         % (self._args.name))
+            print("Error: Service Appliance Set does not exist %s"
+                  % (self._args.name))
         else:
             print("Deleted Service Appliance Set %s " % (self._args.name))
     # end del_service_appliance_set
@@ -170,17 +173,17 @@ class PnfScProvisioner(object):
 
         try:
             sas_obj = self._vnc_lib.service_appliance_set_read(
-                    fq_name = None,
-                    fq_name_str="default-global-system-config:" +
-                    self._args.name)
+                fq_name=None,
+                fq_name_str="default-global-system-config:" +
+                self._args.name)
             st_obj.set_service_appliance_set(sas_obj)
         except NoIdError:
-                print("Cannot find %s" % (self._args.service_appliance_set_name))
+            print("Cannot find %s" % (self._args.service_appliance_set_name))
 
         try:
             svc_properties = ServiceTemplateType()
             svc_properties.set_service_virtualization_type(
-                                              self._args.virtualization_type)
+                self._args.virtualization_type)
             if_type = ServiceTemplateInterfaceType()
             if_type.set_service_interface_type('left')
             svc_properties.add_interface_type(if_type)
@@ -188,8 +191,8 @@ class PnfScProvisioner(object):
             if_type.set_service_interface_type('right')
             svc_properties.add_interface_type(if_type)
         except AttributeError:
-            print("Warning: Service template could not be fully updated "\
-                                                            + (st_uuid))
+            print("Warning: Service template could not be fully updated " +
+                  (st_uuid))
         else:
             st_obj.set_service_template_properties(svc_properties)
             self._vnc_lib.service_template_update(st_obj)
@@ -203,8 +206,8 @@ class PnfScProvisioner(object):
         try:
             self._vnc_lib.service_template_delete(fq_name=st_fq_name)
         except NoIdError:
-            print("Error: Service template does not exist %s "\
-                                              % (template_name))
+            print("Error: Service template does not exist %s "
+                  % (template_name))
         else:
             print("Deleted Service Template " + (template_name))
     # end del_service_template
@@ -216,10 +219,10 @@ class PnfScProvisioner(object):
         sa_fq_name = [default_gsc_name, self._args.name, appliance_name]
         try:
             sas_obj = self._vnc_lib.service_appliance_set_read(
-                                                       fq_name=sas_fq_name)
+                fq_name=sas_fq_name)
         except NoIdError:
-            print("Error: Service Appliance Set does not exist %s "\
-                                                       % (self._args.name))
+            print("Error: Service Appliance Set does not exist %s "
+                  % (self._args.name))
             sys.exit(-1)
 
         sa_obj = ServiceAppliance(appliance_name, sas_obj)
@@ -233,31 +236,37 @@ class PnfScProvisioner(object):
 
         try:
             kvp_array = []
-            kvp = KeyValuePair("left-attachment-point",
-                    default_gsc_name + ':' + self._args.left_attachment_point)
+            kvp = KeyValuePair(
+                "left-attachment-point",
+                default_gsc_name +
+                ':' +
+                self._args.left_attachment_point)
             kvp_array.append(kvp)
-            kvp = KeyValuePair("right-attachment-point",
-                   default_gsc_name + ':' + self._args.right_attachment_point)
+            kvp = KeyValuePair(
+                "right-attachment-point",
+                default_gsc_name +
+                ':' +
+                self._args.right_attachment_point)
             kvp_array.append(kvp)
             kvps = KeyValuePairs()
             kvps.set_key_value_pair(kvp_array)
             sa_obj.set_service_appliance_properties(kvps)
             sa_obj.set_service_appliance_virtualization_type(
-                                             self._args.virtualization_type)
+                self._args.virtualization_type)
         except AttributeError:
-            print("Warning: Some attributes of Service Appliance missing "\
-                                                            + (appliance_name))
+            print("Warning: Some attributes of Service Appliance missing " +
+                  (appliance_name))
 
         try:
             pnf_left_intf_obj = self._vnc_lib.physical_interface_read(
-                    fq_name=[default_gsc_name,
-                             self._args.pnf_left_intf.split(":")[0],
-                            self._args.pnf_left_intf.split(":")[-1]])
-            attr = ServiceApplianceInterfaceType( interface_type='left')
+                fq_name=[default_gsc_name,
+                         self._args.pnf_left_intf.split(":")[0],
+                         self._args.pnf_left_intf.split(":")[-1]])
+            attr = ServiceApplianceInterfaceType(interface_type='left')
             sa_obj.add_physical_interface(pnf_left_intf_obj, attr)
         except NoIdError:
-            print("Error: Left PNF interface does not exist %s "\
-                                                  % (self._args.pnf_left_intf))
+            print("Error: Left PNF interface does not exist %s "
+                  % (self._args.pnf_left_intf))
             sys.exit(-1)
         except AttributeError:
             print("Error: Left PNF interface missing")
@@ -265,14 +274,14 @@ class PnfScProvisioner(object):
 
         try:
             pnf_right_intf_obj = self._vnc_lib.physical_interface_read(
-                    fq_name=[default_gsc_name,
-                             self._args.pnf_right_intf.split(":")[0],
-                            self._args.pnf_right_intf.split(":")[-1]])
-            attr = ServiceApplianceInterfaceType( interface_type='right')
+                fq_name=[default_gsc_name,
+                         self._args.pnf_right_intf.split(":")[0],
+                         self._args.pnf_right_intf.split(":")[-1]])
+            attr = ServiceApplianceInterfaceType(interface_type='right')
             sa_obj.add_physical_interface(pnf_right_intf_obj, attr)
         except NoIdError:
-            print("Error: Right PNF interface does not exist %s "\
-                                               % (self._args.pnf_right_intf))
+            print("Error: Right PNF interface does not exist %s "
+                  % (self._args.pnf_right_intf))
             sys.exit(-1)
         except AttributeError:
             print("Error: Right PNF interface missing")
@@ -297,7 +306,7 @@ class PnfScProvisioner(object):
     def add_service_instance(self):
         si_name = self._args.name + "-SI"
         st_name = self._args.name + "-ST"
-        si_fq_name = ['default-domain','admin', si_name]
+        si_fq_name = ['default-domain', 'admin', si_name]
         st_fq_name = ['default-domain', st_name]
         si_obj = ServiceInstance(fq_name=si_fq_name)
         si_obj.fq_name = si_fq_name
@@ -330,12 +339,12 @@ class PnfScProvisioner(object):
             si_obj.set_annotations(kvps)
             props = ServiceInstanceType()
             props.set_service_virtualization_type(
-                                               self._args.virtualization_type)
+                self._args.virtualization_type)
             props.set_ha_mode("active-standby")
             si_obj.set_service_instance_properties(props)
         except AttributeError:
-            print("Warning: Some attributes of Service Instance missing "\
-                                                                   + (si_name))
+            print("Warning: Some attributes of Service Instance missing " +
+                  (si_name))
         self._vnc_lib.service_instance_create(si_obj)
         print("Service Instance created " + (si_obj.uuid))
     # end add_service_instance
@@ -377,9 +386,9 @@ class PnfScProvisioner(object):
                                 'admin',
                                 self._args.right_lr_name]
             left_lr_obj = self._vnc_lib.logical_router_read(
-                                                     fq_name=left_lr_fq_name)
+                fq_name=left_lr_fq_name)
             right_lr_obj = self._vnc_lib.logical_router_read(
-                                                    fq_name=right_lr_fq_name)
+                fq_name=right_lr_fq_name)
             pt_obj.add_logical_router(left_lr_obj)
             pt_obj.add_logical_router(right_lr_obj)
         except NoIdError as e:
@@ -390,7 +399,7 @@ class PnfScProvisioner(object):
         kvp_array = []
         kvp = KeyValuePair("left-lr", left_lr_obj.uuid)
         kvp_array.append(kvp)
-        kvp = KeyValuePair("right-lr",right_lr_obj.uuid)
+        kvp = KeyValuePair("right-lr", right_lr_obj.uuid)
         kvp_array.append(kvp)
         kvps = KeyValuePairs()
         kvps.set_key_value_pair(kvp_array)
@@ -431,9 +440,11 @@ class PnfScProvisioner(object):
 
 # end class PnfScProvisioner
 
+
 def main(args_str=None):
     PnfScProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

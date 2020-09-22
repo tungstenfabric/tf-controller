@@ -3,38 +3,38 @@
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
 
-from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import argparse
+standard_library.install_aliases()  # noqa
+
+from __future__ import print_function
+from quantumclient.common import exceptions
+from quantumclient.client import HTTPClient
+from quantumclient.quantum import client
+from pprint import pformat
+import json
+from vnc_api.vnc_api import *
+import subprocess
+import socket
+import errno
+import time
+import uuid
+import sys
+import os
+import eventlet
 import configparser
+import argparse
+from builtins import object
+from builtins import str
 
 #from ginkgo import Service
 #from fabric.api import env
 #from fabric.api import run
 #from fabric.context_managers import settings
 
-import eventlet
-import os
-import sys
 # eventlet.monkey_patch(thread=False)
 
-import uuid
-import time
-import errno
-import socket
-import subprocess
 
-from vnc_api.vnc_api import *
-
-import json
 sys.path.insert(2, '/opt/stack/python-quantumclient')
-from pprint import pformat
-from quantumclient.quantum import client
-from quantumclient.client import HTTPClient
-from quantumclient.common import exceptions
 
 
 class DemoCfg(object):
@@ -220,6 +220,7 @@ class DemoCfg(object):
 def main(args_str=None):
     DemoCfg(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

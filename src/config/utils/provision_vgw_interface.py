@@ -5,17 +5,17 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import os
-import sys
-import argparse
-import configparser
-import requests
+standard_library.install_aliases()  # noqa
 
-from netaddr.ip import IPNetwork
 from vnc_api.vnc_api import *
+from netaddr.ip import IPNetwork
+import requests
+import configparser
+import argparse
+import sys
+import os
+from builtins import object
+from builtins import str
 
 
 class ProvisionVgwInterface(object):
@@ -54,7 +54,8 @@ class ProvisionVgwInterface(object):
                 if not first:
                     subnets_str += ","
                 first = False
-                subnets_str += "{\"ip-address\":\"%s\", \"prefix-len\":%d}" % (str(net.ip), net.prefixlen)
+                subnets_str += "{\"ip-address\":\"%s\", \"prefix-len\":%d}" % (
+                    str(net.ip), net.prefixlen)
             subnets_str += "]"
 
             route_list = []
@@ -65,10 +66,12 @@ class ProvisionVgwInterface(object):
                 if not first:
                     routes_str += ","
                 first = False
-                routes_str += "{\"ip-address\":\"%s\", \"prefix-len\":%d}" % (str(net.ip), net.prefixlen)
+                routes_str += "{\"ip-address\":\"%s\", \"prefix-len\":%d}" % (
+                    str(net.ip), net.prefixlen)
             routes_str += "]"
 
-            gw_str = "[{\"interface\":\"%s\", \"routing-instance\":\"%s\", %s, %s}]" %(self._args.interface, self._args.vrf, subnets_str, routes_str)
+            gw_str = "[{\"interface\":\"%s\", \"routing-instance\":\"%s\", %s, %s}]" % (
+                self._args.interface, self._args.vrf, subnets_str, routes_str)
 
             try:
                 r = requests.post(url, data=gw_str, headers=headers)
@@ -109,32 +112,34 @@ class ProvisionVgwInterface(object):
             print("Done deleting virtual-gateway...")
 
     # end __init__
-    
+
     def execute_command(self, cmd):
         print(cmd)
         out = os.system(cmd)
         if out != 0:
             print("Error executing : " + cmd)
-    #end execute_command
+    # end execute_command
 
     def get_interface_index(self, interface):
         import subprocess
-        proc = subprocess.Popen(["/usr/bin/vif", "--list"], stdout=subprocess.PIPE)
+        proc = subprocess.Popen(
+            ["/usr/bin/vif", "--list"], stdout=subprocess.PIPE)
         vif_list, err = proc.communicate()
 
         vif_match = 'OS: ' + interface
-        lines = [line for line in vif_list.split('\n') if line.endswith(vif_match)]
+        lines = [line for line in vif_list.split(
+            '\n') if line.endswith(vif_match)]
         for line in lines:
             lineitems = line.split(' ')
             first = lineitems[0]
             index = first.split('/')
             return index[1]
         return -1
-    #end get_interface_index
+    # end get_interface_index
 
     def _parse_args(self, args_str):
         '''
-        Eg. python provision_vgw_interface.py 
+        Eg. python provision_vgw_interface.py
                                         --oper <create | delete>
                                         --interface vgw1
                                         --subnets 1.2.3.0/24 7.8.9.0/24
@@ -171,10 +176,11 @@ class ProvisionVgwInterface(object):
         parser.add_argument(
             "--interface", help="Name of the gateway interface")
         parser.add_argument(
-            "--subnets", nargs='+', 
+            "--subnets", nargs='+',
             help="List of subnets in virtual-network configured for gateway (Ex: 1.1.1.0/24 2.2.2.0/24)")
         parser.add_argument(
-            "--routes", nargs='+', 
+            "--routes",
+            nargs='+',
             help="List of public routes injected into virtual-network routing-instance (Ex: 8.8.8.0/24 9.9.9.0/24)")
         parser.add_argument(
             "--vrf",
@@ -194,9 +200,11 @@ class ProvisionVgwInterface(object):
 
 # end class ProvisionVgwInterface
 
+
 def main(args_str=None):
     ProvisionVgwInterface(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

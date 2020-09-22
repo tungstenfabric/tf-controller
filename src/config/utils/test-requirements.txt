@@ -1,0 +1,7 @@
+flexmock==0.10.4
+mock<=4.0.2
+WebTest==2.0.34
+contrail-api-server
+kombu==4.0.2
+python-novaclient==16.0.0
+junitxml==0.7
