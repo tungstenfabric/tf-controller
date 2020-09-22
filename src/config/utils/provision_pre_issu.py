@@ -3,6 +3,9 @@
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
 
+from future import standard_library
+standard_library.install_aliases() # noqa
+
 import sys
 import time
 import argparse
@@ -32,7 +35,7 @@ class ISSUContrailPreProvisioner(object):
                     auth_host=self._args.openstack_ip,
                     api_server_use_ssl=self._args.api_server_use_ssl)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -73,7 +76,7 @@ class ISSUContrailPreProvisioner(object):
             args_str = ' '.join(sys.argv[1:])
         conf_parser = argparse.ArgumentParser(add_help=False)
         conf_parser.add_argument("-c", "--conf_file", action='append',
-            help="Specify config file", metavar="FILE")
+                                 help="Specify config file", metavar="FILE")
         args, remaining_argv = conf_parser.parse_known_args(args_str.split())
 
         if args.conf_file:
@@ -97,7 +100,7 @@ class ISSUContrailPreProvisioner(object):
             "--v1_api_server_ip", help="IP address of api server")
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--admin_user", help="Name of keystone admin user")
         parser.add_argument(
@@ -108,7 +111,8 @@ class ISSUContrailPreProvisioner(object):
             "--openstack_ip", help="IP address of openstack node")
         parser.add_argument(
             "--address_families", help="Address family list",
-            choices=["route-target", "inet-vpn", "e-vpn", "erm-vpn", "inet6-vpn"],
+            choices=["route-target", "inet-vpn",
+                     "e-vpn", "erm-vpn", "inet6-vpn"],
             nargs="*", default=[])
         parser.add_argument(
             "--md5", help="Md5 config for the node")
@@ -120,23 +124,23 @@ class ISSUContrailPreProvisioner(object):
             args_obj.config_section = config
 
         if isinstance(args_obj.db_host_info, basestring):
-            json_string=args_obj.db_host_info.replace("'", "\"")
-            args_obj.db_host_info=\
+            json_string = args_obj.db_host_info.replace("'", "\"")
+            args_obj.db_host_info =\
                 json.loads(json_string)
 
         if isinstance(args_obj.config_host_info, basestring):
-            json_string=args_obj.config_host_info.replace("'", "\"")
-            args_obj.config_host_info=\
+            json_string = args_obj.config_host_info.replace("'", "\"")
+            args_obj.config_host_info =\
                 json.loads(json_string)
 
         if isinstance(args_obj.analytics_host_info, basestring):
-            json_string=args_obj.analytics_host_info.replace("'", "\"")
-            args_obj.analytics_host_info=\
+            json_string = args_obj.analytics_host_info.replace("'", "\"")
+            args_obj.analytics_host_info =\
                 json.loads(json_string)
 
         if isinstance(args_obj.control_host_info, basestring):
-            json_string=args_obj.control_host_info.replace("'", "\"")
-            args_obj.control_host_info=\
+            json_string = args_obj.control_host_info.replace("'", "\"")
+            args_obj.control_host_info =\
                 json.loads(json_string)
 
         self._args = args_obj
@@ -149,16 +153,16 @@ class ISSUContrailPreProvisioner(object):
             fq_name=['default-domain', 'default-project',
                      'ip-fabric', '__default__'])
 
-        for k,v in list(self._args.control_host_info.items()):
+        for k, v in list(self._args.control_host_info.items()):
             router_params = BgpRouterParams(router_type='control-node',
-                               vendor='contrail' , 
-                               autonomous_system=64512,
-                               identifier=k,
-                               address=k,
-                               port=179,hold_time=90)
+                                            vendor='contrail',
+                                            autonomous_system=64512,
+                                            identifier=k,
+                                            address=k,
+                                            port=179, hold_time=90)
 
             bgp_router_obj = BgpRouter(v, rt_inst_obj,
-                                   bgp_router_parameters=router_params)
+                                       bgp_router_parameters=router_params)
 
             # Return early with a log if it already exists
             try:
@@ -168,12 +172,13 @@ class ISSUContrailPreProvisioner(object):
                     bgp_params = existing_obj.get_bgp_router_parameters()
                     # set md5
                     print("Setting md5 on the existing uuid")
-                    md5 = {'key_items': [ { 'key': self._args.md5 ,"key_id":0 } ], "key_type":"md5"}
+                    md5 = {'key_items': [
+                        {'key': self._args.md5, "key_id": 0}], "key_type": "md5"}
                     bgp_params.set_auth_data(md5)
                     existing_obj.set_bgp_router_parameters(bgp_params)
                     self._vnc_lib.bgp_router_update(existing_obj)
                 print ("BGP Router " + pformat(fq_name) +
-                   " already exists with uuid " + existing_obj.uuid)
+                       " already exists with uuid " + existing_obj.uuid)
                 return
             except NoIdError:
                 pass
@@ -191,6 +196,7 @@ class ISSUContrailPreProvisioner(object):
 def main(args_str=None):
     ISSUContrailPreProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

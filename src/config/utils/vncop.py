@@ -40,14 +40,14 @@ class VncOp(object):
         parser.add_argument(
             '--name', help="colon seperated fully qualified name")
         parser.add_argument('--uuid', help="object UUID")
-        parser.add_argument('--user',  help="User Name")
-        parser.add_argument('--role',  help="Role Name")
+        parser.add_argument('--user', help="User Name")
+        parser.add_argument('--role', help="Role Name")
         parser.add_argument(
-            '--os-username',  help="Keystone User Name", default=None)
+            '--os-username', help="Keystone User Name", default=None)
         parser.add_argument(
-            '--os-password',  help="Keystone User Password", default=None)
+            '--os-password', help="Keystone User Password", default=None)
         parser.add_argument(
-            '--os-tenant-name',  help="Keystone Tenant Name", default=None)
+            '--os-tenant-name', help="Keystone Tenant Name", default=None)
 
         self.args = parser.parse_args()
         self.opts = vars(self.args)
@@ -74,13 +74,14 @@ class VncOp(object):
         return (value, rsp)
     # end
 
+
 vnc_op = VncOp()
 vnc_op.parse_args()
 
 # Validate API server information
 server = vnc_op.args.server.split(':')
 if len(server) != 2:
-    print('API server address must be of the form ip:port, '\
+    print('API server address must be of the form ip:port, '
           'for example 127.0.0.1:8082')
     sys.exit(1)
 

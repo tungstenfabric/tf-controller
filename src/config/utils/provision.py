@@ -4,18 +4,24 @@
 #
 
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-import json
-import copy
+import sys
 from netaddr import IPNetwork
+import json
+import configparser
+import argparse
+from builtins import object
+from builtins import str
 
-from vnc_api.vnc_api import *
 from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import AddressFamilies
+from vnc_api.vnc_api import BgpSessionAttributes
+from vnc_api.vnc_api import BgpSession
+from vnc_api.vnc_api import BgpPeeringAttributes
+from vnc_api.vnc_api import VirtualRouter
+from vnc_api.vnc_api import BgpRouterParams
+from vnc_api.vnc_api import BgpRouter
 
 
 def get_ip(ip_w_pfx):
@@ -41,13 +47,14 @@ class VncProvisioner(object):
         self._bgp_peering_attrs = BgpPeeringAttributes(
             session=self._bgp_sessions)
 
-        self._vnc_lib = VncApiAdmin(self._args.use_admin_api,
-                               self._args.admin_user,
-                               self._args.admin_password,
-                               self._args.admin_tenant_name,
-                               self._args.api_server_ip,
-                               self._args.api_server_port, '/',
-                               api_server_use_ssl=self._args.api_server_use_ssl)
+        self._vnc_lib = VncApiAdmin(
+            self._args.use_admin_api,
+            self._args.admin_user,
+            self._args.admin_password,
+            self._args.admin_tenant_name,
+            self._args.api_server_ip,
+            self._args.api_server_port, '/',
+            api_server_use_ssl=self._args.api_server_use_ssl)
         vnc_lib = self._vnc_lib
 
         gsc_obj = vnc_lib.global_system_config_read(
@@ -55,7 +62,7 @@ class VncProvisioner(object):
 
         gsc_obj.set_autonomous_system(prov_info['bgp-asn'])
         if 'ibgp-auto-mesh' in prov_info:
-            gsc_obj.set_ibgp_auto_mesh(prov_infoi['ibgp-auto-mesh'])
+            gsc_obj.set_ibgp_auto_mesh(prov_info['ibgp-auto-mesh'])
         vnc_lib.global_system_config_update(gsc_obj)
         self._global_system_config_obj = gsc_obj
 
@@ -171,7 +178,7 @@ class VncProvisioner(object):
             "--prov_data_file", help="File name of provision data in json")
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--admin_user", help="Name of keystone admin user")
         parser.add_argument(
@@ -182,9 +189,9 @@ class VncProvisioner(object):
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -203,6 +210,7 @@ class VncProvisioner(object):
 def main(args_str=None):
     VncProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

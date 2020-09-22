@@ -79,48 +79,49 @@ provider_config:
       ssh_key_file: '/home/stack/.ssh/id_rsa'
   gcore_needed: true
 """
-from __future__ import print_function
 
+from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import range
-from builtins import object
-import subprocess
-import time
-import sys
+standard_library.install_aliases() # noqa
+
+import stat
+import xml.etree.ElementTree as ET
+import yaml
+import paramiko
+from urllib.error import URLError, HTTPError
+from urllib.request import urlopen
 import warnings
+import sys
+import time
+import subprocess
+from builtins import object
+from builtins import range
+from builtins import str
 
 warnings.filterwarnings(action='ignore', module='.*paramiko.*')
-from urllib.request import urlopen
-from urllib.error import URLError, HTTPError
-import paramiko
-import yaml
-import xml.etree.ElementTree as ET
-import stat
 
 sudo_prefix = 'sudo '
 deployment_map = {
-        'rhosp_director': {
-            'rhosp': {
-                'container_name': 'contrail_vrouter_agent',
-                'lib_path': '/usr/lib64/',
-                'log_path': '/var/log/containers/contrail/'
-                }
-            },
-        'ansible': {
-            'openstack': {
-                'container_name': 'vrouter_vrouter-agent_1',
-                'lib_path': '/usr/lib64/',
-                'log_path': '/var/log/contrail/'
-                },
-            'kubernetes': {
-                'container_name': 'vrouter_vrouter-agent_1',
-                'lib_path': '/usr/lib64/',
-                'log_path': '/var/log/contrail/'
-                }
-            }
+    'rhosp_director': {
+        'rhosp': {
+            'container_name': 'contrail_vrouter_agent',
+            'lib_path': '/usr/lib64/',
+            'log_path': '/var/log/containers/contrail/'
         }
+    },
+    'ansible': {
+        'openstack': {
+            'container_name': 'vrouter_vrouter-agent_1',
+            'lib_path': '/usr/lib64/',
+            'log_path': '/var/log/contrail/'
+        },
+        'kubernetes': {
+            'container_name': 'vrouter_vrouter-agent_1',
+            'lib_path': '/usr/lib64/',
+            'log_path': '/var/log/contrail/'
+        }
+    }
+}
 
 
 class Debug(object):
@@ -274,14 +275,15 @@ class Debug(object):
         ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(cmd)
         exit_status = ssh_stdout.channel.recv_exit_status()
         if not exit_status == 0:
-            print('\nGenerating %s gcore : Failed. Error %s' \
+            print('\nGenerating %s gcore : Failed. Error %s'
                   % (self._process_name, exit_status))
             return 0
-        cmd = sudo_prefix + 'docker exec %s ls %s' % (self._container, gcore_name)
+        cmd = sudo_prefix + \
+            'docker exec %s ls %s' % (self._container, gcore_name)
         ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(cmd)
         core_name = ssh_stdout.readline().strip('\n')
         if 'core' not in core_name:
-            print('\nGenerating %s gcore : Failed. Gcore not found' \
+            print('\nGenerating %s gcore : Failed. Gcore not found'
                   % (self._process_name))
             return 0
 
@@ -294,7 +296,9 @@ class Debug(object):
     def copy_gcore(self):
         print('\nTASK : copy gcore')
         merged_dir_path = self.get_merged_dir_path()
-        cmd = sudo_prefix + 'cp %s/%s %s' % (merged_dir_path, self._core_file_name, self._tmp_dir)
+        cmd = sudo_prefix + \
+            'cp %s/%s %s' % (merged_dir_path,
+                             self._core_file_name, self._tmp_dir)
         ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(cmd)
         exit_status = ssh_stdout.channel.recv_exit_status()
         if not exit_status == 0:
@@ -304,8 +308,10 @@ class Debug(object):
         dest_file = '%s/gcore/%s' % (self._parent_dir, self._core_file_name)
         if self.do_ftp(src_file, dest_file):
             print('\nCopying gcore file : Success')
-            cmd = sudo_prefix + 'rm -rf %s/%s' % (merged_dir_path, self._core_file_name)
-            ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(cmd)
+            cmd = sudo_prefix + \
+                'rm -rf %s/%s' % (merged_dir_path, self._core_file_name)
+            ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(
+                cmd)
         else:
             print('\nCopying gcore file : Failed')
 
@@ -328,22 +334,24 @@ class Debug(object):
         merged_dir_path = self.get_merged_dir_path()
         for lib_name in lib_list:
             cmd = sudo_prefix + 'docker exec %s echo $(readlink %s%s.so*)' \
-                  % (self._container, self._lib_path, lib_name)
+                % (self._container, self._lib_path, lib_name)
             # get exact library name
-            ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(cmd)
+            ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(
+                cmd)
             exit_status = ssh_stdout.channel.recv_exit_status()
             if not exit_status == 0:
-                print('\nCopying library %s  : Failed. Error %s' \
+                print('\nCopying library %s  : Failed. Error %s'
                       % (lib_name, exit_status))
                 continue
             lib_name = ssh_stdout.readline().rstrip('\n')
             # copy library to tmp directory
             src_file = '%s/usr/lib64/%s' % (merged_dir_path, lib_name)
             cmd = sudo_prefix + 'cp %s %s' % (src_file, self._tmp_dir)
-            ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(cmd)
+            ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(
+                cmd)
             exit_status = ssh_stdout.channel.recv_exit_status()
             if not exit_status == 0:
-                print('\nCopying library %s  : Failed. Error %s' \
+                print('\nCopying library %s  : Failed. Error %s'
                       % (lib_name, exit_status))
                 continue
             # do ftp to copy the library
@@ -377,7 +385,8 @@ class Debug(object):
             cmd_list[i] = cmd_list[i].strip()
             cmd = sudo_prefix + 'docker exec %s %s %s' % (self._container,
                                                           self._cli, cmd_list[i])
-            print('Collecting output of command [%s %s]' % (self._cli, cmd_list[i]))
+            print('Collecting output of command [%s %s]' % (
+                self._cli, cmd_list[i]))
             cmd_op = self.get_ssh_cmd_output(cmd)
             if not cmd_op:
                 continue
@@ -401,7 +410,8 @@ class Debug(object):
         if self._introspect.get(path) == 0:
             print('\nCopying sandesh traces : Failed')
             return
-        trace_buffer_list = self._introspect.getTraceBufferList('trace_buf_name')
+        trace_buffer_list = self._introspect.getTraceBufferList(
+            'trace_buf_name')
         for i in range(len(trace_buffer_list)):
             tmp_str = trace_buffer_list[i].split()
             file_name = '_'.join(tmp_str)
@@ -413,12 +423,12 @@ class Debug(object):
                 print('\nCopying sandesh traces : Failed')
                 return
             print('Collecting sandesh trace [%s]' % trace_buffer_list[i])
-            self._introspect.get('Snh_SandeshTraceRequest?x=' \
-                                 + trace_buffer_list[i])
+            self._introspect.get('Snh_SandeshTraceRequest?x=' +
+                                 trace_buffer_list[i])
             if self._introspect.output_etree is not None:
                 for element in \
                         self._introspect.output_etree.iter('element'):
-                    f.write( \
+                    f.write(
                         Introspect.elementToStr('', element).rstrip())
                     f.write('\n')
             f.close()
@@ -479,7 +489,7 @@ class Debug(object):
             try:
                 sftp_client.get(src_file, dest_file)
             except Exception as e:
-                print('\n%s while copying file %s. Retry attempt %s of %s ' \
+                print('\n%s while copying file %s. Retry attempt %s of %s '
                       % (e, src_file, count, max_count))
                 time.sleep(5)
                 continue
@@ -507,12 +517,16 @@ class Debug(object):
         for i in range(len(commands)):
             str_value = commands[i]
             if str_value == "dropstats" or str_value == "dropstats -l 0":
-                self.run_command_interval_times(str_value, 5, 5)  # command,interval,times
+                self.run_command_interval_times(
+                    str_value, 5, 5)  # command,interval,times
             elif str_value == "flow -s":
-                self.run_command_interval_times(str_value, 20, 1)  # command,interval,times
+                self.run_command_interval_times(
+                    str_value, 20, 1)  # command,interval,times
             else:
                 str_file_name = str_value.replace(' ', '')
-                myCmd = sudo_prefix + 'docker exec %s /bin/sh -c "%s" ' % (self._container, str_value)
+                myCmd = sudo_prefix + \
+                    'docker exec %s /bin/sh -c "%s" ' % (
+                        self._container, str_value)
                 cmd_op = self.get_ssh_cmd_output(myCmd)
                 if not cmd_op:
                     continue
@@ -691,14 +705,15 @@ class Debug(object):
             file_num = i + 1
             str_file_name = cmd.replace(' ', '')
             myCmd = sudo_prefix + 'timeout %ds docker exec %s /bin/sh -c "%s"' \
-                    % (interval, self._container, cmd)
+                % (interval, self._container, cmd)
             cmd_op = self.get_ssh_cmd_output(myCmd)
             time.sleep(2)
             if not cmd_op:
                 print('No output for the command %s' % myCmd)
                 return
             # create file name
-            file_path = self._parent_dir + '/vrouter_logs/' + str_file_name + str(file_num)
+            file_path = self._parent_dir + '/vrouter_logs/' + \
+                str_file_name + str(file_num)
             try:
                 f = open(file_path, 'a')
             except Exception as e:
@@ -724,7 +739,8 @@ class Debug(object):
     def delete_tmp_dir(self):
         # delete tmp directory
         myCmd = sudo_prefix + 'rm -rf %s' % self._tmp_dir
-        ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(myCmd)
+        ssh_stdin, ssh_stdout, ssh_stderr = self._ssh_client.exec_command(
+            myCmd)
 
     # end cleanup
 
@@ -789,8 +805,8 @@ class Introspect(object):
             return indent + etreenode.text + "\n"
         elif etreenode.text:
             return indent + etreenode.tag + ': ' + \
-                   etreenode.text.replace('\n', '\n' + \
-                                          indent + (len(etreenode.tag) + 2) * ' ') + "\n"
+                etreenode.text.replace('\n', '\n' +
+                                       indent + (len(etreenode.tag) + 2) * ' ') + "\n"
         elif etreenode.tag != 'list':
             elementStr += indent + etreenode.tag + "\n"
 
@@ -827,6 +843,7 @@ def parse_yaml_file(file_path):
             return yaml_data
 # end parse_yaml_file
 
+
 def collect_vrouter_node_logs(data):
     deployment_method = data['provider_config']['deployment_method']
     vim_type = data['provider_config']['vim']
@@ -839,7 +856,8 @@ def collect_vrouter_node_logs(data):
     for item in data['provider_config']['vrouter']:
         host = data['provider_config']['vrouter'][item]['ip']
         user = data['provider_config']['vrouter'][item]['ssh_user']
-        ssh_key_file = data['provider_config']['vrouter'][item].get('ssh_key_file')
+        ssh_key_file = data['provider_config']['vrouter'][item].get(
+            'ssh_key_file')
         pw = data['provider_config']['vrouter'][item].get('ssh_pwd')
         port = 8085
         print('\nCollecting vrouter-agent logs for node : %s' % host)
@@ -902,7 +920,8 @@ def collect_control_node_logs(data):
     for item in data['provider_config']['control']:
         host = data['provider_config']['control'][item]['ip']
         user = data['provider_config']['control'][item]['ssh_user']
-        ssh_key_file = data['provider_config']['control'][item].get('ssh_key_file')
+        ssh_key_file = data['provider_config']['control'][item].get(
+            'ssh_key_file')
         pw = data['provider_config']['control'][item].get('ssh_pwd')
         print('\nCollecting controller logs for control node : %s' % host)
         obj = Debug(dir_name='control',

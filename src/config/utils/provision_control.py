@@ -2,19 +2,19 @@
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
+
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-import sys
-import argparse
-from six.moves import configparser
+standard_library.install_aliases() # noqa
 
-
-from vnc_api.exceptions import NoIdError
-from provision_bgp import BgpProvisioner
-from vnc_api.vnc_api import *
 from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import *
+from provision_bgp import BgpProvisioner
+from vnc_api.exceptions import NoIdError
+from six.moves import configparser
+import argparse
+import sys
+from builtins import str
 
 
 class ControlProvisioner(BgpProvisioner):
@@ -47,14 +47,14 @@ class ControlProvisioner(BgpProvisioner):
             elif self._args.oper in ['add', 'del']:
                 return self.provision_control_bgp
             else:
-                print("Unknown operation %s. Only 'add' and 'del' supported" \
-                    % (self._args.oper))
+                print("Unknown operation %s. Only 'add' and 'del' supported"
+                      % (self._args.oper))
         return self.noop
 
     def global_bgp_provisioning(self):
         print("Perfroming provisioning of global BGP parameters")
         gsc_obj = self._vnc_lib.global_system_config_read(
-                fq_name=['default-global-system-config'])
+            fq_name=['default-global-system-config'])
         # global asn might have been modified in clusters.
         # so provision_control should not set back to 64512(default)
         if (self._args.router_asn != '64512'):
@@ -88,7 +88,7 @@ class ControlProvisioner(BgpProvisioner):
         if not self._args.oper or self._args.oper == 'add':
             try:
                 router_obj = self._vnc_lib.bgp_router_read(
-                    fq_name = self._get_rt_inst_obj().fq_name + [hostname],
+                    fq_name=self._get_rt_inst_obj().fq_name + [hostname],
                     fields=['global_system_config_back_refs'])
                 if not router_obj.get_global_system_config_back_refs():
                     print("global-system-config-bgp-router link is not present")
@@ -109,32 +109,33 @@ class ControlProvisioner(BgpProvisioner):
             if self._args.sub_cluster_name:
                 print("Perfroming provisioning of controller specific BGP parameters")
                 self.add_bgp_router('external-control-node',
-                                self._args.host_name,
-                                self._args.host_ip, self._args.router_asn,
-                                self._args.address_families, self._args.md5,
-                                self._args.local_autonomous_system,
-                                self._args.bgp_server_port)
+                                    self._args.host_name,
+                                    self._args.host_ip, self._args.router_asn,
+                                    self._args.address_families, self._args.md5,
+                                    self._args.local_autonomous_system,
+                                    self._args.bgp_server_port)
             else:
                 self.add_bgp_router('control-node', self._args.host_name,
-                                self._args.host_ip, self._args.router_asn,
-                                self._args.address_families, self._args.md5,
-                                self._args.local_autonomous_system,
-                                self._args.bgp_server_port)
+                                    self._args.host_ip, self._args.router_asn,
+                                    self._args.address_families, self._args.md5,
+                                    self._args.local_autonomous_system,
+                                    self._args.bgp_server_port)
         elif self._args.oper == 'del':
             self.del_bgp_router(self._args.host_name)
         return
 
-
     def gr_time_type(self, value):
         time = int(value)
         if time < 0 or time > 4095:
-            raise argparse.ArgumentTypeError("graceful_restart_time %s must be in range (0..4095)" % value)
+            raise argparse.ArgumentTypeError(
+                "graceful_restart_time %s must be in range (0..4095)" % value)
         return time
 
     def llgr_time_type(self, value):
         time = int(value)
         if time < 0 or time > 16777215:
-            raise argparse.ArgumentTypeError("long_lived_graceful_restart_time %s must be in range (0..16777215)" % value)
+            raise argparse.ArgumentTypeError(
+                "long_lived_graceful_restart_time %s must be in range (0..16777215)" % value)
         return time
 
     def _parse_args(self, args_str):
@@ -182,7 +183,7 @@ class ControlProvisioner(BgpProvisioner):
             'admin_user': None,
             'admin_password': None,
             'admin_tenant_name': None,
-            'md5' : None,
+            'md5': None,
             'graceful_restart_time': 300,
             'long_lived_graceful_restart_time': 300,
             'end_of_rib_timeout': 300,
@@ -191,7 +192,7 @@ class ControlProvisioner(BgpProvisioner):
             'graceful_restart_enable': False,
             'set_graceful_restart_parameters': False,
             'sub_cluster_name': None,
-            'peer_list':None,
+            'peer_list': None,
         }
 
         if args.conf_file:
@@ -224,7 +225,8 @@ class ControlProvisioner(BgpProvisioner):
             "--local_autonomous_system", help="Local autonomous-system number used to peer contrail-control bgp speakers across different geographic locations")
         parser.add_argument(
             "--address_families", help="Address family list",
-            choices=["route-target", "inet-vpn", "e-vpn", "erm-vpn", "inet6-vpn"],
+            choices=["route-target", "inet-vpn",
+                     "e-vpn", "erm-vpn", "inet6-vpn"],
             nargs="*", default=[])
         parser.add_argument(
             "--md5", help="Md5 config for the node")
@@ -234,7 +236,7 @@ class ControlProvisioner(BgpProvisioner):
             "--no_ibgp_auto_mesh", help="Don't create iBGP mesh automatically", dest='ibgp_auto_mesh', action='store_false')
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper",
             help="Provision operation to be done(add or del)")
@@ -282,9 +284,9 @@ class ControlProvisioner(BgpProvisioner):
             "--api_server_ip", help="IP address of api server",
             nargs='+', type=str)
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -297,6 +299,7 @@ def main(args_str=None):
     provisioner = ControlProvisioner(args_str).run()
     provisioner()
 # end main
+
 
 if __name__ == "__main__":
     main()

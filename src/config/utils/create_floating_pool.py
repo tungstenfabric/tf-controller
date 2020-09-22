@@ -4,17 +4,16 @@
 #
 
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import argparse
-import configparser
-
-import json
-import copy
-from netaddr import IPNetwork
+standard_library.install_aliases() # noqa
 
 from vnc_api.vnc_api import *
+from netaddr import IPNetwork
+import copy
+import json
+import configparser
+import argparse
+from builtins import object
+from builtins import str
 
 
 def get_ip(ip_w_pfx):
@@ -108,9 +107,10 @@ class VncProvisioner(object):
             "--floating_ip_pool_name", help="Name of the floating IP pool", required=True)
         parser.add_argument(
             "--api_server_ip", help="IP address of api server", required=True)
-        parser.add_argument("--api_server_port", help="Port of api server", required=True)
+        parser.add_argument("--api_server_port",
+                            help="Port of api server", required=True)
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--admin_user", help="Name of keystone admin user", required=True)
         parser.add_argument(
@@ -128,6 +128,7 @@ class VncProvisioner(object):
 def main(args_str=None):
     VncProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

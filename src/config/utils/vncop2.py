@@ -28,6 +28,7 @@ def CamelCase(input):
 def str_to_class(class_name):
     return reduce(getattr, class_name.split("."), sys.modules[__name__])
 
+
 def print_perms2(obj):
     perms2 = obj.get_perms2()
     if perms2 is None:
@@ -35,12 +36,14 @@ def print_perms2(obj):
         return
 
     share_perms = ['%s:%s' % (x.tenant, x.tenant_access) for x in perms2.share]
-    print('perms2 o=%s/%d g=%d s=%s' \
-        % (perms2.owner, perms2.owner_access,
-           perms2.global_access, share_perms))
+    print('perms2 o=%s/%d g=%d s=%s'
+          % (perms2.owner, perms2.owner_access,
+             perms2.global_access, share_perms))
 # end print_perms
 
 # Read VNC object. Return None if object doesn't exists
+
+
 def vnc_read_obj(vnc, obj_type, fq_name):
     method_name = obj_type.replace('-', '_')
     method = getattr(vnc, "%s_read" % (method_name))
@@ -54,6 +57,7 @@ def vnc_read_obj(vnc, obj_type, fq_name):
         return None
 # end
 
+
 class VncOp(object):
 
     def parse_args(self):
@@ -63,24 +67,24 @@ class VncOp(object):
         parser = argparse.ArgumentParser(description="Create empty object")
         parser.add_argument(
             '--server', help="API server address in the form IP:Port",
-            default = '127.0.0.1:8082')
+            default='127.0.0.1:8082')
         valid_ops = ['read', 'write', 'create', 'delete']
         parser.add_argument(
-            '--op', choices = valid_ops, help="Operation to perform")
+            '--op', choices=valid_ops, help="Operation to perform")
         parser.add_argument('--type', help="object type eg. virtual-network")
         parser.add_argument(
             '--name', help="colon seperated fully qualified name of object or parent")
         parser.add_argument(
-            '--collection',  help="Enable collection", action="store_true")
+            '--collection', help="Enable collection", action="store_true")
         parser.add_argument('--uuid', help="object UUID")
-        parser.add_argument('--user',  help="User Name")
-        parser.add_argument('--role',  help="Role Name")
+        parser.add_argument('--user', help="User Name")
+        parser.add_argument('--role', help="Role Name")
         parser.add_argument(
-            '--os-username',  help="Keystone User Name", default=None)
+            '--os-username', help="Keystone User Name", default=None)
         parser.add_argument(
-            '--os-password',  help="Keystone User Password", default=None)
+            '--os-password', help="Keystone User Password", default=None)
         parser.add_argument(
-            '--os-tenant-name',  help="Keystone Tenant Name", default=None)
+            '--os-tenant-name', help="Keystone Tenant Name", default=None)
 
         self.args = parser.parse_args()
         self.opts = vars(self.args)
@@ -107,13 +111,14 @@ class VncOp(object):
         return (value, rsp)
     # end
 
+
 vnc_op = VncOp()
 vnc_op.parse_args()
 
 # Validate API server information
 server = vnc_op.args.server.split(':')
 if len(server) != 2:
-    print('API server address must be of the form ip:port, '\
+    print('API server address must be of the form ip:port, '
           'for example 127.0.0.1:8082')
     sys.exit(1)
 
@@ -158,8 +163,8 @@ if uuid:
     print('UUID = ', uuid)
     fq_name, obj_type = vnc.id_to_fq_name_type(uuid)
     if vnc_op.args.type and obj_type != vnc_op.args.type:
-        print('Object type mismatch! From UUID %s, specified %s' %\
-            (obj_type, vnc_op.args.type))
+        print('Object type mismatch! From UUID %s, specified %s' %
+              (obj_type, vnc_op.args.type))
         sys.exit(1)
 else:
     fq_name = vnc_op.args.name.split(':')
@@ -177,7 +182,7 @@ cls = str_to_class(CamelCase(obj_type))
 if vnc_op.args.op == 'create':
     if obj_type == 'api-access-list':
         ptype = 'domain' if len(fq_name) == 2 else 'project'
-        obj = cls(name=fq_name[-1], parent_type = ptype)
+        obj = cls(name=fq_name[-1], parent_type=ptype)
     else:
         obj = cls(name=fq_name[-1])
 
@@ -202,7 +207,8 @@ elif vnc_op.args.op == 'read':
         method_name = obj_type.replace('-', '_')
         method = getattr(vnc, "%ss_list" % (method_name))
         coll_info = method(parent_fq_name=fq_name)
-        fq_name_list = [item['fq_name'] for item in coll_info["%ss" % obj_type]]
+        fq_name_list = [item['fq_name']
+                        for item in coll_info["%ss" % obj_type]]
         for fq_name in fq_name_list:
             obj = vnc_read_obj(vnc, obj_type, fq_name)
             if obj:

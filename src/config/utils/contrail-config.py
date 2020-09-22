@@ -2,24 +2,24 @@
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
-from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import os
-import sys
-import errno
-import subprocess
-import time
-import argparse
-import re
-import json
+standard_library.install_aliases() # noqa
+
+from __future__ import print_function
+from vnc_api.vnc_api import *
 from pprint import pprint
+import json
+import re
+import argparse
+import time
+import subprocess
+import errno
+import sys
+import os
+from builtins import object
+from builtins import str
 
 sys.path.insert(0, os.path.realpath('/usr/lib/python2.7/site-packages'))
-
-from vnc_api.vnc_api import *
 
 
 class ContrailConfigCmd(object):
@@ -37,7 +37,7 @@ class ContrailConfigCmd(object):
 
         self.re_parser = re.compile('[ \t\n]+')
         self.final_list = []
-    #end __init__
+    # end __init__
 
     def _parse_args(self, args_str):
         # Source any specified config/ini file
@@ -65,7 +65,7 @@ class ContrailConfigCmd(object):
             description=__doc__,
             # Don't mess with format of description
             formatter_class=argparse.RawDescriptionHelpFormatter,
-            )
+        )
 
         parser.set_defaults(**global_defaults)
         subparsers = parser.add_subparsers()
@@ -81,7 +81,7 @@ class ContrailConfigCmd(object):
         backup_parser.set_defaults(func=self.backup_contrail_config)
 
         self._args = parser.parse_args(remaining_argv)
-    #end _parse_args
+    # end _parse_args
 
     def _delete_default_security_groups(self, objs, type):
         for obj in list(objs.values()):
@@ -96,7 +96,7 @@ class ContrailConfigCmd(object):
                     break
                 except NoIdError:
                     pass
-    #end _delete_default_security_groups
+    # end _delete_default_security_groups
 
     def _create_objects(self, objs, type):
         for obj in list(objs.values()):
@@ -105,7 +105,7 @@ class ContrailConfigCmd(object):
             if obj['created']:
                 continue
 
-            #create object with these keys
+            # create object with these keys
             create_obj = {}
             for key, val in list(obj['data'].items()):
                 if key not in ['uuid', 'fq_name', 'id_perms',
@@ -131,7 +131,7 @@ class ContrailConfigCmd(object):
                     print("Error: creating %s %s %s\n"
                           % (obj['type'], obj['data']['fq_name'], e))
 
-    #end _create_objects
+    # end _create_objects
 
     def _update_objects(self, objs, type):
         for obj in list(objs.values()):
@@ -152,9 +152,9 @@ class ContrailConfigCmd(object):
                 else:
                     print("Error: updating %s %s %s\n"
                           % (obj['type'], obj['data']['fq_name'], e))
-    #end _update_objects
+    # end _update_objects
 
-    #breadth first search
+    # breadth first search
     def _bfs(self, tree, root):
         bfs_path = []
         index = -1
@@ -170,14 +170,14 @@ class ContrailConfigCmd(object):
             except Exception as e:
                 pass
         return bfs_path
-    #end _bfs
+    # end _bfs
 
-    #restore config from a file - overwrite old config with the same uuid
+    # restore config from a file - overwrite old config with the same uuid
     def restore_contrail_config(self):
         print("Restoring config from %s" % (self._args.filename))
         objs = {}
 
-        #scan through the file
+        # scan through the file
         f = open(self._args.filename, 'r')
         while 1:
             line = f.readline()
@@ -188,7 +188,7 @@ class ContrailConfigCmd(object):
             if not line.startswith('type'):
                 continue
 
-            #store objects
+            # store objects
             type = line.split(':')[1]
             line = f.readline()
             obj = json.loads(line)
@@ -197,7 +197,7 @@ class ContrailConfigCmd(object):
                                          'data': obj}
         f.close()
 
-        #create hierarchy
+        # create hierarchy
         hierarchy = {}
         for obj in list(objs.values()):
             if not 'parent_type' in list(obj['data'].keys()):
@@ -210,7 +210,7 @@ class ContrailConfigCmd(object):
                 if obj['type'] not in hierarchy[obj['data']['parent_type']]:
                     hierarchy[obj['data']['parent_type']].append(obj['type'])
 
-        #find top level
+        # find top level
         top_list = []
         for key, val in list(hierarchy.items()):
             top_level = True
@@ -221,12 +221,12 @@ class ContrailConfigCmd(object):
             if top_level:
                 top_list.append(key)
 
-        #organize hierarchy
+        # organize hierarchy
         for top_level in top_list:
             bfs_list = self._bfs(hierarchy, top_level)
             self.final_list.extend(bfs_list)
 
-        #post(create) object to api server
+        # post(create) object to api server
         print(self.final_list)
         print ("Phase create")
         print ("------------")
@@ -237,7 +237,7 @@ class ContrailConfigCmd(object):
                 self._delete_default_security_groups(objs, type)
             print("%-64s -- done" % '')
 
-        #put(update) object in api server
+        # put(update) object in api server
         print ("Phase update")
         print ("------------")
         for type in self.final_list:
@@ -246,30 +246,31 @@ class ContrailConfigCmd(object):
             print("%-64s -- done" % '')
 
         print("Config restore complete %s" % (self._args.filename))
-    #restore_contrail_config
+    # restore_contrail_config
 
-    #backup config
+    # backup config
     def backup_contrail_config(self):
         print("Snapshot config database to %s" % (self._args.name))
         f = open(self._args.name, 'w')
         records = self._vnc_lib.fetch_records()
 
-        #store the records
+        # store the records
         for record in records:
             f.write("\ntype:%s\n" % (record['type']))
             f.write(json.dumps(record) + '\n')
 
         f.close()
         print("Snapshot config database to %s done" % (self._args.name))
-    #backup_contrail_config
+    # backup_contrail_config
 
-#end class ContrailConfigCmd
+# end class ContrailConfigCmd
 
 
 def main(args_str=None):
     cfg = ContrailConfigCmd(args_str)
     cfg._args.func()
-#end main
+# end main
+
 
 if __name__ == "__main__":
     main()

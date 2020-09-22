@@ -5,17 +5,17 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import sys
-import time
-import argparse
-import configparser
-import json
+standard_library.install_aliases() # noqa
 
-from vnc_api.vnc_api import *
 from cfgm_common.exceptions import *
+from vnc_api.vnc_api import *
+import json
+import configparser
+import argparse
+import time
+import sys
+from builtins import object
+from builtins import str
 
 
 class SAProvisioner(object):
@@ -37,7 +37,7 @@ class SAProvisioner(object):
                     self._args.api_server_port, '/',
                     auth_host=self._args.openstack_ip)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -49,8 +49,8 @@ class SAProvisioner(object):
         elif self._args.oper == 'del':
             self.del_sa()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
@@ -69,7 +69,8 @@ class SAProvisioner(object):
 
         conf_parser.add_argument("-c", "--conf_file",
                                  help="Specify config file", metavar="FILE")
-        args, remaining_argv = conf_parser.parse_known_args(args_str.split('|'))
+        args, remaining_argv = conf_parser.parse_known_args(
+            args_str.split('|'))
 
         defaults = {
             'api_server_ip': '127.0.0.1',
@@ -107,13 +108,14 @@ class SAProvisioner(object):
         parser.add_argument(
             "--service_appliance_set", help="name of service appliance set",
             required=True)
-        parser.add_argument("--device_ip", help="Address of the loadbalancer device")
+        parser.add_argument(
+            "--device_ip", help="Address of the loadbalancer device")
         parser.add_argument("--properties",
-                help="JSON dictionary of config params for the lbaas device",
-                type=json.loads, default=json.loads("{}"))
+                            help="JSON dictionary of config params for the lbaas device",
+                            type=json.loads, default=json.loads("{}"))
         parser.add_argument("--user_credential",
-                help="JSON dictionary of login details to the lbaas device",
-                type=json.loads, default=json.loads("{}"))
+                            help="JSON dictionary of login details to the lbaas device",
+                            type=json.loads, default=json.loads("{}"))
         parser.add_argument(
             "--api_server_ip", help="IP address of api server", required=True)
         parser.add_argument("--api_server_port", help="Port of api server")
@@ -135,10 +137,12 @@ class SAProvisioner(object):
     def add_sa(self):
         default_gsc_name = "default-global-system-config"
         sa_set_fq_name = [default_gsc_name, self._args.service_appliance_set]
-        sa_fq_name = [default_gsc_name, self._args.service_appliance_set, self._args.name]
+        sa_fq_name = [default_gsc_name,
+                      self._args.service_appliance_set, self._args.name]
 
         try:
-            sa_set_obj = self._vnc_lib.service_appliance_set_read(fq_name=sa_set_fq_name)
+            sa_set_obj = self._vnc_lib.service_appliance_set_read(
+                fq_name=sa_set_fq_name)
         except NoIdError as e:
             print(str(e))
             return
@@ -151,11 +155,11 @@ class SAProvisioner(object):
             pass
         sa_obj.set_service_appliance_ip_address(self._args.device_ip)
         uci = UserCredentials(self._args.user_credential['user'],
-                self._args.user_credential['password'])
+                              self._args.user_credential['password'])
         sa_obj.set_service_appliance_user_credentials(uci)
         kvp_array = []
-        for r,c in self._args.properties.items():
-            kvp = KeyValuePair(r,c)
+        for r, c in self._args.properties.items():
+            kvp = KeyValuePair(r, c)
             kvp_array.append(kvp)
         kvps = KeyValuePairs()
         if kvp_array:
@@ -167,7 +171,8 @@ class SAProvisioner(object):
 
     def del_sa(self):
         default_gsc_name = "default-global-system-config"
-        sa_fq_name = [default_gsc_name, self._args.service_appliance_set, self._args.name]
+        sa_fq_name = [default_gsc_name,
+                      self._args.service_appliance_set, self._args.name]
         self._vnc_lib.service_appliance_delete(fq_name=sa_fq_name)
     # end del_sa
 
@@ -177,6 +182,7 @@ class SAProvisioner(object):
 def main(args_str=None):
     SAProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

@@ -5,16 +5,17 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import argparse
-import configparser
+standard_library.install_aliases() # noqa
 
-from provision_bgp import BgpProvisioner
-from vnc_api.vnc_api import *
-from cfgm_common.exceptions import *
 from vnc_admin_api import VncApiAdmin
+from cfgm_common.exceptions import *
+from vnc_api.vnc_api import *
+from provision_bgp import BgpProvisioner
+import configparser
+import argparse
+import sys
+from builtins import object
+
 
 class MxProvisioner(object):
 
@@ -111,11 +112,12 @@ class MxProvisioner(object):
             "--device_password", help="Password for MX login")
         parser.add_argument(
             "--address_families", help="Address family list",
-            choices=["route-target", "inet-vpn", "e-vpn", "erm-vpn", "inet6-vpn"],
+            choices=["route-target", "inet-vpn",
+                     "e-vpn", "erm-vpn", "inet6-vpn"],
             nargs="*", default=[])
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper", default='add',
             help="Provision operation to be done(add or del)")
@@ -136,9 +138,9 @@ class MxProvisioner(object):
             "--api_server_ip", help="IP address of api server",
             nargs='+', type=str)
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -153,7 +155,7 @@ class MxProvisioner(object):
                      'ip-fabric', '__default__'])
 
         return rt_inst_obj
-    #end _get_rt_inst_obj
+    # end _get_rt_inst_obj
 
     def add_bgp_router(self):
 
@@ -171,8 +173,8 @@ class MxProvisioner(object):
         elif self._args.oper == 'del':
             bp_obj.del_bgp_router(self._args.router_name)
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
     # end add_bgp_router
 
     def add_physical_device(self):
@@ -186,7 +188,8 @@ class MxProvisioner(object):
         if self._args.role:
             pr.physical_router_role = self._args.role
         if self._args.device_user and self._args.device_password:
-            uc = UserCredentials(self._args.device_user, self._args.device_password)
+            uc = UserCredentials(self._args.device_user,
+                                 self._args.device_password)
             pr.set_physical_router_user_credentials(uc)
 
         rt_inst_obj = self._get_rt_inst_obj()
@@ -199,12 +202,12 @@ class MxProvisioner(object):
     # end add_physical_device
 
     def del_physical_device(self):
-        pr_check=GetDevice(self._vnc_lib, self._args.router_name)
-        uuid=pr_check.Get()
+        pr_check = GetDevice(self._vnc_lib, self._args.router_name)
+        uuid = pr_check.Get()
         if uuid:
             self._vnc_lib.physical_router_delete(id=uuid)
         else:
-            print('No device found with Name : %s' %(self._args.device_name))
+            print('No device found with Name : %s' % (self._args.device_name))
     # end del_physical_device
 
 # end class MxProvisioner
@@ -213,6 +216,7 @@ class MxProvisioner(object):
 def main(args_str=None):
     MxProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

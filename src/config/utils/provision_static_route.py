@@ -5,19 +5,19 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import argparse
-import configparser
-import netaddr
+standard_library.install_aliases() # noqa
 
-from vnc_api.vnc_api import *
-from vnc_api.gen.resource_xsd import RouteType
-from vnc_api.gen.resource_xsd import RouteTableType
-from vnc_api.gen.resource_client import InterfaceRouteTable
-from netaddr import *
 from vnc_admin_api import VncApiAdmin
+from netaddr import *
+from vnc_api.gen.resource_client import InterfaceRouteTable
+from vnc_api.gen.resource_xsd import RouteTableType
+from vnc_api.gen.resource_xsd import RouteType
+from vnc_api.vnc_api import *
+import netaddr
+import configparser
+import argparse
+import sys
+from builtins import object
 
 
 class StaticRouteProvisioner(object):
@@ -35,7 +35,7 @@ class StaticRouteProvisioner(object):
             self._args.api_server_ip,
             self._args.api_server_port, '/',
             api_server_use_ssl=self._args.api_server_use_ssl)
-        
+
         prefix = self._args.prefix
         vmi_id_got = self._args.virtual_machine_interface_id
         route_table_name = self._args.route_table_name
@@ -46,37 +46,37 @@ class StaticRouteProvisioner(object):
             print('Invalid ip address format')
             sys.exit(1)
 
-        project_fq_name_str = 'default-domain:'+ self._args.tenant_name
+        project_fq_name_str = 'default-domain:' + self._args.tenant_name
         project_fq_name = project_fq_name_str.split(':')
         project_obj = self._vnc_lib.project_read(fq_name=project_fq_name)
-        
+
         route_table = RouteTableType(route_table_name)
         route_table.set_route([])
         intf_route_table = InterfaceRouteTable(
-                                interface_route_table_routes = route_table,
-                                parent_obj=project_obj, 
-                                name=route_table_name)
+            interface_route_table_routes=route_table,
+            parent_obj=project_obj,
+            name=route_table_name)
         try:
             route_table_obj = self._vnc_lib.interface_route_table_read(
-                                    fq_name = intf_route_table.get_fq_name())
+                fq_name=intf_route_table.get_fq_name())
             intf_route_table_id = route_table_obj.uuid
         except NoIdError:
             if self._args.oper == 'del':
-                print("Route table %s does not exist" %(route_table_name))
+                print("Route table %s does not exist" % (route_table_name))
                 sys.exit(1)
             print("Creating Route table")
             intf_route_table_id = self._vnc_lib.interface_route_table_create(
-                                    intf_route_table)
+                intf_route_table)
         intf_route_table_obj = self._vnc_lib.interface_route_table_read(
-                                    id = intf_route_table_id) 
+            id=intf_route_table_id)
         if self._args.oper == 'add':
             intf_route_table_obj = self.add_route(intf_route_table_obj, prefix)
         elif self._args.oper == 'del':
             intf_route_table_obj = self.del_route(intf_route_table_obj, prefix)
         self._vnc_lib.interface_route_table_update(intf_route_table_obj)
-        
-        #Update the VMI Object now
-        vmi_obj = self._vnc_lib.virtual_machine_interface_read(id = vmi_id_got)
+
+        # Update the VMI Object now
+        vmi_obj = self._vnc_lib.virtual_machine_interface_read(id=vmi_id_got)
         if self._args.oper == 'add':
             vmi_obj.add_interface_route_table(intf_route_table_obj)
         elif self._args.oper == 'del':
@@ -96,14 +96,14 @@ class StaticRouteProvisioner(object):
                 found = True
                 sys.exit(0)
         if not found:
-            rt1 = RouteType(prefix = prefix)
+            rt1 = RouteType(prefix=prefix)
         routes.append(rt1)
         intf_route_table_obj.set_interface_route_table_routes(rt_routes)
         return intf_route_table_obj
-    #end add_route
+    # end add_route
 
     def del_route(self, intf_route_table_obj, prefix):
-#        routes = intf_route_table_obj['interface_route_table_routes']['route']
+        #        routes = intf_route_table_obj['interface_route_table_routes']['route']
         rt_routes = intf_route_table_obj.get_interface_route_table_routes()
         routes = rt_routes.get_route()
         found = False
@@ -112,18 +112,19 @@ class StaticRouteProvisioner(object):
                 found = True
                 routes.remove(route)
         if not found:
-            print("Prefix %s not found in Route table %s!" %( prefix, intf_route_table_obj.name))
+            print("Prefix %s not found in Route table %s!" %
+                  (prefix, intf_route_table_obj.name))
             sys.exit(1)
         intf_route_table_obj.set_interface_route_table_routes(rt_routes)
         return intf_route_table_obj
 
     def is_route_table_empty(self, intf_route_table_obj):
         rt_routes = intf_route_table_obj.get_interface_route_table_routes()
-        if len(rt_routes.get_route()) == 0 :
+        if len(rt_routes.get_route()) == 0:
             return True
         else:
             return False
-    #end is_route_table_empty
+    # end is_route_table_empty
 
     def _parse_args(self, args_str):
         '''
@@ -184,7 +185,7 @@ class StaticRouteProvisioner(object):
             "--prefix", help="IP Destination prefix to be updated in the Route", required=True)
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper", default='add',
             help="Provision operation to be done(add or del)")
@@ -202,9 +203,9 @@ class StaticRouteProvisioner(object):
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -215,8 +216,9 @@ class StaticRouteProvisioner(object):
 
 def main(args_str=None):
     st = StaticRouteProvisioner(args_str)
-    #st.add_route()
+    # st.add_route()
 # end main
+
 
 if __name__ == "__main__":
     main()

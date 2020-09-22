@@ -5,16 +5,17 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import argparse
-from six.moves import configparser
-from time import sleep
+standard_library.install_aliases() # noqa
 
-from cfgm_common.exceptions import RefsExistError
-from vnc_api.vnc_api import *
 from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import *
+from cfgm_common.exceptions import RefsExistError
+from time import sleep
+from six.moves import configparser
+import argparse
+import sys
+from builtins import object
+
 
 class MetadataProvisioner(object):
 
@@ -31,56 +32,59 @@ class MetadataProvisioner(object):
             self._args.api_server_ip,
             self._args.api_server_port, '/',
             api_server_use_ssl=self._args.api_server_use_ssl)
-        
-        linklocal_obj=LinklocalServiceEntryType(
-                 linklocal_service_name=self._args.linklocal_service_name,
-                 linklocal_service_ip=self._args.linklocal_service_ip,
-                 linklocal_service_port=self._args.linklocal_service_port,
-                 ip_fabric_DNS_service_name=self._args.ipfabric_dns_service_name,
-                 ip_fabric_service_port=self._args.ipfabric_service_port)
+
+        linklocal_obj = LinklocalServiceEntryType(
+            linklocal_service_name=self._args.linklocal_service_name,
+            linklocal_service_ip=self._args.linklocal_service_ip,
+            linklocal_service_port=self._args.linklocal_service_port,
+            ip_fabric_DNS_service_name=self._args.ipfabric_dns_service_name,
+            ip_fabric_service_port=self._args.ipfabric_service_port)
         if self._args.ipfabric_service_ip:
-            linklocal_obj.ip_fabric_service_ip=[self._args.ipfabric_service_ip]
+            linklocal_obj.ip_fabric_service_ip = [
+                self._args.ipfabric_service_ip]
 
         try:
             if self._args.oper == "add":
-                linklocal_services_obj = LinklocalServicesTypes([linklocal_obj])
-                conf_obj = GlobalVrouterConfig(linklocal_services=linklocal_services_obj)
+                linklocal_services_obj = LinklocalServicesTypes(
+                    [linklocal_obj])
+                conf_obj = GlobalVrouterConfig(
+                    linklocal_services=linklocal_services_obj)
                 result = self._vnc_lib.global_vrouter_config_create(conf_obj)
-                print('Created.UUID is %s'%(result))
+                print('Created.UUID is %s' % (result))
                 return
         except RefsExistError:
             print("Already created! Updating the object.")
             sleep(5)
 
         current_config = self._vnc_lib.global_vrouter_config_read(
-                fq_name=['default-global-system-config', 'default-global-vrouter-config'])
-        current_linklocal=current_config.get_linklocal_services()
+            fq_name=['default-global-system-config', 'default-global-vrouter-config'])
+        current_linklocal = current_config.get_linklocal_services()
         if current_linklocal is None:
             obj = {'linklocal_service_entry': []}
         else:
             obj = current_linklocal.__dict__
-        new_linklocal=[]
+        new_linklocal = []
         for key, value in obj.items():
-            found=False
+            found = False
             for vl in value:
                 entry = vl.__dict__
                 if ('linklocal_service_name' in entry and
-                    entry['linklocal_service_name'] == self._args.linklocal_service_name):
+                        entry['linklocal_service_name'] == self._args.linklocal_service_name):
                     if self._args.oper == "add":
                         new_linklocal.append(linklocal_obj)
-                    found=True
+                    found = True
                 else:
                     new_linklocal.append(vl)
             if not found and self._args.oper == "add":
                 new_linklocal.append(linklocal_obj)
             obj[key] = new_linklocal
-        
-        conf_obj=GlobalVrouterConfig(linklocal_services=obj)
-        result=self._vnc_lib.global_vrouter_config_update(conf_obj)
-        print('Updated.%s'%(result))
+
+        conf_obj = GlobalVrouterConfig(linklocal_services=obj)
+        result = self._vnc_lib.global_vrouter_config_update(conf_obj)
+        print('Updated.%s' % (result))
 
     # end __init__
-    
+
     def _parse_args(self, args_str):
         '''
         Eg. python provision_metadata.py 
@@ -144,7 +148,7 @@ class MetadataProvisioner(object):
 
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--linklocal_service_name", help="Service Name")
         parser.add_argument(
@@ -169,9 +173,9 @@ class MetadataProvisioner(object):
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
         if not self._args.linklocal_service_name:
@@ -185,6 +189,7 @@ class MetadataProvisioner(object):
 def main(args_str=None):
     MetadataProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

@@ -28,17 +28,17 @@ class VncChmod(object):
         parser.add_argument(
             '--uuid',
             help="Object UUID eg f1401b7c-e387-4eec-a46c-230dfd695fae")
-        parser.add_argument('--user',  help="User Name")
-        parser.add_argument('--role',  help="Role Name")
+        parser.add_argument('--user', help="User Name")
+        parser.add_argument('--role', help="Role Name")
         parser.add_argument('--owner', help="Set owner")
         parser.add_argument('--group', help="Set group")
         parser.add_argument('--perms', help="Set permissions")
         parser.add_argument(
-            '--os-username',  help="Keystone User Name", default=None)
+            '--os-username', help="Keystone User Name", default=None)
         parser.add_argument(
-            '--os-password',  help="Keystone User Password", default=None)
+            '--os-password', help="Keystone User Password", default=None)
         parser.add_argument(
-            '--os-tenant-name',  help="Keystone Tenant Name", default=None)
+            '--os-tenant-name', help="Keystone Tenant Name", default=None)
 
         self.args = parser.parse_args()
         self.opts = vars(self.args)
@@ -66,6 +66,7 @@ class VncChmod(object):
     # end
 # end
 
+
 chmod = VncChmod()
 chmod.parse_args()
 conf = {}
@@ -73,7 +74,7 @@ conf = {}
 # Validate API server information
 server = chmod.args.server.split(':')
 if len(server) != 2:
-    print('API server address must be of the form ip:port,'\
+    print('API server address must be of the form ip:port,'
           'for example 127.0.0.1:8082')
     sys.exit(1)
 if chmod.args.uuid:
@@ -131,10 +132,10 @@ obj = method(fq_name_str=chmod.args.name)
 
 perms = obj.get_id_perms()
 print('Obj uuid = ', obj.uuid)
-print('Obj perms = %s/%s %d%d%d' \
-    % (perms.permissions.owner, perms.permissions.group,
-       perms.permissions.owner_access,
-       perms.permissions.group_access, perms.permissions.other_access))
+print('Obj perms = %s/%s %d%d%d'
+      % (perms.permissions.owner, perms.permissions.group,
+         perms.permissions.owner_access,
+         perms.permissions.group_access, perms.permissions.other_access))
 
 write = False
 
@@ -160,9 +161,9 @@ if chmod.args.group:
 
 # write to API server
 if write:
-    print('New perms = %s/%s %d%d%d' \
-        % (perms.permissions.owner, perms.permissions.group,
-           perms.permissions.owner_access,
-           perms.permissions.group_access, perms.permissions.other_access))
+    print('New perms = %s/%s %d%d%d'
+          % (perms.permissions.owner, perms.permissions.group,
+             perms.permissions.owner_access,
+             perms.permissions.group_access, perms.permissions.other_access))
     write_method = getattr(vnc, "%s_update" % (method_name))
     rv = write_method(obj)

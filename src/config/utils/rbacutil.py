@@ -21,7 +21,7 @@ import cfgm_common
 from vnc_api.utils import AAA_MODE_VALID_VALUES
 
 example_usage = \
-"""
+    """
  Examples:
  ---------
  Read RBAC group using UUID or FQN
@@ -45,6 +45,7 @@ example_usage = \
  python rbacutil.py --uuid <uuid> --rule "useragent-kv *:CRUD" --op del-rule
 """
 
+
 def show_rbac_rules(api_access_list_entries):
     if api_access_list_entries is None:
         print('Empty RBAC group!')
@@ -56,18 +57,20 @@ def show_rbac_rules(api_access_list_entries):
     print('----------')
     idx = 1
     for rule in rule_list:
-            o = rule.rule_object
-            f = rule.rule_field
-            ps = ''
-            for p in rule.rule_perms:
-                ps += p.role_name + ':' + p.role_crud + ','
-            o_f = "%s.%s" % (o,f) if f else o
-            print('%2d %-32s   %s' % (idx, o_f, ps))
-            idx += 1
+        o = rule.rule_object
+        f = rule.rule_field
+        ps = ''
+        for p in rule.rule_perms:
+            ps += p.role_name + ':' + p.role_crud + ','
+        o_f = "%s.%s" % (o, f) if f else o
+        print('%2d %-32s   %s' % (idx, o_f, ps))
+        idx += 1
     print('')
 # end
 
 # Read VNC object. Return None if object doesn't exists
+
+
 def vnc_read_obj(vnc, obj_type, fq_name):
     method_name = obj_type.replace('-', '_')
     method = getattr(vnc, "%s_read" % (method_name))
@@ -77,6 +80,7 @@ def vnc_read_obj(vnc, obj_type, fq_name):
         print('%s %s not found!' % (obj_type, fq_name))
         return None
 # end
+
 
 class VncRbac(object):
 
@@ -92,28 +96,28 @@ class VncRbac(object):
         parser = argparse.ArgumentParser(
             description="Util to manage RBAC group and rules",
             formatter_class=argparse.RawDescriptionHelpFormatter,
-            epilog = example_usage)
+            epilog=example_usage)
         parser.add_argument(
             '--server', help="API server address in the form IP:Port",
-            default = '127.0.0.1:8082')
+            default='127.0.0.1:8082')
         valid_ops = ['read', 'add-rule', 'del-rule', 'create', 'delete']
         parser.add_argument(
-            '--op', choices = valid_ops, help="Operation to perform")
+            '--op', choices=valid_ops, help="Operation to perform")
         parser.add_argument(
             '--name', help="colon seperated fully qualified name",
             default='default-global-system-config:default-api-access-list')
         parser.add_argument('--uuid', help="object UUID")
-        parser.add_argument('--user',  help="User Name")
-        parser.add_argument('--role',  help="Role Name")
-        parser.add_argument('--rule',  help="Rule to add or delete")
+        parser.add_argument('--user', help="User Name")
+        parser.add_argument('--role', help="Role Name")
+        parser.add_argument('--rule', help="Rule to add or delete")
         parser.add_argument(
-            '--aaa_mode', choices = AAA_MODE_VALID_VALUES, help="AAA mode")
+            '--aaa_mode', choices=AAA_MODE_VALID_VALUES, help="AAA mode")
         parser.add_argument(
-            '--os-username',  help="Keystone User Name", default=None)
+            '--os-username', help="Keystone User Name", default=None)
         parser.add_argument(
-            '--os-password',  help="Keystone User Password", default=None)
+            '--os-password', help="Keystone User Password", default=None)
         parser.add_argument(
-            '--os-tenant-name',  help="Keystone Tenant Name", default=None)
+            '--os-tenant-name', help="Keystone Tenant Name", default=None)
 
         self.args = parser.parse_args()
         self.opts = vars(self.args)
@@ -140,13 +144,14 @@ class VncRbac(object):
         return (value, rsp)
     # end
 
+
 vnc_op = VncRbac()
 vnc_op.parse_args()
 
 # Validate API server information
 server = vnc_op.args.server.split(':')
 if len(server) != 2:
-    print('API server address must be of the form ip:port, '\
+    print('API server address must be of the form ip:port, '
           'for example 127.0.0.1:8082')
     sys.exit(1)
 
@@ -221,13 +226,13 @@ if vnc_op.args.op == 'create':
     name = fq_name[-1]
 
     if len(fq_name) == 2:
-       # could be in domain or global config
-       if fq_name[0] == 'default-global-system-config':
-           pobj = vnc.global_system_config_read(fq_name = fq_name[0:1])
-       else:
-           pobj = vnc.domain_read(fq_name = fq_name[0:1])
+        # could be in domain or global config
+        if fq_name[0] == 'default-global-system-config':
+            pobj = vnc.global_system_config_read(fq_name=fq_name[0:1])
+        else:
+            pobj = vnc.domain_read(fq_name=fq_name[0:1])
     else:
-       pobj = vnc.project_read(fq_name = fq_name[0:2])
+        pobj = vnc.project_read(fq_name=fq_name[0:2])
 
     ans = input("Create %s, confirm (y/n): " % fq_name)
     if not ans or ans[0].lower() != 'y':
@@ -237,10 +242,10 @@ if vnc_op.args.op == 'create':
     #rule = RbacRuleType()
     #rentry = RbacRuleEntriesType([rule])
     rentry = RbacRuleEntriesType([])
-    rg = ApiAccessList(name, parent_obj = pobj, api_access_list_entries = rentry)
+    rg = ApiAccessList(name, parent_obj=pobj, api_access_list_entries=rentry)
     vnc.api_access_list_create(rg)
 
-    rg2 = vnc.api_access_list_read(fq_name = fq_name)
+    rg2 = vnc.api_access_list_read(fq_name=fq_name)
     rge = rg.get_api_access_list_entries()
     show_rbac_rules(rge)
 elif vnc_op.args.op == 'delete':
@@ -260,7 +265,7 @@ elif vnc_op.args.op == 'delete':
     if not ans or ans[0].lower() != 'y':
         sys.exit(0)
 
-    vnc.api_access_list_delete(fq_name = fq_name)
+    vnc.api_access_list_delete(fq_name=fq_name)
 elif vnc_op.args.op == 'read':
     rg = vnc_read_obj(vnc, 'api-access-list', fq_name)
     if rg == None:
@@ -292,7 +297,7 @@ elif vnc_op.args.op == 'add-rule':
     if not match:
         rge.add_rbac_rule(rule)
     else:
-        build_perms(rge.rbac_rule[match[0]-1], match[3])
+        build_perms(rge.rbac_rule[match[0] - 1], match[3])
 
     show_rbac_rules(rge)
 
@@ -332,9 +337,9 @@ elif vnc_op.args.op == 'del-rule':
         print('Rule not found. Unchanged')
         sys.exit(1)
     elif match[1]:
-        rge.rbac_rule.pop(match[0]-1)
+        rge.rbac_rule.pop(match[0] - 1)
     else:
-        build_perms(rge.rbac_rule[match[0]-1], match[2])
+        build_perms(rge.rbac_rule[match[0] - 1], match[2])
     show_rbac_rules(rge)
 
     ans = input("Confirm (y/n): ")

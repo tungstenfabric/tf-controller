@@ -56,6 +56,15 @@
         ],
         "misc_test_targets" : [ ]
     },
+    "contrail-config-utils" : {
+        "source_directories" : [
+            "controller/src/config/utils"
+        ],
+        "scons_test_targets" : [
+            "controller/src/config/utils:test"
+        ],
+        "misc_test_targets" : [ ]
+    },
     "neutron-plugin" : {
         "source_directories" : [
             "openstack/neutron_plugin"

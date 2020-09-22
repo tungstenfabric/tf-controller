@@ -3,21 +3,21 @@
 # Copyright (c) 2016 Juniper Networks, Inc. All rights reserved.
 #
 
-from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import json
-import sys
-import time
-import argparse
-import configparser
+standard_library.install_aliases() # noqa
 
-from vnc_api.vnc_api import *
-from vnc_admin_api import VncApiAdmin
-from cfgm_common.exceptions import *
+from __future__ import print_function
 from contrail_alarm import alarm_list
+from cfgm_common.exceptions import *
+from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import *
+import configparser
+import argparse
+import time
+import sys
+import json
+from builtins import object
+from builtins import str
 
 
 class AlarmProvisioner(object):
@@ -37,7 +37,7 @@ class AlarmProvisioner(object):
                 self._args.api_server_ip,
                 self._args.api_server_port,
                 api_server_use_ssl=self._args.api_server_use_ssl)
-        except ResourceExhaustionError: # haproxy throws 503
+        except ResourceExhaustionError:  # haproxy throws 503
             raise
 
         for alarm in alarm_list:
@@ -63,11 +63,13 @@ class AlarmProvisioner(object):
                 except AttributeError:
                     print("Invalid alarm config for %s" % (fq_name))
                 except Exception as e:
-                    print("Failed to update alarm config %s - %s" % (fq_name, str(e)))
+                    print("Failed to update alarm config %s - %s" %
+                          (fq_name, str(e)))
                 else:
                     print("Updated alarm %s" % (fq_name))
             except Exception as e:
-                print("Failed to create alarm config %s - %s" % (fq_name, str(e)))
+                print("Failed to create alarm config %s - %s" %
+                      (fq_name, str(e)))
             else:
                 print("Created alarm %s" % (fq_name))
     # end __init__
@@ -109,17 +111,19 @@ class AlarmProvisioner(object):
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
         self._args = parser.parse_args(remaining_argv)
     # end _parse_args
 
 # end class AlarmProvisioner
 
+
 def main(args_str=None):
     AlarmProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()
