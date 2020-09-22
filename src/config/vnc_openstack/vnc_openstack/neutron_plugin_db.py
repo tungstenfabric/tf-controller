@@ -3509,8 +3509,8 @@ class DBInterface(object):
         if net_obj.router_external:
             self._floating_ip_pool_create(net_obj)
 
-        ret_network_q = self._network_vnc_to_neutron(net_obj, context=context)
-        return ret_network_q
+        # make sure created object has all values, like timestamps
+        return self.network_read(net_uuid, context=context)
     # end network_create
 
     @wait_for_api_server_connection

@@ -1891,6 +1891,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self._vnc_lib.virtual_network_create(vn_obj)
         vn_dict = self.read_resource('network', vn_obj.uuid)
         # verify created timestamp and updated timestamp are same
+        self.assertIsNotNone(vn_dict['created_at'])
         self.assertEqual(vn_dict['created_at'], vn_dict['updated_at'])
 
         vn_obj.display_name = 'test-vn-timestamps'
