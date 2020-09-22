@@ -35,7 +35,6 @@ class CmdVrouterProvisionAdd(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Adding Vrouter!\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         sp = VrouterProvisioner(args_str)
         sp.add_vrouter()
@@ -48,7 +47,6 @@ class CmdVrouterProvisionDel(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Deleting Vrouter!\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         sp = VrouterProvisioner(args_str)
         sp.del_vrouter()
@@ -61,9 +59,8 @@ class CmdAddVirtualDns(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Virtual DNS\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = AddVirtualDns(args_str)
+        _ = AddVirtualDns(args_str)
 
 
 class CmdAddRouteTarget(Command):
@@ -73,9 +70,8 @@ class CmdAddRouteTarget(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('MX Provisioner to add route target\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = MxProvisionerAdd(args_str)
+        _ = MxProvisionerAdd(args_str)
 
 
 class CmdAddVirtualDnsRecord(Command):
@@ -85,9 +81,8 @@ class CmdAddVirtualDnsRecord(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Add virtual dns record \n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = AddVirtualDnsRecord(args_str)
+        _ = AddVirtualDnsRecord(args_str)
 
 
 class CmdAssociateVirtualDns(Command):
@@ -97,9 +92,8 @@ class CmdAssociateVirtualDns(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Associate virtual dns\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = AssociateVirtualDns(args_str)
+        _ = AssociateVirtualDns(args_str)
 
 
 class CmdDeleteProjects(Command):
@@ -109,7 +103,6 @@ class CmdDeleteProjects(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Delete specified projects\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         dp = DeleteProjects(args_str)
         dp._delete_project()
@@ -122,9 +115,8 @@ class CmdDeleteRouteTarget(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('MX Provisioner to del route target\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = MxProvisionerDel(args_str)
+        _ = MxProvisionerDel(args_str)
 
 
 class CmdDelVirtualDns(Command):
@@ -134,9 +126,8 @@ class CmdDelVirtualDns(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Delete Virtual DNS\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = DelVirtualDns(args_str)
+        _ = DelVirtualDns(args_str)
 
 
 class CmdDelVirtualDnsRecord(Command):
@@ -146,9 +137,8 @@ class CmdDelVirtualDnsRecord(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Del virtual dns record \n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = DelVirtualDnsRecord(args_str)
+        _ = DelVirtualDnsRecord(args_str)
 
 
 class CmdDisassociateVirtualDns(Command):
@@ -158,9 +148,8 @@ class CmdDisassociateVirtualDns(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Dsassociate virtual dns\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = DisassociateVirtualDns(args_str)
+        _ = DisassociateVirtualDns(args_str)
 
 
 class CmdForwardingModeSetup(Command):
@@ -170,9 +159,8 @@ class CmdForwardingModeSetup(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Provision forwarding mode\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
-        sp = ForwardingModeSetup(args_str)
+        _ = ForwardingModeSetup(args_str)
 
 
 class CmdStaticRouteProvisionerAdd(Command):
@@ -182,11 +170,10 @@ class CmdStaticRouteProvisionerAdd(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Option to add static route\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         changed_args_str = '--oper add '
         args_str = changed_args_str + args_str
-        sp = StaticRouteProvisioner(args_str)
+        _ = StaticRouteProvisioner(args_str)
 
 
 class CmdStaticRouteProvisionerDelete(Command):
@@ -196,11 +183,10 @@ class CmdStaticRouteProvisionerDelete(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Option to deletestatic route\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         changed_args_str = '--oper delete '
         args_str = changed_args_str + args_str
-        sp = StaticRouteProvisioner(args_str)
+        _ = StaticRouteProvisioner(args_str)
 
 
 class CmdServiceInstanceAdd(Command):
@@ -210,7 +196,6 @@ class CmdServiceInstanceAdd(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Option to add service instance\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         changed_args_str = 'add '
         args_str = changed_args_str + args_str
@@ -225,7 +210,6 @@ class CmdServiceInstanceDelete(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Option to delete service instance\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         changed_args_str = 'del '
         args_str = changed_args_str + args_str
@@ -240,7 +224,6 @@ class CmdServicePolicyAdd(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Option to add service policy\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         changed_args_str = 'add '
         args_str = changed_args_str + args_str
@@ -255,7 +238,6 @@ class CmdServicePolicyDelete(Command):
     def take_action(self, parsed_args):
         self.app.stdout.write('Option to delete service policy\n')
         args_str = '  '.join(parsed_args[1:])
-        #sys.argv = sys.argv[1:]
         sys.argv = parsed_args
         changed_args_str = 'del '
         args_str = changed_args_str + args_str
@@ -322,7 +304,7 @@ class CmdCreateFloatingIPPool(Command):
         self.app.stdout.write('Option to create floating IP pool\n')
         args_str = '  '.join(parsed_args[1:])
         sys.argv = parsed_args
-        sp = VncProvisioner(args_str)
+        _ = VncProvisioner(args_str)
 
 
 class CmdAddBgpRouter(Command):
@@ -359,7 +341,7 @@ class CmdProvisionControlAdd(Command):
         sys.argv = parsed_args
         changed_args_str = '--oper add'
         args_str = changed_args_str + args_str
-        sp = ControlProvisioner(args_str)
+        _ = ControlProvisioner(args_str)
 
 
 class CmdProvisionControlDelete(Command):
@@ -372,7 +354,7 @@ class CmdProvisionControlDelete(Command):
         sys.argv = parsed_args
         changed_args_str = '--oper del'
         args_str = changed_args_str + args_str
-        sp = ControlProvisioner(args_str)
+        _ = ControlProvisioner(args_str)
 
 
 class CmdProvisionEncapsulationAdd(Command):
@@ -385,7 +367,7 @@ class CmdProvisionEncapsulationAdd(Command):
         sys.argv = parsed_args
         changed_args_str = '--oper add'
         args_str = changed_args_str + args_str
-        sp = EncapsulationProvision(args_str)
+        _ = EncapsulationProvision(args_str)
 
 
 class CmdProvisionEncapsulationUpdate(Command):
@@ -398,7 +380,7 @@ class CmdProvisionEncapsulationUpdate(Command):
         sys.argv = parsed_args
         changed_args_str = '--oper update'
         args_str = changed_args_str + args_str
-        sp = EncapsulationProvision(args_str)
+        _ = EncapsulationProvision(args_str)
 
 
 class CmdProvisionLinklocalAdd(Command):
@@ -411,7 +393,7 @@ class CmdProvisionLinklocalAdd(Command):
         sys.argv = parsed_args
         changed_args_str = '--oper add'
         args_str = changed_args_str + args_str
-        sp = MetadataProvisioner(args_str)
+        _ = MetadataProvisioner(args_str)
 
 
 class CmdProvisionLinklocalUpdate(Command):
@@ -424,4 +406,4 @@ class CmdProvisionLinklocalUpdate(Command):
         sys.argv = parsed_args
         changed_args_str = '--oper update'
         args_str = changed_args_str + args_str
-        sp = MetadataProvisioner(args_str)
+        _ = MetadataProvisioner(args_str)

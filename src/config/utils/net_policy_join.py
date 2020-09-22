@@ -7,26 +7,28 @@ traffic between net1 and net2
 
 """
 
-# See contrail/build/debug/config/api-server/doc/build/html/tutorial_with_library.html
+# See
+# contrail/build/debug/config/api-server/doc/build/html/tutorial_with_library.html
 
 from future import standard_library
-standard_library.install_aliases()
-import argparse
-import os
-from urllib.parse import urlparse
+standard_library.install_aliases()  # noqa
+
 from vnc_api import vnc_api
+from urllib.parse import urlparse
+import os
+import argparse
 
 
 arg_defaults = {}
 
 # options from environment
 for env_name, opt_name in (
-    ('OS_TENANT_NAME', 'auth_tenant'), # demo
+    ('OS_TENANT_NAME', 'auth_tenant'),  # demo
     ('OS_USERNAME', 'auth_user'),
     ('OS_PASSWORD', 'auth_password'),
-    ('OS_AUTH_URL', 'auth_url'), # 'http://192.168.56.119:5000/v2.0'
+    ('OS_AUTH_URL', 'auth_url'),  # 'http://192.168.56.119:5000/v2.0'
     ('OS_IDENTITY_API_VERSION', 'auth_version')
-    ):
+):
     if env_name in os.environ:
         arg_defaults[opt_name] = os.environ[env_name]
 
@@ -57,12 +59,12 @@ parser.add_argument(
     "--api_port", default=8082,
     help="Port of api server")
 parser.add_argument("--api_server_use_ssl", default=False,
-    help="Use SSL to connect with API server")
+                    help="Use SSL to connect with API server")
 parser.add_argument("net1_uuid", help="UUIDs of subnets to join")
 parser.add_argument("net2_uuid")
 parser.set_defaults(**arg_defaults)
 args = parser.parse_args()
-    
+
 urlparts = urlparse(args.auth_url)
 auth_proto = urlparts.scheme
 auth_host, auth_port = urlparts.netloc.split(':')
@@ -76,36 +78,35 @@ vnc_lib = vnc_api.VncApi(api_server_host=args.api_host,
                          auth_protocol=auth_proto,
                          auth_host=auth_host,
                          auth_port=auth_port,
-                         auth_url=urlparts.path+'/tokens',
+                         auth_url=urlparts.path + '/tokens',
                          )
 
-net1 = vnc_lib.virtual_network_read(id = args.net1_uuid)
-net2 = vnc_lib.virtual_network_read(id = args.net2_uuid)
+net1 = vnc_lib.virtual_network_read(id=args.net1_uuid)
+net2 = vnc_lib.virtual_network_read(id=args.net2_uuid)
 
 pol1 = vnc_api.NetworkPolicy(
     'policy-%s-%s-any' % (net1.name, net2.name),
-    network_policy_entries = vnc_api.PolicyEntriesType(
+    network_policy_entries=vnc_api.PolicyEntriesType(
         [vnc_api.PolicyRuleType(
-            direction = '<>',
-            action_list = vnc_api.ActionListType(simple_action='pass'),
-            protocol = 'any',
-            src_addresses = [
-                vnc_api.AddressType(virtual_network = net1.get_fq_name_str())
+            direction='<>',
+            action_list=vnc_api.ActionListType(simple_action='pass'),
+            protocol='any',
+            src_addresses=[
+                vnc_api.AddressType(virtual_network=net1.get_fq_name_str())
             ],
-            src_ports = [vnc_api.PortType(-1, -1)],
-            dst_addresses = [
-                vnc_api.AddressType(virtual_network = net2.get_fq_name_str())
+            src_ports=[vnc_api.PortType(-1, -1)],
+            dst_addresses=[
+                vnc_api.AddressType(virtual_network=net2.get_fq_name_str())
             ],
-            dst_ports = [vnc_api.PortType(-1, -1)])
+            dst_ports=[vnc_api.PortType(-1, -1)])
          ]),
     parent_obj=vnc_lib.project_read(fq_name=net1.get_parent_fq_name()))
 vnc_lib.network_policy_create(pol1)
 
 net1.add_network_policy(pol1, vnc_api.VirtualNetworkPolicyType(
-    sequence = vnc_api.SequenceType(0, 0)))
+    sequence=vnc_api.SequenceType(0, 0)))
 vnc_lib.virtual_network_update(net1)
 
 net2.add_network_policy(pol1, vnc_api.VirtualNetworkPolicyType(
-    sequence = vnc_api.SequenceType(0, 0)))
+    sequence=vnc_api.SequenceType(0, 0)))
 vnc_lib.virtual_network_update(net2)
-

@@ -2,15 +2,15 @@
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
-
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
+
 
 from provision_bgp import BgpProvisioner
+import configparser
+import argparse
+import sys
+from builtins import object
 
 
 class MxProvisioner(object):
@@ -82,19 +82,27 @@ class MxProvisioner(object):
             "--routing_instance_name",
             help="Colon separated fully qualified name", required=True)
         parser.add_argument(
-            "--route_target_number", help="Route Target for MX interaction", required=True)
-        parser.add_argument("--router_asn", help="AS Number the MX is in", required=True)
+            "--route_target_number",
+            help="Route Target for MX interaction",
+            required=True)
+        parser.add_argument(
+            "--router_asn", help="AS Number the MX is in", required=True)
         parser.add_argument(
             "--api_server_ip", help="IP address of api server", required=True)
-        parser.add_argument("--api_server_port", help="Port of api server", required=True)
+        parser.add_argument("--api_server_port",
+                            help="Port of api server", required=True)
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--admin_user", help="Name of keystone admin user", required=True)
         parser.add_argument(
-            "--admin_password", help="Password of keystone admin user", required=True)
+            "--admin_password",
+            help="Password of keystone admin user",
+            required=True)
         parser.add_argument(
-            "--admin_tenant_name", help="Tenamt name for keystone admin user", required=True)
+            "--admin_tenant_name",
+            help="Tenamt name for keystone admin user",
+            required=True)
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -106,6 +114,7 @@ class MxProvisioner(object):
 def main(args_str=None):
     MxProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

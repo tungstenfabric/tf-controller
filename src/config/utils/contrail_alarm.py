@@ -6,7 +6,7 @@
 alarm_list = [
     {
         "alarm_rules": {
-            "or_list" : [
+            "or_list": [
                 {
                     "and_list": [
                         {
@@ -326,7 +326,7 @@ alarm_list = [
                                 "json_value": "\"Functional\""
                             },
                             "variables": ["NodeStatus.process_status.module_id",
-                                "NodeStatus.process_status.instance_id"]
+                                          "NodeStatus.process_status.instance_id"]
                         }
                     ]
                 }
@@ -460,14 +460,14 @@ alarm_list = [
                             "operand2": {
                                 "json_value": "1"
                             }
-                       },
-                       {
-                           "operand1": "ProuterData.gateway_mode",
-                           "operation": "!=",
-                           "operand2": {
-                               "json_value": "\"SERVER\""
-                           }
-                       }
+                        },
+                        {
+                            "operand1": "ProuterData.gateway_mode",
+                            "operation": "!=",
+                            "operand2": {
+                                "json_value": "\"SERVER\""
+                            }
+                        }
                     ]
                 },
                 {
@@ -485,14 +485,14 @@ alarm_list = [
                             "operand2": {
                                 "json_value": "0"
                             }
-                       },
-                       {
-                           "operand1": "ProuterData.gateway_mode",
-                           "operation": "==",
-                           "operand2": {
-                               "json_value": "\"SERVER\""
-                           }
-                       }
+                        },
+                        {
+                            "operand1": "ProuterData.gateway_mode",
+                            "operation": "==",
+                            "operand2": {
+                                "json_value": "\"SERVER\""
+                            }
+                        }
                     ]
                 }
             ]

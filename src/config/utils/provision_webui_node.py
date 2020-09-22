@@ -5,16 +5,20 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import time
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-from vnc_api.vnc_api import *
+import configparser
+import argparse
+import time
+import sys
+from builtins import object
+
+from vnc_api.vnc_api import WebuiNode
+from cfgm_common.exceptions import ResourceExhaustionError
+from cfgm_common.exceptions import RefsExistError
+from cfgm_common.exceptions import NoIdError
+
 from vnc_admin_api import VncApiAdmin
-from cfgm_common.exceptions import *
 
 
 class WebuiNodeProvisioner(object):
@@ -38,7 +42,7 @@ class WebuiNodeProvisioner(object):
                     auth_host=self._args.openstack_ip,
                     api_server_use_ssl=self._args.api_server_use_ssl)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -54,19 +58,20 @@ class WebuiNodeProvisioner(object):
         elif self._args.oper == 'del':
             self.del_webui_node()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
     def _parse_args(self, args_str):
         '''
-        Eg. python provision_webui_node.py --host_name a3s30.contrail.juniper.net
-                                        --host_ip 10.1.1.1
-                                        --api_server_ip 127.0.0.1
-                                        --api_server_port 8082
-                                        --api_server_use_ssl False
-                                        --oper <add | del>
+        Eg. python provision_webui_node.py
+                --host_name a3s30.contrail.juniper.net
+                --host_ip 10.1.1.1
+                --api_server_ip 127.0.0.1
+                --api_server_port 8082
+                --api_server_use_ssl False
+                --oper <add | del>
         '''
 
         # Source any specified config/ini file
@@ -111,10 +116,11 @@ class WebuiNodeProvisioner(object):
 
         parser.add_argument(
             "--host_name", help="hostname name of webui node", required=True)
-        parser.add_argument("--host_ip", help="IP address of webui node", required=True)
+        parser.add_argument(
+            "--host_ip", help="IP address of webui node", required=True)
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper", default='add',
             help="Provision operation to be done(add or del)")
@@ -131,9 +137,9 @@ class WebuiNodeProvisioner(object):
             "--api_server_ip", help="IP address of api server",
             nargs='+', type=str)
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -175,6 +181,7 @@ class WebuiNodeProvisioner(object):
 def main(args_str=None):
     WebuiNodeProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

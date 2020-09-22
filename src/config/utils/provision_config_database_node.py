@@ -5,16 +5,19 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import time
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-from vnc_api.vnc_api import *
+import configparser
+import argparse
+import time
+import sys
+from builtins import object
+
+from cfgm_common.exceptions import ResourceExhaustionError
+from cfgm_common.exceptions import RefsExistError
 from vnc_admin_api import VncApiAdmin
-from cfgm_common.exceptions import *
+from vnc_api.vnc_api import NoIdError
+from vnc_api.vnc_api import ConfigDatabaseNode
 
 
 class ConfigDatabaseNodeProvisioner(object):
@@ -38,7 +41,7 @@ class ConfigDatabaseNodeProvisioner(object):
                     auth_host=self._args.openstack_ip,
                     api_server_use_ssl=self._args.api_server_use_ssl)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -54,14 +57,15 @@ class ConfigDatabaseNodeProvisioner(object):
         elif self._args.oper == 'del':
             self.del_config_database_node()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
     def _parse_args(self, args_str):
         '''
-        Eg. python provision_config_database_node.py --host_name a3s30.contrail.juniper.net
+        Eg. python provision_config_database_node.py
+                                        --host_name a3s30.contrail.juniper.net
                                         --host_ip 10.1.1.1
                                         --api_server_ip 127.0.0.1
                                         --api_server_port 8082
@@ -110,11 +114,16 @@ class ConfigDatabaseNodeProvisioner(object):
         parser.set_defaults(**defaults)
 
         parser.add_argument(
-            "--host_name", help="hostname name of config database node", required=True)
-        parser.add_argument("--host_ip", help="IP address of config database node", required=True)
+            "--host_name",
+            help="hostname name of config database node",
+            required=True)
+        parser.add_argument(
+            "--host_ip",
+            help="IP address of config database node",
+            required=True)
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper", default='add',
             help="Provision operation to be done(add or del)")
@@ -131,9 +140,9 @@ class ConfigDatabaseNodeProvisioner(object):
             "--api_server_ip", help="IP address of api server",
             nargs='+', type=str)
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -156,7 +165,8 @@ class ConfigDatabaseNodeProvisioner(object):
             self._vnc_lib.config_database_node_update(config_database_node_obj)
         else:
             try:
-                self._vnc_lib.config_database_node_create(config_database_node_obj)
+                self._vnc_lib.config_database_node_create(
+                    config_database_node_obj)
             except RefsExistError:
                 print("Already created!")
 
@@ -164,7 +174,8 @@ class ConfigDatabaseNodeProvisioner(object):
 
     def del_config_database_node(self):
         gsc_obj = self._global_system_config_obj
-        config_database_node_obj = ConfigDatabaseNode(self._args.host_name, gsc_obj)
+        config_database_node_obj = ConfigDatabaseNode(
+            self._args.host_name, gsc_obj)
         self._vnc_lib.config_database_node_delete(
             fq_name=config_database_node_obj.get_fq_name())
     # end del_config_database_node
@@ -175,6 +186,7 @@ class ConfigDatabaseNodeProvisioner(object):
 def main(args_str=None):
     ConfigDatabaseNodeProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

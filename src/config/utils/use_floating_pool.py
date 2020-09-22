@@ -4,17 +4,16 @@
 #
 
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-import json
-import copy
 from netaddr import IPNetwork
+import sys
+import configparser
+import argparse
+from builtins import object
+from builtins import str
 
-from vnc_api.vnc_api import *
+from vnc_api.vnc_api import VncApi
 
 
 def get_ip(ip_w_pfx):
@@ -45,10 +44,7 @@ class VncProvisioner(object):
     # end __init__
 
     def use_floating_ip_pool(self, proj_obj, fip_pool_name):
-        vnc_lib = self._vnc_lib
-
         fq_name = fip_pool_name.split(':')
-        #import pdb; pdb.set_trace()
         fip_pool_obj = self._vnc_lib.floating_ip_pool_read(fq_name=fq_name)
         proj_obj.add_floating_ip_pool(fip_pool_obj)
         self._vnc_lib.project_update(proj_obj)
@@ -130,6 +126,7 @@ class VncProvisioner(object):
 def main(args_str=None):
     VncProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

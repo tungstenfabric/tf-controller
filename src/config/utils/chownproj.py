@@ -1,17 +1,20 @@
-from __future__ import print_function
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 
 # Show and change all object ownership and permissions2 fields
 #
+from __future__ import print_function
+
 from builtins import str
 from builtins import object
 import argparse
 import uuid as __uuid
 import os
-import cfgm_common.exceptions
+import sys
 
-from vnc_api.vnc_api import *
+import cfgm_common.exceptions
+from vnc_api.vnc_qpi import NoIdError
+from vnc_api.vnc_qpi import VncApi
 
 
 class VncChmod(object):
@@ -26,13 +29,13 @@ class VncChmod(object):
             '--operation', help="R/U operation")
         parser.add_argument(
             '--server', help="API server address in the form ip:port",
-            default = '127.0.0.1:8082')
+            default='127.0.0.1:8082')
         parser.add_argument(
-            '--os-username',  help="Keystone User Name", default=None)
+            '--os-username', help="Keystone User Name", default=None)
         parser.add_argument(
-            '--os-password',  help="Keystone User Password", default=None)
+            '--os-password', help="Keystone User Password", default=None)
         parser.add_argument(
-            '--os-tenant-name',  help="Keystone Tenant Name", default=None)
+            '--os-tenant-name', help="Keystone Tenant Name", default=None)
         self.args = parser.parse_args()
         self.opts = vars(self.args)
     # end parse_args
@@ -59,10 +62,13 @@ class VncChmod(object):
     # end
 # end
 
+
 ignore_list = ['floating_ips']
 
+
 def print_perms(obj_perms):
-    share_perms = ['%s:%d' % (x.tenant, x.tenant_access) for x in obj_perms.share]
+    share_perms = ['%s:%d' % (x.tenant, x.tenant_access)
+                   for x in obj_perms.share]
     return '%s/%d %d %s' \
         % (obj_perms.owner, obj_perms.owner_access,
            obj_perms.global_access, share_perms)
@@ -96,7 +102,12 @@ def read_owner_field(parent_fq_name, obj, owner):
                     print(child_name, each['uuid'], "Encountered exception")
                     continue
                 read_owner_field(parent_fq_name + child.fq_name, child, owner)
-                print("object_type = %s, object_name = %s, perms2.owner = %s, uuid = %s" % (child_name[:-1], child.fq_name, child.get_perms2().owner, each['uuid']))
+                print("object_type = %s, object_name = %s,",
+                      " perms2.owner = %s, uuid = %s" % (
+                          child_name[:-1],
+                          child.fq_name,
+                          child.get_perms2().owner,
+                          each['uuid']))
                 print()
 # end
 
@@ -107,7 +118,7 @@ def update_owner_field(parent_fq_name, obj, owner):
     else:
         for child_name in obj.children_fields:
             if child_name in ignore_list:
-                print("Ignoring update of %s owner" %(child_name))
+                print("Ignoring update of %s owner" % (child_name))
                 continue
             method = getattr(obj, "get_%s" % (child_name))
             val = method() or []
@@ -116,13 +127,25 @@ def update_owner_field(parent_fq_name, obj, owner):
                 try:
                     child = read_child(id=each['uuid'])
                 except Exception as e:
-                    print(child_name, each['uuid'], "Encountered exception ", e)
+                    print(child_name, each['uuid'],
+                          "Encountered exception ", e)
                     continue
-                update_owner_field(parent_fq_name + child.fq_name, child, owner)
-                print("BEFORE UPDATE object_type = %s, object_name = %s, perms2.owner = %s, uuid = %s" % (child_name[:-1], child.fq_name, child.get_perms2().owner, each['uuid']))
+                update_owner_field(
+                    parent_fq_name + child.fq_name, child, owner)
+                print("BEFORE UPDATE object_type = %s, object_name = %s",
+                      " perms2.owner = %s, uuid = %s" % (
+                          child_name[:-1],
+                          child.fq_name,
+                          child.get_perms2().owner,
+                          each['uuid']))
                 set_perms(child, owner=owner)
                 child = read_child(id=each['uuid'])
-                print("AFTER UPDATE object_type = %s, object_name = %s, perms2.owner = %s, uuid = %s" % (child_name[:-1], child.fq_name, child.get_perms2().owner, each['uuid']))
+                print("AFTER UPDATE object_type = %s, object_name = %s",
+                      " perms2.owner = %s, uuid = %s" % (
+                          child_name[:-1],
+                          child.fq_name,
+                          child.get_perms2().owner,
+                          each['uuid']))
                 print()
 # end
 
@@ -135,7 +158,7 @@ args = chmod.args
 # Validate API server information
 server = chmod.args.server.split(':')
 if len(server) != 2:
-    print('API server address must be of the form ip:port,'\
+    print('API server address must be of the form ip:port,'
           'for example 127.0.0.1:8082')
     sys.exit(1)
 

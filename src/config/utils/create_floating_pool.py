@@ -4,17 +4,17 @@
 #
 
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-import json
-import copy
+import sys
 from netaddr import IPNetwork
+import configparser
+import argparse
+from builtins import object
+from builtins import str
 
-from vnc_api.vnc_api import *
+from vnc_api.vnc_api import VncApi
+from vnc_api.vnc_api import FloatingIpPool
 
 
 def get_ip(ip_w_pfx):
@@ -30,12 +30,14 @@ class VncProvisioner(object):
             args_str = ' '.join(sys.argv[1:])
         self._parse_args(args_str)
 
-        self._vnc_lib = VncApi(self._args.admin_user,
-                               self._args.admin_password,
-                               self._args.admin_tenant_name,
-                               self._args.api_server_ip,
-                               self._args.api_server_port, '/',
-                               api_server_use_ssl=self._args.api_server_use_ssl)
+        self._vnc_lib = VncApi(
+            self._args.admin_user,
+            self._args.admin_password,
+            self._args.admin_tenant_name,
+            self._args.api_server_ip,
+            self._args.api_server_port,
+            '/',
+            api_server_use_ssl=self._args.api_server_use_ssl)
         vnc_lib = self._vnc_lib
 
         fq_name = self._args.public_vn_name.split(':')
@@ -45,8 +47,6 @@ class VncProvisioner(object):
     # end __init__
 
     def add_floating_ip_pool(self, pub_vn_obj, fip_pool_name):
-        vnc_lib = self._vnc_lib
-
         fip_pool_obj = FloatingIpPool(fip_pool_name, pub_vn_obj)
         self._vnc_lib.floating_ip_pool_create(fip_pool_obj)
 
@@ -103,20 +103,29 @@ class VncProvisioner(object):
         parser.set_defaults(**defaults)
 
         parser.add_argument(
-            "--public_vn_name", help="Colon separated fully qualified name", required=True)
+            "--public_vn_name",
+            help="Colon separated fully qualified name",
+            required=True)
         parser.add_argument(
-            "--floating_ip_pool_name", help="Name of the floating IP pool", required=True)
+            "--floating_ip_pool_name",
+            help="Name of the floating IP pool",
+            required=True)
         parser.add_argument(
             "--api_server_ip", help="IP address of api server", required=True)
-        parser.add_argument("--api_server_port", help="Port of api server", required=True)
+        parser.add_argument("--api_server_port",
+                            help="Port of api server", required=True)
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--admin_user", help="Name of keystone admin user", required=True)
         parser.add_argument(
-            "--admin_password", help="Password of keystone admin user", required=True)
+            "--admin_password",
+            help="Password of keystone admin user",
+            required=True)
         parser.add_argument(
-            "--admin_tenant_name", help="Tenamt name for keystone admin user", required=True)
+            "--admin_tenant_name",
+            help="Tenamt name for keystone admin user",
+            required=True)
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -128,6 +137,7 @@ class VncProvisioner(object):
 def main(args_str=None):
     VncProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()
