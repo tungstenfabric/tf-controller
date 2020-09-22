@@ -57,3 +57,7 @@
           "results": {"jl_message": "Failed to remove DHCP config file"},
         }
   when: ztp_create is undefined or ztp_create == False
+
+- name: Remove stale PR Objects
+  set_fact:
+    del_pr_obj: "{{ job_ctx | remove_stale_pr_objects() }}"
