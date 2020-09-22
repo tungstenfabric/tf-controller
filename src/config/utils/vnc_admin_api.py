@@ -9,6 +9,7 @@ from vnc_api.vnc_api import VncApi
 class VncApiAdmin(VncApi):
     """ Api client library which connects to admin port of api-server.
     """
+
     def __init__(self, use_admin_api, username=None, password=None,
                  tenant_name=None, api_server_host='127.0.0.1',
                  api_server_port=8095, api_server_url='/',
@@ -25,14 +26,14 @@ class VncApiAdmin(VncApi):
             self.auth_host = None
 
         super(VncApiAdmin, self).__init__(
-                username=username,
-                password=password,
-                tenant_name=tenant_name,
-                api_server_host=self.api_server_host,
-                api_server_port=self.api_server_port,
-                api_server_url=api_server_url,
-                api_server_use_ssl=self.api_server_use_ssl,
-                auth_host=self.auth_host)
+            username=username,
+            password=password,
+            tenant_name=tenant_name,
+            api_server_host=self.api_server_host,
+            api_server_port=self.api_server_port,
+            api_server_url=api_server_url,
+            api_server_use_ssl=self.api_server_use_ssl,
+            auth_host=self.auth_host)
 
     def _authenticate(self, response=None, headers=None):
         if self.use_admin_api:

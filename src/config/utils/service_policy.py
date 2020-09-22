@@ -2,21 +2,28 @@
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
+
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import os
-import sys
-import errno
-import subprocess
-import time
+standard_library.install_aliases()  # noqa
+
 import argparse
+import sys
+from builtins import object
+from six.moves import configparser
 
-sys.path.insert(0, os.path.realpath('/usr/lib/python2.7/site-packages'))
-
-from vnc_api.vnc_api import *
-from svc_monitor import svc_monitor
+from vnc_api.vnc_api import VncApi
+from vnc_api.vnc_api import NoIdError
+from vnc_api.vnc_api import AddressType
+from vnc_api.vnc_api import PortType
+from vnc_api.vnc_api import ActionListType
+from vnc_api.vnc_api import MirrorActionType
+from vnc_api.vnc_api import TimerType
+from vnc_api.vnc_api import PolicyRuleType
+from vnc_api.vnc_api import PolicyEntriesType
+from vnc_api.vnc_api import NetworkPolicy
+from vnc_api.vnc_api import SequenceType
+from vnc_api.vnc_api import VirtualNetworkPolicyType
 
 
 class ServicePolicyCmd(object):
@@ -63,7 +70,7 @@ class ServicePolicyCmd(object):
         if not args.conf_file:
             args.conf_file = '/etc/contrail/contrail-svc-monitor.conf'
 
-        config = ConfigParser.SafeConfigParser()
+        config = configparser.ConfigParser.SafeConfigParser()
         ret = config.read([args.conf_file])
         if args.conf_file not in ret:
             print("Error: Unable to read the config file %s" % args.conf_file)
@@ -140,7 +147,7 @@ class ServicePolicyCmd(object):
             return
 
         if policy_flag == 'in-network' and len(self._svc_list) != 1:
-            print("Error: Multiple service instances cannot "\
+            print("Error: Multiple service instances cannot "
                   "be chained for in-network mode")
             return
 
@@ -195,8 +202,8 @@ class ServicePolicyCmd(object):
         try:
             np = self._vnc_lib.network_policy_read(self._policy_fq_name)
         except NoIdError:
-            print("Error: Policy %s not found for delete"\
-                % (self._args.policy_name))
+            print("Error: Policy %s not found for delete"
+                  % (self._args.policy_name))
             return
 
         for network in (np.get_virtual_network_back_refs() or []):
@@ -220,6 +227,7 @@ def main(args_str=None):
     sp = ServicePolicyCmd(args_str)
     sp._args.func()
 # end main
+
 
 if __name__ == "__main__":
     main()

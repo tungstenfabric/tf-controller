@@ -4,10 +4,11 @@ from __future__ import print_function
 #
 from builtins import object
 import argparse
-import uuid
 import os
+import json
+import sys
 
-from vnc_api.vnc_api import *
+from vnc_api.vnc_api import VncApi
 import cfgm_common
 
 
@@ -22,15 +23,15 @@ class MultiTenancy(object):
         parser.add_argument(
             'server', help="API server address in the form ip:port")
         parser.add_argument(
-            '--on',  help="Enable Multi Tenancy", action="store_true")
+            '--on', help="Enable Multi Tenancy", action="store_true")
         parser.add_argument(
-            '--off',  help="Disable Multi Tenancy", action="store_true")
+            '--off', help="Disable Multi Tenancy", action="store_true")
         parser.add_argument(
-            '--os-username',  help="Keystone User Name", default=None)
+            '--os-username', help="Keystone User Name", default=None)
         parser.add_argument(
-            '--os-password',  help="Keystone User Password", default=None)
+            '--os-password', help="Keystone User Password", default=None)
         parser.add_argument(
-            '--os-tenant-name',  help="Keystone Tenant Name", default=None)
+            '--os-tenant-name', help="Keystone Tenant Name", default=None)
 
         self.args = parser.parse_args()
         self.opts = vars(self.args)
@@ -57,6 +58,7 @@ class MultiTenancy(object):
         return (value, rsp)
     # end
 # end
+
 
 mt = MultiTenancy()
 mt.parse_args()

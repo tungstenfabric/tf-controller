@@ -57,5 +57,25 @@ utils_scripts = [
   'chownproj.py',
 ]
 
+setup_sources_rules = []
 for utils in utils_scripts:
-  env.Alias('install',env.Install(env['INSTALL_EXAMPLE'], utils))
+    env.Alias('install',env.Install(env['INSTALL_EXAMPLE'], utils))
+    setup_sources_rules.append(
+        env.Install(Dir('.'), "#controller/src/config/utils/" + utils))
+
+setup_test_sources = [
+           'test-requirements.txt',
+           '.stestr.conf',
+           'tox.ini',
+           '.coveragerc',
+           'tests',
+          ]
+
+for file in setup_test_sources:
+    setup_sources_rules.append(
+        env.Install(Dir('.'), "#controller/src/config/utils/" + file))
+
+env.SetupPyTestSuite(setup_sources_rules,
+                     '/config/api-server/dist/contrail-api-server-0.1dev.tar.gz',
+                     '/api-lib/dist/contrail-api-client-2004.tar.gz',
+                     use_tox=True)

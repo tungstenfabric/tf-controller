@@ -5,15 +5,17 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import argparse
+standard_library.install_aliases()  # noqa
+
 import configparser
+import argparse
+import sys
+from builtins import object
 
 from cfgm_common.exceptions import RefsExistError
-from vnc_api.vnc_api import *
 from vnc_admin_api import VncApiAdmin
+from vnc_api.vnc_api import EncapsulationPrioritiesType
+from vnc_api.vnc_api import GlobalVrouterConfig
 
 
 class EncapsulationProvision(object):
@@ -36,34 +38,35 @@ class EncapsulationProvision(object):
                                   'default-global-vrouter-config']
         if self._args.oper == "add":
             encap_obj = EncapsulationPrioritiesType(
-                    encapsulation=self._args.encap_priority.split(","))
-            conf_obj = GlobalVrouterConfig(encapsulation_priorities=encap_obj,
-                    vxlan_network_identifier_mode=self._args.vxlan_vn_id_mode,
-                    fq_name=global_vrouter_fq_name)
+                encapsulation=self._args.encap_priority.split(","))
+            conf_obj = GlobalVrouterConfig(
+                encapsulation_priorities=encap_obj,
+                vxlan_network_identifier_mode=self._args.vxlan_vn_id_mode,
+                fq_name=global_vrouter_fq_name)
             try:
                 result = self._vnc_lib.global_vrouter_config_create(conf_obj)
                 print('Created.UUID is %s' % result)
             except RefsExistError:
-                print ("GlobalVrouterConfig Exists Already!")
+                print("GlobalVrouterConfig Exists Already!")
                 result = self._vnc_lib.global_vrouter_config_update(conf_obj)
                 print('Updated.%s' % result)
             return
         elif self._args.oper != "add":
             encap_obj = EncapsulationPrioritiesType(encapsulation=[])
             conf_obj = GlobalVrouterConfig(encapsulation_priorities=encap_obj,
-                    fq_name=global_vrouter_fq_name)
+                                           fq_name=global_vrouter_fq_name)
             result = self._vnc_lib.global_vrouter_config_update(conf_obj)
     # end __init__
-    
+
     def _parse_args(self, args_str):
         '''
-        Eg. python provision_encap.py 
-                                        --api_server_ip 127.0.0.1
-                                        --api_server_port 8082
-                                        --api_server_use_ssl False
-                                        --encap_priority "MPLSoUDP,MPLSoGRE,VXLAN"
-                                        --vxlan_vn_id_mode "automatic"
-                                        --oper <add | delete>
+        Eg. python provision_encap.py
+                --api_server_ip 127.0.0.1
+                --api_server_port 8082
+                --api_server_use_ssl False
+                --encap_priority "MPLSoUDP,MPLSoGRE,VXLAN"
+                --vxlan_vn_id_mode "automatic"
+                --oper <add | delete>
         '''
 
         # Source any specified config/ini file
@@ -80,7 +83,7 @@ class EncapsulationProvision(object):
             'api_server_use_ssl': False,
             'oper': 'add',
             'encap_priority': 'MPLSoUDP,MPLSoGRE,VXLAN',
-            'vxlan_vn_id_mode' : 'automatic'
+            'vxlan_vn_id_mode': 'automatic'
         }
         ksopts = {
             'admin_user': 'user1',
@@ -110,13 +113,17 @@ class EncapsulationProvision(object):
 
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
-            "--encap_priority", help="List of Encapsulation priority", required=True)
+            "--encap_priority",
+            help="List of Encapsulation priority",
+            required=True)
         parser.add_argument(
             "--vxlan_vn_id_mode", help="Virtual Network id type to be used")
         parser.add_argument(
-            "--oper", default='add',help="Provision operation to be done(add or delete)")
+            "--oper",
+            default='add',
+            help="Provision operation to be done(add or delete)")
         parser.add_argument(
             "--admin_user", help="Name of keystone admin user")
         parser.add_argument(
@@ -127,9 +134,9 @@ class EncapsulationProvision(object):
         group.add_argument(
             "--api_server_ip", help="IP address of api server")
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
         if not self._args.encap_priority:
@@ -143,6 +150,7 @@ class EncapsulationProvision(object):
 def main(args_str=None):
     EncapsulationProvision(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

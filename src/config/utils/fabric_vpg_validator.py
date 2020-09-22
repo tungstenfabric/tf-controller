@@ -216,7 +216,7 @@ class FabricVPGValidator(object):
                 # finally check across vpgs
                 if ((vn_uuid, vlan_id) in fabric_vn_vlan_set) or \
                    ((vn_uuid not in fabric_vn_set) and
-                   (vlan_id not in fabric_vlan_set)):
+                        (vlan_id not in fabric_vlan_set)):
                     continue
                 else:
                     self._logger.debug("VN/VLAN combination {0} not exact in".

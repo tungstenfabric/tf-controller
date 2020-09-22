@@ -5,36 +5,27 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
-import argparse
-import configparser
+standard_library.install_aliases()  # noqa
 
-#from ginkgo import Service
-#from fabric.api import env
-#from fabric.api import run
-#from fabric.context_managers import settings
-
-import eventlet
-import os
-import sys
-# eventlet.monkey_patch(thread=False)
-
-import uuid
-import time
-import errno
-import socket
-import subprocess
-
-from vnc_api.vnc_api import *
-
-import json
-sys.path.insert(2, '/opt/stack/python-quantumclient')
-from pprint import pformat
-from quantumclient.quantum import client
 from quantumclient.client import HTTPClient
-from quantumclient.common import exceptions
+from quantumclient.quantum import client
+import json
+import sys
+import configparser
+import argparse
+from builtins import object
+from builtins import str
+
+from vnc_api.vnc_api import VncApi
+from vnc_api.vnc_api import PolicyRuleType
+from vnc_api.vnc_api import ActionListType
+from vnc_api.vnc_api import AddressType
+from vnc_api.vnc_api import PortType
+from vnc_api.vnc_api import PolicyEntriesType
+from vnc_api.vnc_api import NetworkIpam
+
+
+sys.path.insert(2, '/opt/stack/python-quantumclient')
 
 
 class DemoCfg(object):
@@ -51,7 +42,7 @@ class DemoCfg(object):
             auth_url='http://%s:5000/v2.0' % (self._args.api_server_ip))
         httpclient.authenticate()
 
-        #OS_URL = httpclient.endpoint_url
+        # OS_URL = httpclient.endpoint_url
         OS_URL = 'http://%s:9696/' % (self._args.api_server_ip)
         OS_TOKEN = httpclient.auth_token
         self._quantum = client.Client(
@@ -72,8 +63,6 @@ class DemoCfg(object):
         net_req = {'name': '%s' % (vn_name)}
         net_rsp = self._quantum.create_network({'network': net_req})
         net1_id = net_rsp['network']['id']
-        net1_fq_name = net_rsp['network']['fq_name']
-        net1_fq_name_str = ':'.join(net1_fq_name)
         self._create_subnet(str(vn_subnet), net1_id)
     # end _create_vn
 
@@ -107,11 +96,11 @@ class DemoCfg(object):
 
         print("Setting front-end policy to [front-end-to-back-end]")
         net_req = {'policys': [policy1_fq_name]}
-        net_rsp = self._quantum.update_network(net1_id, {'network': net_req})
+        _ = self._quantum.update_network(net1_id, {'network': net_req})
 
         print("Setting back-end policy to [front-end-to-back-end]")
         net_req = {'policys': [policy1_fq_name]}
-        net_rsp = self._quantum.update_network(net2_id, {'network': net_req})
+        _ = self._quantum.update_network(net2_id, {'network': net_req})
 
     # end _policy_link_vns
 
@@ -127,7 +116,6 @@ class DemoCfg(object):
         net_rsp = self._quantum.create_network({'network': net_req})
         net1_id = net_rsp['network']['id']
         net1_fq_name = net_rsp['network']['fq_name']
-        net1_fq_name_str = ':'.join(net1_fq_name)
         self._create_subnet(u'192.168.1.0/24', net1_id)
 
         print("Creating network %s, subnet 192.168.2.0/24" % (vn2_name))
@@ -135,7 +123,6 @@ class DemoCfg(object):
         net_rsp = self._quantum.create_network({'network': net_req})
         net2_id = net_rsp['network']['id']
         net2_fq_name = net_rsp['network']['fq_name']
-        net2_fq_name_str = ':'.join(net2_fq_name)
         self._create_subnet(u'192.168.2.0/24', net2_id)
 
         return net1_id, net2_id, net1_fq_name, net2_fq_name
@@ -150,7 +137,6 @@ class DemoCfg(object):
                       'ip_version': 4,
                       'ipam_fq_name': ipam_fq_name}
         subnet_rsp = self._quantum.create_subnet({'subnet': subnet_req})
-        subnet_cidr = subnet_rsp['subnet']['cidr']
         return subnet_rsp['subnet']['id']
     # end _create_subnet
 
@@ -220,6 +206,7 @@ class DemoCfg(object):
 def main(args_str=None):
     DemoCfg(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()
