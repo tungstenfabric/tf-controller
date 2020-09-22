@@ -9,6 +9,7 @@
 
 from builtins import object
 import logging
+import time
 
 from cfgm_common.exceptions import NoIdError
 from vnc_api.vnc_api import VncApi
@@ -39,6 +40,7 @@ class FilterModule(object):
             'read_dhcp_leases_using_count': self.read_dhcp_leases_using_count,
             'read_dhcp_leases_using_info': self.read_dhcp_leases_using_info,
             'read_only_dhcp_leases': self.read_only_dhcp_leases,
+            'remove_stale_pr_objects': self.remove_stale_pr_objects,
         }
 
     # Method to get interface name and configured ip address from
@@ -250,6 +252,53 @@ class FilterModule(object):
                              payload={})
         return {'status': 'success'}
     # end restart_dhcp_server
+
+    @classmethod
+    def remove_stale_pr_objects(cls, job_ctx):
+        """
+        Method that cleans up stale temporary PR objects when
+        ZTP workflow fails.
+        """
+        job_input = job_ctx.get('job_input', {})
+        device_to_ztp = job_input.get('device_to_ztp', [])
+
+        if not device_to_ztp:
+            logging.info("device_to_ztp[] is empty, will not try "
+                         "to delete stale PR objects.")
+            return True
+
+        try:
+            vnc_api = VncApi(auth_type=VncApi._KEYSTONE_AUTHN_STRATEGY,
+                             auth_token=job_ctx.get('auth_token'))
+        except Exception as ex:
+            logging.error("Error connecting to API server: {}".format(ex))
+            return True
+
+        # Wait a couple of seconds before trying to delete the PR
+        time.sleep(2)
+
+        for dev in device_to_ztp:
+            # Temporary objects are created with serial number as the name
+            dhcp_fq_name = [
+                'default-global-system-config',
+                dev.get('serial_number')
+            ]
+            try:
+                pr_obj = vnc_api.physical_router_read(
+                    fq_name=dhcp_fq_name,
+                    fields=['physical_router_managed_state'])
+                # And they have dhcp as the managed state
+                if pr_obj.get_physical_router_managed_state() == 'dhcp':
+                    vnc_api.physical_router_delete(fq_name=dhcp_fq_name)
+                    logging.info(
+                        "Router {} in dhcp state deleted".format(dhcp_fq_name))
+            except (NoIdError, Exception):
+                # Don't show any exceptions here. If we don't find an object
+                # it may have already been deleted as intended.
+                continue
+
+        return True
+    # end remove_stale_pr_objects
 
     @classmethod
     def _publish_file(cls, name, contents, action, routing_key,

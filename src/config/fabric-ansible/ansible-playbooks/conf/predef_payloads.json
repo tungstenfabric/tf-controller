@@ -499,7 +499,8 @@
                 "vendor": "Juniper",
                 "device_family": "",
                 "job_completion_weightage": 5,
-                "sequence_no": 10
+                "sequence_no": 10,
+                "recovery_playbook": true
               }
             ]
           },
@@ -886,7 +887,8 @@
                 "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/update_dhcp_config.yml",
                 "vendor": "Juniper",
                 "job_completion_weightage": 20,
-                "sequence_no": 3
+                "sequence_no": 3,
+                "recovery_playbook": true
               }
             ]
           },
