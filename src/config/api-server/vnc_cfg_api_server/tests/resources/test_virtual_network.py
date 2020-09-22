@@ -6,8 +6,10 @@ import logging
 from cfgm_common import get_bgp_rtgt_min_id
 from cfgm_common import VNID_MIN_ALLOC
 from cfgm_common.exceptions import BadRequest
+from cfgm_common.exceptions import HttpError
 from cfgm_common.exceptions import PermissionDenied
 from cfgm_common.exceptions import RefsExistError
+from cfgm_common.tests import test_common
 from testtools import ExpectedException
 from vnc_api.vnc_api import GlobalSystemConfig
 from vnc_api.vnc_api import Project
@@ -352,9 +354,176 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
         self.api.virtual_network_update(vn)
         # verify vn_network_id is the same as vxlan_network_id
         vn = self.api.virtual_network_read(fq_name=vn.fq_name)
-        vxlan_id = vn.get_virtual_network_properties()\
+        vxlan_id = vn.get_virtual_network_properties() \
             .get_vxlan_network_identifier()
         self.assertEqual(vn_network_id, vxlan_id)
+
+    def test_context_undo_fail_db_create(self):
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_create', stub)]):
+                self.api.virtual_network_create(vn_obj)
+
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_vxlan_id_fail_db_create(self):
+        # enable vxlan routing on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        proj.set_vxlan_routing(True)
+        self._vnc_lib.project_update(proj)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_vxlan_network_identifier(6000)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_create', stub)]):
+                self.api.virtual_network_create(vn_obj)
+
+        # make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_fail_db_delete(self):
+        vn_obj = self.create_virtual_network('vn-l2-%s' % self.id())
+        vn_ipam_refs = vn_obj.get_network_ipam_refs()
+
+        mock_zk = self._api_server._db_conn._zk_db
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_delete', stub)]):
+                self.api.virtual_network_delete(id=vn_obj.uuid)
+
+        # Make sure ipam refs still present (undo action recreated it)
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_ipam_refs_after_delete_fail = vn_obj.get_network_ipam_refs()
+
+        self.assertEqual(vn_ipam_refs[0]['to'],
+                         vn_ipam_refs_after_delete_fail[0]['to'])
+        self.assertEqual(vn_ipam_refs[0]['uuid'],
+                         vn_ipam_refs_after_delete_fail[0]['uuid'])
+        self.assertEqual(vn_ipam_refs[0]['attr'].ipam_subnets[0].subnet_uuid,
+                         vn_ipam_refs_after_delete_fail[0][
+                             'attr'].ipam_subnets[0].subnet_uuid)
+        # Make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_vxlan_id_fail_db_update(self):
+        # enable vxlan routing on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        proj.set_vxlan_routing(True)
+        self._vnc_lib.project_update(proj)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        # Create vxlan
+        vxlan_id = 6000
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_vxlan_network_identifier(vxlan_id)
+        vn_obj_properties.set_forwarding_mode('l2_l3')
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        self.api.virtual_network_create(vn_obj)
+
+        vxlan_fqname = mock_zk.get_vn_from_id(vxlan_id)
+        # Update vxlan id (will fail)
+        new_vxlan_id = 6005
+        vn_obj_properties.set_vxlan_network_identifier(new_vxlan_id)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_update', stub)]):
+                self.api.virtual_network_update(vn_obj)
+
+        # Make sure vxlan_id is still allocated with same name
+        new_vxlan_fqname = mock_zk.get_vn_from_id(vxlan_id)
+        self.assertEqual(new_vxlan_fqname, vxlan_fqname)
+
+        # Make sure new_vxlan_id is deallocated
+        update_vxlan_fqname = mock_zk.get_vn_from_id(new_vxlan_id)
+        self.assertEqual(update_vxlan_fqname, None)
+
+        # Make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_vn_to_vxlan_id_fail_db_update(self):
+        # Enable vxlan routing on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        proj.set_vxlan_routing(True)
+        self._vnc_lib.project_update(proj)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        self.api.virtual_network_create(vn_obj)
+
+        vn_fqname = mock_zk.get_vn_from_id(vn_obj.virtual_network_network_id)
+        vn_id = vn_obj.virtual_network_network_id
+
+        # Change vn to vxlan type
+        vxlan_id = 6000
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_vxlan_network_identifier(vxlan_id)
+        vn_obj_properties.set_forwarding_mode('l2_l3')
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_update', stub)]):
+                self.api.virtual_network_update(vn_obj)
+
+        # Make sure vxlan_id was dealocated
+        new_vxlan_fqname = mock_zk.get_vn_from_id(vxlan_id)
+        self.assertEqual(new_vxlan_fqname, None)
+
+        # Make sure vn id is the same
+        new_vn_id = vn_obj.virtual_network_network_id
+        self.assertEqual(vn_id, new_vn_id)
+
+        # Make sure fqname is the same fot vn_id
+        update_vn_fqname = mock_zk.get_vn_from_id(
+            vn_obj.virtual_network_network_id)
+        self.assertEqual(vn_fqname, update_vn_fqname)
+
+        # Make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
 
     def test_update_in_use_vn_to_provider_vn(self):
         project = Project('%s-project' % self.id())
