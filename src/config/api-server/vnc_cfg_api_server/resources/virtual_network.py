@@ -814,7 +814,7 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
 
                 def undo_alloc():
                     cls.vnc_zk_client.free_vxlan_id(
-                        int(old_vxlan_id), vxlan_fq_name)
+                        int(new_vxlan_id), vxlan_fq_name)
                 get_context().push_undo(undo_alloc)
 
             # Third, check if old_vxlan_id is not None, if so, delete it from
