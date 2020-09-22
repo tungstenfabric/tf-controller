@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f6f9e06a_0f34e659",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/virtual_network.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-09-22T23:33:38Z",
+      "side": 1,
+      "message": "Yeah, I tested and confirmed this behavior. It will only exist in the result after a VM is created using the VN.",
+      "parentUuid": "efa15967_3aa1dd42",
+      "revId": "efa205484d256b7e81b3f9a6d78400a5d6c3c020",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "19c8a465_da55c73e",
         "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_network.py",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2020-09-18T23:13:39Z",
       "side": 1,
       "message": "I tried to let VMI refer to VN and create the VMI. Will this set VN.virtual_machine_back_ref as any value except None? If not, how can I make the VN.virtual_machine_interface_back_ref in the DB not None.\n\nBtw, I have tried to create a VN, and use VN.virtual_machine_interface_back_ref \u003d VirtualMachineInterface(parent_obj\u003dVirtualMachine()), but after in /resorces/virtual_network.py:161, \u0027virtual_machine_back_ref\u0027 is still not there.",
+      "revId": "efa205484d256b7e81b3f9a6d78400a5d6c3c020",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "23074fe3_4eee944a",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_network.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 389,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-09-22T23:33:38Z",
+      "side": 1,
+      "message": "I personally have tried the second way as well in the first version of UT, it did not made \u0027virtual_machine_interface_back_ref\u0027 not None. Because the field is not modifiable externally.\n\nSo the first way, as written in line 389, will make the field not None. Did you tried this way somewhere else, but it did not work as expected?",
+      "parentUuid": "19c8a465_da55c73e",
       "revId": "efa205484d256b7e81b3f9a6d78400a5d6c3c020",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
