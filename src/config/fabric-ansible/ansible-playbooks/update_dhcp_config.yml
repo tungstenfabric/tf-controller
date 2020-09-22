@@ -89,7 +89,7 @@
         jl_message: "Removed TFTP script file"
       when: tftp_output is undefined
 
-- name: Delete DHCP config file
+- name: Delete DHCP config file and stale objects
   hosts: localhost
   gather_facts: no
   connection: local
