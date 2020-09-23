@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "968c15c5_1c1a2736",
+        "filename": "src/config/fabric-ansible/README.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-09-23T18:41:02Z",
+      "side": 1,
+      "message": "I noticed that the README had some information repeated. So I removed the duplicates.",
+      "parentUuid": "2301d5d5_75c97289",
+      "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "c19b18b6_d8780c25",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/ztp_filters.py",
         "patchSetId": 5
@@ -33,6 +51,24 @@
       "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65177f6b_413f96d1",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/ztp_filters.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-09-23T18:41:02Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "c19b18b6_d8780c25",
+      "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "968dba13_59378810",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/ztp_filters.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-09-23T18:41:02Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "d7b674b6_807120a4",
+      "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "31717bdd_65a5f50a",
         "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
         "patchSetId": 5
@@ -67,6 +121,24 @@
       "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3b1c259e_94c08018",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-09-23T18:41:02Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "31717bdd_65a5f50a",
+      "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
