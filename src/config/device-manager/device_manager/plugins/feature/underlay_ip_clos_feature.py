@@ -207,6 +207,7 @@ class UnderlayIpClosFeature(FeatureBase):
     # end _build_underlay_bgp
 
     def feature_config(self, **kwargs):
+        self.pi_map = OrderedDict()
         feature_config = Feature(name=self.feature_name())
         if self._physical_router.underlay_managed:
             self._build_underlay_bgp(feature_config)
