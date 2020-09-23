@@ -13,3 +13,4 @@ kazoo>=2.5.0
 pycrypto==2.6.1
 future
 six
+uwsgi==2.0.19.1
