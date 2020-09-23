@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c19b18b6_d8780c25",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/ztp_filters.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 265,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-09-23T18:00:15Z",
+      "side": 1,
+      "message": "Look up in db for PR with managed state as DHCP. This would not be required.\npr_list \u003d vnc_api.physical_routers_list(filters\u003dfilters).get(\u0027physical-routers\u0027)",
+      "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7b674b6_807120a4",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/ztp_filters.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-09-23T18:00:15Z",
+      "side": 1,
+      "message": "could you fetch list of all PRs through vnc_api filter query as this would reduce the no of transactions to DB also this would reduce the checks ?\n filters[\u0027physical_router_managed_state\u0027] \u003d \"dhcp\"\n pr_list \u003d vnc_api.physical_routers_list(filters\u003dfilters).get(\u0027physical-routers\u0027)",
+      "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "31717bdd_65a5f50a",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-09-23T18:00:15Z",
+      "side": 1,
+      "message": "see if variable names like cleanup_in_progress and cleanup_completed makes is more readable..",
+      "revId": "8d6bf9b4d80569fc62c11d19e31f245a83e29d34",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
