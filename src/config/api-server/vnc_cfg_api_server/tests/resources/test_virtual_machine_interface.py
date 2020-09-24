@@ -1,6 +1,7 @@
 #
 # Copyright (c) 2017 Juniper Networks, Inc. All rights reserved.
 #
+import json
 import logging
 
 from cfgm_common.exceptions import BadRequest
@@ -13,6 +14,12 @@ from vnc_api.vnc_api import SubnetType
 from vnc_api.vnc_api import VirtualMachineInterface
 from vnc_api.vnc_api import VirtualMachineInterfacePropertiesType
 from vnc_api.vnc_api import VirtualNetwork
+from vnc_api.gen.resource_xsd import KeyValuePair
+from vnc_api.gen.resource_xsd import KeyValuePairs
+from vnc_api.vnc_api import Fabric
+from vnc_api.vnc_api import PhysicalInterface
+from vnc_api.vnc_api import PhysicalRouter
+from vnc_api.vnc_api import VirtualPortGroup
 
 from vnc_cfg_api_server.tests import test_case
 
@@ -133,7 +140,7 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
         project = Project('%s-project' % self.id())
         self.api.project_create(project)
         vn = VirtualNetwork('vn-%s' % self.id(), parent_obj=project)
-        self._vnc_lib.virtual_network_create(vn)
+        self.api.virtual_network_create(vn)
         addr_pair = AllowedAddressPairs(
             allowed_address_pair=[
                 AllowedAddressPair(ip=SubnetType('1.1.1.0', 24),
@@ -148,24 +155,24 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
             virtual_machine_interface_allowed_address_pairs=addr_pair)
         vmi.set_virtual_network(vn)
         with self.assertRaisesRegexp(BadRequest, msg):
-            self._vnc_lib.virtual_machine_interface_create(vmi)
+            self.api.virtual_machine_interface_create(vmi)
 
         vmi = VirtualMachineInterface('vmi-%s' % self.id(), parent_obj=project,
                                       port_security_enabled=False)
         vmi.set_virtual_network(vn)
-        self._vnc_lib.virtual_machine_interface_create(vmi)
+        self.api.virtual_machine_interface_create(vmi)
 
         # updating a port with allowed address pair should throw an exception
         # when port security enabled is set to false
         vmi.virtual_machine_interface_allowed_address_pairs = addr_pair
         with self.assertRaisesRegexp(BadRequest, msg):
-            self._vnc_lib.virtual_machine_interface_update(vmi)
+            self.api.virtual_machine_interface_update(vmi)
 
     def test_disable_port_security_with_empty_allowed_address_pair_list(self):
         project = Project('%s-project' % self.id())
         self.api.project_create(project)
         vn = VirtualNetwork('vn-%s' % self.id(), parent_obj=project)
-        self._vnc_lib.virtual_network_create(vn)
+        self.api.virtual_network_create(vn)
         addr_pair = AllowedAddressPairs()
 
         vmi1 = VirtualMachineInterface(
@@ -174,7 +181,7 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
             port_security_enabled=False,
             virtual_machine_interface_allowed_address_pairs=addr_pair)
         vmi1.set_virtual_network(vn)
-        self._vnc_lib.virtual_machine_interface_create(vmi1)
+        self.api.virtual_machine_interface_create(vmi1)
 
         addr_pair = AllowedAddressPairs(
             allowed_address_pair=[
@@ -186,14 +193,14 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
             port_security_enabled=True,
             virtual_machine_interface_allowed_address_pairs=addr_pair)
         vmi2.set_virtual_network(vn)
-        self._vnc_lib.virtual_machine_interface_create(vmi2)
+        self.api.virtual_machine_interface_create(vmi2)
 
         addr_pair = AllowedAddressPairs()
         vmi2.set_virtual_machine_interface_allowed_address_pairs(addr_pair)
-        self._vnc_lib.virtual_machine_interface_update(vmi2)
+        self.api.virtual_machine_interface_update(vmi2)
 
         vmi2.set_port_security_enabled(False)
-        self._vnc_lib.virtual_machine_interface_update(vmi2)
+        self.api.virtual_machine_interface_update(vmi2)
 
     def test_mac_address_always_allocated(self):
         project = Project(name='p-{}'.format(self.id()))
@@ -235,3 +242,159 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
             for m in vmi_macs:
                 # check if any of mac is not zero
                 self.assertNotEqual(m, '00:00:00:00:00:00')
+
+
+class TestVMIVirtualPortGroupRelation(test_case.ApiServerTestCase):
+    @classmethod
+    def setUpClass(cls, *args, **kwargs):
+        cls.console_handler = logging.StreamHandler()
+        cls.console_handler.setLevel(logging.DEBUG)
+        logger.addHandler(cls.console_handler)
+        super(TestVMIVirtualPortGroupRelation, cls).setUpClass(*args, **kwargs)
+
+    @classmethod
+    def tearDownClass(cls, *args, **kwargs):
+        logger.removeHandler(cls.console_handler)
+        super(TestVMIVirtualPortGroupRelation, cls).tearDownClass(*args, **kwargs)
+
+    @property
+    def api(self):
+        return self._vnc_lib
+
+    def setUp(self):
+        super(TestVMIVirtualPortGroupRelation, self).setUp()
+        if six.PY3:
+            self.assertItemsEqual = self.assertCountEqual
+
+        # Create project
+        self.proj_obj = Project('%s-project' % (self.id()))
+        self.api.project_create(self.proj_obj)
+
+        # Create Fabric
+        self.fabric_obj = Fabric('%s-fabric' % (self.id()))
+        fabric_uuid = self.api.fabric_create(self.fabric_obj)
+        self.fabric_name = self.fabric_obj.get_fq_name()
+
+        # Create physical router
+        pr_name = self.id() + '_physical_router'
+        pr = PhysicalRouter(pr_name)
+        pr_uuid = self.api.physical_router_create(pr)
+        self.pr_obj = self.api.physical_router_read(id=pr_uuid)
+
+
+        # Create Physical interface
+        esi_id = '00:11:22:33:44:55:66:77:88:99'
+        pi_name = self.id() + '_physical_interface1'
+        pi = PhysicalInterface(name=pi_name,
+                               parent_obj=self.pr_obj,
+                               ethernet_segment_identifier=esi_id)
+        self.pi_uuid = self.api.physical_interface_create(pi)
+        pi_obj = self.api.physical_interface_read(id=self.pi_uuid)
+        self.pi_fq_name = pi_obj.get_fq_name()
+
+        # Create VN
+        self.vn = VirtualNetwork('vn-%s' % (self.id()), parent_obj=self.proj_obj)
+        self.vn_uuid = self.api.virtual_network_create(self.vn)
+
+        # Create VPG
+        self.vpg_name = "vpg-%s" % self.id()
+        vpg = VirtualPortGroup(self.vpg_name, parent_obj=self.fabric_obj)
+        self.vpg_uuid = self.api.virtual_port_group_create(vpg)
+        vpg_obj = self.api.virtual_port_group_read(id=self.vpg_uuid)
+        self.vpg_name = vpg_obj.get_fq_name()
+
+    def tearDown(self):
+        self.api.physical_interface_delete(id=self.pi_uuid)
+        self.api.physical_router_delete(id=self.pr_obj.uuid)
+        self.api.virtual_port_group_delete(id=self.vpg_uuid)
+        self.api.fabric_delete(id=self.fabric_obj.uuid)
+        self.api.virtual_network_delete(id=self.vn_uuid)
+        self.api.project_delete(id=self.proj_obj.uuid)
+        super(TestVMIVirtualPortGroupRelation, self).tearDown()
+
+    def create_vmi_bindings(self, pi_fq_name, fabric_name, vpg_name,
+                         tor_port_vlan_id=0):
+        # Populate binding profile to be used in VMI create
+        binding_profile = {'local_link_information': []}
+        if isinstance(pi_fq_name[0], type([])):
+            for pi_name in pi_fq_name:
+                binding_profile['local_link_information'].append(
+                    {'port_id': pi_name[2],
+                     'switch_id': pi_name[2],
+                     'fabric': fabric_name[-1],
+                     'switch_info': pi_name[1]})
+        else:
+            binding_profile['local_link_information'].append(
+                {'port_id': pi_fq_name[2],
+                 'switch_id': pi_fq_name[2],
+                 'fabric': fabric_name[-1],
+                 'switch_info': pi_fq_name[1]})
+
+        if tor_port_vlan_id != 0:
+            kv_pairs = KeyValuePairs(
+                [KeyValuePair(key='vpg', value=vpg_name[-1]),
+                 KeyValuePair(key='vif_type', value='vrouter'),
+                 KeyValuePair(key='tor_port_vlan_id', value=tor_port_vlan_id),
+                 KeyValuePair(key='vnic_type', value='baremetal'),
+                 KeyValuePair(key='profile',
+                              value=json.dumps(binding_profile))])
+        else:
+            kv_pairs = KeyValuePairs(
+                [KeyValuePair(key='vpg', value=vpg_name[-1]),
+                 KeyValuePair(key='vif_type', value='vrouter'),
+                 KeyValuePair(key='vnic_type', value='baremetal'),
+                 KeyValuePair(key='profile',
+                              value=json.dumps(binding_profile))])
+
+        return kv_pairs
+
+    def test_untagged_vmi_to_vpg_ref_create_during_vmi_create(self):
+        # Create vmi with bindings
+        vmi_obj = VirtualMachineInterface('vmi' + self.id(), parent_obj=self.proj_obj)
+        vmi_obj.set_virtual_network(self.vn)
+        bindings = self.create_vmi_bindings(self.pi_fq_name,
+                                         self.fabric_name,
+                                         self.vpg_name,
+                                         tor_port_vlan_id='4094')
+        vmi_obj.set_virtual_machine_interface_bindings(bindings)
+        vmi_uuid = self.api.virtual_machine_interface_create(vmi_obj)
+
+        # Validate
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_uuid)
+        vpg_refs = vmi_obj.get_virtual_port_group_refs()
+        self.assertEqual(len(vpg_refs), 1)
+        self.assertEqual(vpg_refs[0]['attr'].native_vlan_tag, '4094')
+        self.assertIsNone(vpg_refs[0]['attr'].vlan_tag)
+
+        # Cleanup
+        self.api.virtual_machine_interface_delete(id=vmi_uuid)
+
+    def test_untagged_vmi_to_vpg_ref_create_during_vmi_update(self):
+        # Create vmi without bindings
+        vmi_obj = VirtualMachineInterface('vmi' + self.id(), parent_obj=self.proj_obj)
+        vmi_obj.set_virtual_network(self.vn)
+        vmi_uuid = self.api.virtual_machine_interface_create(vmi_obj)
+
+        # Validate
+        db_vmi_obj = self.api.virtual_machine_interface_read(id=vmi_uuid)
+        vpg_refs = db_vmi_obj.get_virtual_port_group_refs()
+        self.assertIsNone(vpg_refs)
+
+        # update VMI with bindings
+        bindings = self.create_vmi_bindings(self.pi_fq_name,
+                                         self.fabric_name,
+                                         self.vpg_name)
+        vmi_obj.set_virtual_machine_interface_bindings(bindings)
+        vmi_obj.set_virtual_machine_interface_properties(
+            VMIPT(sub_interface_vlan_tag='4094'))
+        self.api.virtual_machine_interface_update(vmi_obj)
+
+        # Validate
+        db_vmi_obj = self.api.virtual_machine_interface_read(id=vmi_uuid)
+        vpg_refs = db_vmi_obj.get_virtual_port_group_refs()
+        self.assertEqual(len(vpg_refs), 1)
+        self.assertIsNone(vpg_refs[0]['attr'].native_vlan_tag)
+        self.assertEqual(vpg_refs[0]['attr'].vlan_tag, 4094)
+
+        # Cleanup
+        self.api.virtual_machine_interface_delete(id=vmi_uuid)
