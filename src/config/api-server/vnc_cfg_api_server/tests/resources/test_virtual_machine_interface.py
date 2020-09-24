@@ -3,8 +3,10 @@
 #
 import logging
 
-from cfgm_common.exceptions import BadRequest
+from cfgm_common.exceptions import BadRequest, HttpError
+from cfgm_common.tests import test_common
 import six
+from testtools import ExpectedException
 from vnc_api.gen.resource_xsd import MacAddressesType
 from vnc_api.vnc_api import AllowedAddressPair
 from vnc_api.vnc_api import AllowedAddressPairs
@@ -235,3 +237,81 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
             for m in vmi_macs:
                 # check if any of mac is not zero
                 self.assertNotEqual(m, '00:00:00:00:00:00')
+
+    def test_context_undo_fail_db_create(self):
+        project = Project(name='p-{}'.format(self.id()))
+        self.api.project_create(project)
+        vmi_obj = VirtualMachineInterface('vmi-{}'.format(self.id()),
+                                          parent_obj=project)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        zk_alloc_count_before = mock_zk._vpg_id_allocator.get_alloc_count()
+
+        def stub(*args, **kwargs):
+            return False, (500, "Fake error")
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_create', stub)]):
+                self.api.virtual_machine_interface_create(vmi_obj)
+
+        zk_alloc_count_after = mock_zk._vpg_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_before, zk_alloc_count_after)
+
+    def test_context_undo_fail_db_delete(self):
+        project = Project(name='p-{}'.format(self.id()))
+        self.api.project_create(project)
+        vn = VirtualNetwork(name='vn-{}'.format(self.id()), parent_obj=project)
+        self.api.virtual_network_create(vn)
+        vmi_obj = VirtualMachineInterface('vmi-{}'.format(self.id()),
+                                          parent_obj=project)
+        vmi_obj.set_virtual_network(vn)
+        self.api.virtual_machine_interface_create(vmi_obj)
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_obj.uuid)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        zk_alloc_count_before = mock_zk._vpg_id_allocator.get_alloc_count()
+
+        def stub(*args, **kwargs):
+            return False, (500, "Fake error")
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_delete', stub)]):
+                self.api.virtual_machine_interface_delete(
+                    fq_name=vmi_obj.fq_name)
+
+        zk_alloc_count_after = mock_zk._vpg_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_before, zk_alloc_count_after)
+
+    def test_context_undo_fail_db_update(self):
+        project = Project(name='p-{}'.format(self.id()))
+        self.api.project_create(project)
+        vn_og = VirtualNetwork(name='og-vn-{}'.format(self.id()),
+                               parent_obj=project)
+        self.api.virtual_network_create(vn_og)
+        vmi_obj = VirtualMachineInterface('vmi-{}'.format(self.id()),
+                                          parent_obj=project)
+        vmi_obj.set_virtual_network(vn_og)
+        self.api.virtual_machine_interface_create(vmi_obj)
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_obj.uuid)
+
+        # change virtual network for VMI
+        vn_next = VirtualNetwork(name='next-vn-{}'.format(self.id()),
+                                 parent_obj=project)
+        vn_next.uuid = self.api.virtual_network_create(vn_next)
+        vmi_obj.set_virtual_network(vn_next)
+
+        def stub(*args, **kwargs):
+            return False, (500, "Fake error")
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_update', stub)]):
+                self.api.virtual_machine_interface_update(vmi_obj)
+
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_obj.uuid)
+        vn_ref_fq_names = [n['to'] for n in vmi_obj.get_virtual_network_refs()]
+
+        self.assertEqual(len(vn_ref_fq_names), 1)
+        self.assertEqual(vn_ref_fq_names[0], vn_og.get_fq_name())
