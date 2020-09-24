@@ -344,6 +344,51 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
             prop_collection_updates.append(vif_type_prop)
 
     @classmethod
+    def get_vlan_phy_links(cls, kvps=None, obj_dict=None):
+        vlan_id = None
+        links = None
+        is_untagged_vlan = False
+        new_vlan = None
+        if obj_dict:
+            # Read tagged vlan_id
+            new_vlan = (
+                obj_dict.get(
+                    'virtual_machine_interface_properties') or {}).get(
+                        'sub_interface_vlan_tag') or 0
+            bindings = obj_dict.get(
+                'virtual_machine_interface_bindings') or {}
+            if not kvps:
+                kvps = bindings.get('key_value_pair') or []
+        if kvps:
+            kvp_dict = cls._kvp_to_dict(kvps)
+            vnic_type = kvp_dict.get('vnic_type')
+            tor_port_vlan_id = kvp_dict.get('tor_port_vlan_id', 0)
+            if vnic_type == 'baremetal' and kvp_dict.get('profile'):
+                # Process only if port profile exists and physical links are
+                # specified
+                phy_links = json.loads(kvp_dict.get('profile'))
+                if phy_links and phy_links.get('local_link_information'):
+                    links = phy_links['local_link_information']
+                    is_untagged_vlan = False
+                    if tor_port_vlan_id:
+                        vlan_id = tor_port_vlan_id
+                        is_untagged_vlan = True
+                    else:
+                        vlan_id = new_vlan
+        return True, (vlan_id, is_untagged_vlan, links)
+
+    @classmethod
+    def add_vpg_ref(cls, obj_dict, vpg_uuid, vlan_id, untagged, db_conn):
+        vpg_ref = {'to': db_conn.uuid_to_fq_name(
+            vpg_uuid), 'uuid': vpg_uuid}
+        if untagged:
+            vpg_ref.update({'attr': {'native_vlan_tag': vlan_id}})
+        else:
+            vpg_ref.update({'attr': {'vlan_tag': vlan_id}})
+        obj_dict['virtual_port_group_refs'] = [vpg_ref]
+        return obj_dict
+
+    @classmethod
     def pre_dbe_create(cls, tenant_name, obj_dict, db_conn):
         vn_dict = obj_dict['virtual_network_refs'][0]
         vn_uuid = vn_dict.get('uuid')
@@ -442,8 +487,8 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 # If the segmentation_id in provider_properties is set, then
                 # a hw_veb VIF is requested.
                 if ('provider_properties' in vn_dict and
-                   vn_dict['provider_properties'] is not None and
-                   'segmentation_id' in vn_dict['provider_properties']):
+                    vn_dict['provider_properties'] is not None and
+                        'segmentation_id' in vn_dict['provider_properties']):
                     kvp_dict['vif_type'] = cls.portbindings['VIF_TYPE_HW_VEB']
                     vif_type = {
                         'key': 'vif_type',
@@ -555,6 +600,10 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                         return vpg_uuid, ret_dict
                     obj_dict['port_virtual_port_group_id'] = vpg_uuid
                     obj_dict.update(ret_dict)
+
+                    # Add reference from this VMI to VPG
+                    obj_dict = cls.add_vpg_ref(
+                        obj_dict, vpg_uuid, vlan_id, is_untagged_vlan, db_conn)
 
         return True, ""
 
@@ -710,8 +759,8 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                     if tor_port_vlan_id:
                         vlan_id = tor_port_vlan_id
                         is_untagged_vlan = True
-                        if (vlan_id != old_vlan and
-                           'virtual_machine_interface_refs' in read_result):
+                        if ('virtual_machine_interface_refs' in read_result and
+                                vlan_id != old_vlan):
                             return False, (400, "Cannot change VLAN ID")
                     else:
                         vlan_id = new_vlan
@@ -722,6 +771,14 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                         return vpg_uuid, ret_dict
 
                     obj_dict['port_virtual_port_group_id'] = vpg_uuid
+                    if not read_result.get('virtual_port_group_refs', None):
+                        # Add reference from this VMI to VPG, if not added
+                        # already
+                        obj_dict = cls.add_vpg_ref(obj_dict,
+                                                   vpg_uuid,
+                                                   vlan_id,
+                                                   is_untagged_vlan,
+                                                   db_conn)
 
         if old_vnic_type == cls.portbindings['VNIC_TYPE_DIRECT']:
             cls._check_vrouter_link(read_result, kvp_dict, obj_dict, db_conn)
@@ -1221,7 +1278,7 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 existing_vn = itemformatter(vninfo)
                 existing_vlan = intformatter(itemformatter(vlaninfo))
                 if ((existing_vn == vn_uuid and
-                    existing_vlan != vlan_id) or
+                     existing_vlan != vlan_id) or
                     (existing_vlan == vlan_id and
                         existing_vn != vn_uuid)):
                     msg = err_msg.format(
@@ -1347,7 +1404,7 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                     existing_vn = itemformatter(vninfo)
                     existing_vlan = intformatter(itemformatter(vlaninfo))
                     if ((existing_vn == vn_uuid and
-                        existing_vlan != vlan_id) or
+                         existing_vlan != vlan_id) or
                         (existing_vlan == vlan_id and
                             existing_vn != vn_uuid)):
                         msg = err_msg.format(
