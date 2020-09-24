@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3306688a_c94732ee",
+        "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-09-24T00:54:50Z",
+      "side": 1,
+      "message": "lets rename it to get_apiserver()",
+      "revId": "f12f7d1de35c106b0ee9fdce1d2495f130868390",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
