@@ -1,13 +1,21 @@
 #
 # Copyright (c) 2017 Juniper Networks, Inc. All rights reserved.
 #
+import json
 import logging
 
-from cfgm_common.exceptions import BadRequest
+from cfgm_common.exceptions import BadRequest, HttpError
+from cfgm_common.tests import test_common
 import six
+from testtools import ExpectedException
+from vnc_api.gen.resource_xsd import KeyValuePair
+from vnc_api.gen.resource_xsd import KeyValuePairs
 from vnc_api.gen.resource_xsd import MacAddressesType
 from vnc_api.vnc_api import AllowedAddressPair
 from vnc_api.vnc_api import AllowedAddressPairs
+from vnc_api.vnc_api import Fabric
+from vnc_api.vnc_api import PhysicalInterface
+from vnc_api.vnc_api import PhysicalRouter
 from vnc_api.vnc_api import Project
 from vnc_api.vnc_api import SubnetType
 from vnc_api.vnc_api import VirtualMachineInterface
@@ -222,7 +230,7 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
             vmi_uuid = self.api.virtual_machine_interface_create(vmi)
             vmi = self.api.virtual_machine_interface_read(id=vmi_uuid)
 
-            vmi_macs = vmi.get_virtual_machine_interface_mac_addresses()\
+            vmi_macs = vmi.get_virtual_machine_interface_mac_addresses() \
                 .get_mac_address()
             if macs_test_case:
                 # check if vmi_macs len is the same as input len
@@ -235,3 +243,175 @@ class TestVirtualMachineInterface(test_case.ApiServerTestCase):
             for m in vmi_macs:
                 # check if any of mac is not zero
                 self.assertNotEqual(m, '00:00:00:00:00:00')
+
+    def _create_vpg_prerequisites(
+            self, enterprise_style_flag=True, create_second_pr=False,
+            disable_vlan_vn_uniqueness_check=False):
+        # Create project first
+        proj_obj = Project('%s-project' % (self.id()))
+        self.api.project_create(proj_obj)
+
+        # Create Fabric with enterprise style flag set to false
+        fabric_obj = Fabric('%s-fabric' % (self.id()))
+        fabric_obj.set_fabric_enterprise_style(enterprise_style_flag)
+        fabric_obj.set_disable_vlan_vn_uniqueness_check(
+            disable_vlan_vn_uniqueness_check)
+        fabric_uuid = self.api.fabric_create(fabric_obj)
+        fabric_obj = self.api.fabric_read(id=fabric_uuid)
+
+        # Create physical router
+        pr_name = self.id() + '_physical_router'
+        pr = PhysicalRouter(pr_name)
+        pr_uuid = self._vnc_lib.physical_router_create(pr)
+        pr_obj = self._vnc_lib.physical_router_read(id=pr_uuid)
+
+        # Create physical interface
+        esi_id = '00:11:22:33:44:55:66:77:88:99'
+        pi_name = self.id() + '__phy_intf_1'
+        pi = PhysicalInterface(name=pi_name,
+                               parent_obj=pr_obj,
+                               ethernet_segment_identifier=esi_id)
+        pi_uuid = self.api.physical_interface_create(pi)
+        pi_obj = self.api.physical_interface_read(id=pi_uuid)
+
+        # Create VN
+        vn_name = 'vn-%s-1' % self.id()
+        vn = VirtualNetwork(vn_name, parent_obj=proj_obj)
+        vn_uuid = self.api.virtual_network_create(vn)
+        vn_obj = self.api.virtual_network_read(id=vn_uuid)
+
+        return proj_obj, fabric_obj, pr_obj, pi_obj, vn_obj
+
+    def _create_kv_pairs(self, fabric_name, pi_fq_name):
+        binding_profile = {'local_link_information': []}
+        binding_profile['local_link_information'].append(
+            {
+                'port_id': pi_fq_name[2],
+                'switch_id': pi_fq_name[2],
+                'fabric': fabric_name[-1],
+                'switch_info': pi_fq_name[1]
+            }
+        )
+        kv_pairs = KeyValuePairs([
+            KeyValuePair(key='vif_type', value='vrouter'),
+            KeyValuePair(key='vnic_type', value='baremetal'),
+            KeyValuePair(key='profile',
+                         value=json.dumps(binding_profile))])
+        return kv_pairs
+
+    def test_context_undo_fail_db_create(self):
+        proj_obj, fabric_obj, pr_obj, pi_obj, vn_obj = \
+            self._create_vpg_prerequisites()
+
+        mock_zk = self._api_server._db_conn._zk_db
+        zk_alloc_count_before = mock_zk._vpg_id_allocator.get_alloc_count()
+
+        # Create vmi obj
+        vmi_name = '%s-1' % self.id()
+        vmi_obj = VirtualMachineInterface(vmi_name, parent_obj=proj_obj)
+        vmi_obj.set_virtual_network(vn_obj)
+
+        # Create KV_Pairs for this VMI
+        pi_fq_name = pi_obj.get_fq_name()
+        fabric_name = fabric_obj.get_fq_name()
+        kv_pairs = self._create_kv_pairs(fabric_name, pi_fq_name)
+
+        vmi_obj.set_virtual_machine_interface_bindings(kv_pairs)
+
+        def stub(*args, **kwargs):
+            return False, (500, "Fake error")
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_create', stub)]):
+                self.api.virtual_machine_interface_create(vmi_obj)
+        zk_alloc_count_after = mock_zk._vpg_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_before, zk_alloc_count_after)
+
+    def test_context_undo_fail_db_delete(self):
+        project = Project(name='p-{}'.format(self.id()))
+        self.api.project_create(project)
+        vn = VirtualNetwork(name='vn-{}'.format(self.id()), parent_obj=project)
+        self.api.virtual_network_create(vn)
+        vmi_obj = VirtualMachineInterface('vmi-{}'.format(self.id()),
+                                          parent_obj=project)
+        vmi_obj.set_virtual_network(vn)
+        self.api.virtual_machine_interface_create(vmi_obj)
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_obj.uuid)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        zk_alloc_count_before = mock_zk._vpg_id_allocator.get_alloc_count()
+
+        def stub(*args, **kwargs):
+            return False, (500, "Fake error")
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_delete', stub)]):
+                self.api.virtual_machine_interface_delete(
+                    fq_name=vmi_obj.fq_name)
+
+        zk_alloc_count_after = mock_zk._vpg_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_before, zk_alloc_count_after)
+
+    def test_context_undo_fail_db_update(self):
+        project = Project(name='p-{}'.format(self.id()))
+        self.api.project_create(project)
+        vn_og = VirtualNetwork(name='og-vn-{}'.format(self.id()),
+                               parent_obj=project)
+        self.api.virtual_network_create(vn_og)
+        vmi_obj = VirtualMachineInterface('vmi-{}'.format(self.id()),
+                                          parent_obj=project)
+        vmi_obj.set_virtual_network(vn_og)
+        self.api.virtual_machine_interface_create(vmi_obj)
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_obj.uuid)
+
+        # change virtual network for VMI
+        vn_next = VirtualNetwork(name='next-vn-{}'.format(self.id()),
+                                 parent_obj=project)
+        vn_next.uuid = self.api.virtual_network_create(vn_next)
+        vmi_obj.set_virtual_network(vn_next)
+
+        def stub(*args, **kwargs):
+            return False, (500, "Fake error")
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_update', stub)]):
+                self.api.virtual_machine_interface_update(vmi_obj)
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_obj.uuid)
+        vn_ref_fq_names = [n['to'] for n in vmi_obj.get_virtual_network_refs()]
+
+        self.assertEqual(len(vn_ref_fq_names), 1)
+        self.assertEqual(vn_ref_fq_names[0], vn_og.get_fq_name())
+
+    def test_context_undo_vpg_fail_db_update(self):
+        proj_obj, fabric_obj, pr_obj, pi_obj, vn_obj = \
+            self._create_vpg_prerequisites()
+
+        mock_zk = self._api_server._db_conn._zk_db
+        zk_alloc_count_before = mock_zk._vpg_id_allocator.get_alloc_count()
+
+        # Create vmi obj
+        vmi_name = '%s-1' % self.id()
+        vmi_obj = VirtualMachineInterface(vmi_name, parent_obj=proj_obj)
+        vmi_obj.set_virtual_network(vn_obj)
+        self.api.virtual_machine_interface_create(vmi_obj)
+        vmi_obj = self.api.virtual_machine_interface_read(id=vmi_obj.uuid)
+
+        # Create KV_Pairs for this VMI
+        pi_fq_name = pi_obj.get_fq_name()
+        fabric_name = fabric_obj.get_fq_name()
+        kv_pairs = self._create_kv_pairs(fabric_name, pi_fq_name)
+
+        vmi_obj.set_virtual_machine_interface_bindings(kv_pairs)
+
+        def stub(*args, **kwargs):
+            return False, (500, "Fake error")
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_update', stub)]):
+                self.api.virtual_machine_interface_update(vmi_obj)
+        zk_alloc_count_after = mock_zk._vpg_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_before, zk_alloc_count_after)
