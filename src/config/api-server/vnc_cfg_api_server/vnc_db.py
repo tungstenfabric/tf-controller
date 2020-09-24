@@ -1516,6 +1516,39 @@ class VncDbClient(object):
                     li_back_refs = obj_dict.get('logical_interface_back_refs', [])
                     if not device_owner and li_back_refs:
                         obj_dict['virtual_machine_interface_device_owner'] = 'PhysicalRouter'
+                        update_vmi = True
+
+                    # Upgrade to R2011 or greater
+                    ok, result = self._api_svr_mgr._db_conn.dbe_read(
+                        obj_type='virtual_machine_interface',
+                        obj_id=obj_uuid,
+                        obj_fields=['virtual_port_group_back_refs',
+                                    'virtual_port_group_refs'])
+                    if not ok:
+                        # dbe_read failed, continue processing next vmi
+                        continue
+                    vpg_ref = result.get('virtual_port_group_back_refs')
+                    if not vpg_ref:
+                        # Non fabric VMI
+                        continue
+                    vpg_uuid = vpg_ref[0].get('uuid')
+
+                    r_class = self.get_resource_class(obj_type)
+                    ok, (vlan_id, is_untagged_vlan, links) = r_class.get_vlan_phy_links(
+                        None, obj_dict)
+
+                    # In R2011, VMI--->VPG ref is introduced CEM-18311
+                    # Both will VMI--->VPG ref and VPG--->VMI ref will be
+                    # maintained until we address CEM-10435, While fixing
+                    # CEM-10435, VPG--->VMI ref will be removed as part of
+                    # dbe resync
+                    if vlan_id and not result.get('virtual_port_group_refs', []):
+                        obj_dict = r_class.add_vpg_ref(
+                                obj_dict, vpg_uuid, vlan_id, is_untagged_vlan,
+                                self._api_svr_mgr._db_conn)
+                        update_vmi = True
+
+                    if update_vmi:
                         self._object_db.object_update('virtual_machine_interface',
                                                       obj_uuid, obj_dict)
                 elif obj_type == 'physical_router':
