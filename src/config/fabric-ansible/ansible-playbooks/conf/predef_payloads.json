@@ -235,7 +235,7 @@
               {
                 "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/device_import.yml",
                 "multi_device_playbook": true,
-                "vendor": "Juniper”,
+                "vendor": "Juniper",
                 "device_family": "",
                 "job_completion_weightage": 50,
                 "sequence_no": 0
@@ -243,7 +243,7 @@
               {
                 "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/topology_discovery.yml",
                 "multi_device_playbook": true,
-                "vendor": "Juniper”,
+                "vendor": "Juniper",
                 "device_family": "",
                 "job_completion_weightage": 50,
                 "sequence_no": 1
