@@ -6,6 +6,7 @@ from builtins import str
 import gevent
 import mock
 from attrdict import AttrDict
+from cfgm_common.exceptions import NoIdError
 from vnc_api.vnc_api import *
 from .test_dm_ansible_common import TestAnsibleCommonDM
 
@@ -753,14 +754,20 @@ class TestAnsiblePortProfileDM(TestAnsibleCommonDM):
         vmi_list = self._vnc_lib.virtual_machine_interfaces_list().get(
             'virtual-machine-interfaces')
         for vmi in vmi_list:
-            self._vnc_lib.virtual_machine_interface_delete(id=vmi['uuid'])
+            try:
+                self._vnc_lib.virtual_machine_interface_delete(id=vmi['uuid'])
+            except NoIdError:
+                continue
 
         pi_list = self._vnc_lib.physical_interfaces_list().get('physical-interfaces')
         for pi in pi_list:
             self._vnc_lib.physical_interface_delete(id=pi['uuid'])
 
         for vpg in vpg_list:
-            self._vnc_lib.virtual_port_group_delete(id=vpg['uuid'])
+            try:
+                self._vnc_lib.virtual_port_group_delete(id=vpg['uuid'])
+            except NoIdError:
+                continue
 
         pr_list = self._vnc_lib.physical_routers_list().get('physical-routers')
         for pr in pr_list:
