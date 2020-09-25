@@ -503,7 +503,10 @@ class TestBasic(test_case.NeutronBackendTestCase):
         vpgs = vpg_dict['virtual-port-groups']
         vpg_obj = None
         for vpg in vpgs:
-            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg['uuid'])
+            try:
+                vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg['uuid'])
+            except NoIdError:
+                continue
             if vpg_obj.parent_uuid == fabric_uuid:
                 vpg_found = True
                 break
@@ -673,7 +676,10 @@ class TestBasic(test_case.NeutronBackendTestCase):
         vpg_obj = None
         vpg_zk_index = 0
         for vpg in vpgs:
-            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg['uuid'])
+            try:
+                vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg['uuid'])
+            except NoIdError:
+                continue
             if vpg_obj.parent_uuid == fabric_uuid:
                 vpg_found = True
                 break
