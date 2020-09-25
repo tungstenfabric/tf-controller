@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "56d60f22_8d11f541",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-09-25T18:53:48Z",
+      "side": 1,
+      "message": "The way I am understanding why we implement the create vpg stuff here is that, on both create event and update vmi event, this evaluated function is invoked finally. So creating/updating VPG can be done here.",
+      "revId": "ef9a304fd90024cbd6b1626ec394d3b7a13653df",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "02f36bb3_c6954ab1",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-09-25T18:53:48Z",
+      "side": 1,
+      "message": "I used read_obj method from DBBase class which is inherited by VirtualMachineInterfaceST since this read_obj method use the same function underlying dbe_read.",
+      "revId": "ef9a304fd90024cbd6b1626ec394d3b7a13653df",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "46d060e5_c20c441b",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-09-25T18:53:48Z",
+      "side": 1,
+      "message": "Since only dbe_list supports filtering, but db service is not included in VirtualMachineInterfaceST class, I used list_obj and manually select the right vRouter.",
+      "revId": "ef9a304fd90024cbd6b1626ec394d3b7a13653df",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "495f5133_5bda2fea",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-09-25T18:53:48Z",
+      "side": 1,
+      "message": "Could not find any create object function within the DBBase class. I am wondering is there any method I can use instead of dbe_create.",
+      "revId": "ef9a304fd90024cbd6b1626ec394d3b7a13653df",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
