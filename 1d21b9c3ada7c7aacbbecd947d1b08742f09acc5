@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e0351f4a_2d7e3b3f",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/group_vars/all.yml",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-09-25T03:26:14Z",
+      "side": 1,
+      "message": "Do we need this underlay_infra_bms? If yes, then you may need to add a mapping in the predef json.",
+      "revId": "1d21b9c3ada7c7aacbbecd947d1b08742f09acc5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "04c11ce9_008d1ddd",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/group_vars/all.yml",
+        "patchSetId": 3
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-09-25T03:26:14Z",
+      "side": 1,
+      "message": "Do we need this overlay_bgp for the lean (super spine)?",
+      "revId": "1d21b9c3ada7c7aacbbecd947d1b08742f09acc5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
