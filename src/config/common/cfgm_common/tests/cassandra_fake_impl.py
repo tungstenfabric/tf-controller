@@ -89,7 +89,22 @@ class _CassandraFakeServerKeyspace(object):
 # This is adding CQL support to the server
 class _TableCQLSupport(object):
     QueryType = collections.namedtuple('Query', (
-        'method', 'conditions', 'limit'))
+        'method', 'conditions', 'timestamp'))
+
+    class Prepare(object):
+
+        def __init__(self, query):
+            self.query = query
+
+        def bind(self, args):
+            self.args = args
+            for idx, condition in enumerate(self.query.conditions):
+                # Apply bindings
+                condition['value'] = args[idx]
+            return self
+
+        def __str__(self):
+            return "<prepared object {}>".format(self.query)
 
     def __init__(self, name):
         # CQL driver related
@@ -97,26 +112,13 @@ class _TableCQLSupport(object):
 
     def prepare(self, cql):
         query = self._parse_cql(cql)
+        return _TableCQLSupport.Prepare(query)
 
-        class Prepare(object):
+    def add_insert(self, key, pre, args):
+        return self.execute(pre.bind(args))
 
-            def __init__(self, query):
-                self.query = query
-
-            def bind(self, args):
-                self.args = args
-                for idx, condition in enumerate(self.query.conditions):
-                    # Apply bindings
-                    condition['value'] = args[idx]
-                return self
-
-        return Prepare(query)
-
-    def add_insert(self, key, cql, args):
-        return self.execute(self.prepare(cql).bind(args))
-
-    def add_remove(self, key, cql, args):
-        return self.execute(self.prepare(cql).bind(args))
+    def add_remove(self, key, pre, args):
+        return self.execute(pre.bind(args))
 
     def execute_async(self, prepare, args=None):
         exc = self.execute
@@ -127,8 +129,9 @@ class _TableCQLSupport(object):
         return Future()
 
     def execute(self, prepare, args=None):
-        if args is not None:
-            return self.execute(self.prepare(prepare).bind(args))
+        if not isinstance(prepare, _TableCQLSupport.Prepare):
+            if args is not None:
+                return self.execute(self.prepare(prepare).bind(args))
         query = prepare.query
         if query.method == "insert":
             return self.insert(
@@ -141,23 +144,39 @@ class _TableCQLSupport(object):
             return self.remove(key=prepare.args[0], columns=columns)
 
         args = {}
+        args["include_timestamp"] = query.timestamp
         if query.conditions:
-            for condition in query.conditions:
+            for idx, condition in enumerate(query.conditions):
                 if condition["key"] == "key":
-                    args["key"] = condition["value"]
+                    args["key"] = prepare.args[idx]
                 elif condition["operator"] == ">=":
-                    args["column_start"] = condition["value"]
+                    args["column_start"] = prepare.args[idx]
                 elif condition["operator"] == "<=":
-                    args["column_finish"] = condition["value"]
-                if query.limit:
-                    args["column_count"] = query.limit
+                    args["column_finish"] = prepare.args[idx]
+                elif condition["operator"] == "IN":
+                    args["columns"] = prepare.args[idx:]
+
             if query.method == "get":
-                args["include_timestamp"] = True
+                if "key" not in args:
+                    # get_gange
+                    def generator():
+                        for key, col_dict in self.get_range(**args):
+                            for column, value in six.iteritems(col_dict):
+                                if query.timestamp:
+                                    yield key, column, value[0], value[1]
+                                else:
+                                    yield key, column, value
+                    return generator()
+                # get
                 try:
-                    return [(c, v[0], v[1])
-                            for c, v in self.get(**args).items()]
+                    r = six.iteritems(self.get(**args))
+                    if query.timestamp:
+                        return True, [(c, v[0], v[1])
+                                      for c, v in r]
+                    return True, [(c, v)
+                                  for c, v in r]
                 except NotFoundException:
-                    return []
+                    return True, []
             elif query.method == "get_count":
 
                 class Result(object):
@@ -169,18 +188,9 @@ class _TableCQLSupport(object):
                         return self.result
 
                 return Result([self.get_count(**args)])
-        else:
-            # Not an insert or a remove, and without condition, should
-            # be a get_range.
-            def generator():
-                args["include_timestamp"] = True
-                for key, col_dict in self.get_range(**args):
-                    for column, value in col_dict.items():
-                        yield key, column, value[0], value[1]
-            return generator()
 
     def _parse_cql(self, cql):
-        limit, conditions = None, []
+        method, conditions, timestamp = None, [], "WRITETIME" in cql.upper()
 
         def cql_select(it):
             while it:
@@ -198,9 +208,6 @@ class _TableCQLSupport(object):
                     'operator': next(it),
                     'value': next(it)}
 
-        def cql_limit(it):
-            return int(next(it))
-
         it = iter(cql.split())
         while it:
             try:
@@ -216,10 +223,8 @@ class _TableCQLSupport(object):
                 method = "remove"
             if "WHERE" in curr.upper() or "AND" in curr.upper():
                 conditions.append(cql_condition(it))
-            if "LIMIT" in curr.upper():
-                limit = cql_from(it)
 
-        return self.QueryType(method, conditions, limit)
+        return self.QueryType(method, conditions, timestamp)
 
 
 class _CassandraFakeServerTable(_TableCQLSupport):
@@ -274,7 +279,7 @@ class _CassandraFakeServerTable(_TableCQLSupport):
                     col_dict[col_name] = col_value
         else:
             col_dict = {}
-            for col_name in list(self.__rows__[key].keys()):
+            for col_name in six.viewkeys(self.__rows__[key]):
                 if not self._column_within_range(
                         col_name, column_start, column_finish):
                     continue
@@ -361,13 +366,13 @@ class _CassandraFakeServerTable(_TableCQLSupport):
         except NotFoundException:
             col_dict = {}
 
-        for k, v in list(col_dict.items()):
+        for k, v in six.iteritems(col_dict):
             yield (k, v)
 
     def get_count(self, key, column_start=None, column_finish=None):
         col_names = []
         if key in self.__rows__:
-            col_names = list(self.__rows__[key].keys())
+            col_names = six.viewkeys(self.__rows__[key])
 
         counter = 0
         for col_name in col_names:
