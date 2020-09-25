@@ -5,6 +5,8 @@
     user: "{{user}}"
     key: "{{key}}"
     tenant_name: "{{tenant_name}}"
+    user_domain_name: "{{user_domain_name}}"
+    project_domain_name: "{{project_domain_name}}"
     auth_version: "{{auth_version}}"
     temp_url_key: "{{temp_url_key}}"
     temp_url_key_2: "{{temp_url_key_2}}"
@@ -35,3 +37,4 @@
 
 - set_fact:
     downloadurl: "{{swift_results.url}}"
+
