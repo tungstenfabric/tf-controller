@@ -6,6 +6,7 @@ from __future__ import absolute_import
 import time
 
 from attrdict import AttrDict
+from cfgm_common.exceptions import NoIdError
 from cfgm_common.tests.test_common import retries
 from cfgm_common.tests.test_common import retry_exc_handler
 from vnc_api.gen.resource_client import DataCenterInterconnect, \
@@ -159,7 +160,11 @@ class TestTransactionsDM(TestAnsibleCommonDM):
         self._vnc_lib.virtual_machine_interface_delete(id=vmi.uuid)
         self.check_trans_info('Virtual Port Group', 'Delete', vpg_name)
 
-        self._vnc_lib.virtual_port_group_delete(id=vpg.uuid)
+        try:
+            self._vnc_lib.virtual_port_group_delete(
+                id=vpg.uuid)
+        except NoIdError:
+            pass
 
     def test_create_dci(self):
         dci_name = "test-dci" + self.id()

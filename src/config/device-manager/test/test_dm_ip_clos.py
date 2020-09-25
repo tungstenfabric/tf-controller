@@ -6,6 +6,7 @@ import json
 from attrdict import AttrDict
 
 from device_manager.device_manager import DeviceManager
+from cfgm_common.exceptions import NoIdError
 from cfgm_common.tests.test_common import retries
 from cfgm_common.tests.test_common import retry_exc_handler
 from vnc_api.vnc_api import *
@@ -268,14 +269,22 @@ class TestAnsibleUnderlayIpClosDM(TestAnsibleCommonDM):
         vpg_list = self._vnc_lib.virtual_port_groups_list().get(
             'virtual-port-groups')
         for vpg in vpg_list:
-            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg['uuid'])
-            vpg_obj.set_virtual_machine_interface_list([])
-            vpg_obj.set_physical_interface_list([])
-            self._vnc_lib.virtual_port_group_update(vpg_obj)
+            try:
+                vpg_obj = self._vnc_lib.virtual_port_group_read(
+                    id=vpg['uuid'])
+                vpg_obj.set_virtual_machine_interface_list([])
+                vpg_obj.set_physical_interface_list([])
+                self._vnc_lib.virtual_port_group_update(vpg_obj)
+            except NoIdError:
+                continue
         vmi_list = self._vnc_lib.virtual_machine_interfaces_list().get(
             'virtual-machine-interfaces', [])
         for vmi in vmi_list:
-            self._vnc_lib.virtual_machine_interface_delete(id=vmi['uuid'])
+            try:
+                self._vnc_lib.virtual_machine_interface_delete(
+                    id=vmi['uuid'])
+            except NoIdError:
+                continue
         instance_ip_list = self._vnc_lib.instance_ips_list().get(
             'instance-ips', [])
         for ip in instance_ip_list:
@@ -290,7 +299,11 @@ class TestAnsibleUnderlayIpClosDM(TestAnsibleCommonDM):
         for pi in pi_list:
             self._vnc_lib.physical_interface_delete(id=pi['uuid'])
         for vpg in vpg_list:
-            self._vnc_lib.virtual_port_group_delete(id=vpg['uuid'])
+            try:
+                self._vnc_lib.virtual_port_group_delete(
+                    id=vpg['uuid'])
+            except NoIdError:
+                continue
         pr_list = self._vnc_lib.physical_routers_list().get(
             'physical-routers', [])
         for pr in pr_list:
