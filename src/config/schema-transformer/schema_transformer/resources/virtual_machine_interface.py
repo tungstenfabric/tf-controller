@@ -71,7 +71,55 @@ class VirtualMachineInterfaceST(ResourceBaseST):
         self._add_pbf_rules()
         self.process_analyzer()
         self.recreate_vrf_assign_table()
+        self.create_vpg()
     # end evaluate
+
+    def create_vpg(self):
+        virtual_network = self.virtual_network.read_obj(self.virtual_network.uuid)
+        provider_properties = virtual_network.get("provider_properties", {})
+        physnet = provider_properties.get("physnet", "")
+        vlan_id = provider_properties.get("vlan_id", "")
+
+        virtual_machine_interface = self.read_obj(self.uuid)
+        virtual_machine_interface_bindings = virtual_machine_interface.get("virtual_machine_interface_bindings", {})
+        key_value_pair = virtual_machine_interface_bindings.get("key_value_pair", {})
+        host_id = key_value_pair.get("host_id", "")
+
+        if key_value_pair.get("vnic_type", "") !=  "direct":
+            return
+        
+        virtual_routers = self.list_obj(obj_type="virtual_router", fields=["host_id"])
+        virtual_router = None
+        for vrouter in virtual_routers:
+            if vrouter.get("host_id", "") == host_id:
+                virtual_router = vrouter
+                break
+        
+        virtual_router_sriov_physical_networks = virtual_router.get("virtual_router_sriov_physical_networks", {})
+        port_name = virtual_router_sriov_physical_networks.get("physnet", "")
+
+        sriov_port = None
+        nodes = self.list_obj(obj_type="node")
+        for node in nodes:
+            if node.get("host_id", "") == host_id:
+                for port in node.get("ports"):
+                    if port.name == port_name:
+                        sriov_port = port
+        
+        # create placeholder VMI
+        if vlan_id == "":
+            return
+
+        # create
+
+        # create VPG
+        if sriov_port is None:
+            return
+        
+        #create
+
+        return
+
 
     def is_left(self):
         return (self.service_interface_type == 'left')
