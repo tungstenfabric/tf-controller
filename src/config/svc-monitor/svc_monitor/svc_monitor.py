@@ -746,7 +746,9 @@ def parse_args(args_str):
         'auth_insecure': True,
         'admin_user': 'user1',
         'admin_password': 'password1',
-        'admin_tenant_name': 'admin'
+        'admin_tenant_name': 'admin',
+        'user_domain_name': 'Default',
+        'project_domain_name': 'Default'
     }
     schedops = {
         'si_netns_scheduler_driver':
