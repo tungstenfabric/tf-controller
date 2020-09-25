@@ -90,10 +90,9 @@ class SchemaTransformer(object):
             'self': ['virtual_network'],
         },
         'virtual_machine_interface': {
-            'self': ['virtual_machine', 'port_tuple', 'virtual_network',
+            'self': ['virtual_machine', 'virtual_port_group', 'port_tuple', 'virtual_network',
                      'bgp_as_a_service'],
-            'virtual_network': ['virtual_machine', 'port_tuple',
-                                'bgp_as_a_service'],
+            'virtual_network': ['virtual_machine', 'port_tuple', 'bgp_as_a_service'],
             'logical_router': ['virtual_network'],
             'instance_ip': ['virtual_machine', 'port_tuple',
                             'bgp_as_a_service', 'virtual_network'],
@@ -104,7 +103,7 @@ class SchemaTransformer(object):
             'bgp_as_a_service': [],
         },
         'virtual_network': {
-            'self': ['network_policy', 'route_table', 'virtual_network'],
+            'self': ['virtual_machine_interface', 'network_policy', 'route_table', 'virtual_network'],
             'virtual_network': [],
             'routing_instance': ['network_policy'],
             'network_policy': [],

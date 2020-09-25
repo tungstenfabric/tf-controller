@@ -48,7 +48,8 @@ class VirtualNetworkST(ResourceBaseST):
                   'virtual_network', 'routing_policy']
     prop_fields = ['virtual_network_properties', 'route_target_list',
                    'multi_policy_service_chains_enabled',
-                   'is_provider_network', 'fabric_snat']
+                   'is_provider_network', 'provider_properties',
+                   'fabric_snat']
 
     def me(self, name):
         return name in (self.name, 'any')

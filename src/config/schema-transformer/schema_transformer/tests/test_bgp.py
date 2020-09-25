@@ -7,6 +7,7 @@ from __future__ import print_function
 from builtins import range
 from unittest import skip
 import uuid
+import time
 
 from cfgm_common import BGP_RTGT_ALLOC_PATH_TYPE0
 from cfgm_common import BGP_RTGT_ALLOC_PATH_TYPE1_2
