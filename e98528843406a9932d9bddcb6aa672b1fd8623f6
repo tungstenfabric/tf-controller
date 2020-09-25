@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "26bba509_927cdbb3",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 569,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-09-25T18:16:27Z",
+      "side": 1,
+      "message": "On first occurrence of an error, the while loop iterator is reset. So it will iterate again and this time, execute only recovery playbooks and ignore all others. So I think even if they are scattered, it should work. Please let me know if this answers the question.",
+      "parentUuid": "52c172fb_c5a50ac1",
+      "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "97248503_84f68aca",
         "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
         "patchSetId": 7
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "16a87c76_a0f1737a",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 579,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-09-25T18:16:27Z",
+      "side": 1,
+      "message": "Yes, the plan was to allow multiple if needed.",
+      "parentUuid": "97248503_84f68aca",
+      "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "f4d47dc1_0190c00c",
         "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
         "patchSetId": 7
@@ -47,6 +83,24 @@
       "writtenOn": "2020-09-25T06:52:09Z",
       "side": 1,
       "message": "cleanup_in_progress and cleanup_completed causing confusion when you use both in same check.\n\nCan you rename one of the variables?",
+      "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "894be98b_4ea7a896",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-09-25T18:16:27Z",
+      "side": 1,
+      "message": "That is a good point, I did not notice it. Now that I\u0027ve re-read it, in this particular line, I don\u0027t think check for cleanup_in_progress is even needed, is it? cleanup_complete is true only if cleanup_in_progress was true. I will fix this, thanks.",
+      "parentUuid": "f4d47dc1_0190c00c",
       "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
