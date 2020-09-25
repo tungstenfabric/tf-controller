@@ -431,90 +431,91 @@ class TestCassandraDriverCQL(unittest.TestCase):
                                 columns=['a_col1', 'a_col2']))
         self.assertCql(
             """
-            SELECT blobAsText(key), blobAsText(column1), value, WRITETIME(value)
+            SELECT blobAsText(key), blobAsText(column1), value
             FROM "obj_uuid_table"
-            LIMIT ?
+            WHERE column1 IN (textAsBlob(?), textAsBlob(?)) ALLOW FILTERING
             """, session.prepare)
         session.prepare().bind.assert_called_once_with(
-            [100000])
+            [u'a_col1', u'a_col2'])
 
-    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.Iter.get_next_items')
-    def test_get(self, mock_Iter_get_next_items):
-        mock_Iter_get_next_items.side_effect = [
-            ('a_col1', 'a_value1', 1),
-            ('a_col2', 'a_value2', 2),
-            ('a_col3', 'a_value3', 3),
+    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.Iter.next')
+    def test_cql_select(self, mock_Iter_next):
+        mock_Iter_next.side_effect = [
+            (True, ('a_col1', 'a_value1', 1)),
+            (True, ('a_col2', 'a_value2', 2)),
+            (True, ('a_col3', 'a_value3', 3)),
             StopIteration
         ]
-        session = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
-        row = self.drv.get(datastore_api.OBJ_UUID_CF_NAME,
-                         'a_key', columns=['a_col1', 'a_col2'],
+        self.drv.apply = mock.MagicMock()
+        ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
+        row = self.drv._cql_select(
+            cf_name=datastore_api.OBJ_UUID_CF_NAME,
+            keys=['a_key1', 'a_key2'],
+            columns=['a_col1', 'a_col2'],
+            start='from', finish='end')
+        self.assertCql(
+            """
+            SELECT blobAsText(column1), value
+            FROM "obj_uuid_table"
+            WHERE key = textAsBlob(?)
+            AND column1 IN (textAsBlob(?), textAsBlob(?))
+            AND column1 >= textAsBlob(?)
+            AND column1 <= textAsBlob(?) ALLOW FILTERING
+            """, ses.prepare)
+        self.drv.apply.assert_called_once_with(
+            ses, ses.prepare(), [[u'a_key1', u'a_col1', u'a_col2',
+                                  u'from', u'end'],
+                                 [u'a_key2', u'a_col1', u'a_col2',
+                                  u'from', u'end']])
+
+    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.'
+                'CassandraDriverCQL._cql_select')
+    def test_get(self, select):
+        self.drv.get(datastore_api.OBJ_UUID_CF_NAME,
+                     key='a_key1',
+                     columns=['a_col1', 'a_col2'],
                      start='from', finish='end')
-        self.assertCql(
-            """
-            SELECT blobAsText(column1), value, WRITETIME(value)
-            FROM "obj_uuid_table"
-            WHERE key = textAsBlob(?)
-            AND column1 >= textAsBlob(?)
-            AND column1 <= textAsBlob(?)
-            """, session.prepare)
-        session.prepare().bind.assert_called_once_with(
-            ['a_key', 'from', 'end'])
-        self.assertEqual(
-            {'a_col1': 'a_value1', 'a_col2': 'a_value2'},
-            row)
+        select.assert_called_once_with(
+            cf_name='obj_uuid_table',
+            columns=['a_col1', 'a_col2'],
+            decode_json=None,
+            finish='end',
+            keys=['a_key1'],
+            start='from')
 
-    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.Iter.get_next_items')
-    def test_xget(self, mock_Iter_get_next_items):
-        mock_Iter_get_next_items.side_effect = [
-            ('a_col1', 'a_value1', 1),
-            ('a_col2', 'a_value2', 2),
-            ('a_col3', 'a_value3', 3),
-            StopIteration
-        ]
-        session = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
-        row = self.drv.xget(datastore_api.OBJ_UUID_CF_NAME,
-                            'a_key', columns=['a_col1', 'a_col2'],
-                            start='from', finish='end')
-        self.assertCql(
-            """
-            SELECT blobAsText(column1), value, WRITETIME(value)
-            FROM "obj_uuid_table"
-            WHERE key = textAsBlob(?)
-            AND column1 >= textAsBlob(?)
-            AND column1 <= textAsBlob(?)
-            """, session.prepare)
-        session.prepare().bind.assert_called_once_with(
-            ['a_key', 'from', 'end'])
-        self.assertEqual(
-            [('a_col1', 'a_value1'), ('a_col2', 'a_value2')],
-            list(row))
+    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.'
+                'CassandraDriverCQL._cql_select')
+    def test_xget(self, select):
+        self.drv.xget(datastore_api.OBJ_UUID_CF_NAME,
+                      key='a_key1',
+                      columns=['a_col1', 'a_col2'],
+                      start='from', finish='end')
+        select.assert_called_once_with(
+            cf_name='obj_uuid_table',
+            columns=['a_col1', 'a_col2'],
+            decode_json=False,
+            finish='end',
+            keys=['a_key1'],
+            start='from')
 
-    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.Iter.get_next_items')
-    def test_get_one_col(self, mock_Iter_get_next_items):
-        mock_Iter_get_next_items.side_effect = [
-            ('a_col1', 'a_value1', 1),
-            ('a_col2', 'a_value2', 2),
-            ('a_col3', 'a_value3', 3),
-            StopIteration
-        ]
-        session = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
-        row = self.drv.get_one_col(datastore_api.OBJ_UUID_CF_NAME,
-                                   'a_key', column='a_col2')
-        self.assertCql(
-            """
-            SELECT blobAsText(column1), value, WRITETIME(value)
-            FROM "obj_uuid_table"
-            WHERE key = textAsBlob(?)
-            """, session.prepare)
-        session.prepare().bind.assert_called_once_with(
-            ['a_key'])
-        self.assertEqual(row, 'a_value2')
+    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.'
+                'CassandraDriverCQL._cql_select')
+    def test_get_one_col(self, select):
+        select.return_value = iter([('a_key1', {'a_col1': 'v'})])
+        self.drv.get_one_col(datastore_api.OBJ_UUID_CF_NAME,
+                             key='a_key1', column='a_col1')
+        select.assert_called_once_with(
+            cf_name='obj_uuid_table',
+            columns=['a_col1'],
+            decode_json=None,
+            finish='',
+            keys=['a_key1'],
+            start='')
 
-    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.Iter.get_next_items')
-    def test_get_one_col_no_id(self, mock_Iter_get_next_items):
-        mock_Iter_get_next_items.side_effect=[]
-        session = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
+    @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.'
+                'CassandraDriverCQL._cql_select')
+    def test_get_one_col_no_id(self, select):
+        select.return_value = iter([])
         self.assertRaises(NoIdError,
                           self.drv.get_one_col,
                           datastore_api.OBJ_UUID_CF_NAME,
@@ -538,18 +539,20 @@ class TestCassandraDriverCQL(unittest.TestCase):
 
     def test_insert(self):
         ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
+        self.drv._cql_execute = mock.MagicMock()
         self.drv.insert(cf_name=datastore_api.OBJ_UUID_CF_NAME,
                         key='a_key', columns={'a_col1': 'a_val1'})
         self.assertCql(
             """
             INSERT INTO "obj_uuid_table"
             (key, column1, value)
-            VALUES (textAsBlob(%s), textAsBlob(%s), %s)
-            """, ses.execute, 0)
-        ses.execute.assert_called_once_with(
-            mock.ANY, ['a_key', 'a_col1', 'a_val1'])
+            VALUES (textAsBlob(?), textAsBlob(?), ?)
+            """, ses.prepare)
+        self.drv._cql_execute.assert_called_once_with(
+            ses, ses.prepare(), 'a_key', {'a_col1': 'a_val1'})
 
     def test_insert_multi(self):
+        ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
         self.drv._cql_execute = mock.MagicMock()
         self.drv.insert(cf_name=datastore_api.OBJ_UUID_CF_NAME,
                         key='a_key', columns={'a_col1': 'a_val1',
@@ -558,14 +561,15 @@ class TestCassandraDriverCQL(unittest.TestCase):
             """
             INSERT INTO "obj_uuid_table"
             (key, column1, value)
-            VALUES (textAsBlob(%s), textAsBlob(%s), %s)
-            """, self.drv._cql_execute, 2)
+            VALUES (textAsBlob(?), textAsBlob(?), ?)
+            """, ses.prepare)
         self.drv._cql_execute.assert_called_once_with(
-            datastore_api.OBJ_UUID_CF_NAME, 'a_key', mock.ANY,
-            {'a_col1': 'a_val1', 'a_col2': 'a_val2'})
+            ses, ses.prepare(), 'a_key', {'a_col1': 'a_val1',
+                                          'a_col2': 'a_val2'})
 
     @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.CassandraDriverCQL._Get_CF_Batch')
     def test_insert_batch(self, mock__Get_CF_Batch):
+        ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
         batch = mock.MagicMock()
         batch.cf_name = datastore_api.OBJ_UUID_CF_NAME
         mock__Get_CF_Batch.return_value = batch
@@ -576,14 +580,15 @@ class TestCassandraDriverCQL(unittest.TestCase):
             """
             INSERT INTO "obj_uuid_table"
             (key, column1, value)
-            VALUES (textAsBlob(%s), textAsBlob(%s), %s)
-            """, batch.add_insert, 1)
+            VALUES (textAsBlob(?), textAsBlob(?), ?)
+            """, ses.prepare)
         batch.add_insert.assert_called_once_with(
             'a_key', mock.ANY, ['a_key', 'a_col1', 'a_val1'])
         batch.send.assert_not_called()
 
     @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.CassandraDriverCQL._Get_CF_Batch')
     def test_insert_batch_multi(self, mock__Get_CF_Batch):
+        ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
         batch = mock.MagicMock()
         batch.cf_name = datastore_api.OBJ_UUID_CF_NAME
         mock__Get_CF_Batch.return_value = batch
@@ -595,8 +600,8 @@ class TestCassandraDriverCQL(unittest.TestCase):
             """
             INSERT INTO "obj_uuid_table"
             (key, column1, value)
-            VALUES (textAsBlob(%s), textAsBlob(%s), %s)
-            """, batch.add_insert, 1)
+            VALUES (textAsBlob(?), textAsBlob(?), ?)
+            """, ses.prepare)
         batch.add_insert.assert_has_calls([
             mock.call('a_key', mock.ANY, ['a_key', 'a_col1', 'a_val1']),
             mock.call('a_key', mock.ANY, ['a_key', 'a_col2', 'a_val2'])],
@@ -610,13 +615,14 @@ class TestCassandraDriverCQL(unittest.TestCase):
         self.assertCql(
             """
             DELETE FROM "obj_uuid_table"
-            WHERE key = textAsBlob(%s)
-            """, ses.execute, 0)
+            WHERE key = textAsBlob(?)
+            """, ses.prepare)
         ses.execute.assert_called_once_with(
-            mock.ANY, ['a_key'])
+            ses.prepare().bind())
 
     @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.CassandraDriverCQL._Get_CF_Batch')
     def test_remove_key_batch(self, mock__Get_CF_Batch):
+        ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
         batch = mock.MagicMock()
         batch.cf_name = datastore_api.OBJ_UUID_CF_NAME
         mock__Get_CF_Batch.return_value = batch
@@ -626,43 +632,41 @@ class TestCassandraDriverCQL(unittest.TestCase):
         self.assertCql(
             """
             DELETE FROM "obj_uuid_table"
-            WHERE key = textAsBlob(%s)
-            """, batch.add_remove, 1)
+            WHERE key = textAsBlob(?)
+            """, ses.prepare)
         batch.add_remove.assert_called_once_with(
             'a_key', mock.ANY, ['a_key'])
         batch.send.assert_not_called()
 
     def test_remove_col(self):
+        ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
         self.drv._cql_execute = mock.MagicMock()
         self.drv.remove(cf_name=datastore_api.OBJ_UUID_CF_NAME,
                         key='a_key', columns=['a_col1', 'a_col2'])
         self.assertCql(
             """
             DELETE FROM "obj_uuid_table"
-            WHERE key = textAsBlob(%s)
-            AND column1 = textAsBlob(%s)
-            """, self.drv._cql_execute, 2)
+            WHERE key = textAsBlob(?)
+            AND column1 = textAsBlob(?)
+            """, ses.prepare)
         self.drv._cql_execute.assert_called_with(
-            datastore_api.OBJ_UUID_CF_NAME,
-            'a_key', mock.ANY, ['a_col1', 'a_col2'])
+            ses, ses.prepare(), 'a_key', ['a_col1', 'a_col2'])
 
     @mock.patch('cfgm_common.datastore.drivers.cassandra_cql.CassandraDriverCQL._Get_CF_Batch')
     def test_remove_col_batch(self, mock__Get_CF_Batch):
+        ses = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
         batch = mock.MagicMock()
         batch.cf_name = datastore_api.OBJ_UUID_CF_NAME
         mock__Get_CF_Batch.return_value = batch
-        self.drv.remove(cf_name=datastore_api.OBJ_UUID_CF_NAME,
-                        key='a_key')
-
         self.drv.remove(cf_name=datastore_api.OBJ_UUID_CF_NAME,
                         key='a_key', columns=['a_col1', 'a_col2'],
                         batch=batch)
         self.assertCql(
             """
             DELETE FROM "obj_uuid_table"
-            WHERE key = textAsBlob(%s)
-            AND column1 = textAsBlob(%s)
-            """, batch.add_remove, 1)
+            WHERE key = textAsBlob(?)
+            AND column1 = textAsBlob(?)
+            """, ses.prepare)
         batch.add_remove.assert_has_calls([
             mock.call('a_key', mock.ANY, ['a_key', 'a_col1']),
             mock.call('a_key', mock.ANY, ['a_key', 'a_col2'])],
