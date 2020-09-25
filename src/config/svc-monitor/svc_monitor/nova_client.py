@@ -16,14 +16,19 @@ class ServiceMonitorNovaClient(object):
             client = self._nova.get(proj_name)
             if client is not None:
                 return client
-    
-        auth_url = self._args.auth_protocol + '://' + self._args.auth_host \
-                   + ':' + self._args.auth_port + '/' + self._args.auth_version
+
+        if self._args.auth_url:
+            auth_url = self._args.auth_url
+        else:
+            auth_url = self._args.auth_protocol + '://' + self._args.auth_host \
+                       + ':' + self._args.auth_port + '/' + self._args.auth_version
         self._nova[proj_name] = nc.Client(
-            '2', username=self._args.admin_user, project_id=proj_name,
+            '2', username=self._args.admin_user, project_name=proj_name,
             api_key=self._args.admin_password,
             region_name=self._args.region_name, service_type='compute',
             auth_url=auth_url, insecure=self._args.auth_insecure,
+            user_domain_name=self._args.user_domain_name,
+            project_domain_name=self._args.project_domain_name,
             endpoint_type=self._args.nova_endpoint_type)
         return self._nova[proj_name]
 
