@@ -103,6 +103,9 @@ class CassandraDriverThrift(datastore_api.CassandraDriver):
             self._cassandra_wait_for_keyspace(keyspace)
 
         self._cassandra_init_conn_pools()
+
+
+        print "OOOOOOOOOOOOOOOO"
     # end _cassandra_init
 
     def _Column_Families(self, keyspace, prefixed=False):
@@ -149,12 +152,13 @@ class CassandraDriverThrift(datastore_api.CassandraDriver):
 
         if (self.options.reset_config or keyspace_name not in self.existing_keyspaces):
             try:
+                print "ok"
                 self.sys_mgr.create_keyspace(keyspace_name, pycassa.system_manager.SIMPLE_STRATEGY,
                         {'replication_factor': str(self.nodes())})
             except pycassa.cassandra.ttypes.InvalidRequestException as e:
                 # TODO verify only EEXISTS
                 self.options.logger("Warning! " + str(e), level=SandeshLevel.SYS_WARN)
-
+        print "ok2"
         gc_grace_sec = vns_constants.CASSANDRA_DEFAULT_GC_GRACE_SECONDS
 
         for cf_name in cf_dict:
@@ -401,6 +405,8 @@ class CassandraDriverThrift(datastore_api.CassandraDriver):
     def _Insert(self, key, columns, keyspace_name=None, cf_name=None,
                batch=None, column_family=None):
         """Insert columns with value in a row in a column family"""
+
+        #print("INSERT key={}, columns={}, batch={}".format(key, columns, batch))
 
         if batch:
             batch.insert(key, columns)

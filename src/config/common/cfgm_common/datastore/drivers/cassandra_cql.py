@@ -2,6 +2,7 @@
 # Copyright (c) 2020 Juniper Networks, Inc. All rights reserved.
 #
 
+import collections
 import datetime
 import importlib
 import itertools
@@ -27,6 +28,7 @@ try:
     connector.query = importlib.import_module('cassandra.query')
     connector.protocol = importlib.import_module('cassandra.protocol')
     connector.cqlengine = importlib.import_module('cassandra.cqlengine')
+    connector.concurrent = importlib.import_module('cassandra.concurrent')
 except ImportError:
     connector = None
 
@@ -70,15 +72,19 @@ MAX_COLUMNS = 10000000
 # Set default column cout for get_range
 DEFAULT_COLUMN_COUNT = 100000
 
-# Primitive used to encapsulate result of a row
-# RowResultType = collections.OrderedDict
-RowResultType = dict
+# Set number of rows per pages fetched
+DEFAULT_PAGE_SIZE = 1000
+
+# Set when to start loading aync execution
+ASYNC_STARTS_WHEN = 1
 
 # String will be encoded in UTF-8 if necessary (Python2 support)
 StringType = six.text_type
 
 # Decodes JSON string in Python Object.
-JsonToObject = lambda x: json.loads(x)
+JsonToObject = json.loads
+
+RowsResultType = collections.OrderedDict
 
 
 # This is encapsulating the ResultSet iterator that to provide feature
@@ -87,19 +93,15 @@ class Iter(six.Iterator):
     def __init__(self, result, columns,
                  include_timestamp=False,
                  decode_json=True,
-                 limit=MAX_COLUMNS,
                  logger=None,
-                 cf_name="<noname>",
-                 key="<nokey>"):
+                 num_columns=None,
+                 cf_name="<noname>"):
         """Encapsulate results from Cassandra."""
-        # Based on a `connector.ResulSet` or a `list`.
-        self.result = result
-
         # Defines `columns` wanted. `columns_found` helps to track
         # the columns already discovered during iterate the
         # result so we can stop early.
         self.columns = columns and set(columns) or set([])
-        self.columns_found = set([])
+        self.num_columns = num_columns
 
         # Based on Pycassa ResultSet (legacy code) the results will be
         # of type {column: value} or {column: (value, timestamp)}
@@ -107,30 +109,16 @@ class Iter(six.Iterator):
         # When `True`, the JSON string in `value` will be decoded.
         self.decode_json = decode_json
 
-        # Based on legacy it looks like we have hard limit, not sure
-        # if that still make sense.
-        self.limit = min(MAX_COLUMNS, limit)
-
-        # Internal properties used to iterate result and keep track of
-        # the number of iterations.
         self.it = iter(result)
-        self.it_step = 0
 
         # For debugging purpose
         self.logger = logger
-        self.key = key
         self.cf_name = cf_name
 
     __iter__ = lambda self: self
     __next__ = lambda self: self.next()
 
-    def append(self, value):
-        self.result.append(value)
-        # Iterator changed size
-        self.it = iter(self.result)
-        self.it_step = 0
-
-    def decode(self, v):
+    def decode(self, v, k):
         if self.decode_json:
             try:
                 v = JsonToObject(v)
@@ -139,7 +127,7 @@ class Iter(six.Iterator):
                 # should investigate and fix that problem.
                 msg = ("can't decode JSON value, cf: '{}', key:'{}' "
                        "error: '{}'. Use it as it: '{}'".format(
-                           self.cf_name, self.key, e, v))
+                           self.cf_name, k, e, v))
                 self.logger(msg, level=SandeshLevel.SYS_INFO)
         return v
 
@@ -148,40 +136,44 @@ class Iter(six.Iterator):
             return (v, w)
         return v
 
-    def format_value(self, v, w):
-        return self.timestamp(self.decode(v), w)
-
-    def get_next_items(self):
-        if self.columns and self.columns_found == self.columns:
-            # If we have found all the columns needed, no need to
-            # continue.
-            raise StopIteration
-
-        self.it_step += 1
-        if self.it_step <= self.limit:
-            return next(self.it)
-        raise StopIteration
+    def format_value(self, v, w, k):
+        return self.timestamp(self.decode(v, k), w)
 
     def next(self):
+        if self.include_timestamp:
+            # 0.column, 1.value, 2.timestamp
+            dispatch = lambda k, r: (r[0], self.format_value(r[1], r[2], k))
+        else:
+            # 0.column, 1.value
+            dispatch = lambda k, r: (r[0], self.decode(r[1], k))
+
         while(True):
-            column, value, timestamp = self.get_next_items()
-            if self.columns and (column not in self.columns):
+            key, (success, results) = next(self.it)
+            if not success:
+                self.logger(
+                    "Unable to get results for key='{}', error={}".format(
+                        key, results),
+                    level=SandeshLevel.SYS_WARN)
                 continue
-            if self.columns:
-                # Keep track of the columns found so we can stop early the
-                # iteration.
-                self.columns_found.add(column)
-            return column, self.format_value(value, timestamp)
+            columns_found = set([])
+            rows = []
+            for result in results:
+                row = dispatch(key, result)
 
-    def one(self):
-        try:
-            return next(self)
-        except StopIteration:
-            return tuple()
+                column = row[0]
+                if self.columns:
+                    if column not in self.columns:
+                        continue
+                    columns_found.add(column)
 
-    def all(self):
-        return RowResultType(
-            list(self))
+                rows.append(row)
+
+                if self.num_columns and len(rows) >= self.num_columns:
+                    break
+
+                if self.columns and self.columns == columns_found:
+                    break
+            return key, RowsResultType(rows)
 
 
 # This is implementing our Cassandra API for the driver provided by
@@ -200,6 +192,22 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                               "be null at this step. Please verify "
                               "dependencies.")
         super(CassandraDriverCQL, self).__init__(server_list, **options)
+
+    @property
+    def SupportsPerPartitionLimit(self):
+        # Only new version of Cassandra support it
+        # TODO(sahid): Needs to determine which ones exaclty
+        return False
+
+    @property
+    def AllowColumnsFiltering(self):
+        # Filter columns from Cassandra, may be consuming.
+        return True
+
+    @property
+    def FloodDuringDebug(self):
+        # Accept debug message that can be floody.
+        return False
 
     @property
     def ConsistencyLevel(self):
@@ -249,6 +257,10 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                     consistency_level=self.context.ConsistencyLevel,
                     batch_type=self.context.BatchType)
 
+            def logger(self, msg, level):
+                if self.FloodDuringDebug:
+                    self.options.logger(msg, level=level)
+
             def is_same_partition_key(self, partition_key):
                 if self.partition_key is None:
                     self.partition_key = partition_key
@@ -267,23 +279,23 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
 
             def add(self, action, partition_key, *args, **kwargs):
                 """Add query to the batch."""
-                logger = self.context.options.logger
                 if self.context.nodes() > 1 and\
                    not self.is_same_partition_key(partition_key):
-                    logger("Adding in `batch` a query using "
-                           "different partition keys, this implies "
-                           "performance degration, commiting "
-                           "current batch. (prev={}, new={})".format(
-                               self.partition_key, partition_key),
-                           level=SandeshLevel.SYS_DEBUG)
+                    self.logger("Adding in `batch` a query using "
+                                "different partition keys, this implies "
+                                "performance degration, commiting "
+                                "current batch. (prev={}, new={})".format(
+                                    self.partition_key, partition_key),
+                                level=SandeshLevel.SYS_DEBUG)
                     self.send()
                     self.partition_key = partition_key
                 elif not self.is_same_action(action):
-                    logger("Adding in `batch` a query using "
-                           "insert/delete with the same partition keys, this "
-                           "is not supported by CQL (prev={}, new={})".format(
-                               self.action, action),
-                           level=SandeshLevel.SYS_DEBUG)
+                    self.logger("Adding in `batch` a query using "
+                                "insert/delete with the same partition keys, "
+                                "this is not supported by CQL (prev={}, "
+                                "new={})".format(
+                                    self.action, action),
+                                level=SandeshLevel.SYS_DEBUG)
                     self.send()
                     self.action = action
                 return super(Batch, self).add(*args, **kwargs)
@@ -306,11 +318,11 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
     def _Init_Cluster(self):
         self.report_status_init()
 
-        self._cql_select = self._handle_exceptions(self._cql_select, "SELECT")
-        self._Insert = self._handle_exceptions(self._Insert, "INSERT")
-        self._Remove = self._handle_exceptions(self._Remove, "REMOVE")
-        self._Get_Range = self._handle_exceptions(self._Get_Range, "GET_RANGE")
-        self._Get_Count = self._handle_exceptions(self._Get_Count, "GET_COUNT")
+        self._cql_select = self._handle_exceptions(self._cql_select, 'SELECT')
+        self._Insert = self._handle_exceptions(self._Insert, 'INSERT')
+        self._Remove = self._handle_exceptions(self._Remove, 'REMOVE')
+        self._Get_Range = self._handle_exceptions(self._Get_Range, 'RANGE')
+        self._Get_Count = self._handle_exceptions(self._Get_Count, 'COUNT')
 
         # Authentication related options
         auth_provider = None
@@ -380,6 +392,7 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             self._cluster = connector.cluster.Cluster(
                 endpoints,
                 port=(port or DEFAULT_CQL_PORT),
+                compression=True,
                 ssl_options=ssl_options,
                 auth_provider=auth_provider,
                 execution_profiles=profiles,
@@ -542,25 +555,9 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
         self.options.logger(
             msg.format(keyspace, props), level=SandeshLevel.SYS_NOTICE)
 
-    def _cql_select(self, cf_name, key, start='', finish='', limit=None,
-                    columns=None, include_timestamp=False, decode_json=None,
-                    use_async=False):
+    def _cql_select(self, cf_name, keys, start='', finish='', num_columns=None,
+                    columns=None, include_timestamp=False, decode_json=None):
         ses = self.get_cf(cf_name)
-        arg, cql = [StringType(key)], """
-        SELECT blobAsText(column1), value, WRITETIME(value)
-        FROM "{}"
-        WHERE key = textAsBlob(?)
-        """.format(cf_name)
-        if start:
-            cql += "AND column1 >= textAsBlob(?) "
-            arg.append(StringType(start))
-        if finish:
-            cql += "AND column1 <= textAsBlob(?) "
-            arg.append(StringType(finish))
-        if limit:
-            cql += "LIMIT ? "
-            arg.append(limit)
-        pre = ses.prepare(cql)
         if decode_json is None:
             # Only the CFs related to UUID_KEYSPACE_NAME's keyspace
             # encode its column values to JSON we want decode them
@@ -568,28 +565,53 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             decode_json = ses.keyspace.endswith(
                 datastore_api.UUID_KEYSPACE_NAME)
 
-        def iterize(r):
-            return Iter(r,
-                        # Filtering the columns using cassandra adds
-                        # performance degradation, letting Python
-                        # processes doing that job locally, see: ALLOW
-                        # FILTERING.
-                        columns=columns,
-                        include_timestamp=include_timestamp,
-                        decode_json=decode_json,
-                        logger=self.options.logger,
-                        key=key,
-                        cf_name=cf_name)
-        if use_async:
-            future = ses.execute_async(pre.bind(arg))
-            # When using 'use_async=True', the result will be obtened when
-            # executing the function.
-            # f = drv.multiget(keys, ..., use_async=True)
-            # ...
-            # result = f()
-            return lambda: iterize(future.result())
-        else:
-            return iterize(ses.execute(pre.bind(arg)))
+        cql = """
+        SELECT blobAsText(column1), value{}
+        FROM "{}"
+        WHERE key = textAsBlob(%s)
+        """.format(
+            include_timestamp and ", WRITETIME(value)" or "", cf_name)
+        if self.AllowColumnsFiltering and columns:
+            cql += "AND column1 IN ({}) ".format(
+                ", ".join(["textAsBlob(%s)"] * len(columns)))
+        if start:
+            cql += "AND column1 >= textAsBlob(%s) "
+        if finish:
+            cql += "AND column1 <= textAsBlob(%s) "
+        if self.SupportsPerPartitionLimit and num_columns:
+            cql += "PER PARTITION LIMIT %s "
+        if self.AllowColumnsFiltering and columns:
+            # Consuming for Cassandra, but we are I/O bounding in
+            # Python because of gevent.
+            cql += "ALLOW FILTERING"
+
+        args = []
+        for key in keys:
+            arg = [StringType(key)]
+            if self.AllowColumnsFiltering and columns:
+                arg += [StringType(x) for x in columns]
+            if start:
+                arg.append(StringType(start))
+            if finish:
+                arg.append(StringType(finish))
+            if self.SupportsPerPartitionLimit and num_columns:
+                arg.append(num_columns)
+            args.append(arg)
+
+        req = self.apply(ses, cql, args)
+        req = zip(keys, req)
+        req = Iter(req,
+                   # We currently still use Cassandra to filter
+                   # columns. IT may be better to dispatch the filter
+                   # in several cores on application
+                   columns=columns if not self.AllowColumnsFiltering else None,
+                   include_timestamp=include_timestamp,
+                   decode_json=decode_json,
+                   num_columns=num_columns,
+                   logger=self.options.logger,
+                   cf_name=cf_name)
+
+        return req
 
     def _Get_CF_Batch(self, cf_name, keyspace_name=None):
         return self.BatchClass(context=self, cf_name=cf_name)
@@ -600,118 +622,121 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             num_columns = max(int(num_columns), num_columns)
         except (ValueError, TypeError):
             num_columns = MAX_COLUMNS
-        res = {}
+        if num_columns == MAX_COLUMNS:
+            num_columns = None
 
-        futures = []
-        for key in keys:
-            # non blocking process of executing queries...
-            futures.append(
-                (key,
-                 self._cql_select(
-                     cf_name, key=key, start=start, finish=finish,
-                     columns=columns, include_timestamp=timestamp,
-                     limit=num_columns, use_async=True)))
-        missing_keys = []
-        for key, future in futures:
-            # Retrieving result
-            row = future().all()
-            if row:
-                # We should have used a generator but legacy does not
-                # handle it.
-                res[key] = row
-            else:
-                missing_keys.append(key)
-        if missing_keys:
+        results = {}
+        for key, rows in self._cql_select(
+                cf_name, keys=keys, start=start, finish=finish,
+                columns=columns, include_timestamp=timestamp,
+                num_columns=num_columns):
+            if rows:
+                results[key] = rows
+
+        wanted, received = len(keys), len(results)
+        if wanted != received:
+            missing = keys - six.viewkeys(results)
             self.options.logger(
-                "{} keys are missing during multiget's call, this may "
-                "indicate Cassandra cluster needs a 'nodetool repair'. "
-                "keys: '{}'".format(
-                    len(missing_keys), missing_keys),
+                "Inconsistency discovered. wanted={}, received={}, "
+                "missing={}. This may indicate that the cluster needs a "
+                "'nodetool repair'.".format(
+                    wanted, received, missing),
                 level=SandeshLevel.SYS_WARN)
-        return res
+
+        return results
 
     def _XGet(self, cf_name, key, columns=None, start='', finish=''):
-        try:
-            return self._cql_select(
-                cf_name=cf_name,
-                key=key,
-                start=start,
-                finish=finish,
-                columns=columns,
-                # TODO(sahid): In legacy, the implementation of `xget`
-                # does not use `multiget` so does not decode the JSON
-                # string in Python Object for keyspace
-                # UUID_KEYSPACE_NAME. We should try to be coherent.
-                decode_json=False)
-        except StopIteration:
-            # Looks like the legacy is expecting an empty iterator.
-            return iter([])
-
-    def _Get(self, cf_name, key, columns=None, start='', finish=''):
-        return self._cql_select(
+        rows = self._Get(
             cf_name=cf_name,
             key=key,
             start=start,
             finish=finish,
-            columns=columns).all() or None
+            columns=columns,
+            _decode_json=False)
+        return six.iteritems(rows or {})
+
+    def _Get(self, cf_name, key, columns=None, start='', finish='',
+             # XGet never wants auto-decode json. TODO(sahid): fix
+             # base-code to be coherent.
+             _decode_json=None):
+        for _, rows in self._cql_select(
+                cf_name=cf_name,
+                keys=[key],
+                start=start,
+                finish=finish,
+                columns=columns,
+                decode_json=_decode_json):
+            return rows
 
     def _Get_One_Col(self, cf_name, key, column):
-        itr = self._cql_select(cf_name=cf_name, key=key, columns=[column])
-        res = itr.all()
-        if not res:
-            # Looks like legacy is expecting an exception.
+        rows = self._Get(
+            cf_name=cf_name,
+            key=key,
+            columns=[column])
+        if not rows:
             raise NoIdError(key)
-        return res[column]
+        return rows[column]
 
     def _Get_Range(self, cf_name, columns=None,
                    column_count=DEFAULT_COLUMN_COUNT,
                    include_timestamp=False):
         ses = self.get_cf(cf_name)
-        res, arg, cql = {}, [column_count], """
-        SELECT blobAsText(key), blobAsText(column1), value, WRITETIME(value)
+        arg, cql = [], """
+        SELECT blobAsText(key), blobAsText(column1), value{}
         FROM "{}"
-        LIMIT ?
-        """.format(cf_name)
-        pre = ses.prepare(cql)
-        # TODO(sahid): If we could GROUP BY key we could probably
-        # avoid this loop.
-        for key, column, value, timestamp in ses.execute(pre.bind(arg)):
-            res.setdefault(key, Iter(
-                [],
-                # Filtering the columns using cassandra adds
-                # performance degradation, letting Python processes
-                # doing that job locally, see: ALLOW FILTERING.
-                columns=columns,
-                include_timestamp=include_timestamp,
-                # TODO(sahid): In legacy, the implementation of
-                # `get_range` does not use `multiget` so does not
-                # decode the JSON string in Python Object for keyspace
-                # UUID_KEYSPACE_NAME. We should try to be coherent.
-                decode_json=False,
-                logger=self.options.logger,
-                cf_name=cf_name)).append((column, value, timestamp))
-        for key, iterable in res.items():
-            row = iterable.all()
-            if row:
-                yield key, row
+        """.format(
+            include_timestamp and ", WRITETIME(value)" or "", cf_name)
+
+        if self.AllowColumnsFiltering and columns:
+            cql += "WHERE column1 IN ({}) ".format(
+                ", ".join(["textAsBlob(%s)"] * len(columns)))
+            arg += [StringType(x) for x in columns]
+        if self.SupportsPerPartitionLimit:
+            if column_count and column_count != DEFAULT_COLUMN_COUNT:
+                cql += "PER PARTITION LIMIT %s "
+                arg.append(column_count)
+        if self.AllowColumnsFiltering and columns:
+            cql += "ALLOW FILTERING"
+
+        current_key = None
+        for row in ses.execute(cql, arg):
+            key, row = row[0], row[1:]
+
+            if current_key is None:
+                current_key = key
+                aggregator = []
+
+            if current_key == key:
+                aggregator.append(row)
+            else:
+                for k, rows in Iter([(current_key, (True, aggregator))],
+                                    columns=(columns
+                                             if not self.AllowColumnsFiltering
+                                             else None),
+                                    include_timestamp=include_timestamp,
+                                    decode_json=False,
+                                    logger=self.options.logger,
+                                    num_columns=column_count,
+                                    cf_name=cf_name):
+                    yield k, rows
+                current_key = key
+                aggregator = [row]
 
     def _Get_Count(self, cf_name, key, start='', finish='',
                    keyspace_name=None):
         ses = self.get_cf(cf_name)
         arg, cql = [], """
           SELECT COUNT(*) FROM "{}"
-          WHERE key = textAsBlob(?)
+          WHERE key = textAsBlob(%s)
         """.format(cf_name)
         arg = [StringType(key)]
         if start:
-            cql += "AND column1 >= textAsBlob(?) "
+            cql += "AND column1 >= textAsBlob(%s) "
             arg.append(StringType(start))
         if finish:
-            cql += "AND column1 <= textAsBlob(?) "
+            cql += "AND column1 <= textAsBlob(%s) "
             arg.append(StringType(finish))
-        pre = ses.prepare(cql)
-        return ses.execute(
-            pre.bind(arg)).one()[0]
+        return ses.execute(cql, arg).one()[0]
 
     def _Insert(self, key, columns, keyspace_name=None, cf_name=None,
                 batch=None, column_family=None):
@@ -724,39 +749,41 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                            "to insert {} for {}".format(columns, key))
         if batch is not None:
             cf_name = batch.cf_name
+        ses = self.get_cf(cf_name)
         cql = """
           INSERT INTO "{}"
           (key, column1, value)
           VALUES (textAsBlob(%s), textAsBlob(%s), %s)
         """.format(cf_name)
+
         if batch is not None:
             for column, value in columns.items():
                 batch.add_insert(key, cql, [StringType(key),
                                             StringType(column),
                                             StringType(value)])
         else:
-            self._cql_execute(cf_name, key, cql, columns)
+            self._cql_execute(ses, cql, key, columns)
 
-    def _cql_execute(self, cf_name, key, cql, columns):
-        # TODO(sahid): We are trying to factorize the code with this
-        # function but the algo is not really ideal.
-        ses, ftrs = self.get_cf(cf_name), []
-        use_async = len(columns) > 1
-        func_exec = use_async and ses.execute_async or ses.execute
+    def _cql_execute(self, ses, cql, key, columns):
+        args = []
         if isinstance(columns, dict):
             # Case of insert {column: value}
-            for column, value in columns.items():
-                ftrs.append(func_exec(cql, [StringType(key),
-                                            StringType(column),
-                                            StringType(value)]))
+            for column, value in six.iteritems(columns):
+                args.append([StringType(key),
+                             StringType(column),
+                             StringType(value)])
         else:
             # Case of remove [column, ...]
             for column in columns:
-                ftrs.append(func_exec(cql, [StringType(key),
-                                            StringType(column)]))
-        if use_async:
-            # Block until to get all results
-            [f.result() for f in ftrs]
+                args.append([StringType(key),
+                             StringType(column)])
+        self.apply(ses, cql, args)
+
+    def apply(self, ses, cql, args):
+        if len(args) <= ASYNC_STARTS_WHEN:
+            return [(True, ses.execute(cql, arg)) for arg in args]
+        return connector.concurrent.execute_concurrent_with_args(
+            ses, cql, args, concurrency=100, results_generator=False)
 
     def _Remove(self, key, columns=None, keyspace_name=None, cf_name=None,
                 batch=None, column_family=None):
@@ -769,6 +796,7 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                            "to remove {} for {}".format(columns, key))
         if batch is not None:
             cf_name = batch.cf_name
+        ses = self.get_cf(cf_name)
         if not columns:
             cql = """
               DELETE FROM "{}"
@@ -777,7 +805,6 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             if batch is not None:
                 batch.add_remove(key, cql, [StringType(key)])
             else:
-                ses = self.get_cf(cf_name)
                 ses.execute(cql, [StringType(key)])
         else:
             cql = """
@@ -790,7 +817,7 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                     batch.add_remove(key, cql, [StringType(key),
                                                 StringType(column)])
             else:
-                self._cql_execute(cf_name, key, cql, columns)
+                self._cql_execute(ses, cql, key, columns)
 
     # TODO(sahid): Backward compatible function from thrift's driver.
     # Do we really need this?
