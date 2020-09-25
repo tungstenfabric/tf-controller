@@ -12,6 +12,9 @@ from vnc_api.gen.resource_xsd import AddressType, MatchConditionType
 from vnc_api.gen.resource_xsd import PortType, SubnetType
 from vnc_api.gen.resource_xsd import VrfAssignRuleType, VrfAssignTableType
 
+from vnc_api.vnc_api import VirtualMachineInterface
+from vnc_api.vnc_api import VirtualPortGroup
+
 from schema_transformer.resources._resource_base import ResourceBaseST
 from schema_transformer.sandesh.st_introspect import ttypes as sandesh
 
@@ -21,7 +24,7 @@ class VirtualMachineInterfaceST(ResourceBaseST):
     obj_type = 'virtual_machine_interface'
     ref_fields = ['virtual_network', 'virtual_machine', 'port_tuple',
                   'logical_router', 'bgp_as_a_service', 'routing_instance']
-    prop_fields = ['virtual_machine_interface_properties']
+    prop_fields = ['virtual_machine_interface_bindings', 'virtual_machine_interface_properties']
 
     def __init__(self, name, obj=None):
         self.name = name
@@ -29,6 +32,7 @@ class VirtualMachineInterfaceST(ResourceBaseST):
         self.interface_mirror = None
         self.virtual_network = None
         self.virtual_machine = None
+        self.virtual_port_group = None
         self.port_tuples = set()
         self.logical_router = None
         self.bgp_as_a_service = None
@@ -43,6 +47,8 @@ class VirtualMachineInterfaceST(ResourceBaseST):
         self.update_multiple_refs('floating_ip', self.obj)
         self.update_multiple_refs('alias_ip', self.obj)
         self.vrf_table = jsonpickle.encode(self.obj.get_vrf_assign_table())
+        self.vlan_id = None
+        self.physical_interface_uuid = None
     # end __init__
 
     def update(self, obj=None):
@@ -71,7 +77,136 @@ class VirtualMachineInterfaceST(ResourceBaseST):
         self._add_pbf_rules()
         self.process_analyzer()
         self.recreate_vrf_assign_table()
+        self.process_vpg()
     # end evaluate
+
+    def process_vpg(self):
+        if self.vlan_id == "" or self.physical_interface_uuid == "":
+            self.create_vpg()
+        else:
+            self.update_vpg()
+
+    def create_vpg(self):
+        vlan_id, physical_interface = self.collect_vlan_id_and_physical_interface()
+        # check if desired VPG exists
+        virtual_port_group_st_name = "vpg_" + self.virtual_network
+        virtual_port_group_st = ResourceBaseST.get_obj_type_map().get('virtual_port_group').get(virtual_port_group_st_name)
+        if virtual_port_group_st is not None:
+            virtual_port_group_st.update_pi_uuid_to_vmi_st_name(physical_interface.get_uuid(), self.name)
+            return
+        # create VPG object
+        self.create_vpg_object(virtual_port_group_st_name, vlan_id, physical_interface)
+        # update vlan_id and physical_interface_uuid
+        self.virtual_port_group = virtual_port_group_st_name
+        self.vlan_id = vlan_id
+        self.physical_interface_uuid = physical_interface.get_uuid()
+        return
+
+    def update_vpg(self):
+        vlan_id, physical_interface = self.collect_vlan_id_and_physical_interface()
+        # check if desired VPG exists
+        virtual_port_group_st_name = "vpg_" + self.virtual_network
+        virtual_port_group_st = ResourceBaseST.get_obj_type_map().get('virtual_port_group').get(virtual_port_group_st_name)
+        if virtual_port_group_st is None:
+            # create a new VPG
+            self.create_vpg_object(virtual_port_group_st_name, vlan_id, physical_interface)
+            return
+        virtual_port_group_st.update_pi_uuid_to_vmi_st_name(physical_interface.get_uuid(), self.name)
+        # update vlan_id and physical_interface_uuid
+        self.virtual_port_group = virtual_port_group_st_name
+        self.vlan_id = vlan_id
+        self.physical_interface_uuid = physical_interface.get_uuid()
+        return
+
+    def collect_vlan_id_and_physical_interface(self):
+        # get hostname
+        hostname = self.get_hostname()
+        if hostname == "":
+            return ("", None)
+        # get physnet name and vlan_id
+        physnet, vlan_id = self.get_physnet_and_vlan_id()
+        if physnet == "" or vlan_id == "":
+            return ("", None)
+        # get port name
+        switch_id, switch_port_id = self.get_switch_id_and_switch_port_id(hostname, physnet)
+        if switch_id == "" or switch_port_id == "":
+            return ("", None)
+        # get physical interface
+        physical_interface = self.get_physical_interface(switch_id, switch_port_id)
+        return (vlan_id, physical_interface)
+
+    def get_hostname(self):
+        if self.uuid is None or \
+           self.virtual_machine_interface_bindings is None:
+            return ""
+        # get vnic_type
+        vnic_type = self.virtual_machine_interface_bindings.get("vnic_type", "")
+        if vnic_type != "direct":
+            return ""
+        # get hostname
+        hostname = self.virtual_machine_interface_bindings.get("hostname", "")
+        return hostname
+
+    def get_physnet_and_vlan_id(self):
+        if self.virtual_network is None or \
+           self.virtual_network.provider_properties is None or \
+           self.virtual_network.uuid is None:
+            return ("", "")
+        physnet = self.virtual_network.provider_properties.get("physnet", "")
+        if physnet == "":
+            return ("", "")
+        vlan_id = self.virtual_network.provider_properties.get("vlan_id", "") 
+        return (physnet, vlan_id)
+
+    def get_switch_id_and_switch_port_id(self, hostname, physnet):
+        # TODO(dji): how to access the vr, and if vr does not exist, what would happen
+        virtual_router = self._vnc_lib.virtual_router_read(id=hostname)
+        virtual_router_sriov_physical_networks = virtual_router.get_virtual_router_sriov_physical_networks()
+        if virtual_router_sriov_physical_networks is None:
+            return ("", "")
+        port_name = virtual_router_sriov_physical_networks.get(physnet, "")
+        if port_name == "":
+            return ("", "")
+        # get switch_id
+        nodes = self._vnc_lib.node_list(
+            filters={'hostname':hostname},
+            fields=['ports'])
+        ports = nodes[0].get_ports()
+        if ports is None:
+            return ("", "")
+        switch_id = ""
+        switch_port_id = ""
+        for port in ports:
+            # TODO(dji): what label to use
+            if port.get_display_name() == port_name:
+                switch_id = port.get_bms_port_info().get_local_link_connection().get_switch_id()
+                switch_port_id = port.get_bms_port_info().get_local_link_connection().get_port_id()
+        return (switch_id, switch_port_id)
+
+    def get_physical_interface(self, switch_id, switch_port_id):
+        # TODO(dji): is swith id same as uuid
+        physical_router = self._vnc_lib.physical_router_read(id=switch_id)
+        for physical_interface in physical_router.get_physical_interfaces():
+            if physical_interface.get_physical_interface_port_id() == switch_port_id:
+                return physical_interface
+        return None
+
+    def create_vpg_object(self, virtual_port_group_st_name, vlan_id, physical_interface):
+        # create a VPG object to refer to placeholder VMI and PI
+        vpg = VirtualPortGroup(virtual_port_group_st_name)
+        # VPG refers to placeholder VMI
+        vmi = VirtualMachineInterface("vmi_"+virtual_port_group_st_name)
+        vmi.set_virtual_machine_interface_bindings({"vlan_id": vlan_id})
+        self._vnc_lib.virtual_machine_interface_create(vmi)
+        vpg.set_virtual_machine_interface(vmi)
+        # VPG refers to PI
+        vpg.set_physical_interface(physical_interface)
+        self._vnc_lib.virtual_port_group_create(vpg)
+        virtual_port_group_st = ResourceBaseST.get_obj_type_map().get('virtual_port_group').locate(virtual_port_group_st_name)
+        virtual_port_group_st.update_virtual_machine_uuid(vmi.get_uuid())
+        virtual_port_group_st.update_vlan_id(vlan_id)
+        virtual_port_group_st.update_pi_uuid_to_vmi_st_name(physical_interface.get_uuid(), self.name)
+        return
 
     def is_left(self):
         return (self.service_interface_type == 'left')
