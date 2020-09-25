@@ -5,12 +5,15 @@
 from builtins import str
 import copy
 
-
 from cfgm_common.exceptions import NoIdError
 import jsonpickle
 from vnc_api.gen.resource_xsd import AddressType, MatchConditionType
 from vnc_api.gen.resource_xsd import PortType, SubnetType
+from vnc_api.gen.resource_xsd import VirtualMachineInterfacePropertiesType
 from vnc_api.gen.resource_xsd import VrfAssignRuleType, VrfAssignTableType
+from vnc_api.vnc_api import KeyValuePair
+from vnc_api.vnc_api import VirtualMachineInterface
+from vnc_api.vnc_api import VirtualPortGroup
 
 from schema_transformer.resources._resource_base import ResourceBaseST
 from schema_transformer.sandesh.st_introspect import ttypes as sandesh
@@ -21,7 +24,8 @@ class VirtualMachineInterfaceST(ResourceBaseST):
     obj_type = 'virtual_machine_interface'
     ref_fields = ['virtual_network', 'virtual_machine', 'port_tuple',
                   'logical_router', 'bgp_as_a_service', 'routing_instance']
-    prop_fields = ['virtual_machine_interface_properties']
+    prop_fields = ['virtual_machine_interface_bindings',
+                   'virtual_machine_interface_properties']
 
     def __init__(self, name, obj=None):
         self.name = name
@@ -47,6 +51,8 @@ class VirtualMachineInterfaceST(ResourceBaseST):
 
     def update(self, obj=None):
         changed = self.update_vnc_obj(obj)
+        if 'virtual_machine_interface_bindings' in changed:
+            self.set_bindings()
         if 'virtual_machine_interface_properties' in changed:
             self.set_properties()
         if 'routing_instance' in changed:
@@ -67,11 +73,311 @@ class VirtualMachineInterfaceST(ResourceBaseST):
     # end delete_obj
 
     def evaluate(self, **kwargs):
+        # placeholder VMI is the VMI holding only vlan_id for VPG usage
+        # it requires no evaluation
+        # each following function will return at once on placeholder VMI
         self.set_virtual_network()
         self._add_pbf_rules()
         self.process_analyzer()
         self.recreate_vrf_assign_table()
+        self.process_vpg()
     # end evaluate
+
+    def process_vpg(self):
+        self._logger.debug("Process VPG collecting information"
+                           " of vlan_id and physical interface")
+        vlan_id, pi, fabric = \
+            self.collect_vlan_id_and_physical_interface_and_fabric()
+        self._logger.debug("Process VPG collected vlan_id"
+                           " and physical interface and fabric")
+        if vlan_id is None or pi is None or fabric is None:
+            return
+        self._logger.debug("Process VPG checking whether desired VPG exists")
+        vpg = self.find_vpg(pi, fabric)
+        if vpg is None:
+            self._logger.debug("Process VPG - "
+                               "Desired VPG does not exist, creating")
+            self.create_vpg_object(vlan_id, pi, fabric)
+            self._logger.debug("Process VPG - "
+                               "VPG creation finished")
+        else:
+            self._logger.debug("Process VPG - "
+                               "Desired VPG exists, updating")
+            self.update_vpg_object(vpg, vlan_id, pi, fabric)
+            self._logger.debug("Process VPG - "
+                               "VPG update finished")
+        self._logger.debug("Process VPG finished processing VPG")
+    # end process_vpg
+
+    def find_vpg(self, pi, fabric):
+        if pi is None or fabric is None:
+            return None
+        vpg_fq_name_str = fabric.get_fq_name_str() + \
+            ":" + "__internal_sriov_vgp_to_pi_" + pi.get_uuid() + "__"
+        vpg = None
+        try:
+            vpg = self._vnc_lib.virtual_port_group_read(
+                fq_name_str=vpg_fq_name_str)
+        except NoIdError:
+            return None
+        else:
+            return vpg
+    # end find_vpg
+
+    def get_pi_uuid(self):
+        # get hostname
+        hostname = self.get_hostname()
+        self._logger.debug("Collected hostname: %s" % hostname)
+        if hostname is None:
+            return None
+        # get physnet name and vlan_id
+        physnet, _ = self.get_physnet_and_vlan_id()
+        self._logger.debug("Collected physnet: %s" % physnet)
+        if physnet is None:
+            return None
+        # get port name
+        switch_id, switch_port_id = \
+            self.get_switch_id_and_switch_port_id(hostname, physnet)
+        self._logger.debug("Collected switch_id: %s, "
+                           "switch_port_id: %s" % (switch_id, switch_port_id))
+        if switch_id is None or switch_port_id is None:
+            return None
+        # get physical interface
+        physical_interface, _ = \
+            self.get_physical_interface_and_fabric(switch_id, switch_port_id)
+        if physical_interface is None:
+            self._logger.debug("Physical Interface not found")
+        else:
+            self._logger.debug("Collected physical_interface: %s"
+                               % physical_interface.get_fq_name_str())
+        return physical_interface.uuid
+
+    def collect_vlan_id_and_physical_interface_and_fabric(self):
+        # get hostname
+        hostname = self.get_hostname()
+        self._logger.debug("Collected hostname: %s" % hostname)
+        if hostname is None:
+            return (None, None, None)
+        # get physnet name and vlan_id
+        physnet, vlan_id = self.get_physnet_and_vlan_id()
+        self._logger.debug("Collected physnet: %s, "
+                           "vland_id: %s" % (physnet, vlan_id))
+        if physnet is None or vlan_id is None:
+            return (None, None, None)
+        # get port name
+        switch_id, switch_port_id = \
+            self.get_switch_id_and_switch_port_id(hostname, physnet)
+        self._logger.debug("Collected switch_id: %s, "
+                           "switch_port_id: %s" % (switch_id, switch_port_id))
+        if switch_id is None or switch_port_id is None:
+            return (None, None, None)
+        # get physical interface
+        physical_interface, fabric = \
+            self.get_physical_interface_and_fabric(switch_id, switch_port_id)
+        if physical_interface is None:
+            self._logger.debug("Physical Interface not found")
+        else:
+            self._logger.debug("Collected physical_interface: %s"
+                               % physical_interface.get_fq_name_str())
+        if fabric is None:
+            self._logger.debug("Physical Router parent Fabric not found")
+        else:
+            self._logger.debug("Collected Physical Router parent Fabric: %s"
+                               % fabric.get_fq_name_str())
+        return (vlan_id, physical_interface, fabric)
+    # end collect_vlan_id_and_physical_interface_and_fabric
+
+    def get_hostname(self):
+        if self.uuid is None or \
+           getattr(self, 'virtual_machine_interface_bindings', None) is None:
+            return None
+        if self.virtual_machine_interface_bindings.get('vnic_type', None) \
+           != "direct":
+            return None
+        hostname = self.virtual_machine_interface_bindings.get(
+            'host_id', "null")
+        # host_id is stored as "null" if it is not present
+        # so checking "null here"
+        # but also keep an eye on "" just in case
+        if hostname == "null" or hostname == "":
+            return None
+        return hostname
+    # end get_hostname
+
+    def get_physnet_and_vlan_id(self):
+        if self.virtual_network is None:
+            return (None, None)
+        virtual_network_st = ResourceBaseST.get_obj_type_map() \
+            .get('virtual_network') \
+            .get(self.virtual_network)
+        if virtual_network_st is None:
+            return (None, None)
+        physnet = virtual_network_st.provider_properties \
+                                    .get_physical_network() or None
+        if physnet is None:
+            return (None, None)
+        vlan_id = virtual_network_st.provider_properties \
+                                    .get_segmentation_id()
+        return (physnet, vlan_id)
+    # end get_physnet_and_vlan_id
+
+    def get_switch_id_and_switch_port_id(self, hostname, physnet):
+        virtual_router_uuids = self.get_uuids(
+            self._vnc_lib.virtual_routers_list(
+                filters={'display_name': hostname}))
+        for virtual_router_uuid in virtual_router_uuids:
+            virtual_router = self._vnc_lib.virtual_router_read(
+                id=virtual_router_uuid)
+            virtual_router_sriov_physical_networks = \
+                self.kvps_to_dict(
+                    virtual_router
+                    .get_virtual_router_sriov_physical_networks())
+            port_name = virtual_router_sriov_physical_networks.get(
+                physnet, None)
+            if port_name is None:
+                return (None, None)
+            # get switch_id
+            node_uuids = self.get_uuids(
+                self._vnc_lib.nodes_list(
+                    filters={'hostname': hostname}))
+            for node_uuid in node_uuids:
+                node = self._vnc_lib.node_read(id=node_uuid)
+                port_uuids = self.get_uuids(node.get_ports())
+                switch_id, switch_port_id = None, None
+                for port_uuid in port_uuids:
+                    port = self._vnc_lib.port_read(id=port_uuid)
+                    if port.get_display_name() == port_name:
+                        switch_id = port.get_bms_port_info() \
+                                        .get_local_link_connection() \
+                                        .get_switch_info() or None
+                        switch_port_id = port.get_bms_port_info() \
+                                             .get_local_link_connection() \
+                                             .get_port_id() or None
+                        return (switch_id, switch_port_id)
+        return (None, None)
+    # end get_switch_id_and_switch_port_id
+
+    def get_physical_interface_and_fabric(self, switch_id, switch_port_id):
+        physical_router_uuids = self.get_uuids(
+            self._vnc_lib.physical_routers_list(
+                filters={'physical_router_hostname': switch_id},
+                fields=['uuid', 'physical_interfaces']))
+        for physical_router_uuid in physical_router_uuids:
+            physical_router = \
+                self._vnc_lib.physical_router_read(id=physical_router_uuid)
+            physical_interface_uuids = \
+                self.get_uuids(physical_router.get_physical_interfaces())
+            for physical_interface_uuid in physical_interface_uuids:
+                physical_interface = \
+                    self._vnc_lib \
+                        .physical_interface_read(id=physical_interface_uuid)
+                if physical_interface.get_display_name() == switch_port_id:
+                    fabric_uuid = physical_router.get_fabric_refs()[0]['uuid']
+                    return (physical_interface,
+                            self._vnc_lib.fabric_read(id=fabric_uuid))
+        return (None, None)
+    # end get_physical_interface_and_fabric
+
+    def get_uuids(self, items):
+        if items is None:
+            return []
+        if isinstance(items, list):
+            return [item['uuid'] for item in items]
+        if isinstance(items, dict) and len(items.keys()) > 0:
+            return [item['uuid'] for item in
+                    items.get(list(items.keys())[0], [])]
+    # end get_uuids
+
+    def create_vpg_object(self, vlan_id, pi, fabric):
+        if vlan_id is None or pi is None or fabric is None:
+            msg = ("pre-requisites error "
+                   "before creating vpg object")
+            self._logger.error(msg)
+            self.add_ignored_error(msg)
+            return
+        # read/create fabric vmi
+        vmi = self.prepare_fabric_vmi(vlan_id)
+        # create VPG object and refers to vmi
+        vpg_name = "__internal_sriov_vgp_to_pi_" + pi.get_uuid() + "__"
+        vpg = VirtualPortGroup(name=vpg_name, parent_obj=fabric)
+        vpg.set_virtual_port_group_user_created(False)
+        vpg.add_virtual_machine_interface(vmi)
+        vpg.add_annotations(KeyValuePair(key="usage", value="sriov-vm"))
+        vpg_uuid = self._vnc_lib.virtual_port_group_create(vpg)
+        vpg = self._vnc_lib.virtual_port_group_read(id=vpg_uuid)
+        vpg.set_physical_interface(pi)
+        try:
+            self._vnc_lib.virtual_port_group_update(vpg)
+        except Exception as e:
+            msg = ("Unexcepted error when updating "
+                   "virtual port group's "
+                   "physical interface reference: %s" % str(e))
+            self._logger.error(msg)
+            self.add_ignored_error(msg)
+    # end create_vpg_object
+
+    def update_vpg_object(self, vpg, vlan_id, pi, fabric):
+        if vlan_id is None or pi is None or fabric is None:
+            msg = ("pre-requisites error "
+                   "before updating vpg object")
+            self._logger.error(msg)
+            self.add_ignored_error(msg)
+            return
+        # read/create fabric vmi
+        vmi = self.prepare_fabric_vmi(vlan_id)
+        # check if vmi is in vpg.virtual_machine_interface_refs
+        if vmi.uuid in \
+           self.get_uuids(vpg.get_virtual_machine_interface_refs()):
+            return
+        # set new fabric vmi for existing vpg
+        vpg.add_virtual_machine_interface(vmi)
+        try:
+            self._vnc_lib.virtual_port_group_update(vpg)
+        except Exception as e:
+            msg = ("Unexcepted error when updating "
+                   "virtual port group's "
+                   "fabric virtual machine interface: %s" % str(e))
+            self._logger.error(msg)
+            self.add_ignored_error(msg)
+    # end update_vpg_object
+
+    def prepare_fabric_vmi(self, vlan_id):
+        if self.virtual_network is None:
+            msg = "VMI %s does not have a VN" % self.name
+            self._logger.error(msg)
+            self.add_ignored_error(msg)
+            return None
+        parent_obj = \
+            self._vnc_lib.project_read(
+                fq_name_str=self.obj.get_parent_fq_name_str())
+        virtual_network = ResourceBaseST.get_obj_type_map() \
+                                        .get('virtual_network') \
+                                        .get(self.virtual_network) \
+                                        .obj
+        # Used exisiting fabric vmi if it exists
+        vmi_name = "__internal_sriov_vmi_to_vn_" + \
+                   virtual_network.get_uuid() + "__"
+        vmi_fq_name_str = parent_obj.get_fq_name_str() + ":" + vmi_name
+        vmi = None
+        try:
+            vmi = self._vnc_lib.virtual_machine_interface_read(
+                fq_name_str=vmi_fq_name_str)
+        except NoIdError:
+            vmi = VirtualMachineInterface(name=vmi_name, parent_obj=parent_obj)
+            vmi.set_virtual_network(virtual_network)
+            vmi.set_virtual_machine_interface_properties(
+                VirtualMachineInterfacePropertiesType(
+                    sub_interface_vlan_tag=vlan_id))
+            vmi_uuid = self._vnc_lib.virtual_machine_interface_create(vmi)
+            vmi = self._vnc_lib.virtual_machine_interface_read(id=vmi_uuid)
+        except Exception as e:
+            msg = ("Unexpected exception when "
+                   "reading fabric vmi %s: %s"
+                   % (vmi_fq_name_str, str(e)))
+            self._logger.error(msg)
+            self.add_ignored_error(msg)
+        return vmi
+    # end prepare_fabric_vmi
 
     def is_left(self):
         return (self.service_interface_type == 'left')
@@ -101,6 +407,21 @@ class VirtualMachineInterfaceST(ResourceBaseST):
                 return ip.instance_ip_address
         return None
     # end get_primary_instance_ip_address
+
+    def set_bindings(self):
+        self.virtual_machine_interface_bindings = \
+            self.kvps_to_dict(
+                self.obj.get_virtual_machine_interface_bindings())
+        return
+    # end set_bindings
+
+    def kvps_to_dict(self, kvps):
+        dictionary = dict()
+        if not kvps:
+            return dictionary
+        for kvp in kvps.get_key_value_pair():
+            dictionary[kvp.get_key()] = kvp.get_value()
+        return dictionary
 
     def set_properties(self):
         props = self.obj.get_virtual_machine_interface_properties()
@@ -253,8 +574,9 @@ class VirtualMachineInterfaceST(ResourceBaseST):
         try:
             self._vnc_lib.virtual_machine_interface_update(self.obj)
         except NoIdError:
-            self._logger.error("NoIdError while updating interface " +
-                               self.name)
+            msg = "NoIdError while updating interface " + self.name
+            self._logger.error(msg)
+            self.add_ignored_error(msg)
     # end process_analyzer
 
     def recreate_vrf_assign_table(self):
