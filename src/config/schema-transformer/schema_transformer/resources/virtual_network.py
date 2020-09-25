@@ -48,7 +48,9 @@ class VirtualNetworkST(ResourceBaseST):
                   'virtual_network', 'routing_policy']
     prop_fields = ['virtual_network_properties', 'route_target_list',
                    'multi_policy_service_chains_enabled',
-                   'is_provider_network', 'fabric_snat']
+                   'is_provider_network', 'provider_properties',
+                   'fabric_snat']
+    # TODO(dji): need a provider_properties field
 
     def me(self, name):
         return name in (self.name, 'any')
@@ -64,6 +66,7 @@ class VirtualNetworkST(ResourceBaseST):
         self.bgpvpns = set()
         self.acl = None
         self.is_provider_network = False
+        self.provider_properties = None
         self.dynamic_acl = None
         self.acl_rule_count = 0
         self.multi_policy_service_chains_enabled = None
