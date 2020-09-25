@@ -26,6 +26,8 @@
         user: "{{ lookup('ini', 'admin_user section=KEYSTONE file='+keystone_conf_path) }}"
         key: "{{ lookup('ini', 'admin_password section=KEYSTONE file='+keystone_conf_path) }}"
         tenant_name: "{{ lookup('ini', 'admin_tenant_name section=KEYSTONE default=admin file='+keystone_conf_path) }}"
+        user_domain_name: "{{ lookup('ini', 'user_domain_name section=KEYSTONE default=none file='+keystone_conf_path) }}"
+        project_domain_name: "{{ lookup('ini', 'project_domain_name section=KEYSTONE default=none file='+keystone_conf_path) }}"
       register: keystone_info
   rescue:
     - include_tasks: error_handler.yml
@@ -41,3 +43,4 @@
 
 - set_fact:
     auth_version: "{{auth_url.split('/')[-1].replace('v','')}}"
+
