@@ -12,6 +12,9 @@ from vnc_api.gen.resource_xsd import AddressType, MatchConditionType
 from vnc_api.gen.resource_xsd import PortType, SubnetType
 from vnc_api.gen.resource_xsd import VrfAssignRuleType, VrfAssignTableType
 
+from vnc_api.vnc_api import VirtualMachineInterface
+from vnc_api.vnc_api import VirtualPortGroup
+
 from schema_transformer.resources._resource_base import ResourceBaseST
 from schema_transformer.sandesh.st_introspect import ttypes as sandesh
 
@@ -21,7 +24,7 @@ class VirtualMachineInterfaceST(ResourceBaseST):
     obj_type = 'virtual_machine_interface'
     ref_fields = ['virtual_network', 'virtual_machine', 'port_tuple',
                   'logical_router', 'bgp_as_a_service', 'routing_instance']
-    prop_fields = ['virtual_machine_interface_properties']
+    prop_fields = ['virtual_machine_interface_bindings', 'virtual_machine_interface_properties']
 
     def __init__(self, name, obj=None):
         self.name = name
@@ -43,6 +46,8 @@ class VirtualMachineInterfaceST(ResourceBaseST):
         self.update_multiple_refs('floating_ip', self.obj)
         self.update_multiple_refs('alias_ip', self.obj)
         self.vrf_table = jsonpickle.encode(self.obj.get_vrf_assign_table())
+        self.vlan_id = ""
+        self.physical_interface_uuid = ""
     # end __init__
 
     def update(self, obj=None):
@@ -71,7 +76,168 @@ class VirtualMachineInterfaceST(ResourceBaseST):
         self._add_pbf_rules()
         self.process_analyzer()
         self.recreate_vrf_assign_table()
+        self.process_vpg()
     # end evaluate
+
+    def process_vpg(self):
+        if self.vlan_id != "" and self.physical_interface_uuid != "":
+            self.create_vpg()
+        else:
+            self.update_vpg()
+
+    def create_vpg(self):
+        # get hostname
+        hostname = self.get_hostname()
+        if hostname == "":
+            return
+        # get physnet name and vlan_id
+        physnet, vlan_id = self.get_physnet_and_vlan_id()
+        if physnet == "" or vlan_id == "":
+            return
+        # get port name
+        switch_id, switch_port_id = self.get_switch_id_and_switch_port_id(hostname, physnet)
+        if switch_id == "" or switch_port_id == "":
+            return
+        # get physical interface
+        physical_interface = self.get_physical_interface(switch_id, switch_port_id)
+        if physical_interface is None:
+            return
+        # check if desired VPG exists
+        vpg_id = "_vpg_" + self.virtual_network.uuid
+        # TODO(dji): what do we get
+        vpg = self._vnc_lib.virtual_port_group_read(id=vpg_id)
+        if len(vpg.get_virtual_machine_interface_refs()) == 0 or \
+           len(vpg.get_physical_interface_refs()) == 0:
+            return
+        # create VPG object
+        self.create_vpg_object(vlan_id, physical_interface)
+        self.vlan_id = vlan_id
+        self.physical_interface_uuid = physical_interface.get_uuid()
+        return
+
+    def update_vpg(self):
+        # get hostname
+        hostname = self.get_hostname()
+        if hostname == "":
+            return
+        # get physnet name and vlan_id
+        physnet, vlan_id = self.get_physnet_and_vlan_id()
+        if physnet == "" or vlan_id == "":
+            return
+        # get port name
+        switch_id, switch_port_id = self.get_switch_id_and_switch_port_id(hostname, physnet)
+        if switch_id == "" or switch_port_id == "":
+            return
+        # get physical interface
+        physical_interface = self.get_physical_interface(switch_id, switch_port_id)
+        if physical_interface is None:
+            return
+        # check if desired VPG exists
+        vpg_id = "_vpg_" + self.virtual_network.uuid
+        # TODO(dji): what do we get
+        vpg = self._vnc_lib.virtual_port_group_read(id=vpg_id)
+        if len(vpg.get_virtual_machine_interface_refs()) == 0 or \
+           len(vpg.get_physical_interface_refs()) == 0:
+            # create a new VPG
+            # TODO(dji): will this leave uncleaned VPG? yes, then how to acces the old VPG?
+            self.create_vpg_object(vlan_id, physical_interface)
+            return
+        # update placeholder VMI if vlan_id changes
+        if vlan_id != self.vlan_id:
+            vmi = VirtualMachineInterface()
+            vmi.set_uuid("_vmi_vlan_" + vlan_id)
+            vmi.set_virtual_machine_interface_bindings({"vlan_id": vlan_id})
+            self._vnc_lib.virtual_machine_interface_create(vmi)
+            vpg.set_virtual_machine_interface(vmi)
+            # delete old placeholder VMI and update self.vlan_id
+            self._vnc_lib.virtual_machine_interface_delete(id="_vmi_vlan_" + self.vlan_id)
+            self.vlan_id = vlan_id
+        if physical_interface.get_uuid() != self.physical_interface_uuid:
+            self.physical_interface_uuid = physical_interface.get_uuid()
+            vpg.set_physical_interface(physical_interface)
+        self.vitual_port_group_update(vpg)
+        return
+
+    def get_hostname(self):
+        if self.uuid is None or \
+           self.virtual_machine_interface_bindings is None:
+            return ""
+        # get vnic_type
+        vnic_type = self.virtual_machine_interface_bindings.get("vnic_type", "")
+        if vnic_type != "direct":
+            return ""
+        # get hostname
+        hostname = self.virtual_machine_interface_bindings.get("hostname", "")
+        return hostname
+
+    def get_physnet_and_vlan_id(self):
+        if self.virtual_network is None or \
+           self.virtual_network.provider_properties is None or \
+           self.virtual_network.uuid is None:
+            return ("", "")
+        physnet = self.virtual_network.provider_properties.get("physnet", "")
+        if physnet == "":
+            return ("", "")
+        vlan_id = self.virtual_network.provider_properties.get("vlan_id", "") 
+        return (physnet, vlan_id)
+
+    def get_switch_id_and_switch_port_id(self, hostname, physnet):
+        # TODO(dji): how to access the vr, and if vr does not exist, what would happen
+        virtual_router = self._vnc_lib.virtual_router_read(id=hostname)
+        virtual_router_sriov_physical_networks = virtual_router.get_virtual_router_sriov_physical_networks()
+        if virtual_router_sriov_physical_networks is None:
+            return ("", "")
+        port_name = virtual_router_sriov_physical_networks.get(physnet, "")
+        if port_name == "":
+            return ("", "")
+        # get switch_id
+        nodes = self._vnc_lib.node_list(
+            filters={'hostname':hostname},
+            fields=['ports'])
+        ports = nodes[0].get_ports()
+        if ports is None:
+            return ("", "")
+        switch_id = ""
+        switch_port_id = ""
+        for port in ports:
+            # TODO(dji): what label to use
+            if port.get_display_name() == port_name:
+                switch_id = port.get_bms_port_info().get_local_link_connection().get_switch_id()
+                switch_port_id = port.get_bms_port_info().get_local_link_connection().get_port_id()
+        return (switch_id, switch_port_id)
+
+    def get_physical_interface(self, switch_id, switch_port_id):
+        # TODO(dji): is swith id same as uuid
+        physical_router = self._vnc_lib.physical_router_read(id=switch_id)
+        for physical_interface in physical_router.get_physical_interfaces():
+            if physical_interface.get_physical_interface_port_id() == switch_port_id:
+                return physical_interface
+        return None
+
+    def create_vpg_object(self, vlan_id, physical_interface):
+        # create a VPG object to refer to placeholder VMI and PI
+        vpg = VirtualPortGroup()
+        vpg.set_uuid(vpg_id)
+        # check if desired placeholder VMI already exist
+        vmi_id = "_vmi_vlan_" + vlan_id
+        vmi = self._vnc_lib.virtual_machine_interface_read(id=vmi_id)
+        # TODO(dji): what do we get when there is no desired VMI
+        if vmi.get_virtual_machine_interface_bindings() is not None and \
+           "vlan_id" in vmi.get_virtual_machine_interface_bindings():
+            vpg.set_virtual_machine_interface(vmi)
+        else:
+            # create placeholder VMI holding vlan_id
+            vmi = VirtualMachineInterface()
+            # TODO(dji): is underscore allowed in uuid?
+            vmi.set_uuid("_vmi_vlan_" + vlan_id)
+            vmi.set_virtual_machine_interface_bindings({"vlan_id": vlan_id})
+            self._vnc_lib.virtual_machine_interface_create(vmi)
+            vmi = self._vnc_lib.virtual_machine_interface_read(id=vmi.uuid)
+            vpg.set_virtual_machine_interface(vmi)
+        # VPG refers to pI
+        vpg.set_physical_interface(physical_interface)
+        self._vnc_lib.virtual_port_group_create(vpg)
+        return
 
     def is_left(self):
         return (self.service_interface_type == 'left')
