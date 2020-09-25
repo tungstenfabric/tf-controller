@@ -310,7 +310,6 @@ feature_based_plugin_roles:
     - basic
     - underlay_ip_clos
     - underlay_infra_bms_access
-    - overlay_bgp
 
 feature_apply_order:
   - basic
