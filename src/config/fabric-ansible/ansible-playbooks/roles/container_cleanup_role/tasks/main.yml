@@ -13,6 +13,8 @@
     user: "{{user}}"
     key: "{{key}}"
     tenant_name: "{{tenant_name}}"
+    user_domain_name: "{{user_domain_name}}"
+    project_domain_name: "{{project_domain_name}}"
     auth_version: "{{auth_version}}"
     temp_url_key: "{{temp_url_key}}"
     temp_url_key_2: "{{temp_url_key_2}}"
@@ -49,3 +51,4 @@
         "msg": "Unable to clean swift container."
       }
     jl_err_message: "Unable to clean swift container. {{swift_results.error_msg}}"
+
