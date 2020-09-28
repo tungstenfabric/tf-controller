@@ -56,7 +56,6 @@ from cfgm_common.tests.test_utils import FakeKombu
 from cfgm_common.tests.test_utils import FakeExtensionManager
 from cfgm_common.vnc_api_stats import log_api_stats
 from . import test_case
-from vnc_cfg_api_server.api_server import VncApiServer
 from vnc_cfg_api_server.resources import GlobalSystemConfigServer
 
 logger = logging.getLogger(__name__)
@@ -5753,28 +5752,6 @@ class TestSubCluster(test_case.ApiServerTestCase):
     # end test_subcluster
 
 # end class TestSubCluster
-
-
-class TestApiServer(test_case.ApiServerTestCase):
-    def test_validate_communityattribute_type(self):
-        test_cases = [
-            '*:*',
-            '*:.*',
-            '.*:*',
-            '123:*',
-            '123:.*',
-            '*:123',
-            '.*:123',
-            '.*:.*',
-        ]
-
-        for test_case in test_cases:
-            try:
-                VncApiServer._validate_communityattribute_type(test_case)
-            except ValueError as exc:
-                self.assertFalse(True, msg='Test failed {}'.format(exc))
-
-# end class TestApiServer
 
 
 if __name__ == '__main__':
