@@ -19,10 +19,10 @@ from inflection import camelize
 import vnc_api
 
 try:
-   from ansible.module_utils.fabric_utils import FabricAnsibleModule
-except:
-   sys.path.append('../fabric-ansible/ansible-playbooks/module_utils')
-   from fabric_utils import FabricAnsibleModule # noqa
+    from ansible.module_utils.fabric_utils import FabricAnsibleModule
+except:  # noqa: B901, E722
+    sys.path.append('../fabric-ansible/ansible-playbooks/module_utils')
+    from fabric_utils import FabricAnsibleModule # noqa
 
 from job_manager.job_utils import JobVncApi
 
@@ -190,7 +190,7 @@ class VncMod(object):
     JOB_IN_PROGRESS = "IN_PROGRESS"
 
     def __init__(self, module):
-        """Initialising module parameters."""
+        """Initialize module parameters."""
         self.cls = None
 
         # Fetch module params
@@ -663,7 +663,7 @@ def module_process(module, args):
 
 
 def main():
-    """Module main."""
+    """Create FabricAnsibleModule and run vnc operations."""
     # Create the module instance
     module = FabricAnsibleModule(
         argument_spec=dict(

@@ -90,7 +90,7 @@ class JobFileWrite(object):
     GEN_DEV_OP_RES = 'GENERIC_DEVICE##'
 
     def __init__(self, logger, ):
-        """Initializes JobFileWrite."""
+        """Initialize JobFileWrite."""
         self._logger = logger
 
     def write_to_file(self, exec_id, pb_id, marker, msg):
@@ -109,7 +109,7 @@ class JobFileWrite(object):
 class JobUtils(object):
 
     def __init__(self, job_execution_id, job_template_id, logger, vnc_api):
-        """Initializes JobUtils."""
+        """Initialize JobUtils."""
         self._job_execution_id = job_execution_id
         self._job_template_id = job_template_id
         self._logger = logger
@@ -143,7 +143,7 @@ class JobUtils(object):
 class JobAnnotations(object):
 
     def __init__(self, vnc_api):
-        """Initializes JobAnnotations."""
+        """Initialize JobAnnotations."""
         self.vncapi = vnc_api
 
     skip_validators = ['required', 'minProperties', 'maxProperties']

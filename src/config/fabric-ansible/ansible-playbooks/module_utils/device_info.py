@@ -17,14 +17,14 @@ import subprocess
 import xml.etree.ElementTree as etree
 
 from cfgm_common.exceptions import (
-    RefsExistError,
-    NoIdError
+    NoIdError,
+    RefsExistError
 )
 import paramiko
 from vnc_api.gen.resource_client import PhysicalRouter
 from vnc_api.vnc_api import VncApi
 
-from job_manager.job_utils import JobFileWrite, JobVncApi
+from job_manager.job_utils import JobFileWrite, JobVncApi  # noqa
 
 REF_EXISTS_ERROR = 3
 JOB_IN_PROGRESS = "JOB_IN_PROGRESS"
@@ -119,9 +119,9 @@ class DeviceInfo(object):
                 self.credentials = [{
                     'credential': {
                         'username': 'root',
-                        'password': device_auth['root_password']}
+                        'password': device_auth['root_password']
                     }
-                ]
+                }]
         else:
             self.credentials = [
                 {'credential': cred} for cred in
@@ -373,9 +373,8 @@ class DeviceInfo(object):
                     'username': oid_mapped.get('username'),
                     'password': oid_mapped.get('password')
                 },
-                physical_router_encryption_type = 'none',
-                physical_router_supplemental_config=
-                oid_mapped.get('supplemental_config')
+                physical_router_encryption_type='none',
+                physical_router_supplemental_config=oid_mapped.get('supplemental_config')  # noqa: E501
             )
             if update:
                 pr_unicode_obj = self.vncapi.physical_router_update(
@@ -420,7 +419,7 @@ class DeviceInfo(object):
             dhcp_fq_name = ['default-global-system-config', oid_mapped.get(
                 'serial-number')]
             pr_obj = self.vncapi.physical_router_read(
-                fq_name=dhcp_fq_name,fields=['physical_router_managed_state'])
+                fq_name=dhcp_fq_name, fields=['physical_router_managed_state'])
 
             if pr_obj.get_physical_router_managed_state() == 'dhcp':
                 self.vncapi.physical_router_delete(fq_name=dhcp_fq_name)

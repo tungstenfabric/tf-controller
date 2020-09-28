@@ -9,7 +9,6 @@ import argparse
 from builtins import map
 from builtins import object
 from builtins import range
-from six.moves.configparser import SafeConfigParser
 from decimal import Decimal, getcontext
 import json
 import random
@@ -19,22 +18,22 @@ import traceback
 from cfgm_common.uve.vnc_api.ttypes import FabricJobExecution, FabricJobUve, \
     PhysicalRouterJobExecution, PhysicalRouterJobUve
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # noqa
 from past.utils import old_div
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
 from pysandesh.sandesh_base import Sandesh
 from pysandesh.sandesh_base import SandeshConfig
-from .sandesh.job.ttypes import JobLog
-from .sandesh.job.ttypes import JobLogEntry
-from .sandesh.job.ttypes import PRouterOnboardingLog
-from .sandesh.job.ttypes import PRouterOnboardingLogEntry
-
+from six.moves.configparser import SafeConfigParser
 
 from job_manager.job_exception import JobException
 from job_manager.job_messages import MsgBundle
 from job_manager.job_utils import JobFileWrite
 from job_manager.logger import JobLogger
 from job_manager.sandesh_utils import SandeshUtils
+from .sandesh.job.ttypes import JobLog
+from .sandesh.job.ttypes import JobLogEntry
+from .sandesh.job.ttypes import PRouterOnboardingLog
+from .sandesh.job.ttypes import PRouterOnboardingLogEntry
 
 
 class JobLogUtils(object):
@@ -216,14 +215,14 @@ class JobLogUtils(object):
                                      "%s, message: %s"
                                      "tid: %s (%s), "
                                      "description: %s" % (job_template_fqname,
-                                                       job_execution_id,
-                                                       fabric_fq_name,
-                                                       status,
-                                                       completion_percent,
-                                                       result, message,
-                                                       transaction_id,
-                                                       transaction_descr,
-                                                       description))
+                                                          job_execution_id,
+                                                          fabric_fq_name,
+                                                          status,
+                                                          completion_percent,
+                                                          result, message,
+                                                          transaction_id,
+                                                          transaction_descr,
+                                                          description))
         except Exception as e:
             msg = MsgBundle.getMessage(MsgBundle.SEND_JOB_LOG_ERROR,
                                        job_template_fqname=job_template_fqname,

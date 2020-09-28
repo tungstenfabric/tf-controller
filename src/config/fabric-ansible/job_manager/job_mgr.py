@@ -20,7 +20,7 @@ import traceback
 
 from cfgm_common.zkclient import ZookeeperClient
 from gevent import monkey
-monkey.patch_socket()
+monkey.patch_socket()  # noqa
 from gevent.greenlet import Greenlet
 from gevent.pool import Pool
 import jsonschema
@@ -39,7 +39,7 @@ from job_manager.sandesh_utils import SandeshUtils
 
 class ExecutableManager(object):
     def __init__(self, logger, vnc_api, job_input, job_log_utils):
-        """Initializer."""
+        """Initialize Executable Manager."""
         self._logger = logger
         self.vnc_api = vnc_api
         self.vnc_api_init_params = None
@@ -110,7 +110,7 @@ class ExecutableManager(object):
             'auth_token': self.auth_token,
             'contrail_cluster_id': self.contrail_cluster_id,
             'api_server_host': self.api_server_host,
-            'job_execution_id': self.job_execution_id ,
+            'job_execution_id': self.job_execution_id,
             'sandesh_args': self.sandesh_args,
             'vnc_api_init_params': self.vnc_api_init_params,
             'job_description': self.job_description,
@@ -214,8 +214,7 @@ class ExecutableManager(object):
                     msg = MsgBundle.getMessage(
                         MsgBundle.JOB_EXECUTION_COMPLETE,
                         job_execution_id=self.job_execution_id,
-                        job_template_name=\
-                        job_template.fq_name[-1])
+                        job_template_name=job_template.fq_name[-1])
 
                 self.job_file_write.write_to_file(
                     self.job_execution_id,
@@ -270,7 +269,7 @@ class JobManager(object):
                  result_handler, job_utils, playbook_seq, job_percent,
                  zk_client, job_description, job_transaction_id,
                  job_transaction_descr):
-        """Initializes job manager."""
+        """Initialize job manager."""
         self._logger = logger
         self._vnc_api = vnc_api
         self.job_execution_id = None
@@ -402,7 +401,7 @@ class JobManager(object):
 class WFManager(object):
 
     def __init__(self, logger, vnc_api, job_input, job_log_utils, zk_client):
-        """Initializes workflow manager."""
+        """Initialize workflow manager."""
         self._logger = logger
         self._vnc_api = vnc_api
         self.job_input = job_input
@@ -590,7 +589,7 @@ class WFManager(object):
                     # the playbook output
                     job_status = self.result_handler.job_result_status
                     retry_devices = self.result_handler.get_retry_devices()
-                    failed_device_list = self.result_handler.get_failed_device_list()
+                    failed_device_list = self.result_handler.get_failed_device_list()  # noqa: E501
                     if job_status == JobStatus.FAILURE or not retry_devices \
                             or self.abort_flag:
                         break

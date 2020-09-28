@@ -32,11 +32,11 @@ from vnc_api.gen.resource_client import (
     Fabric,
     FabricNamespace,
     InstanceIp,
+    IntentMap,
     LogicalInterface,
     LogicalRouter,
     NetworkIpam,
-    VirtualNetwork,
-    IntentMap
+    VirtualNetwork
 )
 from vnc_api.gen.resource_xsd import (
     FabricNetworkTag,
@@ -95,6 +95,7 @@ def _compare_fq_names(this_fq_name, that_fq_name):
     return True
 # end compare_fq_names
 
+
 def _fabric_intent_map_name(fabric_name, intent_map):
     """Fabric intent map name.
 
@@ -104,6 +105,7 @@ def _fabric_intent_map_name(fabric_name, intent_map):
     """
     return '%s-%s' % (fabric_name, intent_map)
 # end _fabric_intent_map_name
+
 
 def _fabric_network_name(fabric_name, network_type):
     """Fabric network name.
@@ -186,47 +188,47 @@ class FilterModule(object):
 
         :param vnc_api: <vnc_api.VncApi>
         :param job_ctx: Dictionary
-        example
-        {
-            "auth_token": "EB9ABC546F98",
-            "job_input": {
-                "fabric_fq_name": [
-                    "default-global-system-config",
-                    "fab01"
-                ],
-                "device_auth": {
-                    "root_password": "Embe1mpls"
-                },
-                "device_count": 1,
-                "fabric_asn_pool": [
-                    {
-                        "asn_max": 65000,
-                        "asn_min": 64000
-                    },
-                    {
-                        "asn_max": 65100,
-                        "asn_min": 65000
-                    }
-                ],
-                "fabric_subnets": [
-                    "30.1.1.1/24"
-                ],
-                "loopback_subnets": [
-                    "20.1.1.1/24"
-                ],
-                "management_subnets": [
-                    {
-                        "cidr": "10.87.69.0/25",
-                        "gateway": "10.87.69.1"
-                    }
-                ],
-                "node_profiles": [
-                    {
-                        "node_profile_name": "juniper-qfx5k"
-                    }
-                ]
-            }
-        }
+            # example
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "device_auth": {
+            #             "root_password": "Embe1mpls"
+            #         },
+            #         "device_count": 1,
+            #         "fabric_asn_pool": [
+            #             {
+            #                 "asn_max": 65000,
+            #                 "asn_min": 64000
+            #             },
+            #             {
+            #                 "asn_max": 65100,
+            #                 "asn_min": 65000
+            #             }
+            #         ],
+            #         "fabric_subnets": [
+            #             "30.1.1.1/24"
+            #         ],
+            #         "loopback_subnets": [
+            #             "20.1.1.1/24"
+            #         ],
+            #         "management_subnets": [
+            #             {
+            #                 "cidr": "10.87.69.0/25",
+            #                 "gateway": "10.87.69.1"
+            #             }
+            #         ],
+            #         "node_profiles": [
+            #             {
+            #                 "node_profile_name": "juniper-qfx5k"
+            #             }
+            #         ]
+            #     }
+            # }
         :param brownfield: True if onboarding a brownfield fabric
         :return: job_input (Dictionary)
         """
@@ -272,10 +274,10 @@ class FilterModule(object):
 
         :param vnc_api: <vnc_api.VncApi>
         :param mgmt_subnets: List<Dict>
-        example
-        [
-            { "cidr": "10.87.69.0/25", "gateway": "10.87.69.1" }
-        ]
+            # example
+            # [
+            #     { "cidr": "10.87.69.0/25", "gateway": "10.87.69.1" }
+            # ]
         :return: <boolean>
         """
         if not brownfield:
@@ -353,60 +355,60 @@ class FilterModule(object):
         """Onboard fabric.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ],
-                    "device_auth": {
-                        "root_password": "Embe1mpls"
-                    },
-                    "device_count": 1,
-                    "fabric_asn_pool": [
-                        {
-                            "asn_max": 65000,
-                            "asn_min": 64000
-                        },
-                        {
-                            "asn_max": 65100,
-                            "asn_min": 65000
-                        }
-                    ],
-                    "fabric_subnets": [
-                        "30.1.1.1/24"
-                    ],
-                    "loopback_subnets": [
-                        "20.1.1.1/24"
-                    ],
-                    "management_subnets": [
-                        {
-                            "cidr": "10.87.69.0/25",
-                            "gateway": "10.87.69.1"
-                        }
-                    ],
-                    "overlay_ibgp_asn": 64512,
-                    "node_profiles": [
-                        {
-                            "node_profile_name": "juniper-qfx5k"
-                        }
-                    ]
-                }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "device_auth": {
+            #             "root_password": "Embe1mpls"
+            #         },
+            #         "device_count": 1,
+            #         "fabric_asn_pool": [
+            #             {
+            #                 "asn_max": 65000,
+            #                 "asn_min": 64000
+            #             },
+            #             {
+            #                 "asn_max": 65100,
+            #                 "asn_min": 65000
+            #             }
+            #         ],
+            #         "fabric_subnets": [
+            #             "30.1.1.1/24"
+            #         ],
+            #         "loopback_subnets": [
+            #             "20.1.1.1/24"
+            #         ],
+            #         "management_subnets": [
+            #             {
+            #                 "cidr": "10.87.69.0/25",
+            #                 "gateway": "10.87.69.1"
+            #             }
+            #         ],
+            #         "overlay_ibgp_asn": 64512,
+            #         "node_profiles": [
+            #             {
+            #                 "node_profile_name": "juniper-qfx5k"
+            #             }
+            #         ]
+            #     }
         :return: Dictionary
-            if success, returns
-                {
-                    'status': 'success',
-                    'fabric_uuid': <string: fabric_obj.uuid>,
-                    'onboard_log': <string: onboard_log>
-                }
-            if failure, returns
-                {
-                    'status': 'failure',
-                    'error_msg': <string: error message>,
-                    'onboard_log': <string: onboard_log>
-                }
+            # if success, returns
+            #     {
+            #         'status': 'success',
+            #         'fabric_uuid': <string: fabric_obj.uuid>,
+            #         'onboard_log': <string: onboard_log>
+            #     }
+            # if failure, returns
+            #     {
+            #         'status': 'failure',
+            #         'error_msg': <string: error message>,
+            #         'onboard_log': <string: onboard_log>
+            #     }
         """
         try:
             FilterLog.instance("FabricOnboardFilter")
@@ -442,44 +444,44 @@ class FilterModule(object):
         """Onboard brownfield fabric.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ],
-                    "device_auth": [{
-                        "username": "root",
-                        "password": "Embe1mpls"
-                    }],
-                    "management_subnets": [
-                        {
-                            "cidr": "10.87.69.0/25",
-                            "gateway": "10.87.69.1"
-                        }
-                    ],
-                    "overlay_ibgp_asn": 64512,
-                    "node_profiles": [
-                        {
-                            "node_profile_name": "juniper-qfx5k"
-                        }
-                    ]
-                }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "device_auth": [{
+            #             "username": "root",
+            #             "password": "Embe1mpls"
+            #         }],
+            #         "management_subnets": [
+            #             {
+            #                 "cidr": "10.87.69.0/25",
+            #                 "gateway": "10.87.69.1"
+            #             }
+            #         ],
+            #         "overlay_ibgp_asn": 64512,
+            #         "node_profiles": [
+            #             {
+            #                 "node_profile_name": "juniper-qfx5k"
+            #             }
+            #         ]
+            #     }
         :return: Dictionary
-            if success, returns
-                {
-                    'status': 'success',
-                    'fabric_uuid': <string: fabric_obj.uuid>,
-                    'onboard_log': <string: onboard_log>
-                }
-            if failure, returns
-                {
-                    'status': 'failure',
-                    'error_msg': <string: error message>,
-                    'onboard_log': <string: onboard_log>
-                }
+            # if success, returns
+            #     {
+            #         'status': 'success',
+            #         'fabric_uuid': <string: fabric_obj.uuid>,
+            #         'onboard_log': <string: onboard_log>
+            #     }
+            # if failure, returns
+            #     {
+            #         'status': 'failure',
+            #         'error_msg': <string: error message>,
+            #         'onboard_log': <string: onboard_log>
+            #     }
         """
         try:
             FilterLog.instance("FabricOnboardBrownfieldFilter")
@@ -678,7 +680,9 @@ class FilterModule(object):
         # Add enterprise style validations enable/disable
         if fabric_info.get('disable_vlan_vn_uniqueness_check') is not None:
             self._add_fabric_vlan_vn_uniqueness_check(
-                vnc_api, fabric_obj, fabric_info.get('disable_vlan_vn_uniqueness_check'))
+                vnc_api,
+                fabric_obj,
+                fabric_info.get('disable_vlan_vn_uniqueness_check'))
 
         # add node profiles
         self._add_node_profiles(
@@ -821,16 +825,16 @@ class FilterModule(object):
 
         :param subnets: type=list<Dictionary>
         :param cidr: type=int
-            example:
-            [
-                { 'cidr': '192.168.10.1/24', 'gateway': '192.168.10.1 }
-            ]
-            cidr = 30
+            # example:
+            # [
+            #     { 'cidr': '192.168.10.1/24', 'gateway': '192.168.10.1 }
+            # ]
+            # cidr = 30
         :return: list<Dictionary>
-            example:
-            [
-                { 'cidr': '192.168.10.1/30'}
-            ]
+            # example:
+            # [
+            #     { 'cidr': '192.168.10.1/30'}
+            # ]
         """
         carved_subnets = []
         for subnet in subnets:
@@ -932,9 +936,9 @@ class FilterModule(object):
         :param fab: <vnc_api.gen.resource_client.Fabric>
         :param ns_name: string, namespace name
         :param asn: list<Dictionary>
-            [
-                { 'asn_min': 1000, 'asn_max': 2000 }
-            ]
+            # [
+            #     { 'asn_min': 1000, 'asn_max': 2000 }
+            # ]
         :param tag: string
         :return: <vnc_api.gen.resource_client.FabricNamespace>
         """
@@ -982,9 +986,9 @@ class FilterModule(object):
         :param fab: <vnc_api.gen.resource_client.Fabric>
         :param ns_name: string, namespace name
         :param asn_ranges: list<Dictionary>
-            [
-                { 'asn_min': 1000, 'asn_max': 2000 }
-            ]
+            # [
+            #     { 'asn_min': 1000, 'asn_max': 2000 }
+            # ]
         :param tag: string
         :return: <vnc_api.gen.resource_client.FabricNamespace>
         """
@@ -1039,7 +1043,7 @@ class FilterModule(object):
         :param vnc_api: <vnc_api.VncApi>
         :param fabric_obj: <vnc_api.gen.resource_client.Fabric>
         :param node_profiles: dynamic object by python_jsonschema_objects
-                              based on job input schema
+        based on job input schema
         :return:
         """
         node_profile_objs = []
@@ -1066,7 +1070,7 @@ class FilterModule(object):
     def _add_default_logical_router(vnc_api,
                                     fabric_fq_name,
                                     fabric_obj):
-        """Add default logical router
+        """Add default logical router.
 
         :param vnc_api: <vnc_api.VncApi>
         :return: <vnc_api.gen.resource_client.LogicalRouter>
@@ -1077,7 +1081,8 @@ class FilterModule(object):
             fabric_fq_name[-1] + '-master-LR']
 
         # read default project, master LR belongs to default project
-        def_project = vnc_api.project_read(['default-domain', 'default-project'])
+        def_project = vnc_api.project_read(['default-domain',
+                                            'default-project'])
         _task_log("creating logical router network, parent %s"
                   % (def_project.get_uuid()))
 
@@ -1117,10 +1122,8 @@ class FilterModule(object):
         :param fabric_obj: <vnc_api.gen.resource_client.Fabric>
         :return:
         """
-
         intent_map_name = _fabric_intent_map_name(
             str(fabric_obj.name), 'assisted-replicator-intent-map')
-
 
         intent_map_fq_name = ['default-global-system-config',
                               intent_map_name]
@@ -1197,9 +1200,9 @@ class FilterModule(object):
         :param vnc_api: <vnc_api.VncApi>
         :param ipam_name: string
         :param subnets: list<Dictionary>
-            [
-                { 'cidr': '10.1.1.1/24', 'gateway': '10.1.1.1' }
-            ]
+            # [
+            #     { 'cidr': '10.1.1.1/24', 'gateway': '10.1.1.1' }
+            # ]
         :param subnetting: boolean
         :return: <vnc_api.gen.resource_client.NetworkIpam>
         """
@@ -1241,18 +1244,18 @@ class FilterModule(object):
                 existing_ipam.set_ipam_subnets(existing_ipam_subnets)
             else:
                 create_ipam_subnet_new = IpamSubnets([
-                IpamSubnetType(
-                    subnet=FilterModule._new_subnet(sn.get('cidr')),
-                    default_gateway=sn.get('gateway'),
-                    subnet_uuid=str(uuid.uuid1())
-                ) for sn in subnets if int(sn.get('cidr').split('/')[-1]) < 31
-            ])
+                    IpamSubnetType(
+                        subnet=FilterModule._new_subnet(sn.get('cidr')),
+                        default_gateway=sn.get('gateway'),
+                        subnet_uuid=str(uuid.uuid1())
+                    ) for sn in subnets if int(sn.get('cidr').split('/')[-1]) < 31  # noqa: E501
+                ])
                 existing_ipam.set_ipam_subnets(create_ipam_subnet_new)
             try:
                 vnc_api.network_ipam_update(existing_ipam)
             except Exception as ex:
                 errmsg = str(ex)
-                _task_log("Not updating IPAM '%s' due to these errors: %s" %(ipam_fq_name, errmsg))
+                _task_log("Not updating IPAM '%s' due to these errors: %s" % (ipam_fq_name, errmsg))  # noqa: E501
 
         _task_done()
         return vnc_api.network_ipam_read(fq_name=ipam_fq_name)
@@ -1266,9 +1269,9 @@ class FilterModule(object):
         :param fabric_obj: <vnc_api.gen.resource_client.Fabric>
         :param network_type: string, one of the NetworkType constants
         :param subnets: list<Dictionary>
-            [
-                { 'cidr': '10.1.1.1/24', 'gateway': '10.1.1.1' }
-            ]
+            # [
+            #     { 'cidr': '10.1.1.1/24', 'gateway': '10.1.1.1' }
+            # ]
         :param subnetting: boolean
         :return: <vnc_api.gen.resource_client.VirtualNetwork>
         """
@@ -1342,28 +1345,28 @@ class FilterModule(object):
         """Delete fabric.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ]
-                }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ]
+            #     }
             }
         :return: type=Dictionary
-            if success, returns
-                {
-                    'status': 'success',
-                    'delete_log': <string: deletion log>
-                }
-            if failure, returns
-                {
-                    'status': 'failure',
-                    'error_msg': <string: error message>,
-                    'delete_log': <string: deletion log>
-                }
+            # if success, returns
+            #     {
+            #         'status': 'success',
+            #         'delete_log': <string: deletion log>
+            #     }
+            # if failure, returns
+            #     {
+            #         'status': 'failure',
+            #         'error_msg': <string: error message>,
+            #         'delete_log': <string: deletion log>
+            #     }
         """
         vnc_api = None
         errmsg = None
@@ -1404,7 +1407,7 @@ class FilterModule(object):
                 vnc_api, fabric_name, NetworkType.OVERLAY_LOOPBACK_NETWORK
             )
 
-            #delete intent map object
+            # delete intent map object
             self._delete_intent_maps(vnc_api, fabric_name)
         except Exception as ex:
             errmsg = str(ex)
@@ -2065,31 +2068,31 @@ class FilterModule(object):
         """Delete fabric devices.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ],
-                    "devices": [
-                        "DK588", "VF173"
-                    ]
-                }
-            }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "devices": [
+            #             "DK588", "VF173"
+            #         ]
+            #     }
+            # }
         :return: type=Dictionary
-            if success, returns
-                {
-                    'status': 'success',
-                    'delete_log': <string: deletion log>
-                }
-            if failure, returns
-                {
-                    'status': 'failure',
-                    'error_msg': <string: error message>,
-                    'delete_log': <string: deletion log>
-                }
+            # if success, returns
+            #     {
+            #         'status': 'success',
+            #         'delete_log': <string: deletion log>
+            #     }
+            # if failure, returns
+            #     {
+            #         'status': 'failure',
+            #         'error_msg': <string: error message>,
+            #         'delete_log': <string: deletion log>
+            #     }
         """
         vnc_api = None
         errmsg = None
@@ -2179,7 +2182,7 @@ class FilterModule(object):
         return None
 
     def _assign_lb_li_bgpr(self, vnc_api, dev_role_map,
-                            fabric_fq_name, devicefqname2_phy_role_map):
+                           fabric_fq_name, devicefqname2_phy_role_map):
 
         for dev_name, device_roles in list(dev_role_map.items()):
             ar_flag = False
@@ -2214,7 +2217,7 @@ class FilterModule(object):
                 self._add_bgp_router(vnc_api, device_roles)
 
     def _process_lb_li_bgpr(self, vnc_api, dev_role_map,
-                           fabric_fq_name, devicefqname2_phy_role_map):
+                            fabric_fq_name, devicefqname2_phy_role_map):
         static_role_map = {}
 
         # read device_to_ztp, get all static loopback IP assignments
@@ -2231,7 +2234,7 @@ class FilterModule(object):
                         device_roles = dev_role_map.pop(dev_name)
                         device_roles['ip_addr'] = ip_addr
                         static_role_map[dev_name] = device_roles
-                    elif dev.get('to_ztp') != False:
+                    elif dev.get('to_ztp') is not False:
                         # Devices with static loopback IP assigned,
                         # but roles not assigned must only add
                         # loopback interface
@@ -2243,7 +2246,7 @@ class FilterModule(object):
 
         # Assign roles with static loopback IPs
         self._assign_lb_li_bgpr(vnc_api, static_role_map,
-                                 fabric_fq_name, devicefqname2_phy_role_map)
+                                fabric_fq_name, devicefqname2_phy_role_map)
 
         # Now assign roles with dynamic loopback IPs
         self._assign_lb_li_bgpr(vnc_api, dev_role_map,
@@ -2254,34 +2257,34 @@ class FilterModule(object):
         """Assign roles.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "role_assignments": [
-                        {
-                            "device_fq_name": [
-                                "default-global-system-config",
-                                "qfx-10"
-                            ],
-                            "physical_role": "leaf",
-                            "routing_bridging_roles": [ "CRB-Access" ]
-                        }
-                    ]
-                }
-            }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "role_assignments": [
+            #             {
+            #                 "device_fq_name": [
+            #                     "default-global-system-config",
+            #                     "qfx-10"
+            #                 ],
+            #                 "physical_role": "leaf",
+            #                 "routing_bridging_roles": [ "CRB-Access" ]
+            #             }
+            #         ]
+            #     }
+            # }
         :return: Dictionary
-            if success, returns
-                {
-                    'status': 'success',
-                    'log': <string: role assignment log>
-                }
-            if failure, returns
-                {
-                    'status': 'failure',
-                    'error_msg': <string: error message>,
-                    'log': <string: role assignment log>
-                }
+            # if success, returns
+            #     {
+            #         'status': 'success',
+            #         'log': <string: role assignment log>
+            #     }
+            # if failure, returns
+            #     {
+            #         'status': 'failure',
+            #         'error_msg': <string: error message>,
+            #         'log': <string: role assignment log>
+            #     }
         """
         vnc_api = None
         errmsg = None
@@ -2359,8 +2362,8 @@ class FilterModule(object):
             # before assigning roles, let's assign IPs to the loopback and
             # fabric interfaces, create bgp-router and logical-router, etc.
             self._process_lb_li_bgpr(vnc_api, dev_role_map,
-                                    fabric_fq_name,
-                                    devicefqname2_phy_role_map)
+                                     fabric_fq_name,
+                                     devicefqname2_phy_role_map)
 
             # now we are ready to assign the roles to trigger DM to invoke
             # fabric_config playbook to push the role-based configuration to
@@ -2441,23 +2444,23 @@ class FilterModule(object):
                                     final_dict['physical_role'] = \
                                         physical_role_refs
                                 rb_roles_dict = dfg_item_dict.get(
-                                    'device_functional_group_routing_bridging_roles')
-                                if rb_roles_dict!= None:
-                                    final_dict['rb_roles'] = rb_roles_dict.get('rb_roles')
+                                    'device_functional_group_routing_bridging_roles')  # noqa: E501
+                                if rb_roles_dict is not None:
+                                    final_dict['rb_roles'] = rb_roles_dict.get('rb_roles')  # noqa: E501
                                 else:
                                     final_dict['rb_roles'] = rb_roles_dict
-                                rr_flag = device_map[device_name].get('route_reflector')
-                                if rr_flag != None:
+                                rr_flag = device_map[device_name].get('route_reflector')  # noqa: E501
+                                if rr_flag is not None:
                                     if not final_dict['rb_roles']:
                                         final_dict['rb_roles'] = []
-                                        final_dict['rb_roles'].append('Route-Reflector')
-                                    elif 'Route-Reflector' not in final_dict['rb_roles']:
-                                        final_dict['rb_roles'].append('Route-Reflector')
+                                        final_dict['rb_roles'].append('Route-Reflector')  # noqa: E501
+                                    elif 'Route-Reflector' not in final_dict['rb_roles']:  # noqa: E501
+                                        final_dict['rb_roles'].append('Route-Reflector')  # noqa: E501
         except Exception as ex:
             errmsg = str(ex)
             _task_error_log('%s\n%s' % (errmsg, traceback.format_exc()))
 
-        if isinstance(final_dict,dict) and len(final_dict) == 0:
+        if isinstance(final_dict, dict) and len(final_dict) == 0:
             raise NoIdError("The given DFG for device %s is not "
                             "defined" % str(device_name))
         return final_dict
@@ -2473,45 +2476,43 @@ class FilterModule(object):
         try:
             set_dfg_flag = False
             dfg_refs = pr_obj.get_device_functional_group_refs()
-            if dfg_refs!= None:
+            if dfg_refs is not None:
                 dfg_uuid = dfg_refs[0]['uuid']
                 dfg_obj = vnc_api.device_functional_group_read(id=dfg_uuid)
                 dfg_item_dict = vnc_api.obj_to_dict(dfg_obj)
                 # Match the image
-                if dfg_item_dict.get('device_functional_group_os_version')!= None:
+                if dfg_item_dict.get('device_functional_group_os_version') is not None:  # noqa: E501
                     pr_os_version = pr_obj.physical_router_os_version
-                    if pr_os_version!= dfg_item_dict.get(
+                    if pr_os_version != dfg_item_dict.get(
                             'device_functional_group_os_version'):
                         set_dfg_flag = "device_functional_group_os_version"
                 # Match physical role
-                if dfg_item_dict.get('physical_role_refs')!= None:
-                    if pr_obj.get_physical_role_refs()!= None:
-                        pr_physical_role = pr_obj.physical_role_refs[0]['to'][-1]
-                        dfg_phy_role_refs = dfg_item_dict.get('physical_role_refs')
+                if dfg_item_dict.get('physical_role_refs') is not None:
+                    if pr_obj.get_physical_role_refs() is not None:
+                        pr_physical_role = pr_obj.physical_role_refs[0]['to'][-1]  # noqa: E501
+                        dfg_phy_role_refs = dfg_item_dict.get('physical_role_refs')  # noqa: E501
                         dfg_physical_role = dfg_phy_role_refs[0]['to'][-1]
-                        if pr_physical_role!= dfg_physical_role:
+                        if pr_physical_role != dfg_physical_role:
                             set_dfg_flag = "physical_role_refs"
                 # Match rb roles
-                if dfg_item_dict.get\
-                            ('device_functional_group_routing_bridging_roles')!= None:
-                    dfg_rb_roles_dict = dfg_item_dict.get\
-                        ('device_functional_group_routing_bridging_roles')
+                if dfg_item_dict.get('device_functional_group_routing_bridging_roles') is not None:  # noqa: E501
+                    dfg_rb_roles_dict = dfg_item_dict.get('device_functional_group_routing_bridging_roles')  # noqa: E501
                     dfg_rb_roles_list = dfg_rb_roles_dict.get('rb_roles')
-                    if pr_obj.get_routing_bridging_roles()!= None:
-                        pr_rb_roles = pr_obj.get_routing_bridging_roles().rb_roles
-                        if pr_rb_roles!= dfg_rb_roles_list:
-                            set_dfg_flag = "device_functional_group_routing_bridging_roles"
+                    if pr_obj.get_routing_bridging_roles() is not None:
+                        pr_rb_roles = pr_obj.get_routing_bridging_roles().rb_roles  # noqa: E501
+                        if pr_rb_roles != dfg_rb_roles_list:
+                            set_dfg_flag = "device_functional_group_routing_bridging_roles"  # noqa: E501
             # Update the pr annotations
             pr_annot = pr_obj.get_annotations()
             kvs = []
-            #Always first delete the key-value pair and append if necessary
+            # Always first delete the key-value pair and append if necessary
             if pr_annot:
                 kvs = pr_annot.get_key_value_pair() or []
                 for kv in kvs:
                     if kv.get_key() == 'dfg_flag':
                         kvs.remove(kv)
                         break
-            if set_dfg_flag != False:
+            if set_dfg_flag is not False:
                 dfg_flag_value = set_dfg_flag
                 kvs.append(KeyValuePair(key="dfg_flag", value=dfg_flag_value))
             if not pr_annot:
@@ -2525,23 +2526,23 @@ class FilterModule(object):
 
     # end _update_physical_router_annotations
 
-    def _delete_dfg_ref(self,vnc_api, pr_uuid):
+    def _delete_dfg_ref(self, vnc_api, pr_uuid):
         try:
-            pr_obj= vnc_api.physical_router_read(id=pr_uuid)
+            pr_obj = vnc_api.physical_router_read(id=pr_uuid)
             dfg_refs = pr_obj.get_device_functional_group_refs()
-            if dfg_refs!= None:
+            if dfg_refs is not None:
                 for item in dfg_refs:
-                    vnc_api.ref_update("physical_router",pr_uuid,
-                                       "device_functional_group",item['uuid'],
+                    vnc_api.ref_update("physical_router", pr_uuid,
+                                       "device_functional_group", item['uuid'],
                                        None, "DELETE")
                 vnc_api.physical_router_update(pr_obj)
-        except Exception as ex:
+        except Exception as ex:  # noqa: F841
             _task_log("No dfg references found for this device")
     # end _delete_dfg_ref
 
     def _check_rb_role_compatibity(self, vnc_api, pr_uuid, role_assgn_dict):
-        pr_obj = vnc_api.physical_router_read(id=pr_uuid, fields =[
-            'node_profile_refs','physical_router_management_ip'])
+        pr_obj = vnc_api.physical_router_read(id=pr_uuid, fields=[
+            'node_profile_refs', 'physical_router_management_ip'])
         node_profile_refs = pr_obj.get_node_profile_refs()
         if not node_profile_refs:
             _task_warn_log(
@@ -2572,7 +2573,7 @@ class FilterModule(object):
                             'supported roles : %s' % (
                                 phy_role, rb_roles, supported_roles_np
                             )
-                    )
+                        )
     # end _check_rb_role_compatibility
 
     def _read_and_increment_dummy_ip(self, vnc_api):
@@ -2657,18 +2658,18 @@ class FilterModule(object):
         :param vnc_api: <vnc_api.VncApi>
         :param fabric_fq_name: list<string>
         :param role_assignments: list<Dictionary>
-            example:
-            [
-                {
-                    "device_fq_name": [
-                        "default-global-system-config",
-                        "qfx-10"
-                    ],
-                    "device_obj": <vnc_api.vnc_api.gen.PhysicalRouter>
-                    "physical_role": "leaf",
-                    "routing_bridging_roles": [ "CRB-Access" ]
-                }
-            ]
+            # example:
+            # [
+            #     {
+            #         "device_fq_name": [
+            #             "default-global-system-config",
+            #             "qfx-10"
+            #         ],
+            #         "device_obj": <vnc_api.vnc_api.gen.PhysicalRouter>
+            #         "physical_role": "leaf",
+            #         "routing_bridging_roles": [ "CRB-Access" ]
+            #     }
+            # ]
         """
         self._validate_against_supported_roles(role_assignments)
 
@@ -2707,9 +2708,9 @@ class FilterModule(object):
                 elif 'dci-gateway' in r.lower():
                     has_dci_gw_role = True
 
-            if has_ucast_role and (has_mcast_role or has_pnf_role
-                                   or has_crb_gw_role or has_dc_gw_role
-                                   or has_dci_gw_role):
+            if has_ucast_role and (has_mcast_role or has_pnf_role or
+                                   has_crb_gw_role or has_dc_gw_role or
+                                   has_dci_gw_role):
                 err_msg = 'Cannot configure a ERB-UCAST-Gateway role ' \
                           'along with the following roles: ' \
                           '[CRB-Gateway, CRB-MCAST-gateway, DCI-Gateway, ' \
@@ -2723,20 +2724,20 @@ class FilterModule(object):
         """Validate against supported roles.
 
         This method validates the assigned device roles are supported
-        roles on the device according node profile
-        :param role_assignments:
-            example:
-            [
-                {
-                    "device_fq_name": [
-                        "default-global-system-config",
-                        "qfx-10"
-                    ],
-                    "device_obj": <vnc_api.vnc_api.gen.PhysicalRouter>
-                    "physical_role": "leaf",
-                    "routing_bridging_roles": [ "CRB-Access" ]
-                }
-            ]
+        roles on the device according node profile.
+        :param role_assignments: list<Dictionary>
+        # example:
+        # [
+        #     {
+        #         "device_fq_name": [
+        #             "default-global-system-config",
+        #             "qfx-10"
+        #         ],
+        #         "device_obj": <vnc_api.vnc_api.gen.PhysicalRouter>
+        #         "physical_role": "leaf",
+        #         "routing_bridging_roles": [ "CRB-Access" ]
+        #     }
+        # ]
         """
         for device_roles in role_assignments:
             device_obj = device_roles.get('device_obj')
@@ -2773,19 +2774,19 @@ class FilterModule(object):
         with 'Route-Reflector' role
         :param vnc_api: <vnc_api.VncApi>
         :param fabric_fq_name: list<string>
-        :param role_assignments:
-            example:
-            [
-                {
-                    "device_fq_name": [
-                        "default-global-system-config",
-                        "qfx-10"
-                    ],
-                    "device_obj": <vnc_api.vnc_api.gen.PhysicalRouter>
-                    "physical_role": "leaf",
-                    "routing_bridging_roles": [ "CRB-Access" ]
-                }
-            ]
+        :param role_assignments: list<Dictionary>
+        # example:
+        # [
+        #     {
+        #         "device_fq_name": [
+        #             "default-global-system-config",
+        #             "qfx-10"
+        #         ],
+        #         "device_obj": <vnc_api.vnc_api.gen.PhysicalRouter>
+        #         "physical_role": "leaf",
+        #         "routing_bridging_roles": [ "CRB-Access" ]
+        #     }
+        # ]
         """
         # check if any RR role exists in the role assignments
         role_assignment_devices = []
@@ -2832,9 +2833,9 @@ class FilterModule(object):
         :param vnc_api: <vnc_api.VncApi>
         :param fabric_fq_name: fabric FQ name
         :param devices_to_exclude:
-            list of fq names for the devices to exclude from the check
+        # list of fq names for the devices to exclude from the check
         :param ok_with_no_role_assigned:
-            set to True if no role assigned to any device
+        # set to True if no role assigned to any device
         :return:
         """
         fabric_obj = self._read_fabric_obj(vnc_api, fabric_fq_name)
@@ -2988,13 +2989,13 @@ class FilterModule(object):
         used to model the overlay iBGP mesh
         :param vnc_api: <vnc_api.VncApi>
         :param device_roles: Dictionary
-            example:
-            {
-                'device_obj': <vnc_api.gen.resource_client.PhysicalRouter>
-                'device_fq_name': ['default-global-system-config', 'qfx-10'],
-                'physical_role": 'leaf',
-                'routing_bridging_roles": ['CRB-Gateway', 'Route-Reflector']
-            }
+        # example:
+        # {
+        #     'device_obj': <vnc_api.gen.resource_client.PhysicalRouter>
+        #     'device_fq_name': ['default-global-system-config', 'qfx-10'],
+        #     'physical_role": 'leaf',
+        #     'routing_bridging_roles": ['CRB-Gateway', 'Route-Reflector']
+        # }
         :return: None
         """
         bgp_router_obj = None
@@ -3065,13 +3066,13 @@ class FilterModule(object):
         Add logical-router object for this device if CRB gateway role
         :param vnc_api: <vnc_api.VncApi>
         :param device_roles: Dictionary
-            example:
-            {
-                'device_obj': <vnc_api.gen.resource_client.PhysicalRouter>
-                'device_fq_name': ['default-global-system-config', 'qfx-10'],
-                'physical_role": 'leaf',
-                'routing_bridging_roles": ['CRB-Gateway']
-            }
+        # example:
+        # {
+        #     'device_obj': <vnc_api.gen.resource_client.PhysicalRouter>
+        #     'device_fq_name': ['default-global-system-config', 'qfx-10'],
+        #     'physical_role": 'leaf',
+        #     'routing_bridging_roles": ['CRB-Gateway']
+        # }
         :param fabric_name: fabric name
         :return: None
         """
@@ -3109,7 +3110,8 @@ class FilterModule(object):
 
     @staticmethod
     def get_int_for_lo0_ip(phy_router_loopback_ip):
-        ip_obj = ipaddress.ip_address(unicode(str(
+        # F821: undefined name 'unicode'
+        ip_obj = ipaddress.ip_address(unicode(str(  # noqa: F821
             phy_router_loopback_ip
         )))
         return int(ip_obj)
@@ -3344,12 +3346,12 @@ class FilterModule(object):
         :param vnc_api: <vnc_api.VncApi>
         :param device_obj: <vnc_api.gen.resource_client.PhysicalRouter>
         :return: list<Dictionary>
-            [
-                {
-                   'local_pi': <vnc_api.gen.resource_client.PhysicalInterface>,
-                   'remote_pi': <vnc_api.gen.resource_client.PhysicalInterface>
-                }
-            ]
+            # [
+            #     {
+            #     'local_pi': <vnc_api.gen.resource_client.PhysicalInterface>,
+            #     'remote_pi': <vnc_api.gen.resource_client.PhysicalInterface>
+            #     }
+            # ]
         """
         physical_links = []
         pi_refs = device_obj.get_physical_interfaces()
@@ -3373,13 +3375,13 @@ class FilterModule(object):
 
         :param vnc_api: VncApi
         :param device_roles: Dictionary
-            example:
-            {
-                'device_obj': <vnc_api.gen.resource_client.PhysicalRouter>
-                'device_fq_name': ['default-global-system-config', 'qfx-10'],
-                'physical_role": 'leaf',
-                'routing_bridging_roles": ['CRB-Gateway']
-            }
+            # example:
+            # {
+            #     'device_obj': <vnc_api.gen.resource_client.PhysicalRouter>
+            #     'device_fq_name': ['default-global-system-config', 'qfx-10'],
+            #     'physical_role": 'leaf',
+            #     'routing_bridging_roles": ['CRB-Gateway']
+            # }
         :return: None
         """
         device_obj = device_roles.get('device_obj')
@@ -3635,4 +3637,3 @@ def __main__():
 
 if __name__ == '__main__':
     __main__()
-

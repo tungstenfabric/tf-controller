@@ -15,7 +15,7 @@ import time
 
 from ansible.module_utils.fabric_utils import FabricAnsibleModule
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # noqa
 import requests
 import swiftclient
 import swiftclient.utils
@@ -111,7 +111,7 @@ class FileSvcUtil(object):  # pragma: no cover
     def __init__(self, authtoken, authurl, user, key, tenant_name,
                  auth_version, container_name, filename, temp_url_key,
                  temp_url_key2, connection_retry_count, chosen_temp_url_key):
-        """Initializer."""
+        """Initialize FileSvcUtil."""
         self.requests = requests
         self.authurl = authurl
         self.preauthtoken = authtoken
