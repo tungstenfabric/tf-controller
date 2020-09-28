@@ -5,16 +5,44 @@
 
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-import sys
-import time
-import argparse
-from six.moves import configparser
+standard_library.install_aliases()  # noqa
 
-from vnc_api.vnc_api import *
-from cfgm_common.exceptions import *
+from six.moves import configparser
+import argparse
+import time
+import sys
+from builtins import object
+
+from vnc_api.gen.resource_xsd import KeyValuePair
+from vnc_api.gen.resource_xsd import KeyValuePairs
+from vnc_api.vnc_api import SubnetType
+from vnc_api.vnc_api import SubnetListType
+from vnc_api.vnc_api import VirtualRouter
+from vnc_api.vnc_api import SubCluster
+from vnc_api.vnc_api import VirtualMachineInterface
+from cfgm_common.exceptions import ResourceExhaustionError
+from cfgm_common.exceptions import NoIdError
+from cfgm_common.exceptions import RefsExistError
+
 from vnc_admin_api import VncApiAdmin
+
+
+class SriovPhysNetAction(argparse.Action):
+    def __call__(self, parser, args, values, option_string=None):
+        if not values:
+            return
+
+        kvps = KeyValuePairs()
+        kvp_list = []
+        for value in values:
+            try:
+                (physnet, interface) = value.split("=", 2)
+            except ValueError:
+                raise argparse.ArgumentError(
+                    self, "could not parse argument: %s", value)
+            kvp_list.append(KeyValuePair(key=physnet, value=interface))
+        kvps.set_key_value_pair(kvp_list)
+        setattr(args, self.dest, kvps)
 
 
 class VrouterProvisioner(object):
@@ -38,7 +66,7 @@ class VrouterProvisioner(object):
                     auth_host=self._args.openstack_ip,
                     api_server_use_ssl=self._args.api_server_use_ssl)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:  # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -61,8 +89,8 @@ class VrouterProvisioner(object):
             self.del_vhost0_vmi()
             self.del_vrouter()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
@@ -127,13 +155,16 @@ class VrouterProvisioner(object):
 
         parser.add_argument(
             "--host_name", help="hostname name of compute-node", required=True)
-        parser.add_argument("--host_ip", help="IP address of compute-node", required=True)
+        parser.add_argument(
+            "--host_ip",
+            help="IP address of compute-node",
+            required=True)
         parser.add_argument(
             "--control_names",
             help="List of control-node names compute node connects to")
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper", default='add',
             help="Provision operation to be done(add or del)")
@@ -146,25 +177,35 @@ class VrouterProvisioner(object):
         parser.add_argument(
             "--openstack_ip", help="IP address of openstack node")
         parser.add_argument(
-            "--router_type", help="Type of the virtual router (tor-service-node,embedded or none)")
+            "--router_type",
+            help="Type of the virtual router (tor-service-node,embedded,none)")
         parser.add_argument(
-            "--dpdk_enabled", action="store_true", help="Whether forwarding mode on vrouter is DPDK based")
+            "--dpdk_enabled",
+            action="store_true",
+            help="Whether forwarding mode on vrouter is DPDK based")
         parser.add_argument(
-            "--disable_vhost_vmi", action="store_true", help="Do not create vhost0 vmi if flag is set")
+            "--disable_vhost_vmi",
+            action="store_true",
+            help="Do not create vhost0 vmi if flag is set")
         parser.add_argument(
-            "--enable_vhost_vmi_policy", action="store_true", help="Enable vhost0 vmi policy if flag is set")
-        parser.add_argument(
-            "--sub_cluster_name", help="Sub cluster this vrouter to be part of")
+            "--enable_vhost_vmi_policy",
+            action="store_true",
+            help="Enable vhost0 vmi policy if flag is set")
+        parser.add_argument("--sub_cluster_name",
+                            help="Sub cluster this vrouter to be part of")
         parser.add_argument("--ip_fabric_subnet",
-                            help = "Add the ip_fabric_subnet")
+                            help="Add the ip_fabric_subnet")
+        parser.add_argument("--sriov_physnets", metavar="KEY=VALUE", nargs='+',
+                            action=SriovPhysNetAction,
+                            help="physnet to vourter interface mapping")
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument(
             "--api_server_ip", help="IP address of api server",
             nargs='+', type=str)
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -212,6 +253,11 @@ class VrouterProvisioner(object):
             vrouter_obj.set_virtual_router_dpdk_enabled(True)
         else:
             vrouter_obj.set_virtual_router_dpdk_enabled(False)
+
+        # Configure sirov physical networks
+        if self._args.sriov_physnets:
+            vrouter_obj.set_virtual_router_sriov_physical_networks(
+                self._args.sriov_physnets)
         if vrouter_exists:
             self.vrouter_fq_name = vrouter_obj.get_fq_name()
             self._vnc_lib.virtual_router_update(vrouter_obj)
@@ -240,12 +286,14 @@ class VrouterProvisioner(object):
             vhost0_vmi_fq_name = self.vrouter_fq_name
             vhost0_vmi_fq_name.append('vhost0')
             vhost0_vmi = self._vnc_lib.virtual_machine_interface_read(
-                fq_name = vhost0_vmi_fq_name)
+                fq_name=vhost0_vmi_fq_name)
             vhost0_vmi_exists = True
         except NoIdError:
             vhost0_vmi_exists = False
-            vhost0_vmi =  VirtualMachineInterface(name="vhost0", parent_obj = vrouter_obj)
-            ip_fab_vn = self._vnc_lib.virtual_network_read(fq_name = [u'default-domain', u'default-project', u'ip-fabric'])
+            vhost0_vmi = VirtualMachineInterface(
+                name="vhost0", parent_obj=vrouter_obj)
+            ip_fab_vn = self._vnc_lib.virtual_network_read(
+                fq_name=[u'default-domain', u'default-project', u'ip-fabric'])
             vhost0_vmi.set_virtual_network(ip_fab_vn)
 
         # Enable/Disable policy on the vhost0 vmi
@@ -255,7 +303,7 @@ class VrouterProvisioner(object):
             vhost0_vmi.set_virtual_machine_interface_disable_policy(True)
 
         if vhost0_vmi_exists:
-           self._vnc_lib.virtual_machine_interface_update(vhost0_vmi)
+            self._vnc_lib.virtual_machine_interface_update(vhost0_vmi)
         else:
             try:
                 self._vnc_lib.virtual_machine_interface_create(vhost0_vmi)
@@ -269,7 +317,7 @@ class VrouterProvisioner(object):
         vrouter_obj = VirtualRouter(self._args.host_name, gsc_obj)
         vrouter_exists = True
         try:
-            vrouter = self._vnc_lib.virtual_router_read(
+            _ = self._vnc_lib.virtual_router_read(
                 fq_name=vrouter_obj.get_fq_name())
         except NoIdError:
             vrouter_exists = False
@@ -289,13 +337,14 @@ class VrouterProvisioner(object):
         vhost0_vmi_fq_name.append('vhost0')
         vhost0_vmi_exists = True
         try:
-            vhost0_vmi = self._vnc_lib.virtual_machine_interface_read(
-                fq_name = vhost0_vmi_fq_name)
+            _ = self._vnc_lib.virtual_machine_interface_read(
+                fq_name=vhost0_vmi_fq_name)
         except NoIdError:
             vhost0_vmi_exists = False
 
         if vhost0_vmi_exists:
-            self._vnc_lib.virtual_machine_interface_delete(fq_name=vhost0_vmi_fq_name)
+            self._vnc_lib.virtual_machine_interface_delete(
+                fq_name=vhost0_vmi_fq_name)
             print(" Deleted vhost0 vmi %s " % vhost0_vmi_fq_name)
         else:
             print(" No vhost0 vmi found ")
@@ -308,6 +357,7 @@ class VrouterProvisioner(object):
 def main(args_str=None):
     VrouterProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()
