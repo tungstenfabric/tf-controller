@@ -411,8 +411,6 @@ class DeviceManager(object):
 
         if PushConfigState.is_push_mode_ansible():
             FabricManager.initialize(args, dm_logger, self._vnc_lib)
-        # Initialize amqp
-        self._vnc_amqp.establish()
 
         # Initialize cassandra
         self._object_db = DMCassandraDB.get_instance(zookeeper_client,
@@ -420,6 +418,9 @@ class DeviceManager(object):
         DBBaseDM.init(self, self.logger, self._object_db)
         DBBaseDM._sandesh = self.logger._sandesh
 
+        # DBBaseDM.init should be called before Initializing amqp
+        # Initialize amqp
+        self._vnc_amqp.establish()
         GlobalSystemConfigDM.locate_all()
         FeatureFlagDM.locate_all()
         FlowNodeDM.locate_all()
