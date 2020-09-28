@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "956425b6_95ea128a",
+        "filename": "src/config/fabric-ansible/tox.ini",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2020-09-28T17:49:20Z",
+      "side": 1,
+      "message": "why pep8 is not switched on for CI? next review will break pep8. it has to be enabled.",
+      "revId": "50bd78e5a6a67ab126256c772143dc804721d4b6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
