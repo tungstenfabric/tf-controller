@@ -552,12 +552,43 @@ class WFManager(object):
                     pb_info.job_completion_weightage
                     for pb_info in playbook_list]
 
-            for i in range(0, len(playbook_list)):
+            cleanup_in_progress = False
+            cleanup_completed = False
+            pb_idx = 0
+
+            while pb_idx < len(playbook_list):
 
                 # check if its a multi device playbook
                 playbooks = job_template.get_job_template_playbooks()
-                play_info = playbooks.playbook_info[i]
+                play_info = playbooks.playbook_info[pb_idx]
                 multi_device_playbook = play_info.multi_device_playbook
+                playbook_name = play_info.playbook_uri.split('/')[-1]
+
+                if cleanup_in_progress:
+                    # If we need to cleanup due to a previous error, ignore
+                    # any playbooks that don't perform recovery
+                    if not play_info.recovery_playbook:
+                        self._logger.info("Ignoring playbook %s since it "
+                                          "does not perform recovery" %
+                                          playbook_name)
+                        pb_idx += 1
+                        continue
+
+                    # If we are running a recovery playbook, then
+                    # cleanup_completed needs to be set irrespective of
+                    # a success or error in recovery playbook execution
+                    else:
+                        self._logger.info("Running recovery playbook %s" %
+                                          playbook_name)
+                        cleanup_completed = True
+                else:
+                    # Don't run a recovery playbook if we haven't hit an error
+                    if play_info.recovery_playbook:
+                        self._logger.info(
+                            "Ignoring recovery playbook %s since we "
+                            "haven't hit an error" % playbook_name)
+                        pb_idx += 1
+                        continue
 
                 if len(playbook_list) > 1:
                     # get the job percentage based on weightage of each plabook
@@ -565,7 +596,7 @@ class WFManager(object):
                     job_percent = \
                         self.job_log_utils.calculate_job_percentage(
                             len(playbook_list), buffer_task_percent=True,
-                            total_percent=100, task_seq_number=i + 1,
+                            total_percent=100, task_seq_number=pb_idx + 1,
                             task_weightage_array=task_weightage_array)[0]
                 else:
                     job_percent = \
@@ -577,10 +608,9 @@ class WFManager(object):
                 while True:
                     job_mgr = JobManager(self._logger, self._vnc_api,
                                          self.job_input, self.job_log_utils,
-                                         job_template,
-                                         self.result_handler, self.job_utils,
-                                         i, job_percent, self._zk_client,
-                                         self.job_description,
+                                         job_template, self.result_handler,
+                                         self.job_utils, pb_idx, job_percent,
+                                         self._zk_client, self.job_description,
                                          self.job_transaction_id,
                                          self.job_transaction_descr)
                     self.job_mgr = job_mgr
@@ -590,7 +620,8 @@ class WFManager(object):
                     # the playbook output
                     job_status = self.result_handler.job_result_status
                     retry_devices = self.result_handler.get_retry_devices()
-                    failed_device_list = self.result_handler.get_failed_device_list()
+                    failed_device_list = self.result_handler\
+                        .get_failed_device_list()
                     if job_status == JobStatus.FAILURE or not retry_devices \
                             or self.abort_flag:
                         break
@@ -606,18 +637,24 @@ class WFManager(object):
                 # stop the workflow if playbook failed
                 if self.result_handler.job_result_status == JobStatus.FAILURE:
 
-                    # stop workflow only if its a single device job or
-                    # it is a multi device playbook
-                    # and all the devices have failed some job execution
-                    # declare it as failure and the stop the workflow
+                    # If it is a single device job or
+                    # if it is a multi device playbook
+                    # and all the devices have failed some job execution,
+                    # declare it as failure, perform cleanup if possible
+                    # and then stop the workflow
 
                     if not multi_device_playbook or \
                             (multi_device_playbook and
                              len(self.result_handler.failed_device_jobs) ==
                              len(self.job_input.get('device_json'))):
-                        self._logger.error(
-                            "Stop the workflow on the failed Playbook.")
-                        break
+                        if not cleanup_in_progress:
+                            cleanup_in_progress = True
+                            pb_idx = 0
+                            self._logger.info("Stop the workflow on the failed"
+                                              " Playbook and start cleanup")
+                        else:
+                            pb_idx += 1
+                        continue
 
                     elif not retry_devices:
                         # it is a multi device playbook but one of
@@ -632,8 +669,8 @@ class WFManager(object):
                 if self.abort_flag:
                     err_msg = "ABORTING NOW..."
                     self._logger.info(err_msg)
-                    self.result_handler.update_job_status(JobStatus.FAILURE,
-                                                          err_msg)
+                    self.result_handler.update_job_status(
+                        JobStatus.FAILURE, err_msg)
                     break
 
                 # update the job input with marked playbook output json
@@ -647,6 +684,18 @@ class WFManager(object):
                     self.job_input['device_json'] = device_json
 
                 self.job_input.get('input', {}).update(pb_output)
+
+                pb_idx += 1
+
+            # A successful recovery playbook execution might
+            # set JobStatus to success but this does not indicate a
+            # success in the workflow. Set JobStatus to failure again.
+            if cleanup_completed:
+                err_msg = "Finished cleaning up after the error"
+                self.result_handler.update_job_status(JobStatus.FAILURE,
+                                                      err_msg)
+                cleanup_completed = False
+                cleanup_in_progress = False
 
             # create job completion log and update job UVE
             self.result_handler.create_job_summary_log(
