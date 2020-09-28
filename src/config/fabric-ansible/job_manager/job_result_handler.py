@@ -17,7 +17,7 @@ class JobResultHandler(object):
     def __init__(self, job_template_id, execution_id, fabric_fq_name,
                  logger, job_utils, job_log_utils, device_name,
                  job_description, transaction_id, transaction_descr):
-        """Initializes JobResultHandler."""
+        """Initialize JobResultHandler."""
         self._job_template_id = job_template_id
         self._execution_id = execution_id
         self._fabric_fq_name = fabric_fq_name

@@ -16,11 +16,11 @@ import logging
 import socket
 
 from gevent import Greenlet, monkey, pool, queue
-monkey.patch_all()
-from ansible.module_utils.device_info import DeviceInfo # noqa
-from ansible.module_utils.fabric_pysnmp import snmp_walk # noqa
-from ansible.module_utils.fabric_utils import FabricAnsibleModule # noqa
-from netaddr import IPNetwork
+monkey.patch_all()  # noqa
+from ansible.module_utils.device_info import DeviceInfo  # noqa
+from ansible.module_utils.fabric_pysnmp import snmp_walk  # noqa
+from ansible.module_utils.fabric_utils import FabricAnsibleModule  # noqa
+from netaddr import IPNetwork  # noqa
 
 logging.getLogger(
     'requests.packages.urllib3.connectionpool').setLevel(logging.ERROR)
@@ -128,7 +128,7 @@ def _single_greenlet_processing(deviceinfo, retry_queue):
                 if host_params.get('remaining_retry_duration') <= 0.0:
                     msg = "Host {} tried for the given retry timeout {}. " \
                           "Discovery FAILED" % (host_params.get('host'),
-                                              deviceinfo.total_retry_timeout)
+                                                deviceinfo.total_retry_timeout)
                     logger.info(msg)
                     deviceinfo.module.results['warning_msg'] += msg
                     deviceinfo.module.send_job_object_log(

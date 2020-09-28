@@ -5,7 +5,7 @@ from builtins import str
 import sys
 import traceback
 
-sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")
+sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")  # noqa
 from filter_utils import _task_done, _task_error_log, _task_log, FilterLog
 
 from job_manager.job_utils import JobVncApi
@@ -29,96 +29,96 @@ class FilterModule(object):
         """Topology discovery.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ],
-                    "device_auth": [{
-                        "username": "root",
-                        "password": "Embe1mpls"
-                    }],
-                    "management_subnets": [
-                        {
-                            "cidr": "10.87.69.0/25",
-                            "gateway": "10.87.69.1"
-                        }
-                    ],
-                    "overlay_ibgp_asn": 64512,
-                    "node_profiles": [
-                        {
-                            "node_profile_name": "juniper-qfx5k"
-                        }
-                    ]
-                }
-            }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "device_auth": [{
+            #             "username": "root",
+            #             "password": "Embe1mpls"
+            #         }],
+            #         "management_subnets": [
+            #             {
+            #                 "cidr": "10.87.69.0/25",
+            #                 "gateway": "10.87.69.1"
+            #             }
+            #         ],
+            #         "overlay_ibgp_asn": 64512,
+            #         "node_profiles": [
+            #             {
+            #                 "node_profile_name": "juniper-qfx5k"
+            #             }
+            #         ]
+            #     }
+            # }
         :param prouter_fqname: List
             example:
-            [
-              "default-global-system-config",
-              "5c3-qfx2"
-            ]
+            # [
+            #   "default-global-system-config",
+            #   "5c3-qfx2"
+            # ]
         :param prouter_vendor: String
             example: "juniper"
         :param lldp_neighbors_payload: Dictionary
-            example:
-            {
-              "neighbor_info_list":
-              [
-                {
-                  "local_physical_interface_name": "xe-0/0/0",
-                  "remote_device_name": "5b5-qfx11",
-                  "remote_physical_interface_port_id": "536"
-                },
-                {
-                  "local_physical_interface_name": "xe-0/0/2",
-                  "remote_device_chassis_id": "00:1a:53:46:7b:9e",
-                  "remote_physical_interface_port_id": "538"
-                }
-              ]
-            }
+            # example:
+            # {
+            #   "neighbor_info_list":
+            #   [
+            #     {
+            #       "local_physical_interface_name": "xe-0/0/0",
+            #       "remote_device_name": "5b5-qfx11",
+            #       "remote_physical_interface_port_id": "536"
+            #     },
+            #     {
+            #       "local_physical_interface_name": "xe-0/0/2",
+            #       "remote_device_chassis_id": "00:1a:53:46:7b:9e",
+            #       "remote_physical_interface_port_id": "538"
+            #     }
+            #   ]
+            # }
         :return: Dictionary
-        if success, returns
-            {
-              'status': 'success',
-              'topology_discovery_log':
-                  <String: topology_discovery_log>,
-              'topology_discovery_resp':
-                  <Dictionary: topology_discovery_resp>
-            }
-        if failure, returns
-            {
-              'status': 'failure',
-              'error_msg': <String: exception message>,
-              'topology_discovery_log':
-                  <String: topology_discovery_log>,
-              'topology_discovery_resp':
-                  <Dictionary: topology_discovery_resp>
-            }
+            # if success, returns
+            #     {
+            #       'status': 'success',
+            #       'topology_discovery_log':
+            #           <String: topology_discovery_log>,
+            #       'topology_discovery_resp':
+            #           <Dictionary: topology_discovery_resp>
+            #     }
+            # if failure, returns
+            #     {
+            #       'status': 'failure',
+            #       'error_msg': <String: exception message>,
+            #       'topology_discovery_log':
+            #           <String: topology_discovery_log>,
+            #       'topology_discovery_resp':
+            #           <Dictionary: topology_discovery_resp>
+            #     }
         :param topology_discovery_resp: Dictionary
-            example:
-            {
-              "lldp_neighbors_success_names":
-                  <List: <String: lldp_neighbors_success_pair_string>>,
-              "lldp_neighbors_failed_info":
-                  <List: <Dictionary: lldp_neighbor_failed_obj> >
-            }
-            :param lldp_neighbors_success_names: List
-            example:
-                ["bng-contrail-qfx51-15 : ge-0/0/36 --> dhawan : ge-2/3/1"]
-            :param lldp_neighbors_failed_info: List
-            example:
-                [
-                  {
-                    "lldp_neighbor":
-                        "bng-contrail-qfx51-15 : em0 --> sw174 : ge-1/0/46",
-                    "warning_message":
-                        "Unknown physical interface ng-contrail-qfx51-15:em0"
-                  }
-                ]
+            # example:
+            # {
+            #   "lldp_neighbors_success_names":
+            #       <List: <String: lldp_neighbors_success_pair_string>>,
+            #   "lldp_neighbors_failed_info":
+            #       <List: <Dictionary: lldp_neighbor_failed_obj> >
+            # }
+            # :param lldp_neighbors_success_names: List
+            # example:
+            #     ["bng-contrail-qfx51-15 : ge-0/0/36 --> dhawan : ge-2/3/1"]
+            # :param lldp_neighbors_failed_info: List
+            # example:
+            #     [
+            #       {
+            #         "lldp_neighbor":
+            #             "bng-contrail-qfx51-15 : em0 --> sw174 : ge-1/0/46",
+            #         "warning_message":
+            #             "Unknown physical interface ng-contrail-qfx51-15:em0"
+            #       }
+            #     ]
         """
         self._instantiate_filter_log_instance(prouter_fqname[-1])
         _task_log("Starting Topology Discovery")

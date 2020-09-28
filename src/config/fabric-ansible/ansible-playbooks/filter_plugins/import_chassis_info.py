@@ -5,7 +5,7 @@ from builtins import str
 import sys
 import traceback
 
-sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")
+sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")  # noqa
 from filter_utils import _task_done, _task_error_log, _task_log, FilterLog
 from vnc_api.exceptions import NoIdError
 
@@ -29,68 +29,67 @@ class FilterModule(object):
         """Import chassis Mac.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ],
-                    "device_auth": [{
-                        "username": "root",
-                        "password": "Embe1mpls"
-                    }],
-                    "management_subnets": [
-                        {
-                            "cidr": "10.87.69.0/25",
-                            "gateway": "10.87.69.1"
-                        }
-                    ],
-                    "overlay_ibgp_asn": 64512,
-                    "node_profiles": [
-                        {
-                            "node_profile_name": "juniper-qfx5k"
-                        }
-                    ]
-                }
-            }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "device_auth": [{
+            #             "username": "root",
+            #             "password": "Embe1mpls"
+            #         }],
+            #         "management_subnets": [
+            #             {
+            #                 "cidr": "10.87.69.0/25",
+            #                 "gateway": "10.87.69.1"
+            #             }
+            #         ],
+            #         "overlay_ibgp_asn": 64512,
+            #         "node_profiles": [
+            #             {
+            #                 "node_profile_name": "juniper-qfx5k"
+            #             }
+            #         ]
+            #     }
+            # }
         :param prouter_name: String
             example: "5c3-qfx8"
         :param prouter_vendor: String
             example: "juniper"
         :param chassis_payload: Dictionary
-            example:
-            {
-              "device_chassis_id_info": [
-                {
-                  "device_chassis_id": "00:11:22:33:44:55",
-                  "chassis_id_type": "private"
-                }
-              ]
-            }
-
+            # example:
+            # {
+            #   "device_chassis_id_info": [
+            #     {
+            #       "device_chassis_id": "00:11:22:33:44:55",
+            #       "chassis_id_type": "private"
+            #     }
+            #   ]
+            # }
 
         :return: Dictionary
-        if success, returns
-            {
-              'status': 'success',
-              'chassis_import_log': <String: chassis_import_log>,
-              'chassis_import_resp': <Dictionary: chassis_import_resp>
-            }
-        if failure, returns
-            {
-              'status': 'failure',
-              'error_msg': <String: exception message>,
-              'chassis_import_log': <String: chassis_import_log>
-            }
+            # if success, returns
+            #     {
+            #       'status': 'success',
+            #       'chassis_import_log': <String: chassis_import_log>,
+            #       'chassis_import_resp': <Dictionary: chassis_import_resp>
+            #     }
+            # if failure, returns
+            #     {
+            #       'status': 'failure',
+            #       'error_msg': <String: exception message>,
+            #       'chassis_import_log': <String: chassis_import_log>
+            #     }
         :param chassis_import_resp: Dictionary
-            example:
-            {
-              "chassis_mac_ids":
-                  <List: <String: chassis_mac_id> >,
-              "warning_info": <List: warn_info>
-            }
+            # example:
+            # {
+            #   "chassis_mac_ids":
+            #       <List: <String: chassis_mac_id> >,
+            #   "warning_info": <List: warn_info>
+            # }
         """
         self._instantiate_filter_log_instance(prouter_name)
         _task_log("Starting Chassis Info Import")

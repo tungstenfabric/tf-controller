@@ -9,7 +9,7 @@
 from builtins import str
 from functools import wraps
 import json
-import traceback
+import traceback  # noqa
 import uuid
 
 from ansible.module_utils.basic import AnsibleModule
@@ -17,7 +17,7 @@ from ansible.module_utils.basic import AnsibleModule
 from job_manager.fabric_logger import fabric_ansible_logger
 from job_manager.job_log_utils import JobLogUtils
 from job_manager.job_utils import JobFileWrite
-from job_manager.sandesh_utils import SandeshUtils
+from job_manager.sandesh_utils import SandeshUtils  # noqa
 
 
 def handle_sandesh(function):

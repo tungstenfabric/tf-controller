@@ -7,6 +7,8 @@
 # via sandesh
 #
 
+from ansible.module_utils.fabric_utils import FabricAnsibleModule
+
 DOCUMENTATION = '''
 ---
 
@@ -51,8 +53,6 @@ EXAMPLES = '''
         prouter_fqname: "{{ prouter_info.fq_name }}"
         onboarding_state: "{{ DEVICE_STATE.UNDERLAY_CONFIGURED }}"
 '''
-
-from ansible.module_utils.fabric_utils import FabricAnsibleModule
 
 
 def process_module(module):

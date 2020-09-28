@@ -29,12 +29,12 @@ class FilterModule(object):
 if __name__ == "__main__":
     fc = FilterModule()
     device_response = None
+    print fc.parse_re_response(device_response)  # noqa: E999
+
+    device_response = {'route-engine-information': {}}
     print fc.parse_re_response(device_response)
 
-    device_response = {'route-engine-information':{}}
-    print fc.parse_re_response(device_response)
-
-    device_response = {'route-engine-information':{'route-engine': {}}}
+    device_response = {'route-engine-information': {'route-engine': {}}}
     print fc.parse_re_response(device_response)
 
     device_response = {'route-engine-information': {'route-engine': {

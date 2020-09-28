@@ -1,18 +1,17 @@
 #!/usr/bin/python
 
-from builtins import str
 from builtins import object
+from builtins import str
 import json
 import sys
 import traceback
 
+sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")  # noqa
 from filter_utils import _task_done, _task_error_log, _task_log, \
     FilterLog
 from vnc_api.exceptions import NoIdError
 
 from job_manager.job_utils import JobVncApi
-
-sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")
 
 
 class FilterModule(object):
@@ -58,61 +57,60 @@ class FilterModule(object):
     def update_physical_router(self, job_ctx, prouter_name,
                                obj_dict_payload, prouter_vendor):
         """
-        Updating the physical router object.
+        Update the physical router object.
 
         :param job_ctx: Dictionary.
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ],
-                    "device_auth": [{
-                        "username": "root",
-                        "password": "Embe1mpls"
-                    }]
-                }
-            }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "device_auth": [{
+            #             "username": "root",
+            #             "password": "Embe1mpls"
+            #         }]
+            #     }
+            # }
         :param prouter_name: String
             example: "5c3-qfx8"
         :param obj_dict_payload: Dictionary
-            example:
-            {
-              "physical_router_dataplane_ip": "10.0.0.2",
-              "physical_router_loopback_ip": "10.0.0.2",
-              "fq_name": ["default-global-system-config","5c3-qfx8"],
-              "physical_router_os_version": "srx-20.65",
-              "additional_properties": {
-                  'Some Key that needs to be tapped':
-                      'Some random annotations spec. to this vendor'
-              }
-            }
+            # example:
+            # {
+            #   "physical_router_dataplane_ip": "10.0.0.2",
+            #   "physical_router_loopback_ip": "10.0.0.2",
+            #   "fq_name": ["default-global-system-config","5c3-qfx8"],
+            #   "physical_router_os_version": "srx-20.65",
+            #   "additional_properties": {
+            #       'Some Key that needs to be tapped':
+            #           'Some random annotations spec. to this vendor'
+            #   }
+            # }
+
         :param prouter_vendor: String
             example: "juniper"
-
         :return: Dictionary
-        if success, returns
-            {
-              'status': 'success',
-              'upd_pr_log': <String: upd_pr_log>,
-              'physical_router_upd_resp':
-                      <Dictionary: physical_router_upd_resp>
-            }
-        if failure, returns
-            {
-              'status': 'failure',
-              'error_msg': <String: exception message>,
-              'upd_pr_log': <String: upd_pr_log>
-
-            }
-            :param physical_router_upd_resp: Dictionary
-                example:
-                {
-                  "job_log_msg": <String: job log message>,
-                  "warning_info": <Dictionary: warning_info>
-                }
+            # if success, returns
+            #     {
+            #       'status': 'success',
+            #       'upd_pr_log': <String: upd_pr_log>,
+            #       'physical_router_upd_resp':
+            #               <Dictionary: physical_router_upd_resp>
+            #     }
+            # if failure, returns
+            #     {
+            #       'status': 'failure',
+            #       'error_msg': <String: exception message>,
+            #       'upd_pr_log': <String: upd_pr_log>
+            #     }
+            #     :param physical_router_upd_resp: Dictionary
+            #         example:
+            #         {
+            #           "job_log_msg": <String: job log message>,
+            #           "warning_info": <Dictionary: warning_info>
+            #         }
         """
         FilterLog.instance("UpdatePhysicalRouterFilter", prouter_name)
         _task_log("Starting Device Update")
