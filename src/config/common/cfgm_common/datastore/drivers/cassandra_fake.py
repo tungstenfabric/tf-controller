@@ -6,8 +6,8 @@ import datetime
 import itertools
 
 from cfgm_common.datastore import api as datastore_api
-from cfgm_common.datastore.drivers import cassandra_thrift
 from cfgm_common.datastore.drivers import cassandra_cql
+from cfgm_common.datastore.drivers import cassandra_thrift
 from cfgm_common.tests import cassandra_fake_impl
 
 
@@ -27,7 +27,7 @@ class CassandraDriverThrift(cassandra_thrift.CassandraDriverThrift):
             keyspace = self.keyspace(ks)
             if self.options.reset_config:
                 self.server.drop_keyspace(keyspace)
-            ses = self.server.create_keyspace(keyspace)
+            self.server.create_keyspace(keyspace)
             # Create CFs in keyspace
             for cf_name in cf_dict:
                 self.create_session(keyspace, cf_name)
@@ -52,7 +52,8 @@ class CassandraDriverThrift(cassandra_thrift.CassandraDriverThrift):
             try:
                 # Workaround added to statisfy test. Can be removed
                 # when [0] merged.
-                # [0] https://review.opencontrail.org/c/Juniper/contrail-controller/+/60779
+                # [0] https://review.opencontrail.org/c/Juniper/contrail-
+                # controller/+/60779
                 self.start_time = datetime.datetime.now()
                 return func(*args, **kwargs)
             finally:
@@ -79,7 +80,7 @@ class CassandraDriverCQL(cassandra_cql.CassandraDriverCQL):
             keyspace = self.keyspace(ks)
             if self.options.reset_config:
                 self.server.drop_keyspace(keyspace)
-            ses = self.server.create_keyspace(keyspace)
+            self.server.create_keyspace(keyspace)
             # Create CFs in keyspace
             for cf_name in cf_dict:
                 self.create_session(keyspace, cf_name)
@@ -99,12 +100,16 @@ class CassandraDriverCQL(cassandra_cql.CassandraDriverCQL):
     def _Keyspace_Properties(self, keyspace):
         return {'strategy_options': {'replication_factor': '1'}}
 
+    def apply(self, ses, cql, args):
+        return [ses.execute(cql, arg) for arg in args]
+
     def _handle_exceptions(self, func, oper=None):
         def wrapper(*args, **kwargs):
             try:
                 # Workaround added to statisfy test. Can be removed
                 # when [0] merged.
-                # [0] https://review.opencontrail.org/c/Juniper/contrail-controller/+/60779
+                # [0] https://review.opencontrail.org/c/Juniper/contrail-
+                # controller/+/60779
                 self.start_time = datetime.datetime.now()
                 return func(*args, **kwargs)
             finally:
