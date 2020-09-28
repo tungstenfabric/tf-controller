@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1416a614_9ca380d3",
+        "filename": "src/config/utils/provision_vrouter.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-28T22:49:02Z",
+      "side": 1,
+      "message": "Include --sriov_physnets in the example",
+      "revId": "51cdbbef8adac287f1100695e1a614a99e3fc9ea",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa3b6ea0_19e8314a",
+        "filename": "src/config/utils/provision_vrouter.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-28T22:49:02Z",
+      "side": 1,
+      "message": "i suppose no need to save it as _",
+      "revId": "51cdbbef8adac287f1100695e1a614a99e3fc9ea",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ee17c5a_f5774b6f",
+        "filename": "src/config/utils/provision_vrouter.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-09-28T22:49:02Z",
+      "side": 1,
+      "message": "i suppose no need to save it as _",
+      "revId": "51cdbbef8adac287f1100695e1a614a99e3fc9ea",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
