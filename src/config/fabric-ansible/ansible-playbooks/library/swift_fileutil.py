@@ -209,7 +209,7 @@ class FileSvcUtil(object):  # pragma: no cover
 #        return urlparse('/%s/%s' % (container_name, fileobj_name)).path
 
     def getObjUrl(self, device_image_file_uri):
-        image_path = device_image_file_uri
+        image_path = device_image_file_uri.strip()
         try:
             image_url = self.getPublicDownloadUrl(image_path)
             return image_url
