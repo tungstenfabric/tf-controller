@@ -14,7 +14,7 @@ from builtins import str
 import json
 import os
 import re
-import shutil
+import shutil  # noqa
 import sys
 import traceback
 
@@ -60,7 +60,7 @@ class FilterModule(object):
         self.final_config_path = self.conf_dir + '/final_config'
         self.combined_config_path = \
             self.final_config_path + '/combined_config.conf'
-        #shutil.rmtree(self.final_config_path, ignore_errors=True)
+        # shutil.rmtree(self.final_config_path, ignore_errors=True)
         if os.path.exists(self.combined_config_path):
             os.remove(self.combined_config_path)
         if self.is_delete and os.path.exists(self.abstract_config_path):

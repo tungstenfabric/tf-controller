@@ -6,6 +6,7 @@ from ansible.plugins.lookup import LookupBase
 from ansible.utils.listify import listify_lookup_plugin_terms
 from lxml import etree
 
+
 # https://gist.github.com/andyjsharp/501f79e8c56577d07fa77f040939714e#file-xmlfile-py
 #
 # Version using lxml and xpath
@@ -36,7 +37,7 @@ class LookupModule(LookupBase):
             values = [self.tostr(node) for node in nodes]
             return values
 
-        except Exception, e:
+        except Exception, e:  # noqa: E999
             raise AnsibleError("xmlfile: %s" % str(e))
 
         return dflt
@@ -45,10 +46,12 @@ class LookupModule(LookupBase):
 
         basedir = self._loader.get_basedir()
 
-        terms = listify_lookup_plugin_terms(terms, templar=self._templar, loader=self._loader)
+        terms = listify_lookup_plugin_terms(terms,
+                                            templar=self._templar,
+                                            loader=self._loader)
 
         if isinstance(terms, basestring):
-            terms = [ terms ]
+            terms = [terms]
 
         ret = []
         for term in terms:
@@ -56,9 +59,9 @@ class LookupModule(LookupBase):
             key = params[0]
 
             paramvals = {
-                'file' : 'ansible.xml',
-                'default' : None,
-                'xpath' : None,
+                'file': 'ansible.xml',
+                'default': None,
+                'xpath': None,
             }
 
             # parameters specified?
@@ -70,7 +73,7 @@ class LookupModule(LookupBase):
             except (ValueError, AssertionError), e:
                 raise AnsibleError(e)
 
-            path = self._loader.path_dwim_relative(basedir, 'files', paramvals['file'])
+            path = self._loader.path_dwim_relative(basedir, 'files', paramvals['file'])  # noqa: E501
 
             var = self.read_xml(path, paramvals['default'], paramvals['xpath'])
 

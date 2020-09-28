@@ -6,7 +6,7 @@ from builtins import object
 from builtins import str
 import sys
 
-sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")
+sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")  # noqa
 from filter_utils import FilterLog
 
 from job_manager.job_utils import JobFileWrite

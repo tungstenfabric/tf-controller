@@ -5,7 +5,7 @@ from builtins import str
 import sys
 import traceback
 
-sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")
+sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")  # noqa
 from filter_utils import _task_done, _task_error_log, _task_log, FilterLog
 from vnc_api.exceptions import NoIdError
 
@@ -29,82 +29,78 @@ class FilterModule(object):
         """Import Interfaces.
 
         :param job_ctx: Dictionary
-            example:
-            {
-                "auth_token": "EB9ABC546F98",
-                "job_input": {
-                    "fabric_fq_name": [
-                        "default-global-system-config",
-                        "fab01"
-                    ],
-                    "device_auth": [{
-                        "username": "root",
-                        "password": "Embe1mpls"
-                    }],
-                    "management_subnets": [
-                        {
-                            "cidr": "10.87.69.0/25",
-                            "gateway": "10.87.69.1"
-                        }
-                    ],
-                    "overlay_ibgp_asn": 64512,
-                    "node_profiles": [
-                        {
-                            "node_profile_name": "juniper-qfx5k"
-                        }
-                    ]
-                }
-            }
+            # example:
+            # {
+            #     "auth_token": "EB9ABC546F98",
+            #     "job_input": {
+            #         "fabric_fq_name": [
+            #             "default-global-system-config",
+            #             "fab01"
+            #         ],
+            #         "device_auth": [{
+            #             "username": "root",
+            #             "password": "Embe1mpls"
+            #         }],
+            #         "management_subnets": [
+            #             {
+            #                 "cidr": "10.87.69.0/25",
+            #                 "gateway": "10.87.69.1"
+            #             }
+            #         ],
+            #         "overlay_ibgp_asn": 64512,
+            #         "node_profiles": [
+            #             {
+            #                 "node_profile_name": "juniper-qfx5k"
+            #             }
+            #         ]
+            #     }
+            # }
         :param prouter_name: String
             example: "5c3-qfx8"
         :param interfaces_payload: Dictionary
-            example:
-            {
-              "physical_interfaces_list": [
-                {
-                  "physical_interface_port_id": "526",
-                  "physical_interface_mac_address": "00:11:22:33:44:55",
-                  "physical_interface_name": "xe-0/0/1:0"
-                }
-              ],
-              "logical_interfaces_list": [
-                {
-                  "logical_interface_name": "xe-0/0/1:0.236",
-                  "logical_interface_type": "l3",
-                  "logical_interface_vlan_tag": "1213"
-                }
-              ]
-            }
-
-
+            # example:
+            # {
+            #   "physical_interfaces_list": [
+            #     {
+            #       "physical_interface_port_id": "526",
+            #       "physical_interface_mac_address": "00:11:22:33:44:55",
+            #       "physical_interface_name": "xe-0/0/1:0"
+            #     }
+            #   ],
+            #   "logical_interfaces_list": [
+            #     {
+            #       "logical_interface_name": "xe-0/0/1:0.236",
+            #       "logical_interface_type": "l3",
+            #       "logical_interface_vlan_tag": "1213"
+            #     }
+            #   ]
+            # }
         :return: Dictionary
-        if success, returns
-            {
-              'status': 'success',
-              'device_import_log': <String: device_import_log>,
-              'device_import_resp': <Dictionary: device_import_resp>
-            }
-        if failure, returns
-            {
-              'status': 'failure',
-              'error_msg': <String: exception message>,
-              'device_import_log': <String: device_import_log>,
-              'device_import_resp': <Dictionary: device_import_resp>
-
-
-            }
+            # if success, returns
+            #     {
+            #       'status': 'success',
+            #       'device_import_log': <String: device_import_log>,
+            #       'device_import_resp': <Dictionary: device_import_resp>
+            #     }
+            # if failure, returns
+            #     {
+            #       'status': 'failure',
+            #       'error_msg': <String: exception message>,
+            #       'device_import_log': <String: device_import_log>,
+            #       'device_import_resp': <Dictionary: device_import_resp>
+            #     }
         :param device_import_resp: Dictionary
-            example:
-            {
-              "phy_intfs_success_names":
-                  <List: <String: phy_intfs_success_name> >,
-              "log_intfs_success_names":
-                  <List: <String: log_intfs_success_name> >,
-              "phy_intf_failed_info":
-                  <List: <Dictionary: phy_intf_failed_object> >,
-              "log_intf_failed_info":
-                  <List: <Dictionary: log_intf_failed_object> >
-            }
+            # example:
+            # {
+            #   "phy_intfs_success_names":
+            #       <List: <String: phy_intfs_success_name> >,
+            #   "log_intfs_success_names":
+            #       <List: <String: log_intfs_success_name> >,
+            #   "phy_intf_failed_info":
+            #       <List: <Dictionary: phy_intf_failed_object> >,
+            #   "log_intf_failed_info":
+            #       <List: <Dictionary: log_intf_failed_object> >
+            # }
         """
         self._instantiate_filter_log_instance(prouter_name)
         _task_log("Starting Device Import")

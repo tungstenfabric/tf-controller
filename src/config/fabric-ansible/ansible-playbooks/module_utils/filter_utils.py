@@ -7,6 +7,7 @@ from vnc_api.gen.resource_xsd import (
     KeyValuePairs,
 )
 
+
 class FilterLog(object):
     """Pulbic class for filter logging."""
 
@@ -168,11 +169,13 @@ def vnc_bulk_get(vnc_api, obj_name, obj_uuids=None, parent_uuids=None,
     return obj_list
 # end vnc_bulk_get
 
+
 def get_job_transaction(job_ctx):
     transaction_id = job_ctx.get('job_transaction_id')
     transaction_descr = job_ctx.get('job_transaction_descr')
     return {'transaction_id': transaction_id,
             'transaction_descr': transaction_descr}
+
 
 def set_job_transaction(device_obj, vnc_api, trans_info):
     trans_val = json.dumps(trans_info)
