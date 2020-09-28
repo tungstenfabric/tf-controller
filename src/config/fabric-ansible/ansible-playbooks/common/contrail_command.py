@@ -3,9 +3,10 @@
 from __future__ import print_function
 
 from builtins import object
+
 from future import standard_library
 standard_library.install_aliases()  # noqa
-import json
+import json                         # noqa
 import pprint
 from urllib.parse import urlparse
 
@@ -51,7 +52,7 @@ class CreateCCResource(object):
                  cc_username=None,
                  cc_password=None,
                  auth_token=None):
-        """Initialization.
+        """Initialize CreateCCResource.
 
         :param auth_host
         :param cluster_id
@@ -178,7 +179,7 @@ class CreateCCNode(CreateCCResource):
                  cluster_token=None,
                  cc_username=None,
                  cc_password=None):
-        """Initialization.
+        """Initialize CreateCCNode.
 
         :param auth_host
         :param cluster_id
@@ -213,7 +214,7 @@ class CreateCCNodeProfile(CreateCCResource):
                  cluster_token=None,
                  cc_username=None,
                  cc_password=None):
-        """Initialization.
+        """Initialize CreateCCNodeProfile.
 
         :param auth_host
         :param cluster_id

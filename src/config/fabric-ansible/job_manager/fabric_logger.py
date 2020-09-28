@@ -73,4 +73,3 @@ def fabric_ansible_logger(name, ctx=None):
         raise Exception("Cannot write to log file at {}".format(logfile))
 
     return logger
-

@@ -7,6 +7,8 @@
 # via sandesh
 #
 
+from ansible.module_utils.fabric_utils import FabricAnsibleModule
+
 DOCUMENTATION = '''
 ---
 
@@ -55,8 +57,6 @@ EXAMPLES = '''
                  'common_config':\n{{ cmd_res.msg }}"
         status: "{{ JOBLOG_STATUS.IN_PROCESS }}"
 '''
-
-from ansible.module_utils.fabric_utils import FabricAnsibleModule
 
 
 def process_module(module):

@@ -11,12 +11,13 @@ from builtins import object
 import logging
 
 from cfgm_common.exceptions import NoIdError
+from netaddr import IPNetwork
+from netifaces import AF_INET, ifaddresses, interfaces
+from pyroute2 import IPRoute
 from vnc_api.vnc_api import VncApi
 
-from job_manager.job_utils import JobVncApi
-from netifaces import interfaces, ifaddresses, AF_INET
-from pyroute2 import IPRoute
-from netaddr import IPNetwork
+from job_manager.job_utils import JobVncApi  # noqa
+
 
 class FilterModule(object):
 
@@ -47,20 +48,19 @@ class FilterModule(object):
     def get_host_ip_and_name(cls, subnet):
         ip = IPRoute()
         lookup_ip = ''
-        route_lst = ip.route('get', dst= \
-                             (subnet['subnet']['ip_prefix'] +\
-                             '/'+ str(subnet['subnet']['ip_prefix_len'])))
+        route_lst = ip.route('get',
+                             dst=(subnet['subnet']['ip_prefix'] +
+                                  '/' +
+                                  str(subnet['subnet']['ip_prefix_len'])))
         for tup in route_lst[0]['attrs'] or []:
             if tup[0] == 'RTA_PREFSRC':
                 lookup_ip = str(tup[1])
 
         for ifaceName in interfaces() or []:
-            addresses = [i['addr'] for i in ifaddresses(ifaceName)\
-                         .setdefault(AF_INET, [{'addr':'No IP addr'}] )]
+            addresses = [i['addr'] for i in ifaddresses(ifaceName)
+                         .setdefault(AF_INET, [{'addr': 'No IP addr'}])]
             if (addresses[0]) == lookup_ip.decode('utf-8'):
                 return lookup_ip, ifaceName
-
-
 
     @classmethod
     def get_ztp_dhcp_config(cls, job_ctx, fabric_uuid):
@@ -103,10 +103,10 @@ class FilterModule(object):
                         subnet.update({'intf_ip': intf_ip})
                         subnet.update({'intf_name': intf_name})
                     cidr = subnet['subnet']['ip_prefix'] +\
-                            "/" + str(subnet['subnet']['ip_prefix_len'])
+                        "/" + str(subnet['subnet']['ip_prefix_len'])
                     ip = IPNetwork(cidr)
                     if len(ip) > 0:
-                        subnet.update({'name': str(ip.ip).replace('.','')})
+                        subnet.update({'name': str(ip.ip).replace('.', '')})
             # Get static ip configuration for physical routers
             pr_refs = fabric.get_physical_router_back_refs() or []
             pr_uuids = [ref['uuid'] for ref in pr_refs]
