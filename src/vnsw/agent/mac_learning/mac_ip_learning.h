@@ -83,6 +83,7 @@ public:
     void DetectIpMove(MacLearningEntryRequestPtr ptr);
     void MacIpEntryUnreachable(MacLearningEntryRequestPtr ptr);
     void MacIpEntryUnreachable(uint32_t vrf_id, IpAddress &ip, MacAddress &mac);
+    void MacIpEntryHcNotify(const HealthCheckInstanceService *instance_service);
     MacIpLearningEntry* Find(const MacIpLearningKey &key);
     MacAddress GetPairedMacAddress(uint32_t vrf_id, const IpAddress &ip);
     //To be used in test cases only

@@ -298,6 +298,13 @@ public:
     void PostAdd();
     bool Copy(HealthCheckTable *table, const HealthCheckServiceData *data);
 
+    HealthCheckInstanceBase *StartHealthCheckService(VmInterface *intrface,
+                                                     VmInterface *paired_vmi,
+                                                     const IpAddress &source_ip,
+                                                     const IpAddress &destination_ip,
+                                                     const MacAddress &destination_mac,
+                                                     bool ignore_status_event,
+                                                     bool multi_hop);
     HealthCheckInstanceBase *StartHealthCheckService(
                              VmInterface *intrface, const IpAddress &source_ip,
                              const IpAddress &destination_ip,
@@ -305,7 +312,7 @@ public:
         // health check status event is ignored
         return StartHealthCheckService(intrface, NULL, source_ip,
                                        destination_ip, destination_mac,
-                                       true, true);
+                                       false, false);
     }
     void StopHealthCheckService(HealthCheckInstanceBase *instance);
 
@@ -354,13 +361,6 @@ private:
     friend struct HealthCheckInstanceEvent;
 
     bool IsInstanceTaskBased() const;
-    HealthCheckInstanceBase *StartHealthCheckService(VmInterface *intrface,
-                                                     VmInterface *paired_vmi,
-                                                     const IpAddress &source_ip,
-                                                     const IpAddress &destination_ip,
-                                                     const MacAddress &destination_mac,
-                                                     bool ignore_status_event,
-                                                     bool multi_hop);
     HealthCheckType GetHealthCheckType() const;
 
     const HealthCheckTable *table_;
@@ -407,6 +407,9 @@ public:
                                  HealthCheckInstanceService *)>
             HealthCheckServiceCallback;
 
+    typedef boost::function<void(const HealthCheckInstanceService *)>
+            HealthCheckNotifyCallback;
+
     HealthCheckTable(Agent *agent, DB *db, const std::string &name);
     virtual ~HealthCheckTable();
 
@@ -443,12 +446,18 @@ public:
                                HealthCheckService::HealthCheckType type) const {
         return health_check_service_cb_[type];
     }
+    void RegisterHealthCheckNotifyCallback(HealthCheckNotifyCallback fn) {
+        health_check_notify_cb_ = fn;
+    }
+    HealthCheckNotifyCallback health_check_notify_callback() const {
+        return health_check_notify_cb_;
+    }
 
 private:
 
     WorkQueue<HealthCheckInstanceEvent *> *inst_event_queue_;
     HealthCheckServiceCallback health_check_service_cb_[HealthCheckService::MAX_HEALTH_CHECK_SERVICES];
-
+    HealthCheckNotifyCallback health_check_notify_cb_;
     DISALLOW_COPY_AND_ASSIGN(HealthCheckTable);
 };
 

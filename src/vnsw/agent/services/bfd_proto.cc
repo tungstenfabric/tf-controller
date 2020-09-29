@@ -41,6 +41,23 @@ ProtoHandler *BfdProto::AllocProtoHandler(boost::shared_ptr<PktInfo> info,
     return new BfdHandler(agent(), info, io);
 }
 
+bool BfdSessionsKey::IsLess(const BfdSessionsKey &rhs) const {
+    if (id_ != rhs.id_) {
+        return id_ < rhs.id_;
+    }
+    return ip_ < rhs.ip_;
+}
+
+bool BfdSessionsKey::IsEqual(const BfdSessionsKey &rhs) const {
+    if (id_ != rhs.id_) {
+        return false;
+    }
+    if (ip_ != rhs.ip_) {
+        return false;
+    }
+    return true;
+}
+
 bool BfdProto::BfdHealthCheckSessionControl(
                HealthCheckTable::HealthCheckServiceAction action,
                HealthCheckInstanceService *service) {
@@ -94,9 +111,9 @@ bool BfdProto::BfdHealthCheckSessionControl(
                 session_config.detectionTimeMultiplier = multiplier;
 
                 client_->AddSession(key, session_config);
-                SessionsKey key(service->interface()->id(),
+                BfdSessionsKey skey(service->interface()->id(),
                                 service->destination_ip());
-                sessions_[key] = service;
+                sessions_[skey] = service;
                 BFD_TRACE(Trace, "Add / Update",
                           destination_ip.to_string(),
                           source_ip.to_string(), service->interface()->id(),
@@ -107,9 +124,9 @@ bool BfdProto::BfdHealthCheckSessionControl(
         case HealthCheckTable::DELETE_SERVICE:
             {
                 client_->DeleteSession(key);
-                SessionsKey key(service->interface()->id(),
+                BfdSessionsKey skey(service->interface()->id(),
                                     service->destination_ip());
-                Sessions::iterator it = sessions_.find(key);
+                Sessions::iterator it = sessions_.find(skey);
                 sessions_.erase(it);
                 BFD_TRACE(Trace, "Delete",
                         destination_ip.to_string(),
@@ -131,23 +148,11 @@ bool BfdProto::BfdHealthCheckSessionControl(
     return true;
 }
 
-#if 0
-bool BfdProto::GetSourceAddress(uint32_t interface, IpAddress &address) {
-    tbb::mutex::scoped_lock lock(mutex_);
-    Sessions::iterator it = sessions_.find(interface);
-    if (it == sessions_.end()) {
-        return false;
-    }
-    address = it->second->source_ip();
-    return true;
-}
-#endif
-
 void BfdProto::NotifyHealthCheckInstanceService(uint32_t interface,
                                                 IpAddress address,
                                                 std::string &data) {
     tbb::mutex::scoped_lock lock(mutex_);
-    SessionsKey key(interface, address);
+    BfdSessionsKey key(interface, address);
     Sessions::iterator it = sessions_.find(key);
     if (it == sessions_.end()) {
         return;
