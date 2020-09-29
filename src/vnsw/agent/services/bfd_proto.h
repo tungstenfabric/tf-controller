@@ -24,15 +24,15 @@ do {                                                                        \
     Bfd##obj::TraceMsg(BfdTraceBuf, __FILE__, __LINE__, ##__VA_ARGS__);     \
 } while (false)
 
-class SessionsKey {
+class BfdSessionsKey {
 public:
-    SessionsKey(uint32_t id, IpAddress ip) :
+    BfdSessionsKey(uint32_t id, IpAddress ip) :
         id_(id), ip_(ip) {
     }
 
-    ~SessionsKey () { }
+    ~BfdSessionsKey () { }
 
-    bool operator<(const SessionsKey &right) const {
+    bool operator<(const BfdSessionsKey &right) const {
         if ( id_ == right.id_ ) {
             return ip_ < right.ip_;
         } else {
@@ -40,8 +40,17 @@ public:
         }
     }
 
+    bool IsLess(const BfdSessionsKey &rhs) const;
+    bool IsEqual(const BfdSessionsKey &rhs) const;
+
     uint32_t id_;
     IpAddress ip_;
+};
+
+struct BfdSessionsKeyCmp {
+    bool operator()(const BfdSessionsKey &lhs, const BfdSessionsKey &rhs) const {
+        return lhs.IsLess(rhs);
+    }
 };
 
 class BfdProto : public Proto {
@@ -110,7 +119,6 @@ public:
     bool BfdHealthCheckSessionControl(
                HealthCheckTable::HealthCheckServiceAction action,
                HealthCheckInstanceService *service);
-    // bool GetSourceAddress(uint32_t interface, IpAddress &address);
     void NotifyHealthCheckInstanceService(uint32_t interface,
                 IpAddress address, std::string &data);
     BfdCommunicator &bfd_communicator() { return communicator_; }
@@ -124,11 +132,9 @@ public:
 
 private:
     friend BfdCommunicator;
-    // map from interface id to health check instance service
-    // typedef std::map<uint32_t, HealthCheckInstanceService *> Sessions;
-    typedef std::map<SessionsKey, HealthCheckInstanceService *> Sessions;
-    // typedef std::pair<uint32_t, HealthCheckInstanceService *> SessionsPair;
-    typedef std::pair<SessionsKey, HealthCheckInstanceService *> SessionsPair;
+    // map from interface id,dest-ip to health check instance service
+    typedef std::map<BfdSessionsKey, HealthCheckInstanceService *, BfdSessionsKeyCmp> Sessions;
+    typedef std::pair<BfdSessionsKey, HealthCheckInstanceService *> SessionsPair;
 
     tbb::mutex mutex_; // lock for sessions_ access between health check & BFD
     tbb::mutex rx_mutex_; // lock for BFD control & keepalive Rx data

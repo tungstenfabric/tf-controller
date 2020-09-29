@@ -223,10 +223,7 @@ bool PktHandler::IsBFDHealthCheckPacket(const PktInfo *pkt_info,
         (pkt_info->dport == BFD_SINGLEHOP_CONTROL_PORT ||
          pkt_info->dport == BFD_MULTIHOP_CONTROL_PORT ||
          pkt_info->dport == BFD_ECHO_PORT)) {
-        const VmInterface *vm_intf = static_cast<const VmInterface *>(intrface);
-        if (vm_intf->IsHealthCheckEnabled()) {
-            return true;
-        }
+        return true;
     }
 
     return false;
