@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "fb9f086a_e1f68d86",
+        "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 971
+      },
+      "writtenOn": "2020-09-29T20:04:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6708956a_f5ae6d2b",
+      "revId": "3d91010b6b56216dad8dbad1e76d7c7a87228f91",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ed31fd38_d66d5f33",
         "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
         "patchSetId": 6
@@ -30,6 +48,30 @@
       "writtenOn": "2020-09-29T19:29:29Z",
       "side": 1,
       "message": "does it mean that here we\u0027ll have 1, 2, 3, 4 for four workers?",
+      "range": {
+        "startLine": 8,
+        "startChar": 7,
+        "endLine": 8,
+        "endChar": 16
+      },
+      "revId": "3d91010b6b56216dad8dbad1e76d7c7a87228f91",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e3552935_1a33334e",
+        "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 971
+      },
+      "writtenOn": "2020-09-29T20:04:55Z",
+      "side": 1,
+      "message": "Yes, it will be in this order. Master node will have worker_id\u003d0; But, master doesn\u0027t initializes the app, so the condition here.",
+      "parentUuid": "ed31fd38_d66d5f33",
       "range": {
         "startLine": 8,
         "startChar": 7,
