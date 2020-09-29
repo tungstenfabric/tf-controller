@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6708956a_f5ae6d2b",
+        "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2020-09-29T19:29:29Z",
+      "side": 1,
+      "message": "pep8: two empty lines between imports and functions",
+      "revId": "3d91010b6b56216dad8dbad1e76d7c7a87228f91",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ed31fd38_d66d5f33",
+        "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2020-09-29T19:29:29Z",
+      "side": 1,
+      "message": "does it mean that here we\u0027ll have 1, 2, 3, 4 for four workers?",
+      "range": {
+        "startLine": 8,
+        "startChar": 7,
+        "endLine": 8,
+        "endChar": 16
+      },
+      "revId": "3d91010b6b56216dad8dbad1e76d7c7a87228f91",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
