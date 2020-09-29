@@ -4971,7 +4971,10 @@ class DBInterface(object):
             if ipv4_port_delete and ipv6_port_delete:
                 self._virtual_machine_interface_delete(port_id=port_id)
                 self._raise_contrail_exception('BadRequest',
-                                               resource='port', msg=str(e))
+                                               resource='port',
+                                               msg="Bad request trying to "
+                                                   "create IPv4 and IPv6 "
+                                                   "instance")
 
         # TODO below reads back default parent name, fix it
         port_obj = self._virtual_machine_interface_read(port_id=port_id)
