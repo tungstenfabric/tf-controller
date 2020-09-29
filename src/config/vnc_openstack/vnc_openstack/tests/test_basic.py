@@ -7,6 +7,7 @@ import uuid
 from builtins import object
 from builtins import range
 from builtins import str
+import copy
 from datetime import datetime
 
 import mock
