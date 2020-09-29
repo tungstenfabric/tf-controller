@@ -5,9 +5,15 @@
 - block:
     - name: Timeout ("{{ delay * retries }}" seconds)
       fail:
-        msg: "Timed out while waiting for fpc pic status to be online."
-      when:
-        - count | int >= retries | int
+        msg: "Timed out while waiting for fpc-information."
+      when: (count | int >= retries | int) and fpc_pic_online.status == False
+
+    - name: Update job log with fpc and pic status
+      job_objectlog:
+        job_ctx: "{{ job_ctx }}"
+        status: "{{ JOBLOG_STATUS.IN_PROGRESS }}"
+        message: "{{ fpc_pic_online.msg }}"
+      when: (count | int >= retries | int) and fpc_pic_online.status == True
 
     - name: Wait for "{{ delay }}" seconds
       wait_for:
@@ -21,4 +27,4 @@
       include_tasks: "do_until_loop.yml"
       vars:
         count: "{{ try_count | int }}"
-  when: not fpc_pic_online
+  when: fpc_pic_online.msg != '' and (count | int <= retries | int)
