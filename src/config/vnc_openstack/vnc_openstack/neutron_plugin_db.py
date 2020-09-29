@@ -4938,6 +4938,7 @@ class DBInterface(object):
         elif net_obj.get_network_ipam_refs():
             ipv4_port_delete = False
             ipv6_port_delete = False
+            errmsg = "Bad request trying to create IPv4 and IPv6 instance."
             try:
                 self._port_create_instance_ip(net_obj, port_obj,
                                               {'fixed_ips': [
@@ -4946,6 +4947,7 @@ class DBInterface(object):
                                               ip_family="v4")
             except BadRequest as e:
                 ipv4_port_delete = True
+                errmsg = str(e)
             except vnc_exc.HttpError as e:
                 # failure in creating the instance ip. Roll back
                 self._virtual_machine_interface_delete(port_id=port_id)
@@ -4960,6 +4962,7 @@ class DBInterface(object):
                                               ip_family="v6")
             except BadRequest as e:
                 ipv6_port_delete = True
+                errmsg = str(e)
             except vnc_exc.HttpError as e:
                 # failure in creating the instance ip. Roll back
                 self._virtual_machine_interface_delete(port_id=port_id)
@@ -4971,7 +4974,8 @@ class DBInterface(object):
             if ipv4_port_delete and ipv6_port_delete:
                 self._virtual_machine_interface_delete(port_id=port_id)
                 self._raise_contrail_exception('BadRequest',
-                                               resource='port', msg=str(e))
+                                               resource='port',
+                                               msg=errmsg)
 
         # TODO below reads back default parent name, fix it
         port_obj = self._virtual_machine_interface_read(port_id=port_id)
