@@ -94,7 +94,7 @@ class JobHandler(object):
             )
 
     def handle_job(self, result_handler, job_percent_per_task,
-                   device_id=None, device_name=None):
+                   in_cleanup, device_id=None, device_name=None):
         playbook_info = None
         try:
             msg = "Starting playbook execution for job template %s with " \
@@ -110,7 +110,7 @@ class JobHandler(object):
 
             # get the playbook information from the job template
             playbook_info = self.get_playbook_info(job_percent_per_task,
-                                                   device_id)
+                                                   in_cleanup, device_id)
             # run the playbook and retrieve the playbook output if any
             playbook_output = self.run_playbook(
                 playbook_info,
@@ -209,7 +209,8 @@ class JobHandler(object):
                                " lock for device %s %s " % (device_name,
                                                             repr(zk_error)))
 
-    def get_playbook_info(self, job_percent_per_task, device_id=None):
+    def get_playbook_info(self, job_percent_per_task, in_cleanup,
+                          device_id=None):
         try:
             # create the cmd line param for the playbook
             extra_vars = {
@@ -295,7 +296,11 @@ class JobHandler(object):
                                    "ip to playbook %s " % device_management_ip)
 
             # get the playbook uri from the job template
-            play_info = playbooks.playbook_info[self._playbook_seq]
+            if not in_cleanup:
+                play_info = playbooks.playbook_info[self._playbook_seq]
+            else:
+                play_info = playbooks.recovery_playbook_info[
+                    self._playbook_seq]
 
             playbook_input = {'playbook_input': extra_vars}
 

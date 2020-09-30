@@ -269,7 +269,7 @@ class JobManager(object):
     def __init__(self, logger, vnc_api, job_input, job_log_utils, job_template,
                  result_handler, job_utils, playbook_seq, job_percent,
                  zk_client, job_description, job_transaction_id,
-                 job_transaction_descr):
+                 job_transaction_descr, in_cleanup=False):
         """Initializes job manager."""
         self._logger = logger
         self._vnc_api = vnc_api
@@ -295,6 +295,7 @@ class JobManager(object):
         self.job_percent = job_percent
         self._zk_client = zk_client
         self.job_handler = None
+        self.in_cleanup = in_cleanup
         logger.debug("Job manager initialized")
 
     def parse_job_input(self, job_input_json):
@@ -353,7 +354,8 @@ class JobManager(object):
             else:
                 self.handle_multi_device_job(job_handler, self.result_handler)
         else:
-            self.handle_single_job(job_handler, self.result_handler)
+            self.handle_single_job(job_handler, self.result_handler,
+                                   self.in_cleanup)
 
     def handle_multi_device_job(self, job_handler, result_handler):
 
@@ -393,10 +395,11 @@ class JobManager(object):
                                            device_name))
         job_worker_pool.join()
 
-    def handle_single_job(self, job_handler, result_handler):
+    def handle_single_job(self, job_handler, result_handler, in_cleanup):
         job_percent_per_task = self.job_log_utils.calculate_job_percentage(
             1, buffer_task_percent=False, total_percent=self.job_percent)[0]
-        job_handler.handle_job(result_handler, job_percent_per_task)
+        job_handler.handle_job(result_handler, job_percent_per_task,
+                               in_cleanup)
 
 
 class WFManager(object):
@@ -495,6 +498,20 @@ class WFManager(object):
                 if device_fqname:
                     return device_fqname[-1]
         return ""
+
+    def start_cleanup(self, job_template):
+        recovery_playbook_list = job_template.get_job_template_playbooks(
+        ).get_recovery_playbook_info()
+
+        for i in range(0, len(recovery_playbook_list)):
+            job_mgr = JobManager(self._logger, self._vnc_api, self.job_input,
+                                 self.job_log_utils, job_template,
+                                 self.result_handler, self.job_utils, i, 100,
+                                 self._zk_client, self.job_description,
+                                 self.job_transaction_id,
+                                 self.job_transaction_descr, in_cleanup=True)
+            self.job_mgr = job_mgr
+            job_mgr.start_job()
 
     def start_job(self):
         job_error_msg = None
@@ -655,6 +672,7 @@ class WFManager(object):
             # in case of failures, exit the job manager process with failure
             if self.result_handler.job_result_status == JobStatus.FAILURE:
                 job_error_msg = self.result_handler.job_summary_message
+                self.start_cleanup(job_template)
 
         except JobException as exp:
             err_msg = "Job Exception recieved: %s " % repr(exp)
