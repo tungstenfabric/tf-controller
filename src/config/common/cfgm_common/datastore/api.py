@@ -67,6 +67,14 @@ OptionsDefault = {
     'ssl_enabled': False,
     'ca_certs': None,
     'pool_size': 0,
+    'use_workers': True,
+    'num_workers': None,
+    'use_concurrency': True,
+    'concurrency_starts': 1,
+    'concurrency': 256,
+    'inserts_use_batch': True,
+    'removes_use_batch': True,
+    'batch_limit': 1000,
 }
 OptionsType = collections.namedtuple(
     'Options', OptionsDefault.keys())

@@ -3510,8 +3510,15 @@ class VncApiServer(object):
             debug_obj_cache_types=debug_obj_cache_types,
             cassandra_use_ssl=self._args.cassandra_use_ssl,
             cassandra_ca_certs=self._args.cassandra_ca_certs,
-            cassandra_driver=self._args.cassandra_driver)
-
+            cassandra_driver=self._args.cassandra_driver,
+            cassandra_use_workers=self._args.cassandra_use_workers,
+            cassandra_num_workers=self._args.cassandra_num_workers,
+            cassandra_use_concurrency=self._args.cassandra_use_concurrency,
+            cassandra_concurrency_starts=self._args.cassandra_concurrency_starts,
+            cassandra_concurrency=self._args.cassandra_concurrency,
+            cassandra_inserts_use_batch=self._args.cassandra_inserts_use_batch,
+            cassandra_removes_use_batch=self._args.cassandra_removes_use_batch,
+            cassandra_batch_limit=self._args.cassandra_batch_limit)
 
         #TODO refacter db connection management.
         self._addr_mgmt._get_db_conn()
