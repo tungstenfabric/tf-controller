@@ -44,7 +44,6 @@ UUID_KEYSPACE = {
     }
 }
 
-
 # Defines API option type and defaults that will be passed to the
 # drivers. The usage is to initialize a driver by listing only the
 # necessary options.
@@ -67,6 +66,15 @@ OptionsDefault = {
     'ssl_enabled': False,
     'ca_certs': None,
     'pool_size': 0,
+    'use_workers': True,
+    'num_groups': None,
+    'num_workers': None,
+    'use_concurrency': True,
+    'concurrency_starts': 1,
+    'concurrency': 1000,
+    'inserts_use_batch': True,
+    'removes_use_batch': True,
+    'batch_limit': 1000,
 }
 OptionsType = collections.namedtuple(
     'Options', OptionsDefault.keys())

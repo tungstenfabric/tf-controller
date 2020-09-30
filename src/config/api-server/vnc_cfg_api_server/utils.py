@@ -135,9 +135,18 @@ def parse_args(args_str):
     }
     # cassandra options
     cassandraopts = {
-        'cassandra_user'     : None,
-        'cassandra_password' : None,
-        'cassandra_driver'   : (PY3 and 'cql' or 'thrift'),
+        'cassandra_user'              : None,
+        'cassandra_password'          : None,
+        'cassandra_driver'            : (PY3 and 'cql' or 'thrift'),
+        'cassandra_use_workers'       : True,
+        'cassandra_num_workers'       : 2,
+        'cassandra_num_groups'        : 2,
+        'cassandra_use_concurrency'   : True,
+        'cassandra_concurrency_starts': 1,
+        'cassandra_concurrency'       : 1000,
+        'cassandra_inserts_use_batch' : True,
+        'cassandra_removes_use_batch' : True,
+        'cassandra_batch_limit'       : 1000,
     }
     # zookeeper options
     zookeeperopts = {
@@ -225,6 +234,35 @@ def parse_args(args_str):
     parser.add_argument(
         "--zookeeper_ssl_ca_cert", type=str,
         help="Location of zookeeper ssl CA certificate")
+    parser.add_argument(
+        "--cassandra_use_workers", action="store_true",
+        help="Enable workers support for fetch operations")
+    parser.add_argument(
+        "--cassandra_use_concurrency", action="store_true",
+        help="Enable concurrency support for queries")
+    parser.add_argument(
+        "--cassandra_num_workers", type=int,
+        help="Number of worker running per group")
+    parser.add_argument(
+        "--cassandra_num_groups", type=int,
+        help="Number of groups running workers")
+    parser.add_argument(
+        "--cassandra_concurrency_starts", type=int,
+        help="Use concurrency when queries in a request start to "
+        "exceed this number.")
+    parser.add_argument(
+        "--cassandra_concurrency", type=int,
+        help="Max number of concurrent queries")
+    parser.add_argument(
+        "--cassandra_inserts_use_batch", action="store_true",
+        help="Using batch when multiple inserts for same key")
+    parser.add_argument(
+        "--cassandra_remove_use_batch", action="store_true",
+        help="Using batch when multiple removes for same key")
+    parser.add_argument(
+        "--cassandra_batch_limit", type=int,
+        help="Max number of queries in a batch, after than batch will "
+        "be splitted")
     parser.add_argument(
         "--redis_server_ip",
         help="IP address of redis server")
