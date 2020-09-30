@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b82365b4_acb0b5f5",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/virtual_machine_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 940,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-09-30T00:26:48Z",
+      "side": 1,
+      "message": "def _format_sp_validation_node(cls, vpg_uuid, vn_uuid, vlan_id):\n    return os.path.join(\n        _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX,\n        \u0027virtual-port-group:%s\u0027 % vpg_uuid,\n        \u0027virtual-network:%s\u0027 % vn_uuid,\n        \u0027vlan:%s\u0027 % db_vlan_id)",
+      "revId": "4f0834aa3090102e13013c38a956c95d06364913",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bbe54c3b_4de51e80",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/virtual_machine_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 947,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-09-30T00:26:48Z",
+      "side": 1,
+      "message": "return (True, \u0027\u0027,\n        {\u0027delete_validation_znode\u0027:\n        [self._format_sp_validation_node(vpg_uuid, vn_uuid, vlan_id)]})",
+      "revId": "4f0834aa3090102e13013c38a956c95d06364913",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
