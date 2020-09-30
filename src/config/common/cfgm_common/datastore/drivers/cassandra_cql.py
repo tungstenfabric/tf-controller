@@ -6,14 +6,21 @@ import collections
 import datetime
 import importlib
 import itertools
+import math
+from multiprocessing import Process
+from multiprocessing.queues import Queue
+import queue
 import ssl
 import sys
 
 import gevent
+import gevent.lock
+import gevent.queue
 from pysandesh.gen_py.process_info.ttypes import ConnectionStatus
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
 from sandesh_common.vns import constants as vns_constants
 import six
+import six.moves
 
 from cfgm_common import jsonutils as json
 from cfgm_common import utils
@@ -39,15 +46,6 @@ DEFAULT_THRIFT_PORT = 9160
 # Properties passed to the column familly
 TABLE_PROPERTIES = {
     'gc_grace_seconds': vns_constants.CASSANDRA_DEFAULT_GC_GRACE_SECONDS,
-
-    # Options set to make the CFs configured as they was used with
-    # thrift connector.
-
-    # CQL connector default value: 0.1
-    'dclocal_read_repair_chance': 0.0,
-
-    # CQL connector default value: 99.0PERCENTILE
-    'speculative_retry': "'NONE'",
 }
 
 # Properties passed to the keyspaces
@@ -75,8 +73,11 @@ DEFAULT_COLUMN_COUNT = 100000
 # Set number of rows per pages fetched
 DEFAULT_PAGE_SIZE = 2048
 
-# Set when to start loading aync execution
-ASYNC_STARTS_WHEN = 1
+# Groups of workers running. THis handle rew in parallel
+DEFAULT_NUM_GROUPS = 4
+
+# Number of workers used to execute SELECT queries
+DEFAULT_NUM_WORKERS = 2
 
 # String will be encoded in UTF-8 if necessary (Python2 support)
 StringType = six.text_type
@@ -192,6 +193,10 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                               "be null at this step. Please verify "
                               "dependencies.")
         super(CassandraDriverCQL, self).__init__(server_list, **options)
+
+    # Options are defined here because they can be dinamic depending
+    # external events/context, like the kind of queries, number of
+    # nodes in Cassandra cluster...
 
     @property
     def SupportsPerPartitionLimit(self):
@@ -315,15 +320,7 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
     def RowFactory(self):
         return lambda c, r: r
 
-    def _Init_Cluster(self):
-        self.report_status_init()
-
-        self._cql_select = self._handle_exceptions(self._cql_select, 'SELECT')
-        self._Insert = self._handle_exceptions(self._Insert, 'INSERT')
-        self._Remove = self._handle_exceptions(self._Remove, 'REMOVE')
-        self._Get_Range = self._handle_exceptions(self._Get_Range, 'RANGE')
-        self._Get_Count = self._handle_exceptions(self._Get_Count, 'COUNT')
-
+    def create_cluster(self):
         # Authentication related options
         auth_provider = None
         if self.options.credential:
@@ -389,19 +386,36 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
 
         connector.ProtocolVersion.SUPPORTED_VERSIONS = self.ProtocolVersions
         try:
-            self._cluster = connector.cluster.Cluster(
+            return connector.cluster.Cluster(
                 endpoints,
                 port=(port or DEFAULT_CQL_PORT),
-                compression=True,
                 ssl_options=ssl_options,
                 auth_provider=auth_provider,
                 execution_profiles=profiles,
                 cql_version=self.CqlVersion)
-            self._cluster.connect()
         except Exception as error:
             raise DatabaseUnavailableError(
                 "error, {}: {}".format(
                     error, utils.detailed_traceback()))
+
+    def _Init_Cluster(self):
+        self.report_status_init()
+
+        self._cql_select = self._handle_exceptions(self._cql_select, 'SELECT')
+        self._Insert = self._handle_exceptions(self._Insert, 'INSERT')
+        self._Remove = self._handle_exceptions(self._Remove, 'REMOVE')
+        self._Get_Range = self._handle_exceptions(self._Get_Range, 'RANGE')
+        self._Get_Count = self._handle_exceptions(self._Get_Count, 'COUNT')
+
+        self._cluster = self.create_cluster()
+        self._cluster.connect()
+
+        PoolClass = Pool if self.options.use_workers else DummyPool
+        self.pool = PoolClass(
+            self.options.num_groups or DEFAULT_NUM_GROUPS,
+            self.options.num_workers or DEFAULT_NUM_WORKERS,
+            self.worker,
+            self.initializer)
 
         # Initializes RW keyspaces
         for ks, cf_dict in self.options.rw_keyspaces.items():
@@ -436,10 +450,6 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
         self.report_status_up()
 
     def _Create_Session(self, keyspace, cf_name, **cf_args):
-        # TODO(sahid): This needs to be fixed for all the drivers,
-        # right place may be in API. Because CFs sessions are flatten
-        # by names we could *not* have even for a different keyspace
-        # CFs with same name. A check should be added.
         self._cf_dict[cf_name] = self._cluster.connect(
             keyspace)
 
@@ -460,6 +470,11 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                 self._cluster.connect(self.keyspace(ks))
         except connector.cluster.NoHostAvailable:
             return False
+        return True
+
+    def are_tables_ready(self, keyspace, tables):
+        """From a list of tables, return False if one not yet available."""
+        # TODO(sahid): Needs to be implemented
         return True
 
     def get_default_session(self):
@@ -555,9 +570,32 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
         self.options.logger(
             msg.format(keyspace, props), level=SandeshLevel.SYS_NOTICE)
 
-    def _cql_select(self, cf_name, keys, start='', finish='', num_columns=None,
-                    columns=None, include_timestamp=False, decode_json=None):
+    def initializer(self, group_id, worker_id):
+        self._cluster = self.create_cluster()
+        self._cluster.connect()
+
+        # Ensures keyspaces/tables are ready before to continue
+        while not self.are_keyspaces_ready(self.options.rw_keyspaces):
+            gevent.sleep(0.5)
+        for ks, cf_dict in six.iteritems(self.options.rw_keyspaces):
+            keyspace = self.keyspace(ks)
+            while not self.are_tables_ready(keyspace, six.viewkeys(cf_dict)):
+                gevent.sleep(0.5)
+        while not self.are_keyspaces_ready(self.options.ro_keyspaces):
+            gevent.sleep(0.5)
+
+        self._cf_dict = {}
+        for ks, cf_dict in itertools.chain(
+                self.options.rw_keyspaces.items(),
+                self.options.ro_keyspaces.items()):
+            for cf_name in cf_dict:
+                self.create_session(self.keyspace(ks), cf_name)
+
+    def worker(self, group_id, worker_id, args, params):
+        (cql, cf_name, columns, include_timestamp,
+         decode_json, num_columns) = params
         ses = self.get_cf(cf_name)
+
         if decode_json is None:
             # Only the CFs related to UUID_KEYSPACE_NAME's keyspace
             # encode its column values to JSON we want decode them
@@ -565,6 +603,25 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             decode_json = ses.keyspace.endswith(
                 datastore_api.UUID_KEYSPACE_NAME)
 
+        columns = columns if not self.AllowColumnsFiltering else None
+        keys = [a[0] for a in args]
+
+        req = self.apply(ses, cql, args)
+        req = zip(keys, req)
+        req = Iter(req,
+                   # We currently still use Cassandra to filter
+                   # columns. IT may be better to dispatch the filter
+                   # in several cores on application
+                   columns=columns,
+                   include_timestamp=include_timestamp,
+                   decode_json=decode_json,
+                   num_columns=num_columns,
+                   logger=self.options.logger,
+                   cf_name=cf_name)
+        return list(req)
+
+    def _cql_select(self, cf_name, keys, start='', finish='', num_columns=None,
+                    columns=None, include_timestamp=False, decode_json=None):
         cql = """
         SELECT blobAsText(column1), value{}
         FROM "{}"
@@ -598,19 +655,13 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                 arg.append(num_columns)
             args.append(arg)
 
-        req = self.apply(ses, cql, args)
-        req = zip(keys, req)
-        req = Iter(req,
-                   # We currently still use Cassandra to filter
-                   # columns. IT may be better to dispatch the filter
-                   # in several cores on application
-                   columns=columns if not self.AllowColumnsFiltering else None,
-                   include_timestamp=include_timestamp,
-                   decode_json=decode_json,
-                   num_columns=num_columns,
-                   logger=self.options.logger,
-                   cf_name=cf_name)
-
+        req = self.pool.compute(args,
+                                cql,
+                                cf_name,
+                                columns,
+                                include_timestamp,
+                                decode_json,
+                                num_columns)
         return req
 
     def _Get_CF_Batch(self, cf_name, keyspace_name=None):
@@ -624,6 +675,10 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
             num_columns = MAX_COLUMNS
         if num_columns == MAX_COLUMNS:
             num_columns = None
+
+        if not keys:
+            # It seems that it happens we query with empty list.
+            return {}
 
         results = {}
         for key, rows in self._cql_select(
@@ -757,6 +812,12 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                            "to insert {} for {}".format(columns, key))
         if batch is not None:
             cf_name = batch.cf_name
+
+        local_batch = False
+        if self.options.inserts_use_batch and batch is None:
+            batch = self.get_cf_batch(cf_name)
+            local_batch = True
+
         ses = self.get_cf(cf_name)
         cql = """
           INSERT INTO "{}"
@@ -766,9 +827,13 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
 
         if batch is not None:
             for column, value in columns.items():
+                if len(batch) >= self.options.batch_limit:
+                    batch.send()
                 batch.add_insert(key, cql, [StringType(key),
                                             StringType(column),
                                             StringType(value)])
+            if local_batch:
+                batch.send()
         else:
             self._cql_execute(ses, cql, key, columns)
 
@@ -788,10 +853,11 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
         self.apply(ses, cql, args)
 
     def apply(self, ses, cql, args):
-        if len(args) <= ASYNC_STARTS_WHEN:
+        if self.options.use_concurrency and\
+           len(args) < self.options.concurrency_starts:
             return [(True, ses.execute(cql, arg)) for arg in args]
         return connector.concurrent.execute_concurrent_with_args(
-            ses, cql, args, concurrency=1000, results_generator=False)
+            ses, cql, args, concurrency=self.options.concurrency)
 
     def _Remove(self, key, columns=None, keyspace_name=None, cf_name=None,
                 batch=None, column_family=None):
@@ -804,6 +870,12 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                            "to remove {} for {}".format(columns, key))
         if batch is not None:
             cf_name = batch.cf_name
+
+        local_batch = False
+        if self.options.removes_use_batch and batch is None:
+            batch = self.get_cf_batch(cf_name)
+            local_batch = True
+
         ses = self.get_cf(cf_name)
         if not columns:
             cql = """
@@ -811,6 +883,8 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
               WHERE key = textAsBlob(%s)
             """.format(cf_name)
             if batch is not None:
+                if len(batch) >= self.options.batch_limit:
+                    batch.send()
                 batch.add_remove(key, cql, [StringType(key)])
             else:
                 ses.execute(cql, [StringType(key)])
@@ -824,6 +898,8 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                 for column in columns:
                     batch.add_remove(key, cql, [StringType(key),
                                                 StringType(column)])
+                if local_batch:
+                    batch.send()
             else:
                 self._cql_execute(ses, cql, key, columns)
 
@@ -853,3 +929,114 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                     self.log_response_time(
                         self.end_time - self.start_time, oper)
         return wrapper
+
+
+# A cooperative queue with gevent
+class CoopQueue(Queue):
+    def get(self):
+        while True:
+            try:
+                return super(CoopQueue, self).get(False)
+            except queue.Empty:
+                pass
+            gevent.sleep(0.001)
+
+
+# This is implementing a pool of processes that will execute SELECT
+# queries. That because for large dataset it takes more time to decode
+# the result than getting it from Cassandra. Since we are gevent
+# based, blocking the main process with CPU executions is blocking
+# schelduling of greenthreads which implies performances-degradation.
+class Pool(object):
+    def __init__(self, num_groups, num_workers, target, initializer):
+        self.num_groups = num_groups
+        self.num_workers = num_workers
+        self.target = target
+        self.initializer = initializer
+        self.lock_compute = gevent.lock.Semaphore()
+        self.lock_prefork = gevent.lock.Semaphore()
+
+        self.workers = []
+        self.groups = gevent.queue.Queue()
+
+    def prefork(self):
+        for group_id in six.moves.xrange(self.num_groups):
+            group = []
+            for worker_id in six.moves.xrange(self.num_workers):
+                qin, qout = CoopQueue(), CoopQueue()
+
+                def my_loop():
+                    # de-install events running from master to the
+                    # children.
+                    gevent.reinit()
+                    hub = gevent.get_hub()
+                    del hub.threadpool
+                    hub._threadpool = None
+                    hub.destroy(destroy_loop=True)
+                    gevent.get_hub(default=True)
+
+                    self.initializer(group_id, worker_id)
+                    try:
+                        for args, params in iter(qin.get, 'STOP'):
+                            qout.put(self.target(
+                                group_id, worker_id, args, params))
+                    except KeyboardInterrupt:
+                        pass
+
+                p = Process(target=my_loop)
+                p.daemon = True
+                p.start()
+
+                self.workers.append(p)
+                group.append((p, qin, qout))
+
+            self.groups.put(group)
+
+    def are_workers_alive(self):
+        if not self.workers:
+            return False
+        return all([p.is_alive() for p in self.workers])
+
+    def terminate_workers(self):
+        [p.terminate() for p in self.workers]
+        self.workers = []
+        self.groups = gevent.queue.Queue()
+
+    def compute(self, args, *append_args):
+        while not self.are_workers_alive():
+            self.lock_prefork.acquire()
+            self.terminate_workers()
+            self.prefork()
+            self.lock_prefork.release()
+            gevent.sleep(0.1)
+
+        group = self.groups.get()
+        gsize = math.ceil(len(args) / float(len(group))) or 1
+
+        workers = []
+        for i, n in enumerate(six.moves.xrange(0, len(args), gsize)):
+            _, qin, _ = group[i]
+            qin.put((args[n:n + gsize], append_args))
+            workers.append(i)
+        response = []
+        for i in workers:
+            _, _, qout = group[i]
+            response.append(qout.get())
+        result = list(itertools.chain(*response))
+        self.groups.put(group)
+        return result
+
+
+class DummyPool(Pool):
+
+    def prefork(self):
+        pass
+
+    def are_workers_alive(self):
+        return True
+
+    def terminate_workers(self):
+        pass
+
+    def compute(self, args, *append_args):
+        return self.target(0, 0, args, append_args)
