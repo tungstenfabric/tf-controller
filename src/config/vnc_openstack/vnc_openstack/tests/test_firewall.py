@@ -13,14 +13,15 @@
 #    under the License.
 #
 
-import uuid
 from builtins import range
 from builtins import str
+import uuid
 
 from gevent import monkey
-monkey.patch_all()  # noqa
+monkey.patch_all()
 from mock import patch
 from neutron_lib import constants
+from tests import test_case
 from vnc_api.exceptions import BadRequest
 from vnc_api.exceptions import NoIdError
 from vnc_api.vnc_api import ApplicationPolicySet
@@ -32,8 +33,6 @@ from vnc_api.vnc_api import PortType
 from vnc_api.vnc_api import Project
 from vnc_api.vnc_api import VirtualMachineInterface
 from vnc_api.vnc_api import VirtualNetwork
-from tests import test_case
-
 from vnc_openstack.neutron_plugin_db import \
     _NEUTRON_FIREWALL_DEFAULT_GROUP_POLICY_NAME
 from vnc_openstack.neutron_plugin_db import \
