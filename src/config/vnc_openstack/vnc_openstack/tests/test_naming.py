@@ -1,14 +1,14 @@
 from __future__ import absolute_import
 
+from builtins import range
+from builtins import str
 import json
 import logging
 import uuid
-from builtins import range
-from builtins import str
 
-import gevent
 from cfgm_common.tests import test_common
 from cfgm_common.tests import test_utils
+import gevent
 from gevent import monkey
 from pysandesh.connection_info import ConnectionState
 from testtools import ExpectedException
@@ -322,7 +322,7 @@ class KeystoneConnectionStatus(test_case.KeystoneSyncTestCase):
         proj_id = str(uuid.uuid4())
         proj_name = self.id() + 'verify-active'
         test_case.get_keystone_client().tenants.add_tenant(proj_id, proj_name)
-        proj_obj = self._vnc_lib.project_read(id=proj_id)
+        self._vnc_lib.project_read(id=proj_id)
         conn_info = [ConnectionState._connection_map[x]
                      for x in ConnectionState._connection_map if
                      x[1] == 'Keystone'][0]
@@ -383,7 +383,6 @@ class TestKeystoneConnection(test_case.KeystoneSyncTestCase):
 
     @classmethod
     def setUpClass(cls):
-        keystone_ready = False
         from keystoneclient import client as keystone
         extra_mocks = [(keystone, 'Client', get_keystone_client)]
         super(TestKeystoneConnection, cls).setUpClass(
@@ -420,4 +419,4 @@ class TestKeystoneConnection(test_case.KeystoneSyncTestCase):
         proj_id = str(uuid.uuid4())
         proj_name = self.id() + 'verify-active'
         get_keystone_client().tenants.add_tenant(proj_id, proj_name)
-        proj_obj = self._vnc_lib.project_read(id=proj_id)
+        self._vnc_lib.project_read(id=proj_id)

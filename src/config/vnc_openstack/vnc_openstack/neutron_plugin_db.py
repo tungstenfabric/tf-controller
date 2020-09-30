@@ -1,41 +1,37 @@
 # Copyright 2012, Contrail Systems, Inc.
 #
 
-"""
-.. attention:: Fix the license string
-"""
-
+""".. attention:: Fix the license string."""
 from __future__ import absolute_import
 
+from builtins import object
+from builtins import str
+from collections import namedtuple
 import copy
 import datetime
 import re
 import sys
 import time
 import uuid
-from builtins import object
-from builtins import str
-from collections import namedtuple
 
 import bottle
-import gevent
-import netaddr
-import requests
-import vnc_cfg_api_server.context
-from cfgm_common import PERMS_RWX, PERMS_RX
-from cfgm_common import SG_NO_RULE_FQ_NAME, UUID_PATTERN
 from cfgm_common import exceptions as vnc_exc
 from cfgm_common import is_uuid_like
 from cfgm_common import jsonutils as json
+from cfgm_common import PERMS_RWX, PERMS_RX
 from cfgm_common import rest
+from cfgm_common import SG_NO_RULE_FQ_NAME, UUID_PATTERN
 from cfgm_common.utils import _DEFAULT_ZK_LOCK_PATH_PREFIX
 from cfgm_common.utils import _DEFAULT_ZK_LOCK_TIMEOUT
 from cfgm_common.utils import cgitb_hook
 from future import standard_library
+import gevent
 from kazoo.exceptions import LockTimeout
+import netaddr
 from netaddr import IPAddress, IPNetwork, IPSet
 from past.builtins import basestring
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
+import requests
 from sandesh_common.vns.constants import TagTypeIdToName
 from six import StringIO
 from vnc_api.vnc_api import (
@@ -53,9 +49,10 @@ from vnc_api.vnc_api import (
     VirtualMachineInterface, VirtualMachineInterfacePropertiesType,
     VirtualNetwork, VirtualNetworkPolicyType, VirtualPortGroup,
     VncApi, VnSubnetsType)
-
+import vnc_cfg_api_server.context
 import vnc_openstack
 from vnc_openstack.utils import filter_fields
+
 from .context import get_context, use_context
 
 standard_library.install_aliases()
@@ -104,7 +101,9 @@ _RESOURCE_VNC_TO_NEUTRON = {'virtual_network':
 
 
 class LocalVncApi(VncApi):
+
     def __init__(self, api_server_obj, *args, **kwargs):
+        """Create local VncApi object."""
         if api_server_obj:
             self.api_server_routes = dict(
                 (r.rule.split('/')[1] + '-' + r.method,
@@ -286,9 +285,8 @@ def catch_convert_exception(method):
 
 
 class DBInterface(object):
-    """
-    An instance of this class forwards requests to vnc cfg api (web)server
-    """
+    """Instance of this class forwards requests to vnc cfg api (web)server."""
+
     Q_URL_PREFIX = '/extensions/ct'
 
     def __init__(self, manager, admin_name, admin_password, admin_tenant_name,
@@ -298,6 +296,7 @@ class DBInterface(object):
                  list_optimization_enabled=False,
                  apply_subnet_host_routes=False,
                  strict_compliance=False):
+        """Establish database connection."""
         self._manager = manager
         self.logger = manager.logger
         self._api_srvr_ip = api_srvr_ip
@@ -337,7 +336,7 @@ class DBInterface(object):
                     exclude_hrefs=True)
                 self._connected_to_api_server.set()
                 connected = True
-            except requests.exceptions.RequestException as e:
+            except requests.exceptions.RequestException:
                 gevent.sleep(3)
     # end __init__
 
@@ -356,9 +355,6 @@ class DBInterface(object):
     # end _get_resource_id
 
     def _request_api_server(self, url, method, data=None, headers=None):
-        from eventlet.greenthread import getcurrent
-        token = getcurrent().contrail_vars.token
-
         if method == 'GET':
             return requests.get(url)
         if method == 'POST':
@@ -368,9 +364,7 @@ class DBInterface(object):
     # end _request_api_server
 
     def _relay_request(self, request):
-        """
-        Send received request to api server
-        """
+        """Send received request to api server."""
         # chop neutron parts of url and add api server address
         url_path = re.sub(self.Q_URL_PREFIX, '', request.environ['PATH_INFO'])
         url = "http://%s:%s%s" % (self._api_srvr_ip, self._api_srvr_port,
@@ -434,7 +428,7 @@ class DBInterface(object):
 
             # create object
             self._vnc_lib.virtual_machine_create(instance_obj)
-        except RefsExistError as e:
+        except RefsExistError:
             if instance_obj.uuid:
                 db_instance_obj = self._vnc_lib.virtual_machine_read(
                     id=instance_obj.uuid)
@@ -516,8 +510,7 @@ class DBInterface(object):
         # (SATHISH) This is a temp fix for fixing lost update problem during
         # Parallel creation of Security Group Rule
         try:
-            acquired_lock = scope_lock.acquire(
-                timeout=_DEFAULT_ZK_LOCK_TIMEOUT)
+            scope_lock.acquire(timeout=_DEFAULT_ZK_LOCK_TIMEOUT)
 
             # If this node acquired the lock, continue with creation of
             # security_group rule.
@@ -594,7 +587,7 @@ class DBInterface(object):
             ))
 
         try:
-            acquired_lock = scope_lock.acquire(
+            scope_lock.acquire(
                 timeout=_DEFAULT_ZK_LOCK_TIMEOUT)
             # If this node acquired the lock, continue with deletion of
             # security_group rule.
@@ -699,7 +692,7 @@ class DBInterface(object):
         lists of UUID stored in KV (one list per tag). The key is a tag FQName,
         and the value is a comma separated list of subnet UUIDs.
 
-        :return: Dict of tags where each is a list of :class:`str` UUIDs
+        :return: Dict of tags where each is a list of class`str` UUIDs
         """
         tag_to_sub_key = _NEUTRON_TAG_TO_SUBNETS
         try:
@@ -722,7 +715,7 @@ class DBInterface(object):
         tags has to be accepted by a reviewer.
 
         :param obj: Taggable VNC object
-        :param tags: List of :class:`str` with tag names (NOT FQNames).
+        :param tags: List of class`str` with tag names (NOT FQNames).
         """
         for tag in tags:
             tag_obj = self._tag_get_or_create(tag)
@@ -743,7 +736,7 @@ class DBInterface(object):
         tags has to be accepted by a reviewer.
 
         :param subnet_id: String with subnet UUID
-        :param tags: List of :class:`str` with tag names (NOT FQNames).
+        :param tags: List of class`str` with tag names (NOT FQNames).
         """
         # prepare neutron tag fq_names
         tag_names = set()
@@ -830,7 +823,7 @@ class DBInterface(object):
         tags has to be accepted by a reviewer.
 
         :param subnet_id: String with subnet UUID
-        :return: List of :class:`str` with tag names (NOT FQNAmes).
+        :return: List of  class str` with tag names (NOT FQNAmes).
         """
         sub_to_tag_key = _SUBNET_TO_NEUTRON_TAGS
         try:
@@ -1081,7 +1074,7 @@ class DBInterface(object):
                 self.floatingip_delete(fip_id=fip['uuid'])
 
         fip_pool_id = fip_pool['uuid']
-        fip_pool_uuid = self._resource_delete('floating_ip_pool', fip_pool_id)
+        self._resource_delete('floating_ip_pool', fip_pool_id)
     # end _floating_ip_pool_delete
 
     # find projects on a given domain
@@ -1145,7 +1138,7 @@ class DBInterface(object):
             try:
                 project_uuid = str(uuid.UUID(project_id))
                 # Trigger a project read to ensure project sync
-                project_obj = self._project_read(proj_id=project_uuid)
+                self._project_read(proj_id=project_uuid)
             except vnc_exc.NoIdError:
                 return []
         else:
@@ -1187,7 +1180,7 @@ class DBInterface(object):
 
     def _svc_instance_list_project(self, project_id):
         try:
-            project_uuid = str(uuid.UUID(project_id))
+            str(uuid.UUID(project_id))
         except (TypeError, ValueError, AttributeError):
             return []
 
@@ -1410,7 +1403,7 @@ class DBInterface(object):
                                         for t_id in filters[key_name]]
                     else:
                         filter_value = filters[key_name]
-                    idx = filter_value.index(match_value)
+                    filter_value.index(match_value)
                 except ValueError:  # not in requested list
                     return False
         return True
@@ -1526,7 +1519,7 @@ class DBInterface(object):
                         si_obj = self._vnc_lib.service_instance_read(
                             fq_name=fq_name)
                         route['next_hop'] = si_obj.get_fq_name_str()
-                except Exception as e:
+                except Exception:
                     pass
             rt_vnc.set_routes(RouteTableType.factory(**rt_q['routes']))
         else:
@@ -1542,7 +1535,7 @@ class DBInterface(object):
                         si_obj = self._vnc_lib.service_instance_read(
                             fq_name=fq_name)
                         route['next_hop'] = si_obj.get_fq_name_str()
-                except Exception as e:
+                except Exception:
                     pass
             rt_vnc.set_routes(RouteTableType.factory(**rt_q['routes']))
 
@@ -1918,7 +1911,6 @@ class DBInterface(object):
         extra_dict = {}
 
         id_perms = net_obj.get_id_perms()
-        perms = id_perms.permissions
         net_q_dict['id'] = net_obj.uuid
 
         if not net_obj.display_name:
@@ -2193,14 +2185,7 @@ class DBInterface(object):
         else:  # READ/UPDATE/DELETE
             ipam_obj = self._vnc_lib.network_ipam_read(id=ipam_q['id'])
 
-        options_vnc = DhcpOptionsListType()
         if ipam_q['mgmt']:
-            # for opt_q in ipam_q['mgmt'].get('options', []):
-            #    options_vnc.add_dhcp_option(DhcpOptionType(opt_q['option'],
-            #                                               opt_q['value']))
-            # ipam_mgmt_vnc = IpamType.factory(
-            #                    ipam_method = ipam_q['mgmt']['method'],
-            #                                 dhcp_option_list = options_vnc)
             ipam_obj.set_network_ipam_mgmt(IpamType.factory(**ipam_q['mgmt']))
 
         return ipam_obj
@@ -2660,7 +2645,9 @@ class DBInterface(object):
 
     def _port_set_vm_instance(self, port_obj, instance_name, tenant_id,
                               baremetal=False):
-        """ This function also deletes the old virtual_machine object
+        """Associate port_obj with vmi.
+
+        This function also deletes the old virtual_machine object
         associated with the port (if any) after the new virtual_machine
         object is associated with it.
         """
@@ -2819,7 +2806,7 @@ class DBInterface(object):
                     try:
                         # TODO optimize to not read sg (only uuid/fqn needed)
                         sg_obj = self._vnc_lib.security_group_read(id=sg_id)
-                    except NoIdError as e:
+                    except NoIdError:
                         self._raise_contrail_exception(
                             'SecurityGroupNotFound', id=sg_id)
                     port_obj.add_security_group(sg_obj)
@@ -2851,7 +2838,7 @@ class DBInterface(object):
                                 # needed)
                                 sg_obj = self._vnc_lib.security_group_read(
                                     id=sg_id)
-                            except NoIdError as e:
+                            except NoIdError:
                                 self._raise_contrail_exception(
                                     'SecurityGroupNotFound', id=sg_id)
                             port_obj.add_security_group(sg_obj)
@@ -3244,7 +3231,6 @@ class DBInterface(object):
 
         # port can be router interface or vm interface
         # for perf read logical_router_back_ref only when we have to
-        port_parent_name = port_obj.parent_name
         router_refs = getattr(port_obj, 'logical_router_back_refs', None)
         if router_refs is not None:
             port_q_dict['device_id'] = router_refs[0]['uuid']
@@ -3296,24 +3282,28 @@ class DBInterface(object):
     # end _port_vnc_to_neutron
 
     def _port_get_host_prefixes(self, host_routes, subnet_cidr):
-        """This function returns the host prefixes.
+        """Return the host prefixes.
+
         Eg. If host_routes have the below routes
-        ---------------------------
+
+        +--------------+-----------+
         |destination   | next hop  |
-        ---------------------------
+        +--------------+-----------+
         |  10.0.0.0/24 | 8.0.0.2   |
         |  12.0.0.0/24 | 10.0.0.4  |
         |  14.0.0.0/24 | 12.0.0.23 |
         |  16.0.0.0/24 | 8.0.0.4   |
         |  15.0.0.0/24 | 16.0.0.2  |
         |  20.0.0.0/24 | 8.0.0.12  |
-        ---------------------------
+        +--------------+-----------+
+
         subnet_cidr is 8.0.0.0/24
 
         This function returns the dictionary
         '8.0.0.2' : ['10.0.0.0/24', '12.0.0.0/24', '14.0.0.0/24']
         '8.0.0.4' : ['16.0.0.0/24', '15.0.0.0/24']
         '8.0.0.12': ['20.0.0.0/24']
+
         """
         temp_host_routes = list(host_routes)
         cidr_ip_set = IPSet([subnet_cidr])
@@ -3472,7 +3462,7 @@ class DBInterface(object):
                         'virtual_machine_interface', port_obj)
                     self._resource_delete(
                         'interface_route_table', rt_ref['uuid'])
-                except (NoIdError, RefsExistError) as e:
+                except (NoIdError, RefsExistError):
                     pass
 
     def _virtual_router_to_neutron(self, virtual_router):
@@ -3499,7 +3489,7 @@ class DBInterface(object):
     def network_create(self, network_q, context):
         net_obj = self._network_neutron_to_vnc(network_q, CREATE)
         try:
-            net_uuid = self._resource_create('virtual_network', net_obj)
+            self._resource_create('virtual_network', net_obj)
         except RefsExistError:
             self._raise_contrail_exception(
                 'BadRequest',
@@ -3565,7 +3555,7 @@ class DBInterface(object):
     @wait_for_api_server_connection
     def network_delete(self, net_id, context):
         try:
-            net_obj = self._vnc_lib.virtual_network_read(id=net_id)
+            self._vnc_lib.virtual_network_read(id=net_id)
         except NoIdError:
             return
 
@@ -3768,7 +3758,7 @@ class DBInterface(object):
                 ))
 
             try:
-                acquired_lock = scope_lock.acquire(
+                scope_lock.acquire(
                     timeout=_DEFAULT_ZK_LOCK_TIMEOUT)
 
                 # If this node acquired the lock, continue with creation of
@@ -4110,7 +4100,7 @@ class DBInterface(object):
 
         ipam_obj = self._ipam_neutron_to_vnc(ipam_q, CREATE)
         try:
-            ipam_uuid = self._resource_create('network_ipam', ipam_obj)
+            self._resource_create('network_ipam', ipam_obj)
         except RefsExistError as e:
             self._raise_contrail_exception('BadRequest',
                                            resource='ipam', msg=str(e))
@@ -4195,7 +4185,7 @@ class DBInterface(object):
 
         policy_obj = self._policy_neutron_to_vnc(policy_q, CREATE)
         try:
-            policy_uuid = self._resource_create('network_policy', policy_obj)
+            self._resource_create('network_policy', policy_obj)
         except (RefsExistError, BadRequest) as e:
             self._raise_contrail_exception('BadRequest',
                                            resource='policy', msg=str(e))
@@ -4596,10 +4586,8 @@ class DBInterface(object):
                                                subnet_id=subnet_id)
             subnet_id = port_subnet_id
             subnet = self.subnet_read(subnet_id)
-            network_id = subnet['network_id']
         elif subnet_id:
             subnet = self.subnet_read(subnet_id)
-            network_id = subnet['network_id']
 
             for intf in router_obj.get_virtual_machine_interface_refs() or []:
                 port_id = intf['uuid']
@@ -4632,7 +4620,7 @@ class DBInterface(object):
         except OverQuota as e:
             self._raise_contrail_exception('OverQuota',
                                            overs=['floatingip'], msg=str(e))
-        except Exception as e:
+        except Exception:
             self._raise_contrail_exception('IpAddressGenerationFailure',
                                            net_id=fip_q['floating_network_id'])
         fip_obj = self._vnc_lib.floating_ip_read(id=fip_uuid)
@@ -4784,7 +4772,7 @@ class DBInterface(object):
     # end floatingip_count
 
     def _ip_addr_in_net_id(self, ip_addr, net_id):
-        """Checks if ip address is present in net-id."""
+        """Check if ip address is present in net-id."""
         net_ip_list = [ipobj.get_instance_ip_address() for ipobj in
                        self._instance_ip_list(back_ref_id=[net_id])]
         return ip_addr in net_ip_list
@@ -4852,7 +4840,7 @@ class DBInterface(object):
                                                  subnet_id, ip_family)
 
                 created_iip_ids.append(ip_id)
-            except vnc_exc.HttpError as e:
+            except vnc_exc.HttpError:
                 # Resources are not available
                 for iip_id in created_iip_ids:
                     self._instance_ip_delete(instance_ip_id=iip_id)
@@ -4872,7 +4860,6 @@ class DBInterface(object):
             self._raise_contrail_exception('NetworkNotFound',
                                            net_id=net_id)
         tenant_id = self._get_tenant_id_for_create(context, port_q)
-        proj_id = str(uuid.UUID(tenant_id))
 
         # if mac-address is specified, check against the exisitng ports
         # to see if there exists a port with the same mac-address
@@ -4946,7 +4933,7 @@ class DBInterface(object):
                                                   {'ip_address': None,
                                                    'subnet_id': subnet_id}]},
                                               ip_family="v4")
-            except BadRequest as e:
+            except BadRequest:
                 ipv4_port_delete = True
                 errmsg = str(e)
             except vnc_exc.HttpError as e:
@@ -4961,7 +4948,7 @@ class DBInterface(object):
                                                   {'ip_address': None,
                                                    'subnet_id': subnet_id}]},
                                               ip_family="v6")
-            except BadRequest as e:
+            except BadRequest:
                 ipv6_port_delete = True
                 errmsg = str(e)
             except vnc_exc.HttpError as e:
@@ -5010,12 +4997,10 @@ class DBInterface(object):
     @wait_for_api_server_connection
     def port_update(self, port_id, port_q):
         # if ip address passed then use it
-        req_ip_addrs = []
-        req_ip_subnets = []
         port_q['id'] = port_id
         port_obj = self._port_neutron_to_vnc(port_q, None, UPDATE)
         net_id = port_obj.get_virtual_network_refs()[0]['uuid']
-        net_obj = self._network_read(net_id)
+        self._network_read(net_id)
         try:
             self._resource_update('virtual_machine_interface', port_obj)
         except BadRequest as e:
@@ -5087,7 +5072,6 @@ class DBInterface(object):
                 self.floatingip_update(None, fip_back_ref['uuid'],
                                        {'port_id': None})
 
-        tenant_id = self._get_obj_tenant_id('port', port_id)
         self._virtual_machine_interface_delete(port_id=port_id)
 
         # delete any interface route table associated with the port to handle
@@ -5097,7 +5081,7 @@ class DBInterface(object):
                 try:
                     self._resource_delete('interface_route_table',
                                           rt_ref['uuid'])
-                except (NoIdError, RefsExistError) as e:
+                except (NoIdError, RefsExistError):
                     pass
 
         # delete instance if this was the last port
@@ -5519,7 +5503,7 @@ class DBInterface(object):
     def route_table_create(self, rt_q):
         rt_obj = self._route_table_neutron_to_vnc(rt_q, CREATE)
         try:
-            rt_uuid = self._route_table_create(rt_obj)
+            self._route_table_create(rt_obj)
         except RefsExistError as e:
             self._raise_contrail_exception('BadRequest',
                                            resource='route_table', msg=str(e))
@@ -5593,7 +5577,7 @@ class DBInterface(object):
     @wait_for_api_server_connection
     def svc_instance_create(self, si_q):
         si_obj = self._svc_instance_neutron_to_vnc(si_q, CREATE)
-        si_uuid = self._svc_instance_create(si_obj)
+        self._svc_instance_create(si_obj)
         ret_si_q = self._svc_instance_vnc_to_neutron(si_obj)
         return ret_si_q
     # end svc_instance_create
@@ -5673,7 +5657,7 @@ class DBInterface(object):
     """
 
     def _compute_firewall_group_status(self, firewall_group):
-        """Compute a status of specified Firewall Group
+        """Compute a status of specified Firewall Group.
 
         Validates 'ACTIVE', 'DOWN', 'INACTIVE', 'ERROR' and None as follows:
             - "ACTIVE"   : admin_state_up is True and exists ports and policies
@@ -5696,7 +5680,7 @@ class DBInterface(object):
         return constants.INACTIVE
 
     def _firewall_group_neutron_to_vnc(self, context, firewall_group, id=None):
-        """Neutron Firewall Group resource to Contrail Application Policy Set
+        """Neutron Firewall Group resource to Contrail Application Policy Set.
 
         Convert Neutron Firewall Group resource to Contrail Application Policy
         Set.
@@ -5725,7 +5709,6 @@ class DBInterface(object):
             request. If `None`, instantiate new APS
         :returns: vnc_api.gen.resource_client.ApplicationPolicySet
         """
-
         if not id:  # creation
             # cannot use default firewall group name
             if (firewall_group.get('name') ==
@@ -5819,7 +5802,7 @@ class DBInterface(object):
         return aps
 
     def _application_policy_set_vnc_to_neutron(self, aps, fields=None):
-        """Convert Contrail Application Policy Set to Neutron Firewall Group
+        """Convert Contrail Application Policy Set to Neutron Firewall Group.
 
         :param aps: vnc_api.gen.resource_client.ApplicationPolicySet instance
             to convert
@@ -5886,7 +5869,7 @@ class DBInterface(object):
         return filter_fields(firewall_group, fields)
 
     def _apply_firewall_group_to_associated_port(self, aps, firewall_group):
-        """Add or remove reference(s) from VMI to dedicated application Tag
+        """Add or remove reference(s) from VMI to dedicated application Tag.
 
         :param aps: vnc_api.gen.resource_client.ApplicationPolicySet instance
         :param firewall_group: Firewall Group dictionary
@@ -5913,7 +5896,7 @@ class DBInterface(object):
                 _NEUTRON_FWAAS_TAG_TYPE, aps.uuid)
 
     def firewall_group_create(self, context, firewall_group):
-        """Create Firewall Group
+        """Create Firewall Group.
 
         Maps a Neutron Firewall Group resource to a Contrail Application
         Policy. The APS is a child of the project and it is owned by that
@@ -5964,7 +5947,7 @@ class DBInterface(object):
         return self._application_policy_set_vnc_to_neutron(aps)
 
     def firewall_group_read(self, context, id, fields=None):
-        """Retrieve Firewall Group
+        """Retrieve Firewall Group.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Group to fetch
@@ -5987,7 +5970,7 @@ class DBInterface(object):
         return firewall_group
 
     def firewall_group_list(self, context, filters=None, fields=None):
-        """Retrieve a list of Firewall Group
+        """Retrieve a list of Firewall Group.
 
         :param context: Neutron api request context
         :param filters: a dictionary with keys that are valid keys for a
@@ -6034,7 +6017,7 @@ class DBInterface(object):
         return results
 
     def firewall_group_update(self, context, id, firewall_group):
-        """Update value of Firewall Group
+        """Update value of Firewall Group.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Group to update
@@ -6052,7 +6035,7 @@ class DBInterface(object):
             self._vnc_lib.application_policy_set_read(id=id))
 
     def firewall_group_delete(self, context, id):
-        """Delete Firewall Group
+        """Delete Firewall Group.
 
         Delete corresponding Contrail APS and dedicated application Tag.
 
@@ -6104,7 +6087,7 @@ class DBInterface(object):
         self._vnc_lib.application_policy_set_delete(id=id)
 
     def _firewall_policy_neutron_to_vnc(self, firewall_policy, id=None):
-        """Neutron Firewall Policy resource to Contrail Firewall Policy
+        """Neutron Firewall Policy resource to Contrail Firewall Policy.
 
         =======================  ========================
         Neutron Firewall Policy  Contrail Firewall Policy
@@ -6179,7 +6162,7 @@ class DBInterface(object):
         return fp
 
     def _firewall_policy_vnc_to_neutron(self, fp, fields=None):
-        """Convert Contrail Firewall Policy to Neutron Firewall Policy
+        """Convert Contrail Firewall Policy to Neutron Firewall Policy.
 
         :param fp: vnc_api.gen.resource_client.FirewallPolicy instance to
             convert
@@ -6205,7 +6188,7 @@ class DBInterface(object):
         return filter_fields(firewall_policy, fields)
 
     def firewall_policy_create(self, context, firewall_policy):
-        """Create Firewall Policy
+        """Create Firewall Policy.
 
         Maps a Neutron Firewall Policy resource to a Contrail Firewall Policy.
         The FPs are a child of the project and are owned by that project.
@@ -6226,7 +6209,7 @@ class DBInterface(object):
             self._vnc_lib.firewall_policy_read(id=fp_id))
 
     def firewall_policy_read(self, context, id, fields=None):
-        """Retrieve Firewall Policy
+        """Retrieve Firewall Policy.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Policy to fetch
@@ -6243,7 +6226,7 @@ class DBInterface(object):
         return self._firewall_policy_vnc_to_neutron(fp, fields)
 
     def firewall_policy_list(self, context, filters=None, fields=None):
-        """Retrieve a list of Firewall Policy
+        """Retrieve a list of Firewall Policy.
 
         :param context: Neutron api request context
         :param filters: a dictionary with keys that are valid keys for a
@@ -6277,7 +6260,7 @@ class DBInterface(object):
         return results
 
     def firewall_policy_update(self, context, id, firewall_policy):
-        """Update value of Firewall Policy
+        """Update value of Firewall Policy.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Policy to update
@@ -6297,7 +6280,7 @@ class DBInterface(object):
             self._vnc_lib.firewall_policy_read(id=id))
 
     def firewall_policy_delete(self, context, id):
-        """Delete Firewall Policy
+        """Delete Firewall Policy.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Policy to delete
@@ -6312,7 +6295,7 @@ class DBInterface(object):
                                            firewall_policy_id=id)
 
     def firewall_policy_insert_rule(self, context, id, rule_info):
-        """Insert firewall rule into a policy
+        """Insert firewall rule into a policy.
 
         A `firewall_rule_id` is inserted relative to the position of the
         `firewall_rule_id` set in `insert_before` or `insert_after`. If
@@ -6363,7 +6346,7 @@ class DBInterface(object):
             return self.firewall_policy_read(context, id)
 
     def firewall_policy_remove_rule(self, context, id, rule_info):
-        """Remove firewall rule from a policy
+        """Remove firewall rule from a policy.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Policy to update
@@ -6385,7 +6368,7 @@ class DBInterface(object):
             context, id, {'firewall_rules': firewall_rule_list})
 
     def _get_port_type(self, port_range_str):
-        """Convert port range string to vnc_api.gen.resource_xsd.PortType"""
+        """Convert port range string to vnc_api.gen.resource_xsd.PortType."""
         if port_range_str:
             try:
                 port_min, _, port_max = port_range_str.partition(':')
@@ -6397,7 +6380,7 @@ class DBInterface(object):
                                                port=port_range_str)
 
     def _get_subnet_type(self, subnet_str):
-        """Convert subnet string to vnc_api.gen.resource_xsd.SubnetType"""
+        """Convert subnet string to vnc_api.gen.resource_xsd.SubnetType."""
         if subnet_str:
             try:
                 ip_network = netaddr.IPNetwork(subnet_str)
@@ -6411,12 +6394,12 @@ class DBInterface(object):
 
     @staticmethod
     def _get_tag_list(firewall_group_id):
-        """Returns application Tag name dedicated to a Firewall Group"""
+        """Return application Tag name dedicated to a Firewall Group."""
         if firewall_group_id:
             return ['%s=%s' % (_NEUTRON_FWAAS_TAG_TYPE, firewall_group_id)]
 
     def _get_action(self, action):
-        """Convert action string to vnc_api.gen.resource_xsd.ActionListType"""
+        """Convert action string to vnc_api.gen.resource_xsd.ActionListType."""
         if action:
             if action == 'allow':
                 action = 'pass'
@@ -6430,7 +6413,7 @@ class DBInterface(object):
             return ActionListType(simple_action=action)
 
     def _firewall_rule_neutron_to_vnc(self, firewall_rule, id=None):
-        """Neutron Firewall Rule resource to Contrail Firewall Rule
+        """Neutron Firewall Rule resource to Contrail Firewall Rule.
 
         =============================  ======================
         Neutron Firewall Rule          Contrail Firewall Rule
@@ -6584,7 +6567,7 @@ class DBInterface(object):
 
     @staticmethod
     def _get_port_range_str(port_type):
-        """Convert vnc_api.gen.resource_xsd.PortType to port string"""
+        """Convert vnc_api.gen.resource_xsd.PortType to port string."""
         if port_type:
             port_min = port_type.get_start_port()
             port_max = port_type.get_end_port()
@@ -6594,8 +6577,11 @@ class DBInterface(object):
 
     @staticmethod
     def _get_ip_prefix_str(endpoint_type):
-        """Convert vnc_api.gen.resource_xsd.FirewallRuleEndpointType to subnet
-        string
+        """
+        Get subnet from firewall rule endpoint type.
+
+        Convert vnc_api.gen.resource_xsd.FirewallRuleEndpointType to
+        subnet string.
         """
         if endpoint_type.get_any():
             return None
@@ -6607,7 +6593,7 @@ class DBInterface(object):
 
     @staticmethod
     def _get_firewall_group_id(tags):
-        """Returns first found Firewall Group ID from Tag list"""
+        """Return first found Firewall Group ID from Tag list."""
         for tag in tags or []:
             tag_type, _, tag_value = tag.partition('=')
             if tag_type == _NEUTRON_FWAAS_TAG_TYPE and is_uuid_like(tag_value):
@@ -6615,7 +6601,7 @@ class DBInterface(object):
 
     @staticmethod
     def _get_action_str(action):
-        """Convert vnc_api.gen.resource_xsd.ActionListType to action string"""
+        """Convert vnc_api.gen.resource_xsd.ActionListType to action string."""
         if action:
             action_str = action.get_simple_action()
             if action_str == 'pass':
@@ -6623,7 +6609,7 @@ class DBInterface(object):
             return action_str
 
     def _firewall_rule_vnc_to_neutron(self, fr, fields=None):
-        """Convert Contrail Firewall Rule to Neutron Firewall Rule
+        """Convert Contrail Firewall Rule to Neutron Firewall Rule.
 
         :param fr: vnc_api.gen.resource_client.FirewallRule instance to
             convert
@@ -6677,7 +6663,7 @@ class DBInterface(object):
         return filter_fields(firewall_rule, fields)
 
     def firewall_rule_create(self, context, firewall_rule):
-        """Create Firewall Rule
+        """Create Firewall Rule.
 
         Maps a Neutron Firewall Rule resource to a Contrail Firewall Rule. The
         FRs are a child of the project and are owned by that project.
@@ -6698,7 +6684,7 @@ class DBInterface(object):
             self._vnc_lib.firewall_rule_read(id=fr_id))
 
     def firewall_rule_read(self, context, id, fields):
-        """Retrieve Firewall Rule
+        """Retrieve Firewall Rule.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Rule to fetch
@@ -6715,7 +6701,7 @@ class DBInterface(object):
         return self._firewall_rule_vnc_to_neutron(fr, fields)
 
     def firewall_rule_list(self, context, filters, fields):
-        """Retrieve a list of Firewall Rule
+        """Retrieve a list of Firewall Rule.
 
         :param context: Neutron api request context
         :param filters: a dictionary with keys that are valid keys for a
@@ -6753,7 +6739,7 @@ class DBInterface(object):
         return results
 
     def firewall_rule_update(self, context, id, firewall_rule):
-        """Update value of Firewall Rule
+        """Update value of Firewall Rule.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Rule to update
@@ -6772,7 +6758,7 @@ class DBInterface(object):
         return firewall_rule
 
     def firewall_rule_delete(self, context, id):
-        """Delete Firewall Rule
+        """Delete Firewall Rule.
 
         :param context: Neutron api request context
         :param id: UUID representing the Firewall Rule to delete
@@ -6788,13 +6774,12 @@ class DBInterface(object):
 
     def _trunk_neutron_to_vnc(self, trunk_q, oper, id=None,
                               port_operation=None):
-        """Convert Neutron Trunk Port to Contrail Virtual Port Group
+        """Convert Neutron Trunk Port to Contrail Virtual Port Group.
 
         :param trunk_q: Trunk Port dictionary to convert
         :param oper: operation i.e CRUD to perform on trunk port
         :returns: vnc_api.gen.resource_client.VirtualPortGroup
         """
-
         sub_vmi_vlan_tags = []
 
         def _set_sub_ports(trunk, trunk_port, sub_port_dict):
@@ -6947,7 +6932,6 @@ class DBInterface(object):
     @catch_convert_exception
     def _trunk_vnc_to_neutron(self, trunk_obj, fields=None):
         trunk_q_dict = {}
-        extra_dict = {}
 
         port_id = trunk_obj.virtual_port_group_trunk_port_id
         port_obj = self._vnc_lib.virtual_machine_interface_read(id=port_id)
@@ -6993,7 +6977,7 @@ class DBInterface(object):
 
         trunk_obj = self._trunk_neutron_to_vnc(trunk_q, CREATE)
         try:
-            vpg_id = self._resource_create('virtual_port_group', trunk_obj)
+            self._resource_create('virtual_port_group', trunk_obj)
         except BadRequest as e:
             self._raise_contrail_exception(
                 'BadRequest', resource='virtual_port_group', msg=str(e))
@@ -7017,7 +7001,7 @@ class DBInterface(object):
 
     @wait_for_api_server_connection
     def trunk_update(self, context, id, trunk_q):
-        """Update value of Trunk
+        """Update value of Trunk.
 
         :param context: Neutron api request context
         :param id: UUID representing the Trunk to update
@@ -7032,7 +7016,7 @@ class DBInterface(object):
 
     @wait_for_api_server_connection
     def trunk_delete(self, context, id):
-        """Delete Trunk
+        """Delete Trunk.
 
         :param context: Neutron api request context
         :param id: UUID representing the Trunk object to delete
@@ -7047,7 +7031,7 @@ class DBInterface(object):
 
     @wait_for_api_server_connection
     def trunk_list(self, context, filters, fields):
-        """Retrieve a list of Trunk
+        """Retrieve a list of Trunk.
 
         :param context: Neutron api request context
         :param filters: a dictionary with keys that are valid keys for a
@@ -7081,7 +7065,7 @@ class DBInterface(object):
 
     @wait_for_api_server_connection
     def trunk_add_subports(self, context, id, sub_ports):
-        """Add sub port to a trunk
+        """Add sub port to a trunk.
 
         :param context: Neutron api request context
         :param id: UUID representing the Trunk object
@@ -7098,7 +7082,7 @@ class DBInterface(object):
 
     @wait_for_api_server_connection
     def trunk_remove_subports(self, context, id, sub_ports):
-        """Remove sub port from a trunk
+        """Remove sub port from a trunk.
 
         :param context: Neutron api request context
         :param id: UUID representing the Trunk object

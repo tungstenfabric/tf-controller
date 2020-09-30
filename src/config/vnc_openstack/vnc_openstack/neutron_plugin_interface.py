@@ -1,19 +1,18 @@
 #
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
-
 from __future__ import absolute_import
 
-import collections
 from builtins import object
 from builtins import str
+import collections
 from pprint import pformat
 
 import bottle
-import six
 from cfgm_common import jsonutils as json
 from cfgm_common.utils import CacheContainer
 from future import standard_library
+import six
 from six.moves import configparser
 
 from .neutron_plugin_db import DBInterface
@@ -37,12 +36,11 @@ def error_409(err):
 
 
 class NeutronPluginInterface(object):
-    """
-    An instance of this class receives requests from Contrail Neutron Plugin
-    """
+    """Instance receives requests from Contrail Neutron Plugin."""
 
     def __init__(self, api_server_ip, api_server_port, conf_sections, sandesh,
                  api_server_obj=None):
+        """Create Neutron plugin interface object."""
         if api_server_ip == '0.0.0.0':
             self._vnc_api_ip = '127.0.0.1'
         else:
@@ -102,6 +100,8 @@ class NeutronPluginInterface(object):
 
     def _connect_to_db(self):
         """
+        Establish conneciton to database.
+
         Many instantiations of plugin (base + extensions) but need to have
         only one config db conn (else error from api-server)
         """
@@ -126,8 +126,9 @@ class NeutronPluginInterface(object):
 
     def _get_user_cfgdb(self, context):
         """
-        Send admin token if multi_tenancy is disabled
-        else forward user token along for RBAC if passed by neutron plugin
+        Send admin token if multi_tenancy is disabled.
+
+        Else forward user token along for RBAC if passed by neutron plugin.
         """
         self._connect_to_db()
 
@@ -154,7 +155,7 @@ class NeutronPluginInterface(object):
                 elif context.get('tenant_id'):
                     context['tenant'] = context['tenant_id']
                 return req['context'], req['data']
-        except Exception as e:
+        except Exception:
             bottle.abort(400, 'Unable to parse request data')
 
     def _filter_subnets_by_tags(self, context, request):
@@ -272,10 +273,7 @@ class NeutronPluginInterface(object):
 
     # Network API Handling
     def plugin_get_network(self, context, network):
-        """
-        Network get request
-        """
-
+        """Network get request."""
         fields = network['fields']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -283,38 +281,26 @@ class NeutronPluginInterface(object):
         return net_info
 
     def plugin_create_network(self, context, network):
-        """
-        Network create request
-        """
-
+        """Network create request."""
         cfgdb = self._get_user_cfgdb(context)
         net_info = cfgdb.network_create(network['resource'], context)
         return net_info
 
     def plugin_update_network(self, context, network):
-        """
-        Network update request
-        """
-
+        """Network update request."""
         cfgdb = self._get_user_cfgdb(context)
         net_info = cfgdb.network_update(network['id'],
                                         network['resource'], context)
         return net_info
 
     def plugin_delete_network(self, context, network):
-        """
-        Network delete request
-        """
-
+        """Network delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.network_delete(network['id'], context)
         LOG.debug("plugin_delete_network(): " + pformat(network['id']))
 
     def plugin_get_networks(self, context, network):
-        """
-        Networks get request
-        """
-
+        """Networks get request."""
         filters = network['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -322,10 +308,7 @@ class NeutronPluginInterface(object):
         return json.dumps(nets_info)
 
     def plugin_get_networks_count(self, context, network):
-        """
-        Networks count request
-        """
-
+        """Networks count request."""
         filters = network['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -335,9 +318,7 @@ class NeutronPluginInterface(object):
         return {'count': nets_count}
 
     def plugin_http_post_network(self):
-        """
-        Bottle callback for Network POST
-        """
+        """Bottle callback for Network POST."""
         context, network = self._get_requests_data()
         self._filter_resources_by_tags('network', context, network)
 
@@ -385,47 +366,32 @@ class NeutronPluginInterface(object):
 
     # Subnet API Handling
     def plugin_get_subnet(self, context, subnet):
-        """
-        Subnet get request
-        """
-
+        """Subnet get request."""
         cfgdb = self._get_user_cfgdb(context)
         subnet_info = cfgdb.subnet_read(subnet['id'])
         return self._make_subnet_dict(subnet_info)
 
     def plugin_create_subnet(self, context, subnet):
-        """
-        Subnet create request
-        """
-
+        """Subnet create request."""
         cfgdb = self._get_user_cfgdb(context)
         subnet_info = cfgdb.subnet_create(subnet['resource'])
         return self._make_subnet_dict(subnet_info)
 
     def plugin_update_subnet(self, context, subnet):
-        """
-        Subnet update request
-        """
-
+        """Subnet update request."""
         cfgdb = self._get_user_cfgdb(context)
         subnet_info = cfgdb.subnet_update(subnet['id'],
                                           subnet['resource'])
         return self._make_subnet_dict(subnet_info)
 
     def plugin_delete_subnet(self, context, subnet):
-        """
-        Subnet delete request
-        """
-
+        """Subnet delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.subnet_delete(subnet['id'])
         LOG.debug("plugin_delete_subnet(): " + pformat(subnet['id']))
 
     def plugin_get_subnets(self, context, subnet):
-        """
-        Subnets get request
-        """
-
+        """Subnets get request."""
         filters = subnet['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -433,10 +399,7 @@ class NeutronPluginInterface(object):
         return json.dumps([self._make_subnet_dict(i) for i in subnets_info])
 
     def plugin_get_subnets_count(self, context, subnet):
-        """
-        Subnets count request
-        """
-
+        """Subnets count request."""
         filters = subnet['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -446,9 +409,7 @@ class NeutronPluginInterface(object):
         return {'count': subnets_count}
 
     def plugin_http_post_subnet(self):
-        """
-        Bottle callback for Subnet POST
-        """
+        """Bottle callback for Subnet POST."""
         context, subnet = self._get_requests_data()
         self._filter_subnets_by_tags(context, subnet)
 
@@ -467,47 +428,32 @@ class NeutronPluginInterface(object):
 
     # Port API Handling
     def plugin_get_port(self, context, port):
-        """
-        Port get request
-        """
-
+        """Port get request."""
         cfgdb = self._get_user_cfgdb(context)
         port_info = cfgdb.port_read(port['id'])
         return port_info
 
     def plugin_create_port(self, context, port):
-        """
-        Port create request
-        """
-
+        """Port create request."""
         cfgdb = self._get_user_cfgdb(context)
         net_info = cfgdb.port_create(context, port['resource'])
         return net_info
 
     def plugin_update_port(self, context, port):
-        """
-        Port update request
-        """
-
+        """Port update request."""
         cfgdb = self._get_user_cfgdb(context)
         net_info = cfgdb.port_update(port['id'],
                                      port['resource'])
         return net_info
 
     def plugin_delete_port(self, context, port):
-        """
-        Port delete request
-        """
-
+        """Port delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.port_delete(port['id'])
         LOG.debug("plugin_delete_port(): " + pformat(port['id']))
 
     def plugin_get_ports(self, context, port):
-        """
-        Ports get request
-        """
-
+        """Ports get request."""
         filters = port['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -515,10 +461,7 @@ class NeutronPluginInterface(object):
         return json.dumps(ports_info)
 
     def plugin_get_ports_count(self, context, port):
-        """
-        Ports count request
-        """
-
+        """Ports count request."""
         filters = port['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -528,9 +471,7 @@ class NeutronPluginInterface(object):
         return {'count': ports_count}
 
     def plugin_http_post_port(self):
-        """
-        Bottle callback for Port POST
-        """
+        """Bottle callback for Port POST."""
         context, port = self._get_requests_data()
         self._filter_resources_by_tags('port', context, port)
 
@@ -549,28 +490,19 @@ class NeutronPluginInterface(object):
 
     # Floating IP API Handling
     def plugin_get_floatingip(self, context, floatingip):
-        """
-        Floating IP get request
-        """
-
+        """Floating IP get request."""
         cfgdb = self._get_user_cfgdb(context)
         fip_info = cfgdb.floatingip_read(floatingip['id'])
         return fip_info
 
     def plugin_create_floatingip(self, context, floatingip):
-        """
-        Floating IP create request
-        """
-
+        """Floating IP create request."""
         cfgdb = self._get_user_cfgdb(context)
         net_info = cfgdb.floatingip_create(context, floatingip['resource'])
         return net_info
 
     def plugin_update_floatingip(self, context, floatingip):
-        """
-        Floating IP update request
-        """
-
+        """Floating IP update request."""
         cfgdb = self._get_user_cfgdb(context)
         if 'resource' in floatingip:
             fip_resource = floatingip['resource']
@@ -583,20 +515,14 @@ class NeutronPluginInterface(object):
         return floatingip_info
 
     def plugin_delete_floatingip(self, context, floatingip):
-        """
-        Floating IP delete request
-        """
-
+        """Floating IP delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.floatingip_delete(floatingip['id'])
         LOG.debug("plugin_delete_floatingip(): " +
                   pformat(floatingip['id']))
 
     def plugin_get_floatingips(self, context, floatingip):
-        """
-        Floating IPs get request
-        """
-
+        """Floating IPs get request."""
         filters = floatingip['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -604,10 +530,7 @@ class NeutronPluginInterface(object):
         return json.dumps(floatingips_info)
 
     def plugin_get_floatingips_count(self, context, floatingip):
-        """
-        Floating IPs count request
-        """
-
+        """Floating IPs count request."""
         filters = floatingip['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -617,9 +540,7 @@ class NeutronPluginInterface(object):
         return {'count': floatingips_count}
 
     def plugin_http_post_floatingip(self):
-        """
-        Bottle callback for Floating IP POST
-        """
+        """Bottle callback for Floating IP POST."""
         context, floatingip = self._get_requests_data()
         self._filter_resources_by_tags('floatingip', context, floatingip)
 
@@ -638,47 +559,32 @@ class NeutronPluginInterface(object):
 
     # Security Group API Handling
     def plugin_get_sec_group(self, context, sg):
-        """
-        Security group get request
-        """
-
+        """Security group get request."""
         cfgdb = self._get_user_cfgdb(context)
         sg_info = cfgdb.security_group_read(sg['id'])
         return sg_info
 
     def plugin_create_sec_group(self, context, sg):
-        """
-        Security group create request
-        """
-
+        """Security group create request."""
         cfgdb = self._get_user_cfgdb(context)
         sg_info = cfgdb.security_group_create(sg['resource'])
         return sg_info
 
     def plugin_update_sec_group(self, context, sg):
-        """
-        Security group update request
-        """
-
+        """Security group update request."""
         cfgdb = self._get_user_cfgdb(context)
         sg_info = cfgdb.security_group_update(sg['id'],
                                               sg['resource'])
         return sg_info
 
     def plugin_delete_sec_group(self, context, sg):
-        """
-        Security group delete request
-        """
-
+        """Security group delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.security_group_delete(context, sg['id'])
         LOG.debug("plugin_delete_sec_group(): " + pformat(sg['id']))
 
     def plugin_get_sec_groups(self, context, sg):
-        """
-        Security groups get request
-        """
-
+        """Security groups get request."""
         filters = sg['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -686,9 +592,7 @@ class NeutronPluginInterface(object):
         return json.dumps(sgs_info)
 
     def plugin_http_post_securitygroup(self):
-        """
-        Bottle callback for Security Group POST
-        """
+        """Bottle callback for Security Group POST."""
         context, sg = self._get_requests_data()
         self._filter_resources_by_tags('securitygroup', context, sg)
 
@@ -704,39 +608,27 @@ class NeutronPluginInterface(object):
             return self.plugin_get_sec_groups(context, sg)
 
     def plugin_get_sec_group_rule(self, context, sg_rule):
-        """
-        Security group rule get request
-        """
-
+        """Security group rule get request."""
         cfgdb = self._get_user_cfgdb(context)
         sg_rule_info = cfgdb.security_group_rule_read(context,
                                                       sg_rule['id'])
         return sg_rule_info
 
     def plugin_create_sec_group_rule(self, context, sg_rule):
-        """
-        Security group rule create request
-        """
-
+        """Security group rule create request."""
         cfgdb = self._get_user_cfgdb(context)
         sg_rule_info = cfgdb.security_group_rule_create(sg_rule['resource'])
         return sg_rule_info
 
     def plugin_delete_sec_group_rule(self, context, sg_rule):
-        """
-        Security group rule delete request
-        """
-
+        """Security group rule delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.security_group_rule_delete(context, sg_rule['id'])
         LOG.debug("plugin_delete_sec_group_rule(): " +
                   pformat(sg_rule['id']))
 
     def plugin_get_sec_group_rules(self, context, sg_rule):
-        """
-        Security group rules get request
-        """
-
+        """Security group rules get request."""
         filters = sg_rule['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -744,9 +636,7 @@ class NeutronPluginInterface(object):
         return json.dumps(sg_rules_info)
 
     def plugin_http_post_securitygrouprule(self):
-        """
-        Bottle callback for sec_group_rule POST
-        """
+        """Bottle callback for sec_group_rule POST."""
         context, sg_rule = self._get_requests_data()
 
         if context['operation'] == 'READ':
@@ -764,48 +654,33 @@ class NeutronPluginInterface(object):
 
     # Router IP API Handling
     def plugin_get_router(self, context, router):
-        """
-        Router get request
-        """
-
+        """Router get request."""
         cfgdb = self._get_user_cfgdb(context)
         router_info = cfgdb.router_read(router['id'])
         return router_info
 
     def plugin_create_router(self, context, router):
-        """
-        Router create request
-        """
-
+        """Router create request."""
         cfgdb = self._get_user_cfgdb(context)
         router_info = cfgdb.router_create(router['resource'])
         return router_info
 
     def plugin_update_router(self, context, router):
-        """
-        Router update request
-        """
-
+        """Router update request."""
         cfgdb = self._get_user_cfgdb(context)
         router_info = cfgdb.router_update(router['id'],
                                           router['resource'])
         return router_info
 
     def plugin_delete_router(self, context, router):
-        """
-        Router delete request
-        """
-
+        """Router delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.router_delete(router['id'])
         LOG.debug("plugin_delete_router(): " +
                   pformat(router['id']))
 
     def plugin_get_routers(self, context, router):
-        """
-        Routers get request
-        """
-
+        """Routers get request."""
         filters = router['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -813,10 +688,7 @@ class NeutronPluginInterface(object):
         return json.dumps(routers_info)
 
     def plugin_get_routers_count(self, context, router):
-        """
-        Routers count request
-        """
-
+        """Routers count request."""
         filters = router['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -826,9 +698,7 @@ class NeutronPluginInterface(object):
         return {'count': routers_count}
 
     def plugin_add_router_interface(self, context, interface_info):
-        """
-        Add interface to a router
-        """
+        """Add interface to a router."""
         cfgdb = self._get_user_cfgdb(context)
         router_id = interface_info['id']
         if 'port_id' in interface_info['resource']:
@@ -841,9 +711,7 @@ class NeutronPluginInterface(object):
                                               subnet_id=subnet_id)
 
     def plugin_del_router_interface(self, context, interface_info):
-        """
-        Delete interface from a router
-        """
+        """Delete interface from a router."""
         cfgdb = self._get_user_cfgdb(context)
         router_id = interface_info['id']
         if 'port_id' in interface_info['resource']:
@@ -856,9 +724,7 @@ class NeutronPluginInterface(object):
                                                  subnet_id=subnet_id)
 
     def plugin_http_post_router(self):
-        """
-        Bottle callback for Router POST
-        """
+        """Bottle callback for Router POST."""
         context, router = self._get_requests_data()
         self._filter_resources_by_tags('router', context, router)
 
@@ -882,48 +748,33 @@ class NeutronPluginInterface(object):
     # IPAM API Handling
 
     def plugin_get_ipam(self, context, ipam):
-        """
-        IPAM get request
-        """
-
+        """IPAM get request."""
         cfgdb = self._get_user_cfgdb(context)
         ipam_info = cfgdb.ipam_read(ipam['id'])
         return ipam_info
 
     def plugin_create_ipam(self, context, ipam):
-        """
-        IPAM create request
-        """
-
+        """IPAM create request."""
         cfgdb = self._get_user_cfgdb(context)
         ipam_info = cfgdb.ipam_create(ipam['resource'])
         return ipam_info
 
     def plugin_update_ipam(self, context, ipam):
-        """
-        IPAM update request
-        """
-
+        """IPAM update request."""
         cfgdb = self._get_user_cfgdb(context)
         ipam_info = cfgdb.ipam_update(ipam['id'],
                                       ipam['resource'])
         return ipam_info
 
     def plugin_delete_ipam(self, context, ipam):
-        """
-        IPAM delete request
-        """
-
+        """IPAM delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.ipam_delete(ipam['id'])
         LOG.debug("plugin_delete_ipam(): " +
                   pformat(ipam['id']))
 
     def plugin_get_ipams(self, context, ipam):
-        """
-        IPAM get request
-        """
-
+        """IPAM get request."""
         filters = ipam['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -931,10 +782,7 @@ class NeutronPluginInterface(object):
         return json.dumps(ipams_info)
 
     def plugin_get_ipams_count(self, context, ipam):
-        """
-        IPAM count request
-        """
-
+        """IPAM count request."""
         filters = ipam['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -944,9 +792,7 @@ class NeutronPluginInterface(object):
         return {'count': ipams_count}
 
     def plugin_http_post_ipam(self):
-        """
-        Bottle callback for IPAM POST
-        """
+        """Bottle callback for IPAM POST."""
         context, ipam = self._get_requests_data()
 
         if context['operation'] == 'READ':
@@ -964,48 +810,33 @@ class NeutronPluginInterface(object):
 
     # Policy IP API Handling
     def plugin_get_policy(self, context, policy):
-        """
-        Policy get request
-        """
-
+        """Policy get request."""
         cfgdb = self._get_user_cfgdb(context)
         pol_info = cfgdb.policy_read(policy['id'])
         return pol_info
 
     def plugin_create_policy(self, context, policy):
-        """
-        Policy create request
-        """
-
+        """Policy create request."""
         cfgdb = self._get_user_cfgdb(context)
         pol_info = cfgdb.policy_create(policy['resource'])
         return pol_info
 
     def plugin_update_policy(self, context, policy):
-        """
-        Policy update request
-        """
-
+        """Policy update request."""
         cfgdb = self._get_user_cfgdb(context)
         policy_info = cfgdb.policy_update(policy['id'],
                                           policy['resource'])
         return policy_info
 
     def plugin_delete_policy(self, context, policy):
-        """
-        Policy delete request
-        """
-
+        """Policy delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.policy_delete(policy['id'])
         LOG.debug("plugin_delete_policy(): " +
                   pformat(policy['id']))
 
     def plugin_get_policys(self, context, policy):
-        """
-        Policys get request
-        """
-
+        """Policys get request."""
         filters = policy['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -1013,10 +844,7 @@ class NeutronPluginInterface(object):
         return json.dumps(policys_info)
 
     def plugin_get_policys_count(self, context, policy):
-        """
-        Policys count request
-        """
-
+        """Policys count request."""
         filters = policy['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -1026,9 +854,7 @@ class NeutronPluginInterface(object):
         return {'count': policys_count}
 
     def plugin_http_post_policy(self):
-        """
-        Bottle callback for Policy POST
-        """
+        """Bottle callback for Policy POST."""
         context, policy = self._get_requests_data()
         self._filter_resources_by_tags('policy', context, policy)
 
@@ -1046,48 +872,33 @@ class NeutronPluginInterface(object):
             return self.plugin_get_policys_count(context, policy)
 
     def plugin_get_route_table(self, context, route_table):
-        """
-        Route table get request
-        """
-
+        """Route table get request."""
         cfgdb = self._get_user_cfgdb(context)
         rt_info = cfgdb.route_table_read(route_table['id'])
         return rt_info
 
     def plugin_create_route_table(self, context, route_table):
-        """
-        Route table create request
-        """
-
+        """Route table create request."""
         cfgdb = self._get_user_cfgdb(context)
         rt_info = cfgdb.route_table_create(route_table['resource'])
         return rt_info
 
     def plugin_update_route_table(self, context, route_table):
-        """
-        Route table update request
-        """
-
+        """Route table update request."""
         cfgdb = self._get_user_cfgdb(context)
         rt_info = cfgdb.route_table_update(route_table['id'],
                                            route_table['resource'])
         return rt_info
 
     def plugin_delete_route_table(self, context, route_table):
-        """
-        Route table delete request
-        """
-
+        """Route table delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.route_table_delete(route_table['id'])
         LOG.debug("plugin_delete_route_table(): " +
                   pformat(route_table['id']))
 
     def plugin_get_route_tables(self, context, route_table):
-        """
-        Route Tables get request
-        """
-
+        """Route Tables get request."""
         filters = route_table['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -1095,10 +906,7 @@ class NeutronPluginInterface(object):
         return json.dumps(rts_info)
 
     def plugin_get_route_tables_count(self, context, route_table):
-        """
-        Route Tables count request
-        """
-
+        """Route Tables count request."""
         filters = route_table['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -1108,9 +916,7 @@ class NeutronPluginInterface(object):
         return {'count': rts_count}
 
     def plugin_http_post_route_table(self):
-        """
-        Bottle callback for Route-table POST
-        """
+        """Bottle callback for Route-table POST."""
         context, route_table = self._get_requests_data()
 
         if context['operation'] == 'READ':
@@ -1127,38 +933,26 @@ class NeutronPluginInterface(object):
             return self.plugin_get_route_tables_count(context, route_table)
 
     def plugin_get_svc_instance(self, context, svc_instance):
-        """
-        Service instance get request
-        """
-
+        """Service instance get request."""
         cfgdb = self._get_user_cfgdb(context)
         si_info = cfgdb.svc_instance_read(svc_instance['id'])
         return si_info
 
     def plugin_create_svc_instance(self, context, svc_instance):
-        """
-        Service instance create request
-        """
-
+        """Service instance create request."""
         cfgdb = self._get_user_cfgdb(context)
         si_info = cfgdb.svc_instance_create(svc_instance['resource'])
         return si_info
 
     def plugin_delete_svc_instance(self, context, svc_instance):
-        """
-        Service instance delete request
-        """
-
+        """Service instance delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.svc_instance_delete(svc_instance['id'])
         LOG.debug("plugin_delete_svc_instance(): " +
                   pformat(svc_instance['id']))
 
     def plugin_get_svc_instances(self, context, svc_instance):
-        """
-        Service instance get request
-        """
-
+        """Service instance get request."""
         filters = svc_instance['filters']
 
         cfgdb = self._get_user_cfgdb(context)
@@ -1166,9 +960,7 @@ class NeutronPluginInterface(object):
         return json.dumps(sis_info)
 
     def plugin_http_post_svc_instance(self):
-        """
-        Bottle callback for Route-table POST
-        """
+        """Bottle callback for Route-table POST."""
         context, svc_instance = self._get_requests_data()
 
         if context['operation'] == 'READ':
@@ -1192,9 +984,7 @@ class NeutronPluginInterface(object):
             return self.plugin_get_virtual_router(context, virtual_router)
 
     def plugin_http_post_firewall_group(self):
-        """
-        Bottle callback for firewall_group POST
-        """
+        """Bottle callback for firewall_group POST."""
         context, firewall_group = self._get_requests_data()
         cfgdb = self._get_user_cfgdb(context)
 
@@ -1217,9 +1007,7 @@ class NeutronPluginInterface(object):
             return cfgdb.firewall_group_delete(context, firewall_group['id'])
 
     def plugin_http_post_firewall_policy(self):
-        """
-        Bottle callback for firewall_policy POST
-        """
+        """Bottle callback for firewall_policy POST."""
         context, firewall_policy = self._get_requests_data()
         cfgdb = self._get_user_cfgdb(context)
 
@@ -1248,9 +1036,7 @@ class NeutronPluginInterface(object):
                 context, firewall_policy['id'], firewall_policy['resource'])
 
     def plugin_http_post_firewall_rule(self):
-        """
-        Bottle callback for firewall_rule POST
-        """
+        """Bottle callback for firewall_rule POST."""
         context, firewall_rule = self._get_requests_data()
         cfgdb = self._get_user_cfgdb(context)
 
@@ -1273,9 +1059,7 @@ class NeutronPluginInterface(object):
             return cfgdb.firewall_rule_delete(context, firewall_rule['id'])
 
     def plugin_http_post_trunk(self):
-        """
-        Bottle callback for Trunk POST
-        """
+        """Bottle callback for Trunk POST."""
         context, trunk = self._get_requests_data()
         self._filter_resources_by_tags('trunk', context, trunk)
 
@@ -1297,28 +1081,19 @@ class NeutronPluginInterface(object):
     # Trunk API Handling
 
     def plugin_get_trunk(self, context, trunk):
-        """
-        Trunk get request
-        """
-
+        """Trunk get request."""
         cfgdb = self._get_user_cfgdb(context)
         trunk_info = cfgdb.trunk_read(trunk['id'])
         return trunk_info
 
     def plugin_create_trunk(self, context, trunk):
-        """
-        Trunk create request
-        """
-
+        """Trunk create request."""
         cfgdb = self._get_user_cfgdb(context)
         trunk_info = cfgdb.trunk_create(context, trunk['resource'])
         return trunk_info
 
     def plugin_update_trunk(self, context, trunk):
-        """
-        Trunk update request
-        """
-
+        """Trunk update request."""
         cfgdb = self._get_user_cfgdb(context)
         trunk_info = cfgdb.trunk_update(context,
                                         trunk['id'],
@@ -1326,18 +1101,12 @@ class NeutronPluginInterface(object):
         return trunk_info
 
     def plugin_delete_trunk(self, context, trunk):
-        """
-        Trunk delete request
-        """
-
+        """Trunk delete request."""
         cfgdb = self._get_user_cfgdb(context)
         cfgdb.trunk_delete(context, trunk['id'])
 
     def plugin_get_trunks(self, context, trunk):
-        """
-        Ports get request
-        """
-
+        """Ports get request."""
         filters = trunk['filters']
         fields = trunk['fields']
 
@@ -1346,27 +1115,21 @@ class NeutronPluginInterface(object):
         return json.dumps(trunk_info)
 
     def plugin_add_subports(self, context, trunk):
-        """
-        Add subports to a trunk
-        """
+        """Add subports to a trunk."""
         cfgdb = self._get_user_cfgdb(context)
         trunk_info = cfgdb.trunk_add_subports(
             context, trunk['id'], trunk['resource'])
         return trunk_info
 
     def plugin_remove_subports(self, context, trunk):
-        """
-        Add subports to a trunk
-        """
+        """Add subports to a trunk."""
         cfgdb = self._get_user_cfgdb(context)
         trunk_info = cfgdb.trunk_remove_subports(
             context, trunk['id'], trunk['resource'])
         return trunk_info
 
     def plugin_http_post_tags(self):
-        """
-        Bottle callback for Tags POST
-        """
+        """Bottle callback for Tags POST."""
         context, tags = self._get_requests_data()
 
         if context['operation'] == 'READ':
@@ -1393,7 +1156,7 @@ class NeutronPluginInterface(object):
         return cfgdb.tag_get(context, parent_id, tag)
 
     def plugin_list_tags(self, context, filters):
-        """Get tags for given parent
+        """Get tags for given parent.
 
         :param context: Request context
         :param filters: Dict with filters

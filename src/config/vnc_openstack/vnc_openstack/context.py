@@ -1,6 +1,6 @@
-import uuid
 from builtins import object
 from builtins import str
+import uuid
 
 import bottle
 import gevent
@@ -8,6 +8,7 @@ import gevent
 
 class NeutronApiContext(object):
     def __init__(self, request=None, user_token=None):
+        """Create Neutron API Context object."""
         self.undo_callables_with_args = []
         self.request = request
         self.user_token = user_token
