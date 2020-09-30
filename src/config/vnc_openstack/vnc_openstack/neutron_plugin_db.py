@@ -4206,8 +4206,9 @@ class DBInterface(object):
     def policy_read(self, policy_id, oper=READ):
         try:
             policy_obj = self._vnc_lib.network_policy_read(id=policy_id)
-        except NoIdError:
-            raise policy.PolicyNotFound(id=policy_id)
+        except NoIdError as e:
+            self._raise_contrail_exception('BadRequest',
+                                           resource='policy', msg=str(e))
 
         return self._policy_vnc_to_neutron(policy_obj, oper=oper)
     # end policy_read
