@@ -325,7 +325,11 @@ class TestCassandraDriverCQL(unittest.TestCase):
             lambda x: x))
         [x.start() for x in p]
 
-        self.drv = cassandra_cql.CassandraDriverCQL(['a', 'b'], logger=mock.MagicMock())
+        self.drv = cassandra_cql.CassandraDriverCQL(['a', 'b'], logger=mock.MagicMock(),
+                                                    inserts_use_batch=False,
+                                                    removes_use_batch=False)
+        self.drv.pool = cassandra_cql.DummyPool(
+            1, 1, self.drv.worker, self.drv.initializer)
 
         # Ensure to cleanup mockings
         [self.addCleanup(x.stop) for x in p]
@@ -397,7 +401,6 @@ class TestCassandraDriverCQL(unittest.TestCase):
             """,
             session.execute)
 
-    @unittest.skip("Flaky test, properties can have different orders")
     def test_ensure_table_properties(self):
         session = self.drv.get_cf(datastore_api.OBJ_UUID_CF_NAME)
         self.drv.ensure_table_properties(datastore_api.OBJ_UUID_CF_NAME)
@@ -405,8 +408,6 @@ class TestCassandraDriverCQL(unittest.TestCase):
             """
             ALTER TABLE "obj_uuid_table"
               WITH gc_grace_seconds=864000
-              AND dclocal_read_repair_chance=0.0
-              AND speculative_retry='NONE'
             """,
             session.execute)
 
