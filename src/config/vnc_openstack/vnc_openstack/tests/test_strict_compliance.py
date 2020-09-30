@@ -22,7 +22,7 @@ class TestStrictCompOn(test_case.NeutronBackendTestCase):
         net_q = self.create_resource(
             'network', proj_id, extra_res_fields={
                 'router:external': True})
-        subnet_q = self.create_resource(
+        self.create_resource(
             'subnet',
             proj_id,
             extra_res_fields={
@@ -56,7 +56,7 @@ class TestStrictCompOn(test_case.NeutronBackendTestCase):
         net_q = self.create_resource(
             'network', proj_id, extra_res_fields={
                 'router:external': True})
-        subnet_q = self.create_resource(
+        self.create_resource(
             'subnet',
             proj_id,
             extra_res_fields={

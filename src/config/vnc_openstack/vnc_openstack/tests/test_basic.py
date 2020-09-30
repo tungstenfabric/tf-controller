@@ -1,27 +1,26 @@
 from __future__ import absolute_import
 
+from builtins import object
+from builtins import range
+from builtins import str
+from datetime import datetime
 import json
 import re
 import unittest
 import uuid
-from builtins import object
-from builtins import range
-from builtins import str
-import copy
-from datetime import datetime
 
-import mock
-import requests
-import webtest.app
 from cfgm_common import PERMS_NONE, PERMS_RWX, PERMS_RX
 from cfgm_common.exceptions import NoIdError
 from cfgm_common.tests import test_common
 from keystonemiddleware import auth_token
+import mock
 from past.builtins import basestring
+import requests
 from testtools import ExpectedException
 from vnc_api import vnc_api
-
 from vnc_openstack import neutron_plugin_db
+import webtest.app
+
 from . import test_case
 
 try:
@@ -240,7 +239,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
             vmi_name, parent_obj=vnc_api.Project())
         vmi_obj.set_virtual_network(vn)
         vmi_obj.add_virtual_machine(vm)
-        vmi_id = self._vnc_lib.virtual_machine_interface_create(vmi_obj)
+        self._vnc_lib.virtual_machine_interface_create(vmi_obj)
         vmi_name = 'sub_vmi1'
         sub_vmi_obj = vnc_api.VirtualMachineInterface(
             vmi_name,
@@ -268,7 +267,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         vmi_obj = vnc_api.VirtualMachineInterface(
             vmi_name, parent_obj=vnc_api.Project())
         vmi_obj.set_virtual_network(vn)
-        vmi_id = self._vnc_lib.virtual_machine_interface_create(vmi_obj)
+        self._vnc_lib.virtual_machine_interface_create(vmi_obj)
         vmi_name = 'sub_vmi2'
         sub_vmi_obj = vnc_api.VirtualMachineInterface(
             vmi_name, parent_obj=vnc_api.Project(),
@@ -287,7 +286,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
     @unittest.skip("Flaky test in CI")
     def test_baremetal_logical_interface_bindings(self):
-        """ This test tests the Logical to Physical interface binding.
+        """This tests the Logical to Physical interface binding.
 
         A Physical interface is created to represent the actual
         physical port on the QFX switch. A Baremetal Server
@@ -353,8 +352,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
         bound_logical_interface_found = False
         li_dict = self._vnc_lib.logical_interfaces_list()
         lis = li_dict['logical-interfaces']
-        for l in lis:
-            li_obj = self._vnc_lib.logical_interface_read(id=l['uuid'])
+        for lif in lis:
+            li_obj = self._vnc_lib.logical_interface_read(id=lif['uuid'])
             if li_obj.parent_uuid == pi_uuid:
                 bound_logical_interface_found = True
                 break
@@ -366,7 +365,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # interface is created and/or bound.
 
         # Delete the previous logical interface and port
-        self._vnc_lib.logical_interface_delete(id=l['uuid'])
+        self._vnc_lib.logical_interface_delete(id=lif['uuid'])
         self.delete_resource('port', proj_uuid, port_dict['id'])
         vnic_type = 'normal'
         data = {'resource': {'network_id': vn_obj.uuid,
@@ -385,8 +384,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
         bound_logical_interface_found = False
         li_dict = self._vnc_lib.logical_interfaces_list()
         lis = li_dict['logical-interfaces']
-        for l in lis:
-            li_obj = self._vnc_lib.logical_interface_read(id=l['uuid'])
+        for lif in lis:
+            li_obj = self._vnc_lib.logical_interface_read(id=lif['uuid'])
             if li_obj.parent_uuid == pi_uuid:
                 bound_logical_interface_found = True
                 break
@@ -403,7 +402,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
     # end test_baremetal_logical_interface_bindings
 
     def test_baremetal_bindings_with_vpg_and_multi_vlan(self):
-        """ This test tests the VPG->PI and VPG->VMI association.
+        """This tests the VPG->PI and VPG->VMI association.
 
         Multiple physical interfaces are created to represent
         members of a vpg group. A Baremetal Server
@@ -412,7 +411,6 @@ class TestBasic(test_case.NeutronBackendTestCase):
         This test verifies the binidng and unbinding of these objects
         takes place correctly.
         """
-        mock_zk = self._api_server._db_conn._zk_db
         vn_obj = vnc_api.VirtualNetwork(self.id())
         vn_obj.add_network_ipam(vnc_api.NetworkIpam(),
                                 vnc_api.VnSubnetsType(
@@ -711,7 +709,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
     @unittest.skip("Flaky test in CI")
     def test_baremetal_logical_interface_bindings_with_multi_homing(self):
-        """ This test tests the Bond interface that connects to two Tors.
+        """This tests the Bond interface that connects to two Tors.
 
         Multiple physical interfaces are created to represent
         members of a Lag group. These physical interfaces are connected
@@ -747,7 +745,6 @@ class TestBasic(test_case.NeutronBackendTestCase):
         pi_fq_name = []
         pr_uuid = []
         pr_obj = []
-        tors = {}
         binding_profile = {'local_link_information': []}
         for t in range(number_of_tors):
             pr_name = self.id() + '_physical_router_%s' % t
@@ -795,9 +792,9 @@ class TestBasic(test_case.NeutronBackendTestCase):
                 lag_found = False
                 lag_dict = self._vnc_lib.link_aggregation_groups_list()
                 lags = lag_dict['link-aggregation-groups']
-                for l in lags:
+                for lif in lags:
                     lag_obj = self._vnc_lib.link_aggregation_group_read(
-                        id=l['uuid'])
+                        id=lif['uuid'])
                     if lag_obj.parent_uuid == pr_uuid:
                         lag_found = True
                         break
@@ -807,9 +804,9 @@ class TestBasic(test_case.NeutronBackendTestCase):
                 phy_interface_found = False
                 pi_dict = self._vnc_lib.physical_interfaces_list()
                 lis = pi_dict['physical-interfaces']
-                for l in lis:
+                for lif in lis:
                     pi_obj = self._vnc_lib.physical_interface_read(
-                        id=l['uuid'])
+                        id=lif['uuid'])
                     if pi_obj.name.startswith('ae'):
                         phy_interface_found = True
                         new_pi_uuid = pi_obj.uuid
@@ -819,8 +816,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
             bound_logical_interface_found = False
             li_dict = self._vnc_lib.logical_interfaces_list()
             lis = li_dict['logical-interfaces']
-            for l in lis:
-                li_obj = self._vnc_lib.logical_interface_read(id=l['uuid'])
+            for lif in lis:
+                li_obj = self._vnc_lib.logical_interface_read(id=lif['uuid'])
                 if num_phy_interfaces_per_tor > 1:
                     expected_parent_uuid = new_pi_uuid
                 else:
@@ -864,8 +861,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
             phy_interface_found = False
             pi_dict = self._vnc_lib.physical_interfaces_list()
             lis = pi_dict['physical-interfaces']
-            for l in lis:
-                pi_obj = self._vnc_lib.physical_interface_read(id=l['uuid'])
+            for lif in lis:
+                pi_obj = self._vnc_lib.physical_interface_read(id=lif['uuid'])
                 if pi_obj.name.startswith('ae'):
                     phy_interface_found = True
                     break
@@ -900,7 +897,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
     def test_baremetal_logical_interface_bindings_multiple_bonds(self):
 
         def _test_multiple_bonds(tors=None, bonds=None):
-            """ This test tests the Bond interface that connects to two Tors.
+            """Test the Bond interface that connects to two Tors.
 
             Multiple physical interfaces are created to represent
             members of a Lag group. These physical interfaces are connected
@@ -998,9 +995,9 @@ class TestBasic(test_case.NeutronBackendTestCase):
                         lag_found = False
                         lag_dict = self._vnc_lib.link_aggregation_groups_list()
                         lags = lag_dict['link-aggregation-groups']
-                        for l in lags:
+                        for lif in lags:
                             lag_obj = self._vnc_lib.\
-                                link_aggregation_group_read(id=l['uuid'])
+                                link_aggregation_group_read(id=lif['uuid'])
                             if lag_obj.parent_uuid == tors[bond_info['tors'][
                                     t]['name']]['pr_uuid']:
                                 lag_found = True
@@ -1022,9 +1019,9 @@ class TestBasic(test_case.NeutronBackendTestCase):
                         phy_interface_found = False
                         pi_dict = self._vnc_lib.physical_interfaces_list()
                         lis = pi_dict['physical-interfaces']
-                        for l in lis:
+                        for lif in lis:
                             pi_obj = self._vnc_lib.physical_interface_read(
-                                id=l['uuid'])
+                                id=lif['uuid'])
                             if pi_obj.name.startswith('ae'):
                                 phy_interface_found = True
                                 new_pi_uuid = pi_obj.uuid
@@ -1034,9 +1031,9 @@ class TestBasic(test_case.NeutronBackendTestCase):
                     bound_logical_interface_found = False
                     li_dict = self._vnc_lib.logical_interfaces_list()
                     lis = li_dict['logical-interfaces']
-                    for l in lis:
+                    for lif in lis:
                         li_obj = self._vnc_lib.logical_interface_read(
-                            id=l['uuid'])
+                            id=lif['uuid'])
                         if len(bond_info['tors'][t]['interfaces']) > 1:
                             # if len(tor_info['interfaces']) > 1:
                             expected_parent_uuid = new_pi_uuid
@@ -1089,8 +1086,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
             phy_interface_found = False
             pi_dict = self._vnc_lib.physical_interfaces_list()
             lis = pi_dict['physical-interfaces']
-            for l in lis:
-                pi_obj = self._vnc_lib.physical_interface_read(id=l['uuid'])
+            for lif in lis:
+                pi_obj = self._vnc_lib.physical_interface_read(id=lif['uuid'])
                 if pi_obj.name.startswith('ae'):
                     phy_interface_found = True
                     break
@@ -1100,8 +1097,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
             esi = []
             pi_dict = self._vnc_lib.physical_interfaces_list()
             lis = pi_dict['physical-interfaces']
-            for l in lis:
-                pi_obj = self._vnc_lib.physical_interface_read(id=l['uuid'])
+            for lif in lis:
+                pi_obj = self._vnc_lib.physical_interface_read(id=lif['uuid'])
                 if pi_obj.ethernet_segment_identifier:
                     esi.append(pi_obj.ethernet_segment_identifier)
             if len(esi) > 0:
@@ -1295,7 +1292,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
                                         extra_res_fields={
                                             'name': 'sg2-%s' % self.id(),
                                         })
-        sgr1_dict = self.create_resource(
+        self.create_resource(
             'security_group_rule',
             proj_obj.uuid,
             extra_res_fields={
@@ -1309,7 +1306,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
                 'ethertype': None,
                 'direction': 'egress',
             })
-        sgr2_dict = self.create_resource(
+        self.create_resource(
             'security_group_rule',
             proj_obj.uuid,
             extra_res_fields={
@@ -1401,7 +1398,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
     def _create_port_with_sg(self, proj_id, port_security):
         net_q = self.create_resource('network', proj_id)
-        subnet_q = self.create_resource(
+        self.create_resource(
             'subnet',
             proj_id,
             extra_res_fields={
@@ -1416,7 +1413,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
     def _create_port_with_no_sg(self, proj_id):
         net_q = self.create_resource('network', proj_id)
-        subnet_q = self.create_resource(
+        self.create_resource(
             'subnet',
             proj_id,
             extra_res_fields={
@@ -1458,7 +1455,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         with mock.patch.object(
                 vnc_api.VirtualMachineInterface,
                 'get_logical_router_back_refs', return_value=fake_refs
-        ) as mocked_refs:
+        ):
             self.delete_resource('port', proj_obj.uuid, vmi_obj.uuid)
             mock_raise_contrail_exception.assert_called_once_with(
                 'PortInUse',
@@ -1470,7 +1467,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         proj_obj = self._vnc_lib.project_read(
             fq_name=['default-domain', 'default-project'])
         net_q = self.create_resource('network', proj_obj.uuid)
-        subnet_q = self.create_resource(
+        self.create_resource(
             'subnet',
             proj_obj.uuid,
             extra_res_fields={
@@ -1621,7 +1618,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         proj_id = str(uuid.uuid4())
         proj_name = 'proj-test'
         test_case.get_keystone_client().tenants.add_tenant(proj_id, proj_name)
-        proj_obj = self._vnc_lib.project_read(
+        self._vnc_lib.project_read(
             fq_name=['default-domain', proj_name])
     # end test_fq_name_project
 
@@ -1872,7 +1869,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # creating a fip with a port that already has another fip associated
         # should fail.
         with ExpectedException(webtest.app.AppError):
-            fip_q_2 = self.create_resource(
+            self.create_resource(
                 'floatingip', proj_id, extra_res_fields={
                     'floating_network_id': net_q['id'],
                     'port_id': port_q['id']})
@@ -2308,7 +2305,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         net_q = self.create_resource('network', admin_proj_id,
                                      extra_res_fields={'router:external': True,
                                                        'shared': True})
-        subnet_q = self.create_resource(
+        self.create_resource(
             'subnet',
             admin_proj_id,
             extra_res_fields={
@@ -2436,7 +2433,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
         vr_obj = vnc_api.VirtualRouter("dpdk-host")
         vr_obj.set_virtual_router_dpdk_enabled(True)
-        vnc_vr_obj = self._vnc_lib.virtual_router_create(vr_obj)
+        self._vnc_lib.virtual_router_create(vr_obj)
 
         sg_obj = vnc_api.SecurityGroup('default')
         try:
@@ -2473,7 +2470,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # details deleted from port bindings
 
         vr_obj.set_virtual_router_dpdk_enabled(False)
-        vnc_vr_obj = self._vnc_lib.virtual_router_update(vr_obj)
+        self._vnc_lib.virtual_router_update(vr_obj)
         resp = self._api_svr_app.post_json('/neutron/port', body)
         port_dict1 = json.loads(resp.text)
         self.assertEqual(
@@ -2501,7 +2498,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self._vnc_lib.virtual_network_create(vn_obj)
 
         vr_obj = vnc_api.VirtualRouter("non-dpdk-host")
-        vnc_vr_obj = self._vnc_lib.virtual_router_create(vr_obj)
+        self._vnc_lib.virtual_router_create(vr_obj)
 
         sg_obj = vnc_api.SecurityGroup('default')
         try:
@@ -2538,7 +2535,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # details deleted from port bindings
 
         vr_obj.set_virtual_router_dpdk_enabled(True)
-        vnc_vr_obj = self._vnc_lib.virtual_router_update(vr_obj)
+        self._vnc_lib.virtual_router_update(vr_obj)
 
         resp = self._api_svr_app.post_json('/neutron/port', body)
         port_dict1 = json.loads(resp.text)
@@ -2570,7 +2567,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
         vr_obj = vnc_api.VirtualRouter("myinterface.myhost.foo")
         vr_obj.set_virtual_router_dpdk_enabled(True)
-        vnc_vr_obj = self._vnc_lib.virtual_router_create(vr_obj)
+        self._vnc_lib.virtual_router_create(vr_obj)
 
         sg_obj = vnc_api.SecurityGroup('default')
         try:
@@ -2609,7 +2606,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # details deleted from port bindings
 
         vr_obj.set_virtual_router_dpdk_enabled(False)
-        vnc_vr_obj = self._vnc_lib.virtual_router_update(vr_obj)
+        self._vnc_lib.virtual_router_update(vr_obj)
         resp = self._api_svr_app.post_json('/neutron/port', body)
         port_dict1 = json.loads(resp.text)
         self.assertEqual(
@@ -2640,7 +2637,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
         vr_obj = vnc_api.VirtualRouter("dpdk-long.foobar")
         vr_obj.set_virtual_router_dpdk_enabled(True)
-        vnc_vr_obj = self._vnc_lib.virtual_router_create(vr_obj)
+        self._vnc_lib.virtual_router_create(vr_obj)
 
         sg_obj = vnc_api.SecurityGroup('default')
         try:
@@ -2679,7 +2676,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # details deleted from port bindings
 
         vr_obj.set_virtual_router_dpdk_enabled(False)
-        vnc_vr_obj = self._vnc_lib.virtual_router_update(vr_obj)
+        self._vnc_lib.virtual_router_update(vr_obj)
         resp = self._api_svr_app.post_json('/neutron/port', body)
         port_dict1 = json.loads(resp.text)
         self.assertEqual(
@@ -2710,7 +2707,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
         vr_obj = vnc_api.VirtualRouter("dpdk-long1.foo.bar")
         vr_obj.set_virtual_router_dpdk_enabled(True)
-        vnc_vr_obj = self._vnc_lib.virtual_router_create(vr_obj)
+        self._vnc_lib.virtual_router_create(vr_obj)
 
         sg_obj = vnc_api.SecurityGroup('default')
         try:
@@ -2749,7 +2746,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # details deleted from port bindings
 
         vr_obj.set_virtual_router_dpdk_enabled(False)
-        vnc_vr_obj = self._vnc_lib.virtual_router_update(vr_obj)
+        self._vnc_lib.virtual_router_update(vr_obj)
         resp = self._api_svr_app.post_json('/neutron/port', body)
         port_dict1 = json.loads(resp.text)
         self.assertEqual(
@@ -2778,7 +2775,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
 
         vr_obj = vnc_api.VirtualRouter("dpdk-host.foo")
         vr_obj.set_virtual_router_dpdk_enabled(True)
-        vnc_vr_obj = self._vnc_lib.virtual_router_create(vr_obj)
+        self._vnc_lib.virtual_router_create(vr_obj)
 
         sg_obj = vnc_api.SecurityGroup('default')
         try:
@@ -2815,7 +2812,7 @@ class TestBasic(test_case.NeutronBackendTestCase):
         # details deleted from port bindings
 
         vr_obj.set_virtual_router_dpdk_enabled(False)
-        vnc_vr_obj = self._vnc_lib.virtual_router_update(vr_obj)
+        self._vnc_lib.virtual_router_update(vr_obj)
 
         resp = self._api_svr_app.post_json('/neutron/port', body)
         port_dict1 = json.loads(resp.text)
@@ -2853,14 +2850,14 @@ class TestBasic(test_case.NeutronBackendTestCase):
         vmi_obj = vnc_api.VirtualMachineInterface(vmi_name, proj_obj)
         vmi_obj.set_virtual_network(vn)
         vmi_obj.add_virtual_machine(vm)
-        vmi_id = self._vnc_lib.virtual_machine_interface_create(vmi_obj)
+        self._vnc_lib.virtual_machine_interface_create(vmi_obj)
 
         # Next, create a VMI 'vmi2' which has no VM attached to it.
         # The status will be internally set to 'DOWN' for this port.
         vmi_name = 'virtual_machine_interface_2'
         vmi_obj_2 = vnc_api.VirtualMachineInterface(vmi_name, proj_obj)
         vmi_obj_2.set_virtual_network(vn)
-        vmi_id = self._vnc_lib.virtual_machine_interface_create(vmi_obj_2)
+        self._vnc_lib.virtual_machine_interface_create(vmi_obj_2)
 
         list_result = self.list_resource(
             'port',
@@ -3226,13 +3223,11 @@ class TestListWithFilters(test_case.NeutronBackendTestCase):
         # creating a port with mac address that already exist should fail
         # port_create will do port_list with filter on mac address
         try:
-            port_dict = self.create_resource('port', proj_obj.uuid,
-                                             extra_res_fields={
-                                                 'name': 'vmi3-%s' % self.id(),
-                                                 'network_id': vn_obj.uuid,
-                                                 'mac_address':
-                                                     '00:01:00:00:0f:3c'
-                                             })
+            self.create_resource('port', proj_obj.uuid,
+                                 extra_res_fields={
+                                     'name': 'vmi3-%s' % self.id(),
+                                     'network_id': vn_obj.uuid,
+                                     'mac_address': '00:01:00:00:0f:3c'})
             self.assertTrue(
                 False, 'Create port with already existing mac address passed')
         except webtest.app.AppError as e:

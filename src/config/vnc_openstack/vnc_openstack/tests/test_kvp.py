@@ -1,22 +1,19 @@
 from __future__ import absolute_import
 
-from . import test_case
+from builtins import object
+from builtins import str
+import logging
+import uuid
 
 from cfgm_common.tests import test_common
-
-import vnc_openstack
-
+import gevent.event
+import gevent.monkey
 from vnc_api.vnc_api import (
     Domain, IpamSubnetType, IpamType, NetworkIpam, Project,
     SubnetType, VirtualNetwork, vnc_api, VnSubnetsType)
+import vnc_openstack
 
-from builtins import str
-from builtins import object
-import uuid
-import logging
-
-import gevent.event
-import gevent.monkey
+from . import test_case
 
 gevent.monkey.patch_all()
 

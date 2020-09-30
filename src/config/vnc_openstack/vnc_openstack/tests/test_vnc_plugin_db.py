@@ -1,19 +1,20 @@
 from __future__ import absolute_import
 
-import unittest
-import uuid
 from builtins import object
 from builtins import str
+import unittest
+import uuid
 
+import bottle
 from cfgm_common.tests.test_utils import FakeKazooClient
 from flexmock import flexmock
-import bottle
-
 from vnc_openstack import neutron_plugin_db as db
 
 
 class MockDbInterface(db.DBInterface):
+
     def __init__(self):
+        """Create mock DbInterface object."""
         class MockConnection(object):
             def wait(self):
                 return
@@ -229,14 +230,14 @@ class TestDbInterface(unittest.TestCase):
                          get_virtual_machine_interface_refs=lambda: [
                              {'uuid': 'router_port_uuid'}])])
 
-        id_perms_obj = flexmock(
+        flexmock(
             uuid='id_perms_uuid',
             get_created=lambda: 'create_time',
             get_last_modified=lambda: 'last_modified_time',
             get_description=lambda: 'description')
 
         with self.assertRaises(bottle.HTTPError):
-            fip_neutron = dbi._floatingip_neutron_to_vnc(
+            dbi._floatingip_neutron_to_vnc(
                 {'tenant': 'tenant', 'is_admin': False},
                 {'id': 1, 'port_id': 11},
                 db.UPDATE)

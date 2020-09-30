@@ -1,15 +1,15 @@
 # Copyright 2019 Juniper Networks. All rights reserved.
-
-from builtins import str
 from builtins import range
+from builtins import str
 import json
 import re
 
 from gevent import monkey
-monkey.patch_all()  # noqa
+from tests import test_case
 from vnc_api import vnc_api as vnc_api
 import webtest.app
-from tests import test_case
+
+monkey.patch_all()
 
 
 class TestTrunk(test_case.NeutronBackendTestCase):
@@ -207,7 +207,6 @@ class TestTrunk(test_case.NeutronBackendTestCase):
                                     parent_obj=self.project)
         self._vnc_lib.virtual_network_create(vn)
         neutron_trunks = []
-        trunk_ids = []
         vmi_ids = []
         for i in range(2):
             vmi = vnc_api.VirtualMachineInterface(
