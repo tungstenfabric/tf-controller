@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fcdb42a7_333dcd6e",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/roles/wait_for_fpc_online/tasks/do_until_loop.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-09-30T14:57:25Z",
+      "side": 1,
+      "message": "Here we are failing the job in case of not able to fetch the fpc-information. Else we will wait for the time to complete and log the state and proceed without failing the current job. Is that what PLM suggested?",
+      "revId": "e77140d45f0a534557457837a1497ef8f2596a53",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
