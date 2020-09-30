@@ -159,6 +159,11 @@ class OverlayBgpFeature(FeatureBase):
                     and "Route-Reflector" in \
                     self._physical_router.routing_bridging_roles:
                 rr_peers[peer] = attr
+            # This is needed as RB role "lean" does not have overlay bgp
+            # config so if peer is lean only donot create iBGP session
+            elif peer_pr and len(peer_pr.routing_bridging_roles) == 1 \
+                    and peer_pr.routing_bridging_roles[-1] == "lean":
+                continue
             else:
                 ibgp_peers[peer] = attr
 

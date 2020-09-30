@@ -1483,6 +1483,12 @@
             "default-global-system-config", "spine"
           ],
           "name": "spine"
+        },
+        {
+          "fq_name": [
+            "default-global-system-config", "superspine"
+          ],
+          "name": "superspine"
         }
       ]
     },
@@ -1671,6 +1677,12 @@
         },
         {
           "fq_name": [
+            "default-global-system-config", "rr-superspine"
+          ],
+          "name": "rr-superspine"
+        },
+        {
+          "fq_name": [
             "default-global-system-config", "rr-leaf"
           ],
           "name": "rr-leaf"
@@ -1680,6 +1692,12 @@
             "default-global-system-config", "lean-spine"
           ],
           "name": "lean-spine"
+        },
+        {
+          "fq_name": [
+            "default-global-system-config", "lean-superspine"
+          ],
+          "name": "lean-superspine"
         }
       ]
     },
@@ -1753,6 +1771,10 @@
               {
                 "physical_role": "spine",
                 "rb_roles": ["lean", "Route-Reflector", "AR-Client"]
+              },
+              {
+                "physical_role": "superspine",
+                "rb_roles": ["lean", "Route-Reflector"]
               }
             ]
           }
@@ -1774,6 +1796,10 @@
               {
                 "physical_role": "spine",
                 "rb_roles": ["lean", "CRB-Access", "CRB-Gateway", "DC-Gateway", "Route-Reflector", "DCI-Gateway", "PNF-Servicechain", "AR-Client"]
+              },
+              {
+                "physical_role": "superspine",
+                "rb_roles": ["lean", "Route-Reflector"]
               }
             ]
           }
@@ -1795,6 +1821,10 @@
               {
                 "physical_role": "spine",
                 "rb_roles": ["lean", "Route-Reflector", "AR-Client", "AR-Replicator"]
+              },
+              {
+                "physical_role": "superspine",
+                "rb_roles": ["lean", "Route-Reflector"]
               }
             ]
           }
@@ -1816,6 +1846,10 @@
               {
                 "physical_role": "spine",
                 "rb_roles": ["lean", "CRB-Gateway", "Route-Reflector", "PNF-Servicechain", "Collapsed-Spine"]
+              },
+              {
+                "physical_role": "superspine",
+                "rb_roles": ["lean", "Route-Reflector"]
               }
             ]
           }
@@ -1837,6 +1871,10 @@
               {
                 "physical_role": "spine",
                 "rb_roles": ["lean", "CRB-Access", "CRB-Gateway", "DC-Gateway", "Route-Reflector", "CRB-MCAST-Gateway", "DCI-Gateway", "PNF-Servicechain", "AR-Client", "AR-Replicator", "Collapsed-Spine"]
+              },
+              {
+                "physical_role": "superspine",
+                "rb_roles": ["lean", "Route-Reflector"]
               }
             ]
           }
@@ -2498,9 +2536,27 @@
     },
     {
       "from_type": "role-definition",
-      "from_fq_name": [ "default-global-system-config", "lean-spine" ],
+      "from_fq_name": [ "default-global-system-config", "lean-superspine" ],
+      "to_type": "physical-role",
+      "to_fq_name": [ "default-global-system-config", "superspine" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "lean-superspine" ],
+      "to_type": "overlay-role",
+      "to_fq_name": [ "default-global-system-config", "lean" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "lean-superspine" ],
       "to_type": "feature",
-      "to_fq_name": [ "default-global-system-config", "overlay-bgp" ]
+      "to_fq_name": [ "default-global-system-config", "underlay-ip-clos" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "lean-superspine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "infra-bms-access" ]
     },
     {
       "from_type": "role-definition",
@@ -2768,6 +2824,12 @@
     },
     {
       "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "rr-superspine" ],
+      "to_type": "physical-role",
+      "to_fq_name": [ "default-global-system-config", "superspine" ]
+    },
+    {
+      "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "rr-leaf" ],
       "to_type": "physical-role",
       "to_fq_name": [ "default-global-system-config", "leaf" ]
@@ -2780,6 +2842,36 @@
     },
     {
       "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "rr-superspine" ],
+      "to_type": "overlay-role",
+      "to_fq_name": [ "default-global-system-config", "route-reflector" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "rr-superspine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "telemetry" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "rr-superspine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "underlay-ip-clos" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "rr-superspine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "infra-bms-access" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "rr-superspine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "overlay-bgp" ]
+    },
+    {
+      "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "rr-spine" ],
       "to_type": "overlay-role",
       "to_fq_name": [ "default-global-system-config", "route-reflector" ]
@@ -2826,7 +2918,7 @@
       "to_type": "overlay-role",
       "to_fq_name": [ "default-global-system-config", "route-reflector" ]
     },
-        {
+    {
       "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "erb-leaf" ],
       "to_type": "feature",
