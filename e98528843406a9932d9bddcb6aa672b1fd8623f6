@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "bde70c73_e55aebb3",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 569,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-09-30T15:51:59Z",
+      "side": 1,
+      "message": "you are right, but why do we need to set the index to 0? can we optimise to start from the failed play book till the end and run only the recovery tasks instead from 0 (we may end up executing the already executed recovery playbook, if scattered).",
+      "parentUuid": "26bba509_927cdbb3",
+      "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "97248503_84f68aca",
         "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
         "patchSetId": 7
@@ -72,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "c5834ceb_63226f5a",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 579,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-09-30T15:51:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "16a87c76_a0f1737a",
+      "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f4d47dc1_0190c00c",
         "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
         "patchSetId": 7
@@ -104,6 +140,24 @@
       "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c83b3b83_88e725ab",
+        "filename": "src/config/fabric-ansible/job_manager/job_mgr.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-09-30T15:51:59Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "894be98b_4ea7a896",
+      "revId": "e98528843406a9932d9bddcb6aa672b1fd8623f6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
