@@ -246,6 +246,9 @@ class _CassandraFakeServerTable(_TableCQLSupport):
     def send(self):
         pass
 
+    def __len__(self):
+        return 1
+
     def get(self, key, columns=None, column_start=None, column_finish=None,
             column_count=0, include_timestamp=False, include_ttl=False):
         if not isinstance(key, six.string_types):
