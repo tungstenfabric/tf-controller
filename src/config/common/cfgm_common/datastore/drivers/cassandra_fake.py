@@ -73,6 +73,8 @@ class CassandraDriverCQL(cassandra_cql.CassandraDriverCQL):
 
     def _Init_Cluster(self, *args, **kwargs):
         self.server = cassandra_fake_impl.CassandraFakeServer()
+        self.pool = cassandra_cql.DummyPool(
+            1, 1, self.worker, self.initializer)
         for ks, cf_dict in itertools.chain(
                 self.options.rw_keyspaces.items(),
                 self.options.ro_keyspaces.items()):

@@ -3514,8 +3514,16 @@ class VncApiServer(object):
             zk_ssl_enable=self._args.zookeeper_ssl_enable,
             zk_ssl_keyfile=self._args.zookeeper_ssl_keyfile,
             zk_ssl_certificate=self._args.zookeeper_ssl_certificate,
-            zk_ssl_ca_cert=self._args.zookeeper_ssl_ca_cert)
-
+            zk_ssl_ca_cert=self._args.zookeeper_ssl_ca_cert,
+            cassandra_use_workers=self._args.cassandra_use_workers,
+            cassandra_num_workers=self._args.cassandra_num_workers,
+            cassandra_num_groups=self._args.cassandra_num_groups,
+            cassandra_use_concurrency=self._args.cassandra_use_concurrency,
+            cassandra_concurrency_starts=self._args.cassandra_concurrency_starts,
+            cassandra_concurrency=self._args.cassandra_concurrency,
+            cassandra_inserts_use_batch=self._args.cassandra_inserts_use_batch,
+            cassandra_removes_use_batch=self._args.cassandra_removes_use_batch,
+            cassandra_batch_limit=self._args.cassandra_batch_limit)
 
         #TODO refacter db connection management.
         self._addr_mgmt._get_db_conn()

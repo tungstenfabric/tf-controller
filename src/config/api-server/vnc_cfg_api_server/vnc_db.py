@@ -100,7 +100,16 @@ class VncServerCassandraClient(VncCassandraClient):
                  pool_size=20,
                  # Default to None, VncCassandraClient will raise an
                  # exception if not well configured.
-                 cassandra_driver=None):
+                 cassandra_driver=None,
+                 cassandra_use_workers=None,
+                 cassandra_num_workers=None,
+                 cassandra_num_groups=None,
+                 cassandra_use_concurrency=None,
+                 cassandra_concurrency_starts=None,
+                 cassandra_concurrency=None,
+                 cassandra_inserts_use_batch=None,
+                 cassandra_removes_use_batch=None,
+                 cassandra_batch_limit=None):
         self._db_client_mgr = db_client_mgr
         keyspaces = datastore_api.UUID_KEYSPACE.copy()
         keyspaces[self._USERAGENT_KEYSPACE_NAME] = {
@@ -113,7 +122,16 @@ class VncServerCassandraClient(VncCassandraClient):
             obj_cache_exclude_types=obj_cache_exclude_types,
             debug_obj_cache_types=debug_obj_cache_types,
             log_response_time=log_response_time, ssl_enabled=ssl_enabled,
-            ca_certs=ca_certs, cassandra_driver=cassandra_driver)
+            ca_certs=ca_certs, cassandra_driver=cassandra_driver,
+            cassandra_use_workers=cassandra_use_workers,
+            cassandra_num_workers=cassandra_num_workers,
+            cassandra_num_groups=cassandra_num_groups,
+            cassandra_use_concurrency=cassandra_use_concurrency,
+            cassandra_concurrency_starts=cassandra_concurrency_starts,
+            cassandra_concurrency=cassandra_concurrency,
+            cassandra_inserts_use_batch=cassandra_inserts_use_batch,
+            cassandra_removes_use_batch=cassandra_removes_use_batch,
+            cassandra_batch_limit=cassandra_batch_limit)
     # end __init__
 
     def config_log(self, msg, level):
