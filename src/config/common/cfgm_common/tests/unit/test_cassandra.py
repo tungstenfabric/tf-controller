@@ -326,6 +326,8 @@ class TestCassandraDriverCQL(unittest.TestCase):
         [x.start() for x in p]
 
         self.drv = cassandra_cql.CassandraDriverCQL(['a', 'b'], logger=mock.MagicMock())
+        self.drv.pool = cassandra_cql.DummyPool(
+            1, self.drv.worker, self.drv.initializer)
 
         # Ensure to cleanup mockings
         [self.addCleanup(x.stop) for x in p]
