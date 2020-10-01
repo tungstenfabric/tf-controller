@@ -1,45 +1,40 @@
 #
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
-
 from __future__ import absolute_import
 
-from future import standard_library
-
-standard_library.install_aliases()
-from builtins import str
 from builtins import range
-import uuid
+from builtins import str
 
-import gevent
-import gevent.event
 import gevent.monkey
 gevent.monkey.patch_all()
-import requests
 
 import copy
-
-from six import StringIO
-import bottle
-
+from datetime import datetime
 import logging
 import logging.handlers
-from datetime import datetime
 import queue
+import uuid
 
-from six.moves import configparser
-from keystoneclient import session as ksession
-from keystoneclient.auth.identity import generic as kauth
+import bottle
+from cfgm_common import exceptions as vnc_exc
+from cfgm_common import utils as cfgmutils
+from cfgm_common import vnc_plugin_base
+from cfgm_common.utils import cgitb_hook
+from future import standard_library
+import gevent
+import gevent.event
 from keystoneclient import client as kclient
 from keystoneclient import exceptions as kexceptions
+from keystoneclient import session as ksession
+from keystoneclient.auth.identity import generic as kauth
 from netaddr import IPNetwork
-from cfgm_common import vnc_plugin_base
-from cfgm_common import utils as cfgmutils
-from cfgm_common import exceptions as vnc_exc
-from cfgm_common.utils import cgitb_hook
 from pysandesh.connection_info import ConnectionState
 from pysandesh.gen_py.process_info.ttypes import ConnectionStatus
 from pysandesh.gen_py.process_info.ttypes import ConnectionType as ConnType
+import requests
+from six import StringIO
+from six.moves import configparser
 from vnc_api import vnc_api
 from vnc_api.gen.resource_xsd import (
     ActionListType, AddressType, FirewallRuleEndpointType, FirewallSequence,
@@ -48,12 +43,14 @@ from vnc_api.gen.resource_xsd import (
 
 from . import neutron_plugin_interface as npi
 from .context import use_context
-from .neutron_plugin_db import DBInterface as npd
-from .neutron_plugin_db import _NEUTRON_FWAAS_TAG_TYPE
+from .neutron_plugin_db import _NEUTRON_DEFAULT_SECURITY_GROUP_NAME
 from .neutron_plugin_db import _NEUTRON_FIREWALL_DEFAULT_GROUP_POLICY_NAME
 from .neutron_plugin_db import _NEUTRON_FIREWALL_DEFAULT_IPV4_RULE_NAME
 from .neutron_plugin_db import _NEUTRON_FIREWALL_DEFAULT_IPV6_RULE_NAME
-from .neutron_plugin_db import _NEUTRON_DEFAULT_SECURITY_GROUP_NAME
+from .neutron_plugin_db import _NEUTRON_FWAAS_TAG_TYPE
+from .neutron_plugin_db import DBInterface as npd
+
+standard_library.install_aliases()
 
 Q_CREATE = 'create'
 Q_DELETE = 'delete'
@@ -377,6 +374,7 @@ def ensure_default_firewall_group(vnc_lib, project_id):
 
 class OpenstackDriver(vnc_plugin_base.Resync):
     def __init__(self, api_server_ip, api_server_port, conf_sections, sandesh):
+        """Create Openstack driver object."""
         if api_server_ip == '0.0.0.0':
             self._vnc_api_ip = '127.0.0.1'
         else:
@@ -978,6 +976,7 @@ class OpenstackDriver(vnc_plugin_base.Resync):
 class ResourceApiDriver(vnc_plugin_base.ResourceApi):
     def __init__(self, api_server_ip, api_server_port, conf_sections, sandesh,
                  propagate_map_exceptions=False):
+        """Create a Resource API driver object."""
         if api_server_ip == '0.0.0.0':
             self._vnc_api_ip = '127.0.0.1'
         else:
@@ -1024,9 +1023,9 @@ class ResourceApiDriver(vnc_plugin_base.ResourceApi):
                 self._connected_to_api_server.set()
 
                 vnc_lib = self._vnc_lib
-                domain_id = vnc_lib.fq_name_to_id(
+                vnc_lib.fq_name_to_id(
                     'domain', ['default-domain'])
-                project_id = vnc_lib.fq_name_to_id(
+                vnc_lib.fq_name_to_id(
                     'project', ['default-domain', 'default-project'])
                 break
             except Exception as e:
@@ -1075,7 +1074,7 @@ class ResourceApiDriver(vnc_plugin_base.ResourceApi):
         # follow through, and sync domain to contrail
         try:
             self._resync_extension_manager.map_method('sync_domain_to_vnc', id)
-        except vnc_api.RefsExistError as e:
+        except vnc_api.RefsExistError:
             # another api server has brought syncd it
             pass
     # end pre_domain_read
@@ -1096,7 +1095,7 @@ class ResourceApiDriver(vnc_plugin_base.ResourceApi):
             try:
                 if hasattr(ext.obj, 'ks_project_get'):
                     projects.append(ext.obj.ks_project_get(id=None, name=name))
-            except Exception as e:
+            except Exception:
                 pass
 
         self._resync_extension_manager.map(ks_project_get_stub)
@@ -1109,7 +1108,7 @@ class ResourceApiDriver(vnc_plugin_base.ResourceApi):
         proj_obj.uuid = str(uuid.UUID(proj_id))
         try:
             self._vnc_lib.project_create(proj_obj)
-        except vnc_api.RefsExistError as e:
+        except vnc_api.RefsExistError:
             pass
         self._resync_extension_manager.map_method(
             'add_project_id_to_cache', proj_id)
@@ -1133,7 +1132,7 @@ class ResourceApiDriver(vnc_plugin_base.ResourceApi):
         try:
             self._resync_extension_manager.map_method(
                 'sync_project_to_vnc', id)
-        except vnc_api.RefsExistError as e:
+        except vnc_api.RefsExistError:
             # another api server has brought syncd it
             pass
     # end pre_project_read
@@ -1271,6 +1270,7 @@ class NeutronApiDriver(vnc_plugin_base.NeutronApi):
             conf_sections,
             sandesh,
             **kwargs):
+        """Create Neutron API driver."""
         self._logger = sandesh.logger()
         self.api_server_obj = kwargs.get('api_server_obj')
         try:

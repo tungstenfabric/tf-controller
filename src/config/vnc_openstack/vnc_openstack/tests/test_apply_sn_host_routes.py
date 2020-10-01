@@ -4,14 +4,15 @@ from builtins import object
 
 import testscenarios
 import testtools
-
 from vnc_openstack.neutron_plugin_db import DBInterface
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class FakeRouteTable(object):
+
     def __init__(self, prefix, next_hop):
+        """Create fake route table object."""
         self.prefix = prefix
         self.next_hop = next_hop
 

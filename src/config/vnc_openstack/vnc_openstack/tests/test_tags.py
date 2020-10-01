@@ -1,29 +1,28 @@
 # Copyright 2019 Juniper Networks. All rights reserved.
-import gevent
 
 import json
 import time
 from unittest import skip
 
+import gevent
+from tests import test_case
 from vnc_api.exceptions import RefsExistError
 from vnc_api.vnc_api import FloatingIp, FloatingIpPool
 from vnc_api.vnc_api import IpamSubnetType, SubnetType
 from vnc_api.vnc_api import LogicalRouter
-from vnc_api.vnc_api import Project
-from vnc_api.vnc_api import SecurityGroup
 from vnc_api.vnc_api import NetworkIpam, VnSubnetsType
 from vnc_api.vnc_api import NetworkPolicy
+from vnc_api.vnc_api import Project
+from vnc_api.vnc_api import SecurityGroup
 from vnc_api.vnc_api import Tag
 from vnc_api.vnc_api import VirtualMachineInterface
 from vnc_api.vnc_api import VirtualNetwork
 from vnc_api.vnc_api import VirtualPortGroup
-
 from vnc_openstack.neutron_plugin_db import (
     _NEUTRON_TAG_TO_SUBNETS,
     _SUBNET_TO_NEUTRON_TAGS
 )
 
-from tests import test_case
 
 NO_TAG = 'no_tag'
 TAG_RED = 'red'
@@ -81,8 +80,7 @@ class NeutronTagsTestCase(test_case.NeutronBackendTestCase):
         return self.tags[name]
 
     def assert_one_tag_full_match(self, resource_name, resources, tag):
-        """Assert only one resource with full match single tag
-        has been fetched.
+        """Assert only one resource with full match single tag fetched.
 
         :param (str) resource_name: Name of resource to check
         :param (dict) resources: Dict with tag:vnc_resource pairs
@@ -107,8 +105,7 @@ class NeutronTagsTestCase(test_case.NeutronBackendTestCase):
         self.assertEqual(tag, result[0]['tags'][0])
 
     def assert_multiple_tags_full_match(self, resource_name, resource, tags):
-        """Assert only one resource with full match multiple tags
-        has been fetched.
+        """Assert only one resource with full match multiple tags fetched.
 
         :param (str) resource_name: Name of resource to check
         :param (obj) resource: VNC resource object
@@ -219,8 +216,7 @@ class NeutronTagsTestCase(test_case.NeutronBackendTestCase):
 
     def assert_tags_and_not_tags_single_res_match(self, resource_name,
                                                   resource, tags, not_tags):
-        """Assert only one resource with match for both tags and not-tags
-        filters.
+        """Assert only one resource with match for both tags/not-tags filters.
 
         :param (str) resource_name: Name of resource to check
         :param (obj) resource: VNC resource object
@@ -246,8 +242,7 @@ class NeutronTagsTestCase(test_case.NeutronBackendTestCase):
 
     def assert_tags_and_not_tags_double_res_match(self, resource_name,
                                                   resources, tags, not_tags):
-        """Assert two resources with match for both tags and not-tags
-        filters.
+        """Assert two resources with match for both tags and not-tags filters.
 
         :param (str) resource_name: Name of resource to check
         :param (list) resources: list of VNC resource objects
@@ -616,6 +611,7 @@ class TestVirtualNetworkNeutronTags(NeutronTagsTestCase):
     def test_query_vn_by_one_tags_performance(self):
         """
         Test performance of querying VN by one tag.
+
         Average time should be about 8.38 milliseconds per one request
         on machine with 4 cores CPU.
         """
@@ -638,6 +634,7 @@ class TestVirtualNetworkNeutronTags(NeutronTagsTestCase):
     def test_query_vn_by_multiple_tags_performance(self):
         """
         Test performance of querying VN by multiple tag (full match).
+
         Average time should be about 5.58 ms per one request
         on machine with 4 cores CPU.
         """
@@ -660,6 +657,7 @@ class TestVirtualNetworkNeutronTags(NeutronTagsTestCase):
     def test_query_vn_by_multiple_any_tags_performance(self):
         """
         Test performance of querying VN by multiple tag (match any).
+
         Average time should be  about 13.77 milliseconds per one request
         on machine with 4 cores CPU.
         """
@@ -682,6 +680,7 @@ class TestVirtualNetworkNeutronTags(NeutronTagsTestCase):
     def test_query_vn_by_name_performance(self):
         """
         Test performance of querying VN by name.
+
         Average time should be about 25.45 ms per one request
         on machine with 4 cores CPU.
         """
@@ -704,6 +703,7 @@ class TestVirtualNetworkNeutronTags(NeutronTagsTestCase):
     def test_query_vn_by_id_performance(self):
         """
         Test performance of querying VN by UUID.
+
         Average time should be about 47.34 ms per one request
         on machine with 4 cores CPU.
         """
@@ -1057,7 +1057,7 @@ class TestPortNeutronTags(NeutronTagsTestCase):
 
     def _pre_create_virtual_network(self):
         vn_uuid = self.api.virtual_network_create(
-            VirtualNetwork('vn-forvmi'.format(self.id()),
+            VirtualNetwork('vn-{}'.format(self.id()),
                            parent_obj=self.project))
         self.vn = self.api.virtual_network_read(id=vn_uuid)
 
@@ -1148,9 +1148,7 @@ class TestPortNeutronTags(NeutronTagsTestCase):
                                                     tags=tag_case)
 
     def test_query_virtual_machine_interfaces_with_tag_and_not_tag(self):
-        """Query virtual machine interfaces filtering by both tags
-        and not-tags.
-        """
+        """Query virtual machine i/fs filtering by both tags and not-tags."""
         vmi = VirtualMachineInterface(
             'vmi-{}_{}-{}'.format(TAG_BLUE, TAG_WHITE, self.id()),
             parent_obj=self.project)
@@ -2139,6 +2137,7 @@ class TestSubnetNeutronTags(NeutronTagsTestCase):
     def test_query_subnet_by_one_tags_performance(self):
         """
         Test performance of querying VN by one tag.
+
         Average time should be about 8.17 ms per one request
         on machine with 4 cores CPU.
         """
@@ -2161,6 +2160,7 @@ class TestSubnetNeutronTags(NeutronTagsTestCase):
     def test_query_subnet_by_multiple_tags_performance(self):
         """
         Test performance of querying VN by multiple tag (full match).
+
         Average time should be about 5.20 ms per one request
         on machine with 4 cores CPU.
         """
@@ -2183,6 +2183,7 @@ class TestSubnetNeutronTags(NeutronTagsTestCase):
     def test_query_subnet_by_multiple_any_tags_performance(self):
         """
         Test performance of querying VN by multiple tag (match any).
+
         Average time should be about 15.38 ms per one request
         on machine with 4 cores CPU.
         """
@@ -2205,6 +2206,7 @@ class TestSubnetNeutronTags(NeutronTagsTestCase):
     def test_query_subnet_by_id_performance(self):
         """
         Test performance of querying VN by UUID.
+
         Average time should be about 5.58 ms per one request
         on machine with 4 cores CPU.
         """
@@ -2238,7 +2240,7 @@ class TestNeutronTagsPerms(NeutronTagsTestCase):
         vn = VirtualNetwork('vn-{}_{}'.format(tag, self.id()),
                             parent_obj=self.project)
         vn.uuid = self.api.virtual_network_create(vn)
-        result = self.create_resource(
+        self.create_resource(
             'tags',
             self.project.uuid,
             extra_res_fields={

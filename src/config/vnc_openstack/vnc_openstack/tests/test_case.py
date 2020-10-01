@@ -1,18 +1,16 @@
 from __future__ import absolute_import
 
-import vnc_openstack
+from builtins import range
+import json
 
+import bottle
 from cfgm_common.tests.test_common import setup_extra_flexmock, TestCase
-from cfgm_common.tests.test_utils import get_keystone_client
 from cfgm_common.tests.test_utils import FakeExtensionManager
+from cfgm_common.tests.test_utils import get_keystone_client
+from future import standard_library
 import stevedore.extension
 from testtools.matchers import Equals
-import bottle
-
-import json
-from builtins import range
-
-from future import standard_library
+import vnc_openstack
 
 standard_library.install_aliases()
 
