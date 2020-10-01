@@ -34,8 +34,7 @@ and this template generates configs to extend VN to the box.#}
 {%                 if 'nat' in ri.get('name', '') %}
 {%                     continue %}
 {%                 endif %}
-{%                 if ('l3' in ri.virtual_network_mode) and ('l3' in ri.name) and (ri.get('virtual_network_is_internal') == false) and (ri.get('is_public_network') == true) %}
-{%                     set ns.public_network = 'yes' %}
+{%                 if ('l3' in ri.virtual_network_mode) and ('l3' in ri.name) and (ri.get('virtual_network_is_internal') == false) %}
 {%                     set contrail_l3_ri = ri.name %}
 {%                     set irb_interface = 'irb.'+(ri.get('virtual_network_id')|string)  %}
 {%                     if irb_interface in ns.irb_interface_list %}
@@ -82,17 +81,20 @@ set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} routing-options au
 {%                     endif %}
 set groups {{cfg_group}} policy-options policy-statement {{l3_vrf_import}} then reject
 {%                     set vn_id  = ri.get('virtual_network_id')  %}
+{%                     if (ri.get('is_public_network') == true) %}
 set groups {{cfg_group}} forwarding-options family inet filter input redirect_to_public_vrf_filter
-{%                     for subnet in ri.get('prefixes', []) %}
-{%                         set cidr = subnet.get('prefix') + '/' + (subnet.get('prefix_len')|string) %}
-{%                         if (':' in cidr) %}
+{%                     set ns.public_network = 'yes' %}
+{%                         for subnet in ri.get('prefixes', []) %}
+{%                             set cidr = subnet.get('prefix') + '/' + (subnet.get('prefix_len')|string) %}
+{%                             if (':' in cidr) %}
 set groups {{cfg_group}} firewall family inet6 filter redirect_to_public_vrf_filter term term-{{vn_id}} from destination-address {{cidr}}
-{%                         else %}
+{%                             else %}
 set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term term-{{vn_id}} from destination-address {{cidr}}
-{%                         endif %}
-{%                     endfor %}
+{%                             endif %}
+{%                         endfor %}
 set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term term-{{vn_id}} then routing-instance {{contrail_l3_ri}}
 set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} routing-options static route 0.0.0.0/0 next-table inet.0
+{%                     endif %}
 {%                 endif %}
 {%             endfor%}
 {%             if ns.public_network == 'yes' %}
