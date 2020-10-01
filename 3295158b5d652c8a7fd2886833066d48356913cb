@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6e8713a2_97bbcf06",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 3
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-01T18:22:23Z",
+      "side": 0,
+      "message": "Thanks for making vnc_openstack complaint again these Codes!",
+      "revId": "3295158b5d652c8a7fd2886833066d48356913cb",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}

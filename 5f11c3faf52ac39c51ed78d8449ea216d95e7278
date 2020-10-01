@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "21621077_9b30cee7",
+        "filename": "src/config/vnc_openstack/tox.ini",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-01T18:22:23Z",
+      "side": 1,
+      "message": "Good that vnc_openstack is now compatible with latest flake8, but it still needs to be pinned to a version to avoid future breaks. Could you pin to the latest version that worked for you or CI?",
+      "revId": "5f11c3faf52ac39c51ed78d8449ea216d95e7278",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f9115c7f_91519272",
+        "filename": "src/config/vnc_openstack/vnc_openstack/neutron_plugin_db.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 2842,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-01T18:22:23Z",
+      "side": 1,
+      "message": "Could you include original exception as \"msg\" in _raise_contrail_exception?",
+      "revId": "5f11c3faf52ac39c51ed78d8449ea216d95e7278",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3c7403e9_23a5ee71",
+        "filename": "src/config/vnc_openstack/vnc_openstack/neutron_plugin_db.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 4624,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-01T18:22:23Z",
+      "side": 1,
+      "message": "Could you include original exception as \"msg\" in _raise_contrail_exception?",
+      "revId": "5f11c3faf52ac39c51ed78d8449ea216d95e7278",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fee8fccc_5693c322",
+        "filename": "src/config/vnc_openstack/vnc_openstack/neutron_plugin_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-01T18:22:23Z",
+      "side": 1,
+      "message": "Could you include original exception in the message?",
+      "revId": "5f11c3faf52ac39c51ed78d8449ea216d95e7278",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
