@@ -19,6 +19,8 @@
 MacIpLearningTable::MacIpLearningTable(Agent *agent, MacLearningProto *proto) :
     agent_(agent),
     work_queue_(this) {
+    agent->health_check_table()->RegisterHealthCheckNotifyCallback(
+            boost::bind(&MacIpLearningTable::MacIpEntryHcNotify, this, _1));
 }
 
 bool MacIpLearningTable::RequestHandler(MacLearningEntryRequestPtr ptr) {
@@ -62,7 +64,7 @@ void MacIpLearningTable::EnqueueMgmtReq(MacLearningEntryPtr ptr, bool add) {
 void MacIpLearningTable::Add(MacLearningEntryPtr ptr) {
     MacIpLearningEntry *entry = dynamic_cast<MacIpLearningEntry *>(ptr.get());
     MacIpLearningKey key(entry->vrf_id(), entry->IpAddr());
-    //check whetehr IP belongs to subnet of VN
+    //check whether IP belongs to subnet of VN
     const VmInterface *vm_intf =
         dynamic_cast<const VmInterface *>(entry->intf());
     if (!vm_intf ||
@@ -73,14 +75,34 @@ void MacIpLearningTable::Add(MacLearningEntryPtr ptr) {
                     "ip address does not belong to same subnet, ignoring");
         return;
     }
+    if (vm_intf->mac() == entry->Mac()) {
+        MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, entry->vrf()->GetName(),
+                    entry->IpAddr().to_string(), entry->Mac().ToString(),
+                    entry->intf()->name(),
+                    "mac address is same as of interface , ignoring");
+        return;
+    }
+
 
     std::pair<MacIpLearningEntryMap::iterator, bool> it =
         mac_ip_learning_entry_map_.insert(MacIpLearningEntryPair(key, ptr));
-    if (it.second == false) {
-
-    MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, entry->vrf()->GetName(),
+    if (it.second == false ) {
+        MacIpLearningEntry *existing_entry =
+            dynamic_cast<MacIpLearningEntry *>(it.first->second.get());
+        if ( existing_entry && existing_entry->Mac() == entry->Mac()) {
+            // ignore duplicate add requests, it is possible that
+            // duplicate requests may come till route processing is done.
+            MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, entry->vrf()->GetName(),
                     entry->IpAddr().to_string(), entry->Mac().ToString(),
-                    entry->intf()->name(), "local IP move detected, delete and add with new mac");
+                    entry->intf()->name(),
+                    "duplicate add request, ingoring");
+            return;
+        }
+
+        MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, entry->vrf()->GetName(),
+                    entry->IpAddr().to_string(), entry->Mac().ToString(),
+                    entry->intf()->name(),
+                    "local IP move detected, delete and add with new mac");
         //Entry already present, clear the entry
         if (it.first->second->deleted() == false) {
             it.first->second->Delete();
@@ -157,6 +179,21 @@ void MacIpLearningTable::MacIpEntryUnreachable(uint32_t vrf_id, IpAddress &ip,
                                    MacLearningEntryRequest::MAC_IP_UNREACHABLE,
                                    vrf_id, ip, mac));
     Enqueue(ptr);
+}
+void MacIpLearningTable::MacIpEntryHcNotify(
+            const HealthCheckInstanceService *instance_service) {
+    const HealthCheckMacIpInstanceService *mac_ip_instance_service =
+        dynamic_cast<const HealthCheckMacIpInstanceService *>(instance_service);
+    if (mac_ip_instance_service) {
+        IpAddress ip = mac_ip_instance_service->destination_ip();
+        MacAddress mac = mac_ip_instance_service->destination_mac();
+        uint32_t vrf_id =
+            mac_ip_instance_service->interface()->vrf()->vrf_id();
+        MacLearningEntryRequestPtr ptr(new MacLearningEntryRequest(
+                                   MacLearningEntryRequest::MAC_IP_UNREACHABLE,
+                                   vrf_id, ip, mac));
+        Enqueue(ptr);
+    }
 }
 void MacIpLearningTable::MacIpEntryUnreachable(MacLearningEntryRequestPtr ptr) {
     MacIpLearningKey key(ptr->vrf_id(), ptr->ip());
@@ -274,8 +311,8 @@ void MacIpLearningEntry::AddHealthCheckService(HealthCheckService *service) {
         const VmInterface *vm_intf = static_cast< const VmInterface *>(intf_.get());
         //TODO: add validation check for null gateway ip
         hc_instance_ = service->StartHealthCheckService(
-                   const_cast< VmInterface *>(vm_intf),
-                   gateway_ip, ip_, mac_);
+                   const_cast< VmInterface *>(vm_intf), NULL,
+                   gateway_ip, ip_, mac_, false, false);
         hc_instance_->set_service(hc_service_);
     }
 }

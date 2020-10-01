@@ -355,6 +355,10 @@ HealthCheckMacIpInstanceService::HealthCheckMacIpInstanceService(
     bool multi_hop) :
     HealthCheckInstanceService(service, allocator, intf, other_intf,
                 ignore_status_event, multi_hop) {
+
+    // Override this value done in the base class to prevent mac-ip
+    // learnt entry from being deleted on bfd startup
+    active_ = false;
 }
 
 HealthCheckMacIpInstanceService::~HealthCheckMacIpInstanceService() {
@@ -363,13 +367,9 @@ HealthCheckMacIpInstanceService::~HealthCheckMacIpInstanceService() {
 void HealthCheckMacIpInstanceService::ResyncTarget(const HealthCheckService
                                                  *service) const {
     if (!active_) {
-#if 0
-        IpAddress ip = destination_ip();
-        MacAddress mac = destination_mac();
-        service_->table()->agent()->mac_learning_proto()->
-                GetMacIpLearningTable()->MacIpEntryUnreachable(
-                        intf_->vrf()->vrf_id(), ip, mac);
-#endif
+        if (!service_->table()->health_check_notify_callback().empty()) {
+            service_->table()->health_check_notify_callback()(this);
+        }
     }
 }
 
