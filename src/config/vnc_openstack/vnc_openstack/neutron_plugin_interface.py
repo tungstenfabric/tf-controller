@@ -155,8 +155,9 @@ class NeutronPluginInterface(object):
                 elif context.get('tenant_id'):
                     context['tenant'] = context['tenant_id']
                 return req['context'], req['data']
-        except Exception:
-            bottle.abort(400, 'Unable to parse request data')
+        except Exception as err:
+            bottle.abort(400, 'Unable to parse request data: {}'.
+                         format(str(err)))
 
     def _filter_subnets_by_tags(self, context, request):
         filters = request.get('filters', {})

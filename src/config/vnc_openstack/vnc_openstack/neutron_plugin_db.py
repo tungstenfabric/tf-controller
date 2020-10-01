@@ -2838,9 +2838,10 @@ class DBInterface(object):
                                 # needed)
                                 sg_obj = self._vnc_lib.security_group_read(
                                     id=sg_id)
-                            except NoIdError:
+                            except NoIdError as e:
                                 self._raise_contrail_exception(
-                                    'SecurityGroupNotFound', id=sg_id)
+                                    'SecurityGroupNotFound', id=sg_id,
+                                    msg=str(e))
                             port_obj.add_security_group(sg_obj)
             else:
                 if ('security_groups' in port_q and
@@ -4620,9 +4621,10 @@ class DBInterface(object):
         except OverQuota as e:
             self._raise_contrail_exception('OverQuota',
                                            overs=['floatingip'], msg=str(e))
-        except Exception:
+        except Exception as e:
             self._raise_contrail_exception('IpAddressGenerationFailure',
-                                           net_id=fip_q['floating_network_id'])
+                                           net_id=fip_q['floating_network_id'],
+                                           msg=str(e))
         fip_obj = self._vnc_lib.floating_ip_read(id=fip_uuid)
 
         return self._floatingip_vnc_to_neutron(fip_obj)
