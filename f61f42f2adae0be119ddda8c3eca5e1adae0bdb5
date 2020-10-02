@@ -16,6 +16,58 @@
       "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f0509dd7_55c3e212",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-10-02T23:00:43Z",
+      "side": 1,
+      "message": "I think linking VMIST -\u003e placeholder VMIST -\u003e VPGST -\u003e PIST does not help reduce the complexity of creating VPG or updating VPG, so I used self._vnc_lib.virtual_machine_interface_create() etc. methods.",
+      "parentUuid": "a3829b61_63ed16f0",
+      "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0ac41021_407d14b0",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-10-02T23:00:43Z",
+      "side": 1,
+      "message": "As I understand it, if the id does not exist, the result would be a VirtualPortGroup object with all fields as None, is that right?",
+      "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b1df0201_855cc857",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-10-02T23:00:43Z",
+      "side": 1,
+      "message": "I didn\u0027t find any field in VR that is related with hostname/host_id, which field should it be?\nhttps://github.com/tungstenfabric/tf-api-client/blob/1918cc9fdca0734b6b2a82ed6a00a58c046e60cb/schema/yaml/virtual-router-schema.yml\nI also looked into class VirtualRouter in generated code resource_common.py, but couldn\u0027t not find a field that correlates with host_id of the created VM",
+      "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
