@@ -56,6 +56,10 @@ from cfgm_common.tests.test_utils import FakeKombu
 from cfgm_common.tests.test_utils import FakeExtensionManager
 from cfgm_common.vnc_api_stats import log_api_stats
 from . import test_case
+
+from pysandesh.sandesh_base import *
+from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
+
 from vnc_cfg_api_server.api_server import VncApiServer
 from vnc_cfg_api_server.resources import GlobalSystemConfigServer
 
@@ -323,6 +327,167 @@ class TestCrud(test_case.ApiServerTestCase):
         self._vnc_lib.virtual_network_create(vn_obj)
         self.assert_vnc_db_has_ident(vn_obj)
     # end test_create_using_lib_api
+
+    def test_api_server_configs_http_post_success(self):
+        """
+            Test for successful API Server Update
+        """
+
+        listen_ip = self._api_server_ip
+        listen_port = self._api_server._args.listen_port
+        params = '?enable_api_stats_log=true&log_level=WARN'
+        api_server_config_update_url = 'http://%s:%s/update-configs%s' % (
+            listen_ip, listen_port, params)
+
+        def fake_admin_request(orig_method, *args, **kwargs):
+            return True
+
+        with test_common.patch(self._api_server,
+            'is_admin_request', fake_admin_request):
+            resp = requests.post(
+                api_server_config_update_url,
+                headers={'Content-type': 'application/json; charset="UTF-8"'}
+            )
+
+        response_body = json.loads(resp._content)
+        self.assertEqual(
+            response_body['msg'],
+            'Succesfully Finished API Server Configuration update'
+        )
+        # first check the response code.
+        self.assertEqual(resp.status_code, 202)
+        self.assertEqual(self._api_server.enable_api_stats_log, True)
+        self.assertEqual(
+            self._api_server._sandesh.logging_level(), SandeshLevel.SYS_WARN
+        )
+
+        self.assertEqual(
+            self._api_server._sandesh.is_local_logging_enabled(), True
+        )
+    # end test_api_server_configs_http_post
+
+    def test_api_server_configs_http_post_fail_incorrect_type(self):
+        listen_ip = self._api_server_ip
+        listen_port = self._api_server._args.listen_port
+        first_params = '?log_level=2'
+        second_params = '?missing_var=true&log_level=INFO'
+        first_config_update_url = 'http://%s:%s/update-configs%s' % (
+            listen_ip, listen_port, first_params)
+
+        second_config_update_url = 'http://%s:%s/update-configs%s' % (
+            listen_ip, listen_port, second_params)
+
+        # make the http post
+        def fake_admin_request(orig_method, *args, **kwargs):
+            return True
+
+        with test_common.patch(self._api_server,
+            'is_admin_request', fake_admin_request):
+            first_resp = requests.post(
+                first_config_update_url,
+                headers={'Content-type': 'application/json; charset="UTF-8"'}
+            )
+
+            second_resp = requests.post(
+                second_config_update_url,
+                headers={'Content-type': 'application/json; charset="UTF-8"'}
+            )
+
+        first_response_body = json.loads(first_resp._content)
+        second_response_body = json.loads(second_resp._content)
+        self.assertEqual(
+            first_response_body['msg'],
+            "Update value (2) not in set of possible values for log_level"
+        )
+
+        self.assertEqual(
+            second_response_body['msg'],
+            'Use of invalid config variable (missing_var)'
+        )
+
+        self.assertEqual(first_resp.status_code, 403)
+        self.assertEqual(second_resp.status_code, 400)
+
+    def test_api_server_configs_http_post_sandesh_wrong_val(self):
+        """ Update test when incorrect Sandesh value is passed. """
+        listen_ip = self._api_server_ip
+        listen_port = self._api_server._args.listen_port
+        params = '?enable_latency_stats_log=Sandesh.SYS_INFO'
+        api_server_config_update_url = 'http://%s:%s/update-configs%s' % (
+            listen_ip, listen_port, params)
+
+        def fake_admin_request(orig_method, *args, **kwargs):
+            return True
+
+        with test_common.patch(self._api_server,
+            'is_admin_request', fake_admin_request):
+            response = requests.post(
+                api_server_config_update_url,
+                headers={'Content-type': 'application/json; charset="UTF-8"'}
+            )
+
+        response_body = json.loads(response._content)
+        self.assertEqual(
+            ("Correct type is (<class 'bool'>) for config var "
+             "(enable_latency_stats_log)"),
+            response_body['msg']
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_api_server_configs_http_get(self):
+        """ Update test when incorrect Sandesh value is passed. """
+        listen_ip = self._api_server_ip
+        listen_port = self._api_server._args.listen_port
+        config_get_url = 'http://%s:%s/get-configs' % (
+            listen_ip, listen_port)
+
+        def fake_admin_request(orig_method, *args, **kwargs):
+            return True
+
+        with test_common.patch(self._api_server,
+            'is_admin_request', fake_admin_request):
+            resp_body = requests.get(
+                config_get_url,
+                headers={'Content-type': 'application/json; charset="UTF-8"'}
+            )
+
+        returned_body = json.loads(resp_body._content)
+        self.assertEqual(resp_body.status_code, 200)
+        self.assertEqual(len(returned_body.keys()), 3)
+
+    def test_api_server_configs_fail_not_admin(self):
+        listen_ip = self._api_server_ip
+        listen_port = self._api_server._args.listen_port
+        params = '?enable_api_stats_log=true'
+        config_get_url = 'http://%s:%s/get-configs' % (
+            listen_ip, listen_port)
+        config_update_url = 'http://%s:%s/update-configs%s' % (
+            listen_ip, listen_port, params)
+
+        # By default, the user is not a cloud admin
+        get_resp = requests.get(
+            config_get_url,
+            headers={'Content-type': 'application/json; charset="UTF-8"'}
+        )
+
+        post_resp = update_response_body = requests.post(
+            config_update_url,
+            headers={'Content-type': 'application/json; charset="UTF-8"'}
+        )
+
+        get_returned_body = json.loads(get_resp._content)
+        post_returned_body = json.loads(post_resp._content)
+        self.assertEqual(get_resp.status_code, 403)
+        self.assertEqual(post_resp.status_code, 403)
+        self.assertEqual(
+            get_returned_body['msg'],
+            "Admin is not making request!"
+        )
+
+        self.assertEqual(
+            post_returned_body['msg'],
+            "Admin is not making request!"
+        )
 
     def test_create_using_rest_api(self):
         listen_ip = self._api_server_ip
