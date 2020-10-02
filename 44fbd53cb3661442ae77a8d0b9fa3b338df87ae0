@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cf17545b_a0489ddf",
+        "filename": "src/config/api-server/vnc_cfg_api_server/api_server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-02T21:17:39Z",
+      "side": 1,
+      "message": "Use a better name? ALLOWED_CONFIG_UPDATE_VARS or UPDATE_CONFIG_ALLOWED_VARS or something better?",
+      "revId": "44fbd53cb3661442ae77a8d0b9fa3b338df87ae0",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "70559e46_60e09770",
+        "filename": "src/config/api-server/vnc_cfg_api_server/api_server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 277,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-02T21:17:39Z",
+      "side": 1,
+      "message": "#277-#282 is needed only for set. So instead of doing this at init, please do this at set",
+      "revId": "44fbd53cb3661442ae77a8d0b9fa3b338df87ae0",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f1527031_724a2b0c",
+        "filename": "src/config/api-server/vnc_cfg_api_server/api_server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-02T21:17:39Z",
+      "side": 1,
+      "message": "(%s Incorrect log level. Possible values are %s) % (self._var_value, \",\".join(LOG_LEVEL_LIST))\nabove may be a better message...",
+      "revId": "44fbd53cb3661442ae77a8d0b9fa3b338df87ae0",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
