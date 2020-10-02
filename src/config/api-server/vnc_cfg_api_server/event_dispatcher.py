@@ -198,7 +198,7 @@ class EventDispatcher(object):
                 resource_type, {"fields": ["all"]})["fields"]
             if "all" in fields:
                 event = self.pack(
-                    event=resource_oper,
+                    event=str(resource_oper),
                     data={object_type: obj_dict}
                 )
                 client_queue.put_nowait(event)
@@ -217,7 +217,7 @@ class EventDispatcher(object):
                     # Property/field not set for this object
                     pass
             event = self.pack(
-                event=resource_oper,
+                event=str(resource_oper),
                 data={object_type: obj_with_fields}
             )
             client_queue.put_nowait(event)
