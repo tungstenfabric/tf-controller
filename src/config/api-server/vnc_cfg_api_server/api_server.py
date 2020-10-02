@@ -190,6 +190,12 @@ _ACTION_RESOURCES = [
      'method': 'POST', 'method_name': 'hbs_get'},
     {'uri': '/watch', 'link_name': 'watch',
      'method': 'GET', 'method_name': 'watch'},
+    {'uri': '/update-configs', 'link_name': 'update-configs',
+     'method': 'POST', 'method_name': 'update_configs_http_post'},
+    {'uri': '/get-configs', 'link_name': 'get-configs',
+     'method': 'GET', 'method_name': 'configs_http_get'},
+    {'uri': '/update-configs', 'link_name': 'update-configs',
+     'method': 'GET', 'method_name': 'update_configs_http_post'},
 ]
 
 _MANDATORY_PROPS = [
@@ -203,6 +209,11 @@ _WHITE_LIST_URI = [
 ]
 _WHITE_LIST_URI_REGEX = re.compile(r'%s' % '|'.join(_WHITE_LIST_URI))
 
+# We can add variables here if we would like to configure more variables
+UPDATE_CONFIG_ALLOWED_VARS = {
+    'enable_latency_stats_log': bool,
+    'enable_api_stats_log': bool
+}
 
 def error_400(err):
     return err.body
@@ -241,6 +252,46 @@ def traceback_err_msg(err_msg):
     '''Return the last row of traceback error message'''
     return err_msg.strip('\n').split('\n')[-1]
 # end traceback_err_msg
+
+
+class ConfigVar(object):
+
+    BOOL_STR_MAP = {'true': True, 'false': False}
+
+    def __init__(self, api_server_obj, config_var_name):
+        self._var_name = config_var_name
+        self._api_server_obj = api_server_obj
+        self.is_var_allowed()
+
+    def is_value_correct_type(self, var_value):
+        if not isinstance(var_value,
+            UPDATE_CONFIG_ALLOWED_VARS[self._var_name]):
+            msg = (("Correct type is (%s) for config var (%s)") %
+                    (UPDATE_CONFIG_ALLOWED_VARS[self._var_name],
+                    self._var_name))
+            raise cfgm_common.exceptions.HttpError(400, msg)
+
+    def is_var_allowed(self):
+        if self._var_name not in UPDATE_CONFIG_ALLOWED_VARS.keys():
+            msg = "Use of invalid config variable (%s)" % (self._var_name)
+            raise cfgm_common.exceptions.HttpError(400, msg)
+
+    def convert_type_if_needed(self, var_value):
+        required_type = UPDATE_CONFIG_ALLOWED_VARS[self._var_name]
+        if var_value in self.BOOL_STR_MAP.keys():
+            return self.BOOL_STR_MAP[var_value]
+        elif required_type is bool:
+            return var_value
+        else:
+            return required_type(var_value)
+
+    def get_var(self):
+        return getattr(self._api_server_obj, self._var_name)
+
+    def set_var(self, var_value):
+        val_to_set = self.convert_type_if_needed(var_value)
+        self.is_value_correct_type(val_to_set)
+        setattr(self._api_server_obj, self._var_name, val_to_set)
 
 
 class VncApiServer(object):
@@ -391,6 +442,63 @@ class VncApiServer(object):
             raise ValueError('Invalid service interface type %s. '
                              'Valid values are: management|left|right|other[0-9]*'
                               % value)
+
+    def update_configs_http_post(self):
+        log_change_msg = "Making API Server Config Updates... "
+        log_change_msg +=  ("Updating variable (%s) with existing value (%s), "
+                            "to New value (%s)")
+
+        # check if admin is making request
+        if not self.is_admin_request():
+            msg = "Admin is not making request!"
+            bottle.response.status = 403
+            return {'msg': msg, 'result': 403}
+
+         # retrieve request vars
+        body = get_request().params.items()
+        msg = "Updating api server configs %s " % body
+        self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
+
+        # Iterate over all variables
+        for config_var_name, var_value in body:
+            try:
+                config_var = ConfigVar(self, config_var_name)
+                old_value = config_var.get_var()
+                config_var.set_var(var_value)
+                self.config_log(
+                    (log_change_msg % (config_var_name, old_value,
+                                       config_var.get_var())),
+                    level=SandeshLevel.SYS_DEBUG
+                )
+            except cfgm_common.exceptions.HttpError as e:
+                bottle.response.status = e.status_code
+                return {'msg': e.content, 'result': e.status_code}
+
+        bottle.response.status = 200
+        end_log_msg = "Succesfully Finished API Server Configuration update"
+        self.config_log(end_log_msg, level=SandeshLevel.SYS_DEBUG)
+        return {'msg': end_log_msg, 'result': 200}
+    # end update_configs_http_post
+
+    def configs_http_get(self):
+        """ Get Endpoint impelemtnation for retreiving config variables. """
+        self.config_log("Retrieving api server config variables..")
+
+        # check if admin is making request
+        if not self.is_admin_request():
+            msg = "Admin is not making request!"
+            bottle.response.status = 403
+            return {'msg': msg, 'result': 403}
+
+        get_payload = {}
+        vars_to_get = (get_request().params.keys() or
+                       UPDATE_CONFIG_ALLOWED_VARS.keys())
+        for config_var_name in vars_to_get:
+            config_var_obj = ConfigVar(self, config_var_name)
+            get_payload[config_var_name] = config_var_obj.get_var()
+        bottle.response.status = 200
+        return get_payload
+    # end configs_http_get
 
     def watch(self):
         request_params = bottle.request.query
