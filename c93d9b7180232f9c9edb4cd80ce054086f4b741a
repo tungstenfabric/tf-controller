@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f76316fb_2567f12c",
+        "filename": "src/vnsw/agent/uve/vn_uve_entry.cc",
+        "patchSetId": 1
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 752
+      },
+      "writtenOn": "2020-10-02T08:53:46Z",
+      "side": 1,
+      "message": "Typo: This should be ace_stats_",
+      "revId": "c93d9b7180232f9c9edb4cd80ce054086f4b741a",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
