@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a3829b61_63ed16f0",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-10-02T22:51:48Z",
+      "side": 1,
+      "message": "I did not implement VPGST and PIST, simply used _vnc_lib to read, create and update objects. So right now, the workflow is like this\n\n1. VMI creation\n-\u003e collect vlan_id and PI\n-\u003e create placeholder VMI in DB\n-\u003e create VPG in DB\n2. VMI update (referring to a different VN, if that\u0027s the case)\n-\u003e collect vlan_id and PI\n-\u003e compare with old vlan_id and PI.uuid\n-\u003e delete old placeholder VMI and create a new one if vlan_id changed (I gave placeholder VMI uuid as \"_vmi_vlan_\" + vlan_id, as vlan_id in new VN might change, I simply delete the old one)\n-\u003e delete old VPG and create a new one (VPG uuid as \"vpg_\" + VN.uuid)\n3. VN update (non provider VN to provider VN)\n-\u003e follow the same as step 1",
+      "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
