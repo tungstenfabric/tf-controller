@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "038321c7_503d84a0",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/network_policy.py",
+        "patchSetId": 14
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-02T19:46:53Z",
+      "side": 1,
+      "message": "We can avoid this for loop which is of the order log(n^2), where n is the number of rules by,\n\n1. Maintaining as attribute \"self.retain_as_path_rules \u003d [\u003clist of rules with retain_as_path attribute\u003e]\"\n2. self.retain_as_path_rules should be updated(append/remove) in the add_rules method in the \"for prule in self.rules:\" iteration.\n3. Then in line 112, we should iterate over self.retain_as_path_rules.\n\nBy doing so we iterate for N*M times, where N is total rules and M is number of rules with retain_as_path attribute.",
+      "revId": "7373d383b4046c1c757393e76e408c5f0c892119",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
