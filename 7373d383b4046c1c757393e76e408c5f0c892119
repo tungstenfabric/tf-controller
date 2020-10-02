@@ -16,6 +16,24 @@
       "revId": "7373d383b4046c1c757393e76e408c5f0c892119",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a0da4146_097fb6c3",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/network_policy.py",
+        "patchSetId": 14
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-02T19:48:06Z",
+      "side": 1,
+      "message": "when M is 0, there wont be unnecessary N^2 iteration.",
+      "parentUuid": "038321c7_503d84a0",
+      "revId": "7373d383b4046c1c757393e76e408c5f0c892119",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
