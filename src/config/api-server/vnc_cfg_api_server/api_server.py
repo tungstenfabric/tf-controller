@@ -190,6 +190,10 @@ _ACTION_RESOURCES = [
      'method': 'POST', 'method_name': 'hbs_get'},
     {'uri': '/watch', 'link_name': 'watch',
      'method': 'GET', 'method_name': 'watch'},
+    {'uri': '/update-configs', 'link_name': 'update-configs',
+     'method': 'POST', 'method_name': 'update_configs_http_post'},
+    {'uri': '/get-configs', 'link_name': 'get-configs',
+     'method': 'GET', 'method_name': 'configs_http_get'},
 ]
 
 _MANDATORY_PROPS = [
@@ -203,6 +207,12 @@ _WHITE_LIST_URI = [
 ]
 _WHITE_LIST_URI_REGEX = re.compile(r'%s' % '|'.join(_WHITE_LIST_URI))
 
+# We can add variables here if we would like to configure more variables
+ALLOWED_VARS = {
+    'log_level': str,
+    'enable_latency_stats_log': bool,
+    'enable_api_stats_log': bool
+}
 
 def error_400(err):
     return err.body
@@ -242,6 +252,72 @@ def traceback_err_msg(err_msg):
     return err_msg.strip('\n').split('\n')[-1]
 # end traceback_err_msg
 
+
+class ConfigVar(object):
+
+    LOG_LEVEL_MAP = {
+        'DEBUG': SandeshLevel.SYS_DEBUG,
+        'NOTICE': SandeshLevel.SYS_NOTICE,
+        'INFO': SandeshLevel.SYS_INFO,
+        'WARN': SandeshLevel.SYS_WARN,
+        'ERR': SandeshLevel.SYS_ERR,
+        SandeshLevel.SYS_DEBUG: 'DEBUG',
+        SandeshLevel.SYS_NOTICE: 'NOTICE',
+        SandeshLevel.SYS_INFO: 'INFO',
+        SandeshLevel.SYS_WARN: 'WARN',
+        SandeshLevel.SYS_ERR: 'ERR'
+    }
+
+    LOG_LEVEL_LIST = ['DEBUG', 'NOTICE', 'INFO', 'WARN', 'ERR']
+
+    def __init__(self, api_server_obj, config_var_name, var_value=None):
+        self._var_name = config_var_name
+        self._api_server_obj = api_server_obj
+        if var_value:
+            self._var_value = (self.BOOL_STR_MAP[var_value]
+                               if var_value in self.BOOL_STR_MAP.keys()
+                               else str(var_value))
+            self.is_var_allowed()
+            self.is_value_correct_type_and_expected()
+
+    def is_value_correct_type_and_expected(self):
+        if type(self._var_value) != ALLOWED_VARS[self._var_name]:
+            msg = ("Correct type is (%s) for config var (%s)" %
+                (ALLOWED_VARS[self._var_name], self._var_name))
+            raise cfgm_common.exceptions.HttpError(400, msg)
+        if (self._var_name == 'log_level'
+            and self._var_value not in self.LOG_LEVEL_LIST):
+            msg = ("Update value (%s) not in set of "
+                    "possible values for log_level" % (self._var_value))
+            raise cfgm_common.exceptions.HttpError(403, msg)
+
+    def is_var_allowed(self):
+        if self._var_name not in ALLOWED_VARS.keys():
+            msg = "Use of invalid config variable (%s)" % (self._var_name)
+            raise cfgm_common.exceptions.HttpError(400, msg)
+
+    def set_log_level(self):
+        internal = self.LOG_LEVEL_MAP[self._var_value] # 'log_level'
+        self._api_server_obj._sandesh.set_logging_level(internal)
+
+    def get_log_level(self):
+        internal = self._api_server_obj._sandesh.logging_level()
+        return self.LOG_LEVEL_MAP[internal]
+
+    def get_var(self):
+        if self._var_name == 'log_level':
+            return self.get_log_level()
+        else:
+            return getattr(self._api_server_obj, self._var_name)
+
+    def set_var(self):
+        if self._var_name == 'log_level':
+            self.set_log_level()
+        else:
+            setattr (
+                self._api_server_obj,
+                self._var_name, self._var_value
+            )
 
 class VncApiServer(object):
     """
@@ -391,6 +467,60 @@ class VncApiServer(object):
             raise ValueError('Invalid service interface type %s. '
                              'Valid values are: management|left|right|other[0-9]*'
                               % value)
+
+    def update_configs_http_post(self):
+        self.config_log("Making API Server Config Updates...",
+                        level=SandeshLevel.SYS_INFO)
+
+        # check if admin is making request
+        if not self.is_admin_request():
+            msg = "Admin is not making request!"
+            bottle.response.status = 403
+            return {'msg': msg, 'result': 403}
+
+         # retrieve request vars
+        body = get_request().params.items()
+        msg = "Configure api server configs %s " % body
+        self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
+
+        # Iterate over all variables
+        updatable_variables = []
+        for config_var_name, var_value in body:
+            try:
+                config_var_obj = ConfigVar(self, config_var_name,
+                                           var_value=var_value)
+            except cfgm_common.exceptions.HttpError as e:
+                bottle.response.status =  e.status_code
+                return {'msg': e.content, 'result': e.status_code}
+
+            updatable_variables.append((config_var_obj, var_value))
+
+        for success_var, _ in updatable_variables:
+            success_var.set_var()
+
+        bottle.response.status = 202
+        end_log_msg = "Succesfully Finished API Server Configuration update"
+        self.config_log(end_log_msg, level=SandeshLevel.SYS_DEBUG)
+        return {'msg': end_log_msg, 'result': 'Success'}
+        # end update_configs_http_post
+
+    def configs_http_get(self):
+        """ Get Endpoint impelemtnation for retreiving config variables. """
+        self.config_log("Retrieving api server config variables..")
+
+        # check if admin is making request
+        if not self.is_admin_request():
+            msg = "Admin is not making request!"
+            bottle.response.status = 403
+            return {'msg': msg, 'result': 403}
+
+        get_payload = {}
+        for config_var_name in ALLOWED_VARS.keys():
+            config_var_obj = ConfigVar(self, config_var_name)
+            get_payload[config_var_name] = config_var_obj.get_var()
+        bottle.response.status = 200
+        return get_payload
+    # end configs_http_get
 
     def watch(self):
         request_params = bottle.request.query
