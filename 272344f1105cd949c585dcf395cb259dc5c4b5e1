@@ -16,6 +16,24 @@
       "revId": "272344f1105cd949c585dcf395cb259dc5c4b5e1",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "220a1d25_33247088",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/network_policy.py",
+        "patchSetId": 15
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 834
+      },
+      "writtenOn": "2020-10-03T06:06:27Z",
+      "side": 1,
+      "message": "i think so, yes. Let me update the patch",
+      "parentUuid": "6726def1_4af96973",
+      "revId": "272344f1105cd949c585dcf395cb259dc5c4b5e1",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
