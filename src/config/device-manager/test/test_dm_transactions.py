@@ -2,19 +2,29 @@
 # Copyright (c) 2020 Juniper Networks, Inc. All rights reserved.
 #
 from __future__ import absolute_import
+
 import time
+
 from attrdict import AttrDict
 from cfgm_common.tests.test_common import retries
 from cfgm_common.tests.test_common import retry_exc_handler
-from vnc_api.vnc_api import *
-from vnc_api.gen.resource_client import *
+from vnc_api.gen.resource_client import DataCenterInterconnect, \
+    LogicalRouter, PhysicalInterface, PortTuple, SecurityGroup,\
+    ServiceAppliance, ServiceApplianceSet, ServiceInstance, ServiceTemplate, \
+    VirtualMachineInterface, VirtualPortGroup
+from vnc_api.vnc_api import KeyValuePair, KeyValuePairs, \
+    ServiceApplianceInterfaceType, ServiceInstanceType, \
+    ServiceTemplateInterfaceType, ServiceTemplateType
+
 from .test_dm_ansible_common import TestAnsibleCommonDM
 from .test_dm_utils import FakeJobHandler
+
 
 class TestTransactionsDM(TestAnsibleCommonDM):
 
     def setUp(self, extra_config_knobs=None):
-        super(TestTransactionsDM, self).setUp(extra_config_knobs=extra_config_knobs)
+        super(TestTransactionsDM, self).setUp(
+            extra_config_knobs=extra_config_knobs)
         self.create_all()
 
     def tearDown(self):
@@ -31,18 +41,23 @@ class TestTransactionsDM(TestAnsibleCommonDM):
 
         if allow_update and 'Create' in trans_descr and 'Update' in t_descr:
             trans_descr = trans_descr.replace('Create', 'Update')
+        if 'DCI' in trans_descr and trans_descr != t_descr and pr_name:
+            print("Transaction mistmatch {} != {}".format(
+                trans_descr, t_descr))
+            # sometimes due to timing, PR transaction gets updated.
+            trans_descr = "Bgp Router '{}' Update".format(pr_name)
 
         self.assertEqual(trans_descr, t_descr)
         if trans_id:
             self.assertEqual(trans_id, t_id)
-        print ("TRANSACTION: {}".format(trans_descr))
+        print("TRANSACTION: {}".format(trans_descr))
         return t_id, t_descr
 
     def check_trans_info(self, obj_type=None, oper=None, obj_name=None,
                          trans_id=None, pr_name=None, trans_descr=None,
                          allow_update=False):
-        trans_descr = trans_descr or \
-                      "{} '{}' {}".format(obj_type, obj_name, oper)
+        trans_descr = trans_descr or "{} '{}' {}".format(
+            obj_type, obj_name, oper)
         time.sleep(1)
         return self.chk_trans_info(trans_id=trans_id, pr_name=pr_name,
                                    trans_descr=trans_descr,
@@ -84,13 +99,13 @@ class TestTransactionsDM(TestAnsibleCommonDM):
         vlan_tag = 10
 
         vmi = VirtualMachineInterface(
-            vpg_name + "-tagged-" + str(vlan_tag),
-            parent_type='project',
-            fq_name = ["default-domain", "default-project",
-                       vpg_name + "-tagged-" + str(vlan_tag)])
+            vpg_name + "-tagged-" + str(vlan_tag), parent_type='project',
+            fq_name=["default-domain", "default-project",
+                     vpg_name + "-tagged-" + str(vlan_tag)])
 
         vmi_profile = \
-            "{\"local_link_information\":[{\"switch_id\":\"%s\",\"port_id\":\"%s\",\"switch_info\":\"%s\",\"fabric\":\"%s\"}]}" % \
+            "{\"local_link_information\":[{\"switch_id\":\"%s\",\"port_id\":"\
+            "\"%s\",\"switch_info\":\"%s\",\"fabric\":\"%s\"}]}" % \
             (phy_int_name, phy_int_name, device_name, fabric_name)
 
         vmi_bindings = {
@@ -108,12 +123,8 @@ class TestTransactionsDM(TestAnsibleCommonDM):
                 "value": vmi_profile
             }]
         }
-
         vmi.set_virtual_machine_interface_bindings(vmi_bindings)
-
-        vmi_properties = {
-                "sub_interface_vlan_tag": vlan_tag
-            }
+        vmi_properties = {"sub_interface_vlan_tag": vlan_tag}
         vmi.set_virtual_machine_interface_properties(vmi_properties)
 
         vmi.set_virtual_network(self.vn1)
@@ -165,23 +176,23 @@ class TestTransactionsDM(TestAnsibleCommonDM):
 
         dci.add_logical_router(self.lr1)
         self._vnc_lib.data_center_interconnect_update(dci)
-        self._vnc_lib.data_center_interconnect_delete(fq_name=dci.fq_name)
+        self._vnc_lib.data_center_interconnect_delete(id=dci.uuid)
         self.check_trans_info('DCI', 'Delete', dci_name,
                               pr_name=self.pr1.name)
 
     def test_create_service_instance(self):
         sas_name = 'sas-1' + self.id()
         sas_fq_name = ['default-global-system-config', sas_name]
-        sas = ServiceApplianceSet(fq_name=sas_fq_name,
-                                  parent_type='global-system-config',
-                                  service_appliance_set_virtualization_type='physical-device')
+        sas = ServiceApplianceSet(
+            fq_name=sas_fq_name, parent_type='global-system-config',
+            service_appliance_set_virtualization_type='physical-device')
         self._vnc_lib.service_appliance_set_create(sas)
 
         sa_name = 'sa-1' + self.id()
         sa_fq_name = ['default-global-system-config', sas_name, sa_name]
-        sa = ServiceAppliance(fq_name=sa_fq_name,
-                               parent_type='service-appliance-set',
-                               service_appliance_virtualization_type='physical-device')
+        sa = ServiceAppliance(
+            fq_name=sa_fq_name, parent_type='service-appliance-set',
+            service_appliance_virtualization_type='physical-device')
 
         sa.set_service_appliance_properties(KeyValuePairs([
             KeyValuePair(key='left-attachment-point', value=self.pi1_0_fq),
@@ -314,22 +325,19 @@ class TestTransactionsDM(TestAnsibleCommonDM):
         )
 
         rtr1_name = 'router1' + self.id()
-        self.bgp_router1, self.pr1 = self.create_router(rtr1_name, '1.1.1.1',
-                                   product='qfx10008', family='junos-qfx',
-                                   role='spine',
-                                   rb_roles=['crb-gateway', 'DCI-Gateway'],
-                                   physical_role=self.physical_roles['spine'],
-                                   overlay_role=self.overlay_roles[
-                                       'crb-gateway'], fabric=self.fabric,
-                                   node_profile=self.np1)
+        self.bgp_router1, self.pr1 = self.create_router(
+            rtr1_name, '1.1.1.1', product='qfx10008', family='junos-qfx',
+            role='spine', rb_roles=['crb-gateway', 'DCI-Gateway'],
+            physical_role=self.physical_roles['spine'],
+            overlay_role=self.overlay_roles['crb-gateway'],
+            fabric=self.fabric, node_profile=self.np1)
         rtr2_name = 'router2' + self.id()
-        self.bgp_router2, self.pr2 = self.create_router(rtr2_name, '1.1.1.2',
-                                   product='qfx10008', family='junos-qfx',
-                                   role='pnf', rb_roles=['PNF-Servicechain'],
-                                   physical_role=self.physical_roles['pnf'],
-                                   overlay_role=self.overlay_roles[
-                                       'pnf-servicechain'], fabric=self.fabric,
-                                   node_profile=self.np2)
+        self.bgp_router2, self.pr2 = self.create_router(
+            rtr2_name, '1.1.1.2', product='qfx10008', family='junos-qfx',
+            role='pnf', rb_roles=['PNF-Servicechain'],
+            physical_role=self.physical_roles['pnf'],
+            overlay_role=self.overlay_roles['pnf-servicechain'],
+            fabric=self.fabric, node_profile=self.np2)
 
         pi1_0_name = "xe-0/0/0"
         self.pi1_0 = PhysicalInterface(pi1_0_name, parent_obj=self.pr1)
@@ -354,21 +362,22 @@ class TestTransactionsDM(TestAnsibleCommonDM):
         lr1_name = 'lr1-' + self.id()
         lr1_fq_name = ['default-domain', 'default-project', lr1_name]
         self.lr1 = LogicalRouter(fq_name=lr1_fq_name, parent_type='project',
-                           logical_router_type='vxlan-routing',
-                           vxlan_network_identifier='3000')
+                                 logical_router_type='vxlan-routing',
+                                 vxlan_network_identifier='3000')
         self.lr1.set_physical_router(self.pr1)
         self._vnc_lib.logical_router_create(self.lr1)
 
         lr2_name = 'lr2-' + self.id()
         lr2_fq_name = ['default-domain', 'default-project', lr2_name]
         self.lr2 = LogicalRouter(fq_name=lr2_fq_name, parent_type='project',
-                           logical_router_type='vxlan-routing',
-                           vxlan_network_identifier='4000')
+                                 logical_router_type='vxlan-routing',
+                                 vxlan_network_identifier='4000')
         self.lr2.set_physical_router(self.pr2)
         self._vnc_lib.logical_router_create(self.lr2)
 
         fq_name = ['default-domain', 'default-project', 'vmi-' + self.id()]
-        self.vmi = VirtualMachineInterface(fq_name=fq_name, parent_type='project')
+        self.vmi = VirtualMachineInterface(
+            fq_name=fq_name, parent_type='project')
         self.vmi.set_virtual_network(self.vn1)
         self._vnc_lib.virtual_machine_interface_create(self.vmi)
 

@@ -95,10 +95,10 @@ class DeviceManager(object):
             'role_config': ['physical_router'],
         },
         'data_center_interconnect': {
-            'self': ['logical_router', 'virtual_network'],
+            'self': ['logical_router', 'virtual_network', 'fabric'],
             'logical_router': ['logical_router'],
             'routing_policy': ['logical_router'],
-            'virtual_network': ['logical_router'],
+            'virtual_network': ['logical_router', 'fabric'],
             'global_system_config': ['logical_router'],
         },
         'role_config': {
@@ -115,6 +115,7 @@ class DeviceManager(object):
         'fabric': {
             'self': ['physical_router'],
             'fabric_namespace': ['physical_router'],
+            'data_center_interconnect': ['physical_router'],
         },
         'fabric_namespace': {
             'self': ['fabric'],
