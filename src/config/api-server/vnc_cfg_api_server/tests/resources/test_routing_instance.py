@@ -4,7 +4,10 @@
 import logging
 
 from cfgm_common import CANNOT_MODIFY_MSG
+from cfgm_common.exceptions import HttpError
 from cfgm_common.exceptions import RefsExistError
+from cfgm_common.tests import test_common
+from testtools import ExpectedException
 from vnc_api.vnc_api import Project
 from vnc_api.vnc_api import RoutingInstance
 from vnc_api.vnc_api import ServiceChainInfo
@@ -171,3 +174,41 @@ class TestRoutingInstance(test_case.ApiServerTestCase):
                      'evpn_service_chain_information',
                      'evpn_ipv6_service_chain_information']:
             self.assertEqual(getattr(ri, attr), getattr(updated_ri, attr))
+
+    def test_context_undo_fail_db_create_routing_instance(self):
+        project = Project('project-%s' % self.id())
+        self.api.project_create(project)
+        vn = VirtualNetwork('vn-%s' % self.id(), parent_obj=project)
+        self.api.virtual_network_create(vn)
+
+        mock_zk = self._api_server._db_conn._zk_db
+
+        ri_name = 'ri-%s' % self.id()
+        ri_fq_name = vn.fq_name + [ri_name]
+        ri = RoutingInstance(ri_name, parent_obj=vn)
+        ri.set_routing_instance_is_default(False)
+        self.api.routing_instance_create(ri)
+
+        # Make sure we have right zk path (ri_fq_name)
+        ri_uuid, _ = mock_zk.get_fq_name_to_uuid_mapping('routing_instance',
+                                                         ri_fq_name)
+        self.assertTrue(ri_uuid is not None)
+
+        # Clean ri
+        self.api.routing_instance_delete(id=ri_uuid)
+
+        ri = RoutingInstance(ri_name, parent_obj=vn)
+        ri.set_routing_instance_is_default(False)
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_create', stub)]):
+                self.api.routing_instance_create(ri)
+
+        # Check if uuid for ri got released during undo action
+        # using same zk path parameters as above
+        with ExpectedException(TypeError):
+            mock_zk.get_fq_name_to_uuid_mapping('routing_instance', ri_fq_name)
