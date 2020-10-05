@@ -1289,6 +1289,8 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
     // Add evpn type 5 route from bgp peer in Lr vrf
     if ( vrf->vn() && vrf->vn()->vxlan_routing_vn() && vrf->routing_vrf() &&
             MacAddress::FromString(mac_str).IsZero()) {
+        if (plen == 32)
+            return;
         VnListType vn_list;
         vn_list.insert(item->entry.virtual_network);
 
