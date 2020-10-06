@@ -536,25 +536,30 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
             vnic_type = kvp_dict.get('vnic_type')
             vpg_name = kvp_dict.get('vpg')
             tor_port_vlan_id = kvp_dict.get('tor_port_vlan_id', 0)
-            if vnic_type == 'baremetal' and kvp_dict.get('profile'):
-                # Process only if port profile exists and physical links are
-                # specified
-                phy_links = json.loads(kvp_dict.get('profile'))
-                if phy_links and phy_links.get('local_link_information'):
-                    links = phy_links['local_link_information']
-                    is_untagged_vlan = False
-                    if tor_port_vlan_id:
-                        vlan_id = tor_port_vlan_id
-                        is_untagged_vlan = True
-                    else:
-                        vlan_id = vlan_tag
-                    vpg_uuid, ret_dict = cls._manage_vpg_association(
-                        obj_dict['uuid'], cls.server, db_conn, links,
-                        vpg_name, vn_uuid, vlan_id, is_untagged_vlan)
-                    if not vpg_uuid:
-                        return vpg_uuid, ret_dict
-                    obj_dict['port_virtual_port_group_id'] = vpg_uuid
-                    obj_dict.update(ret_dict)
+            is_untagged_vlan = False
+            if tor_port_vlan_id:
+                vlan_id = tor_port_vlan_id
+                is_untagged_vlan = True
+            else:
+                vlan_id = vlan_tag
+            links = []
+            if vnic_type == 'baremetal':
+                if kvp_dict.get('profile'):
+                    # Process only if port profile exists and physical links
+                    # specified
+                    phy_links = json.loads(kvp_dict.get('profile'))
+                    if phy_links and phy_links.get('local_link_information'):
+                        links = phy_links['local_link_information']
+                # manage_vpg function needs to be called regardless of
+                # phy_links
+                vpg_refs = obj_dict.get('virtual_port_group_refs') or None
+                vpg_uuid, ret_dict = cls._manage_vpg_association(
+                    obj_dict['uuid'], cls.server, db_conn, links,
+                    vpg_refs, vpg_name, vn_uuid, vlan_id, is_untagged_vlan)
+                if not vpg_uuid:
+                    return vpg_uuid, ret_dict
+                obj_dict['port_virtual_port_group_id'] = vpg_uuid
+                obj_dict.update(ret_dict)
 
         return True, ""
 
@@ -697,31 +702,35 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
             # Manage the bindings for baremetal servers
             vnic_type = kvp_dict.get('vnic_type')
             vpg_name = kvp_dict.get('vpg')
+            links = []
             if read_result.get('virtual_port_group_back_refs'):
                 vpg_name_db = (read_result.get(
                     'virtual_port_group_back_refs')[0]['to'][-1])
                 obj_dict['virtual_port_group_name'] = vpg_name_db
 
+            is_untagged_vlan = False
+            if tor_port_vlan_id:
+                vlan_id = tor_port_vlan_id
+                is_untagged_vlan = True
+                if (vlan_id != old_vlan and
+                   'virtual_machine_interface_refs' in read_result):
+                    return False, (400, "Cannot change VLAN ID")
+            else:
+                vlan_id = new_vlan
             if vnic_type == 'baremetal':
-                phy_links = json.loads(kvp_dict.get('profile'))
-                if phy_links and phy_links.get('local_link_information'):
-                    links = phy_links['local_link_information']
-                    is_untagged_vlan = False
-                    if tor_port_vlan_id:
-                        vlan_id = tor_port_vlan_id
-                        is_untagged_vlan = True
-                        if (vlan_id != old_vlan and
-                           'virtual_machine_interface_refs' in read_result):
-                            return False, (400, "Cannot change VLAN ID")
-                    else:
-                        vlan_id = new_vlan
-                    vpg_uuid, ret_dict = cls._manage_vpg_association(
-                        id, cls.server, db_conn, links, vpg_name,
-                        vn_uuid, vlan_id, is_untagged_vlan)
-                    if not vpg_uuid:
-                        return vpg_uuid, ret_dict
-
-                    obj_dict['port_virtual_port_group_id'] = vpg_uuid
+                if kvp_dict.get('profile'):
+                    phy_links = json.loads(kvp_dict.get('profile'))
+                    if phy_links and phy_links.get('local_link_information'):
+                        links = phy_links['local_link_information']
+                # manage_vpg function needs to be called regardless
+                # of phy_links
+                vpg_refs = obj_dict.get('virtual_port_group_refs') or None
+                vpg_uuid, ret_dict = cls._manage_vpg_association(
+                    id, cls.server, db_conn, links, vpg_refs, vpg_name,
+                    vn_uuid, vlan_id, is_untagged_vlan)
+                if not vpg_uuid:
+                    return vpg_uuid, ret_dict
+                obj_dict['port_virtual_port_group_id'] = vpg_uuid
 
         if old_vnic_type == cls.portbindings['VNIC_TYPE_DIRECT']:
             cls._check_vrouter_link(read_result, kvp_dict, obj_dict, db_conn)
@@ -1494,9 +1503,10 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
         return True, ''
 
     @classmethod
-    def _manage_vpg_association(cls, vmi_id, api_server, db_conn, phy_links,
-                                vpg_name=None, vn_uuid=None,
-                                vlan_id=None, is_untagged_vlan=False):
+    def _manage_vpg_association(cls, vmi_id, api_server, db_conn,
+                                phy_links=None, vpg_refs_dict=None,
+                                vpg_name=None, vn_uuid=None, vlan_id=None,
+                                is_untagged_vlan=False):
         fabric_name = None
         phy_interface_uuids = []
         old_phy_interface_uuids = []
@@ -1528,6 +1538,36 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                         'No such Physical Interface object (%s) exists' % (
                             temp_vpg_name, pi_fq_name[-1]))
                 return (False, (404, msg))
+
+        # check if fabric_name is None. If None, try retreiving fabric_name
+        # from vpg_refs_dict
+        if not fabric_name:
+            if not vpg_refs_dict:
+                msg = ('Unable to retrieve fabric name. No physical interfaces'
+                       ' and no vpg refs')
+                return (False, (400, msg))
+            vpg_ref_uuid = vpg_refs_dict[0].get('uuid')
+            if not vpg_ref_uuid:
+                msg = 'Failed to retrieve fabric name. No vpg refs found'
+                return (False, (400, msg))
+            # Now, retrieve fabric_name from vpg_ref_uuid
+            ok, virtual_port_group_dict = db_conn.dbe_read(
+                obj_type='virtual_port_group',
+                obj_id=vpg_ref_uuid,
+                obj_fields=['parent_type'])
+            if not ok:
+                return (ok, 400, virtual_port_group_dict)
+
+            parent_val = virtual_port_group_dict.get('parent_type')
+            if parent_val == 'fabric':
+                fabric_uuid = virtual_port_group_dict['parent_uuid']
+                fabric_fq_name = db_conn.uuid_to_fq_name(fabric_uuid)
+                fabric_name = fabric_fq_name[-1]
+            else:
+                msg = ('VPG do not belong to fabric object, '
+                       'Unable to retrieve fabric name')
+                return (False, (400, msg))
+
         # check if new physical interfaces belongs to some other vpg
         for uuid in set(phy_interface_uuids):
             ok, phy_interface_dict = db_conn.dbe_read(
@@ -1651,14 +1691,19 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 if not ok:
                     return ok, result
 
-        old_phy_interface_refs = vpg_dict.get('physical_interface_refs')
-        old_phy_interface_uuids = [ref['uuid'] for ref in
-                                   old_phy_interface_refs or []]
+        old_phy_interface_uuids = []
+        if phy_interface_uuids:
+            old_phy_interface_refs = vpg_dict.get('physical_interface_refs')
+            old_phy_interface_uuids = [ref['uuid'] for ref in
+                                       old_phy_interface_refs or []]
         ret_dict = {}
 
         # delete old physical interfaces to the vpg
-        delete_pi_uuids = (set(old_phy_interface_uuids) -
-                           set(phy_interface_uuids))
+        delete_pi_uuids = []
+        if phy_interface_uuids:
+            delete_pi_uuids = (set(old_phy_interface_uuids) -
+                               set(phy_interface_uuids))
+
         for uuid in delete_pi_uuids:
             try:
                 api_server.internal_request_ref_update(
@@ -1671,8 +1716,10 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 return False, (exc.status_code, exc.content)
 
         # add new physical interfaces to the vpg
-        create_pi_uuids = (set(phy_interface_uuids) -
-                           set(old_phy_interface_uuids))
+        create_pi_uuids = []
+        if phy_interface_uuids:
+            create_pi_uuids = (set(phy_interface_uuids) -
+                               set(old_phy_interface_uuids))
         for uuid in create_pi_uuids:
             try:
                 api_server.internal_request_ref_update(
