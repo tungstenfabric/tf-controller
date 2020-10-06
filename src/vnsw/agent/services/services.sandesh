@@ -934,6 +934,18 @@ trace sandesh Icmpv6Trace {
 }
 
 /**
+ * @description: Trace message for ndp
+ * @type: Trace
+ * @severity: DEBUG
+ */
+trace sandesh NdpTrace {
+    1: string op;
+    2: string ip;
+    3: string vrf;
+    4: string mac;
+}
+
+/**
  * @description: Trace message for meta data service
  * @type: Trace
  * @severity: DEBUG
