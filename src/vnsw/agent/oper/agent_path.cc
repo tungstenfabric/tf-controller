@@ -588,6 +588,28 @@ bool AgentPath::CopyArpData() {
     return ret;
 }
 
+bool AgentPath::CopyNdpData() {
+    bool ret = false;
+    if (nh_ && nh_->GetType() == NextHop::NDP) {
+        const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh_.get());
+        if (arp_mac() != ndp_nh->GetMac()) {
+            set_arp_mac(ndp_nh->GetMac());
+            ret = true;
+        }
+
+        if (arp_interface() != ndp_nh->GetInterface()) {
+            set_arp_interface(ndp_nh->GetInterface());
+            ret = true;
+        }
+
+        if (arp_valid() != ndp_nh->IsValid()) {
+            set_arp_valid(ndp_nh->IsValid());
+            ret = true;
+        }
+    }
+    return ret;
+}
+
 EvpnDerivedPath::EvpnDerivedPath(const EvpnPeer *evpn_peer,
                    const IpAddress &ip_addr,
                    uint32_t ethernet_tag,
@@ -1589,6 +1611,11 @@ void AgentRoute::FillTrace(RouteInfo &rt_info, Trace event,
         }
 
         case NextHop::ARP:{
+            rt_info.set_nh_type("DIRECT");
+            break;
+        }
+
+        case NextHop::NDP:{
             rt_info.set_nh_type("DIRECT");
             break;
         }
