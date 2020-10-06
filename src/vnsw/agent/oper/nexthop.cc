@@ -158,6 +158,10 @@ void NextHop::FillObjectLog(AgentLogEvent::type event,
             type_str.assign("ARP");
             break;
 
+        case NextHop::NDP:
+            type_str.assign("NDP");
+            break;
+
         case NextHop::INTERFACE:
             type_str.assign("INTERFACE");
             break;
@@ -510,6 +514,111 @@ void ArpNH::SendObjectLog(const NextHopTable *table,
         info.set_vrf(vrf->GetName());
     }
     const Ip4Address *ip = GetIp();
+    info.set_dest_ip(ip->to_string());
+
+    const unsigned char *m = GetMac().GetData();
+    FillObjectLogMac(m, info);
+
+    OPER_TRACE_ENTRY(NextHop, table, info);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// NDP NH routines
+/////////////////////////////////////////////////////////////////////////////
+NextHop *NdpNHKey::AllocEntry() const {
+    VrfEntry *vrf = static_cast<VrfEntry *>
+        (Agent::GetInstance()->vrf_table()->Find(&vrf_key_, true));
+    return new NdpNH(vrf, dip_);
+}
+
+bool NdpNH::CanAdd() const {
+    if (vrf_ == NULL) {
+        LOG(ERROR, "Invalid VRF in NdpNH. Skip Add");
+        return false;
+    }
+
+    return true;
+}
+
+bool NdpNH::NextHopIsLess(const DBEntry &rhs) const {
+    const NdpNH &a = static_cast<const NdpNH &>(rhs);
+
+    if (vrf_.get() != a.vrf_.get()) {
+        return  vrf_.get() < a.vrf_.get();
+    }
+
+    return (ip_ < a.ip_);
+}
+
+void NdpNH::SetKey(const DBRequestKey *k) {
+    const NdpNHKey *key = static_cast<const NdpNHKey *>(k);
+
+    NextHop::SetKey(k);
+    vrf_ = NextHopTable::GetInstance()->FindVrfEntry(key->vrf_key_);
+    ip_ = key->dip_;
+}
+
+bool NdpNH::ChangeEntry(const DBRequest *req) {
+    bool ret= false;
+    //const NdpNHKey *key = static_cast<const NdpNHKey *>(req->key.get());
+    const NdpNHData *data = static_cast<const NdpNHData *>(req->data.get());
+    if (valid_ != data->resolved_) {
+        valid_ = data->resolved_;
+        ret =  true;
+    }
+
+    Interface *pinterface = NextHopTable::GetInstance()->FindInterface
+        (*data->intf_key_.get());
+    if (interface_.get() != pinterface) {
+        interface_ = pinterface;
+        ret = true;
+    }
+
+    if (!data->valid_) {
+        mac_.Zero();
+        return ret;
+    }
+
+    if (data->resolved_ != true) {
+        // If ARP is not resolved mac will be invalid
+        return ret;
+    }
+
+    if (mac_.CompareTo(data->mac_) != 0) {
+        mac_ = data->mac_;
+        ret = true;
+    }
+
+    return ret;
+}
+
+const uint32_t NdpNH::vrf_id() const {
+    return vrf_->vrf_id();
+}
+
+NdpNH::KeyPtr NdpNH::GetDBRequestKey() const {
+    NextHopKey *key = new NdpNHKey(vrf_->GetName(), ip_, policy_);
+    return DBEntryBase::KeyPtr(key);
+}
+
+const boost::uuids::uuid &NdpNH::GetIfUuid() const {
+    return interface_->GetUuid();
+}
+
+void NdpNH::SendObjectLog(const NextHopTable *table,
+                          AgentLogEvent::type event) const {
+    NextHopObjectLogInfo info;
+
+    FillObjectLog(event, info);
+
+    const Interface *intf = GetInterface();
+    FillObjectLogIntf(intf, info);
+
+    const VrfEntry *vrf = GetVrf();
+    if (vrf) {
+        info.set_vrf(vrf->GetName());
+    }
+    const IpAddress *ip = GetIp();
     info.set_dest_ip(ip->to_string());
 
     const unsigned char *m = GetMac().GetData();
@@ -1012,6 +1121,10 @@ bool TunnelNH::ChangeEntry(const DBRequest *req) {
             const ArpNH *arp_nh = static_cast<const ArpNH *>(active_nh);
             dmac = arp_nh->GetMac();
             intf = arp_nh->GetInterface();
+        } else if (active_nh->GetType() == NextHop::NDP) {
+            const NdpNH *ndp_nh = static_cast<const NdpNH *>(active_nh);
+            dmac = ndp_nh->GetMac();
+            intf = ndp_nh->GetInterface();
         } else if (active_nh->GetType() == NextHop::INTERFACE) {
             const InterfaceNH *intf_nh =
                 static_cast<const InterfaceNH *>(active_nh);
@@ -1266,6 +1379,10 @@ bool MirrorNH::ChangeEntry(const DBRequest *req) {
             const ArpNH *arp_nh = static_cast<const ArpNH *>(active_nh);
             dmac = arp_nh->GetMac();
             intf = arp_nh->GetInterface();
+        } else if (active_nh->GetType() == NextHop::NDP) {
+            const NdpNH *ndp_nh = static_cast<const NdpNH *>(active_nh);
+            dmac = ndp_nh->GetMac();
+            intf = ndp_nh->GetInterface();
         } else if (active_nh->GetType() == NextHop::INTERFACE) {
             const InterfaceNH *intf_nh =
                 static_cast<const InterfaceNH *>(active_nh);
@@ -3003,6 +3120,23 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
             data.set_mac(mac);
             break;
         }
+        case NDP: {
+            data.set_type("ndp");
+            const NdpNH *ndp = static_cast<const NdpNH *>(this);
+            data.set_sip(ndp->GetIp()->to_string());
+            data.set_vrf(ndp->GetVrf()->GetName());
+            if (valid_ == false) {
+                break;
+            }
+            data.set_itf(ndp->GetInterface()->name());
+            const unsigned char *m = ndp->GetMac().GetData();
+            char mstr[32];
+            snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                     m[0], m[1], m[2], m[3], m[4], m[5]);
+            std::string mac(mstr);
+            data.set_mac(mac);
+            break;
+        }
         case VRF: {
             data.set_type("vrf");
             const VrfNH *vrf = static_cast<const VrfNH *>(this);
@@ -3049,6 +3183,14 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
                             m[0], m[1], m[2], m[3], m[4], m[5]);
                     std::string mac(mstr);
                     data.set_mac(mac);
+                } else if (nh->GetType() == NextHop::NDP) {
+                    const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
+                    const unsigned char *m = ndp_nh->GetMac().GetData();
+                    char mstr[32];
+                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                            m[0], m[1], m[2], m[3], m[4], m[5]);
+                    std::string mac(mstr);
+                    data.set_mac(mac);
                 }
             }
             data.set_crypt_all_traffic(tun->GetCrypt());
@@ -3077,6 +3219,15 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
                     const ArpNH *arp_nh = static_cast<const ArpNH *>(nh);
                     (mir_nh->GetRt()->GetActiveNextHop());
                     const unsigned char *m = arp_nh->GetMac().GetData();
+                    char mstr[32];
+                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                            m[0], m[1], m[2], m[3], m[4], m[5]);
+                    std::string mac(mstr);
+                    data.set_mac(mac);
+                } else if (nh->GetType() == NextHop::NDP) {
+                    const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
+                    (mir_nh->GetRt()->GetActiveNextHop());
+                    const unsigned char *m = ndp_nh->GetMac().GetData();
                     char mstr[32];
                     snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                             m[0], m[1], m[2], m[3], m[4], m[5]);
