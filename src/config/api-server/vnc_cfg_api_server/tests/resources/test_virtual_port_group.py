@@ -150,37 +150,40 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
 
     def _create_kv_pairs(self, pi_fq_name, fabric_name, vpg_name,
                          tor_port_vlan_id=0):
-        # Populate binding profile to be used in VMI create
-        binding_profile = {'local_link_information': []}
-        if isinstance(pi_fq_name[0], type([])):
-            for pi_name in pi_fq_name:
-                binding_profile['local_link_information'].append(
-                    {'port_id': pi_name[2],
-                     'switch_id': pi_name[2],
+        def _get_binding_profile(pi_fq_name):
+            # Populate binding profile to be used in VMI create
+            bp = {'local_link_information': []}
+            if isinstance(pi_fq_name[0], type([])):
+                for pi_name in pi_fq_name:
+                    bp['local_link_information'].append(
+                        {'port_id': pi_name[2],
+                         'switch_id': pi_name[2],
+                         'fabric': fabric_name[-1],
+                         'switch_info': pi_name[1]})
+            else:
+                bp['local_link_information'].append(
+                    {'port_id': pi_fq_name[2],
+                     'switch_id': pi_fq_name[2],
                      'fabric': fabric_name[-1],
-                     'switch_info': pi_name[1]})
-        else:
-            binding_profile['local_link_information'].append(
-                {'port_id': pi_fq_name[2],
-                 'switch_id': pi_fq_name[2],
-                 'fabric': fabric_name[-1],
-                 'switch_info': pi_fq_name[1]})
+                     'switch_info': pi_fq_name[1]})
+            return bp
 
         if tor_port_vlan_id != 0:
             kv_pairs = KeyValuePairs(
                 [KeyValuePair(key='vpg', value=vpg_name[-1]),
                  KeyValuePair(key='vif_type', value='vrouter'),
                  KeyValuePair(key='tor_port_vlan_id', value=tor_port_vlan_id),
-                 KeyValuePair(key='vnic_type', value='baremetal'),
-                 KeyValuePair(key='profile',
-                              value=json.dumps(binding_profile))])
+                 KeyValuePair(key='vnic_type', value='baremetal')])
         else:
             kv_pairs = KeyValuePairs(
                 [KeyValuePair(key='vpg', value=vpg_name[-1]),
                  KeyValuePair(key='vif_type', value='vrouter'),
-                 KeyValuePair(key='vnic_type', value='baremetal'),
-                 KeyValuePair(key='profile',
-                              value=json.dumps(binding_profile))])
+                 KeyValuePair(key='vnic_type', value='baremetal')])
+        if pi_fq_name:
+            binding_profile = _get_binding_profile(pi_fq_name)
+            kv_pairs.add_key_value_pair(
+                KeyValuePair(key='profile',
+                             value=json.dumps(binding_profile)))
 
         return kv_pairs
 
@@ -6563,3 +6566,429 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
         self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
         self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[1].name]), [])
+
+    # CEM-18881
+    def test_for_pi_vpg_association_without_phy_links(self):
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        fabric_name = fabric_obj.get_fq_name()
+        test_id = self.id()
+        vlan_vn_count = 3
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x)]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        vlan_ids = range(1, vlan_vn_count + 1)
+        vn_names = ['vn_%s_%s' % (test_id, i)
+                    for i in range(1, vlan_vn_count + 1)]
+        vn_objs = self._create_vns(proj_obj, vn_names)
+
+        pi_per_pr = 2
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pi_objs.update(pr1_pi_objs)
+
+        # create one VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for
+                     i in range(1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        # attach PI1/PR1 and PI2/PR1 to VPG-1
+        # 1 AE-ID to be allocated
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        for pi in range(2):
+            vpg_obj.add_physical_interface(pi_objs[pr1_pi_names[pi]])
+        self.api.virtual_port_group_update(vpg_obj)
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+
+        pi_refs = vpg_obj.get_physical_interface_refs()
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+        # Now add VMI-1 and VMI-2 info
+        vmi_infos = []
+        vpg1_vmi_names = ['vmi_vpg1_%s_%s' % (test_id, vmi_id) for vmi_id in
+                          range(1, vlan_vn_count + 1)]
+
+        for vmi_id in range(1, vlan_vn_count + 1):
+            info = {
+                'name': vpg1_vmi_names[vmi_id - 1],
+                'vmi_id': vmi_id,
+                'parent_obj': proj_obj,
+                'vn': vn_objs[vn_names[vmi_id - 1]],
+                'vpg': vpg_objs[vpg_names[0]].uuid,
+                'fabric': fabric_name,
+                'pis': [],
+                'vlan': vlan_ids[vmi_id - 1],
+                'is_untagged': False}
+            vmi_infos.append(info)
+        with ExpectedException(BadRequest):
+            self._create_vmis(vmi_infos)
+
+        # Now ensure still only 1 AE-ID is allocated
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+        # Now add VMI-3 info
+        vmi_infos = []
+        vpg1_vmi_names = ['vmi_vpg1_%s_%s' % (test_id, vmi_id) for vmi_id in
+                          range(1, vlan_vn_count + 1)]
+
+        for vmi_id in range(2, vlan_vn_count + 1):
+            info = {
+                'name': vpg1_vmi_names[vmi_id - 1],
+                'vmi_id': vmi_id,
+                'parent_obj': proj_obj,
+                'vn': vn_objs[vn_names[vmi_id - 1]],
+                'vpg': vpg_objs[vpg_names[0]].uuid,
+                'fabric': fabric_name,
+                'pis': [],
+                'vlan': vlan_ids[vmi_id - 1],
+                'is_untagged': False}
+            vmi_infos.append(info)
+        with ExpectedException(BadRequest):
+            self._create_vmis(vmi_infos)
+
+        # Now ensure no change in AE-IDs
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+    # CEM-18881
+    def test_for_pi_vpg_association_with_mock(self):
+
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        fabric_name = fabric_obj.get_fq_name()
+        test_id = self.id()
+        VMI_CLASS = self._api_server.get_resource_class(
+            'virtual-machine-interface')
+        VMI_CLASS_ORG_PRE_DBE_CREATE = self._api_server.get_resource_class(
+            'virtual-machine-interface').pre_dbe_create
+        vlan_vn_count = 3
+
+        def mock_pre_dbe_create(tenant_name, obj_dict, db_conn):
+            if not obj_dict.get('virtual-port-group-refs'):
+                obj_dict.update(VPG_REF)
+            return VMI_CLASS_ORG_PRE_DBE_CREATE(tenant_name, obj_dict, db_conn)
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x)]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        vlan_ids = range(1, vlan_vn_count + 1)
+        vn_names = ['vn_%s_%s' % (test_id, i)
+                    for i in range(1, vlan_vn_count + 1)]
+        vn_objs = self._create_vns(proj_obj, vn_names)
+
+        pi_per_pr = 2
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pi_objs.update(pr1_pi_objs)
+
+        # create one VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for
+                     i in range(1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+        VPG_REF = {'virtual_port_group_refs': [{
+            'to': list(vpg_objs.values())[0].get_fq_name(),
+            'uuid': list(vpg_objs.values())[0].uuid
+        }]}
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        # attach PI1/PR1 and PI2/PR1 to VPG-1
+        # 1 AE-ID to be allocated
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        for pi in range(2):
+            vpg_obj.add_physical_interface(pi_objs[pr1_pi_names[pi]])
+        self.api.virtual_port_group_update(vpg_obj)
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+
+        pi_refs = vpg_obj.get_physical_interface_refs()
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+        # Now add VMI-1 and VMI-2 info
+        vmi_infos = []
+        vpg1_vmi_names = ['vmi_vpg1_%s_%s' % (test_id, vmi_id) for vmi_id in
+                          range(1, vlan_vn_count + 1)]
+
+        for vmi_id in range(1, vlan_vn_count + 1):
+            info = {
+                'name': vpg1_vmi_names[vmi_id - 1],
+                'vmi_id': vmi_id,
+                'parent_obj': proj_obj,
+                'vn': vn_objs[vn_names[vmi_id - 1]],
+                'vpg': vpg_objs[vpg_names[0]].uuid,
+                'fabric': fabric_name,
+                'pis': [],
+                'vlan': vlan_ids[vmi_id - 1],
+                'is_untagged': False}
+            vmi_infos.append(info)
+        with mock.patch.object(VMI_CLASS, 'pre_dbe_create',
+                               side_effect=mock_pre_dbe_create):
+            self._create_vmis(vmi_infos)
+
+        # Now ensure still only 1 AE-ID is allocated
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+    # CEM-18881
+    def test_for_pi_vpg_association_with_pre_dbe_update_mock(self):
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        fabric_name = fabric_obj.get_fq_name()
+        test_id = self.id()
+        VMI_CLASS = self._api_server.get_resource_class(
+            'virtual-machine-interface')
+        VMI_CLASS_ORG_PRE_DBE_CREATE = self._api_server.get_resource_class(
+            'virtual-machine-interface').pre_dbe_create
+        vlan_vn_count = 3
+
+        def mock_pre_dbe_create(tenant_name, obj_dict, db_conn):
+            if not obj_dict.get('virtual-port-group-refs'):
+                obj_dict.update(VPG_REF)
+            return VMI_CLASS_ORG_PRE_DBE_CREATE(tenant_name, obj_dict, db_conn)
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x)]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        vlan_ids = range(1, vlan_vn_count + 1)
+        vn_names = ['vn_%s_%s' % (test_id, i)
+                    for i in range(1, vlan_vn_count + 1)]
+        vn_objs = self._create_vns(proj_obj, vn_names)
+
+        pi_per_pr = 2
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pi_objs.update(pr1_pi_objs)
+
+        # create one VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for
+                     i in range(1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+        VPG_REF = {'virtual_port_group_refs': [{
+            'to': list(vpg_objs.values())[0].get_fq_name(),
+            'uuid': list(vpg_objs.values())[0].uuid
+        }]}
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        # attach PI1/PR1 and PI2/PR1 to VPG-1
+        # 1 AE-ID to be allocated
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        for pi in range(2):
+            vpg_obj.add_physical_interface(pi_objs[pr1_pi_names[pi]])
+        self.api.virtual_port_group_update(vpg_obj)
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+
+        pi_refs = vpg_obj.get_physical_interface_refs()
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+        # Now add VMI-1 and VMI-2 info
+        vmi_infos = []
+        vpg1_vmi_names = ['vmi_vpg1_%s_%s' % (test_id, vmi_id) for vmi_id in
+                          range(1, vlan_vn_count + 1)]
+
+        for vmi_id in range(1, vlan_vn_count + 1):
+            info = {
+                'name': vpg1_vmi_names[vmi_id - 1],
+                'vmi_id': vmi_id,
+                'parent_obj': proj_obj,
+                'vn': vn_objs[vn_names[vmi_id - 1]],
+                'vpg': vpg_objs[vpg_names[0]].uuid,
+                'fabric': fabric_name,
+                'pis': [],
+                'vlan': vlan_ids[vmi_id - 1],
+                'is_untagged': False}
+            vmi_infos.append(info)
+        with mock.patch.object(VMI_CLASS, 'pre_dbe_create',
+                               side_effect=mock_pre_dbe_create):
+            vmi_objs = self._create_vmis(vmi_infos)
+
+        # Now ensure still only 1 AE-ID is allocated
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+        # Now update VMI-1 info
+        # Mock pre_dbe_update and update vmi info
+        VMI_CLASS = self._api_server.get_resource_class(
+            'virtual-machine-interface')
+        VMI_CLASS_ORG_PRE_DBE_UPDATE = self._api_server.get_resource_class(
+            'virtual-machine-interface').pre_dbe_update
+
+        def mock_pre_dbe_create(id, fq_name, obj_dict, db_conn,
+                                prop_collection_updates=None, **kwargs):
+            if not obj_dict.get('virtual-port-group-refs'):
+                obj_dict.update(VPG_REF)
+            return VMI_CLASS_ORG_PRE_DBE_UPDATE(id, fq_name, obj_dict, db_conn,
+                                                prop_collection_updates=None,
+                                                **kwargs)
+
+        vmi_id = 1
+        vmi_infos = []
+        vpg1_vmi_names = ['vmi_vpg1_%s_%s' % (test_id, vmi_id) for vmi_id in
+                          range(1, vlan_vn_count + 1)]
+        vmi_name = vpg1_vmi_names[0]
+        info = {
+            'name': vmi_name,
+            'vmi_uuid': vmi_objs[vmi_name].uuid,
+            'parent_obj': proj_obj,
+            'vn': vn_objs[vn_names[vmi_id - 1]],
+            'vpg': vpg_objs[vpg_names[0]].uuid,
+            'fabric': fabric_name,
+            'pis': [],
+            'vlan': '4094',
+            'is_untagged': True}
+        vmi_infos.append(info)
+        with mock.patch.object(VMI_CLASS, 'pre_dbe_update',
+                               side_effect=mock_pre_dbe_create):
+            vmi_objs = self._update_vmis(vmi_infos)
+
+        # Now ensure no change in AE-IDs
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
