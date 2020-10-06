@@ -653,10 +653,14 @@ public:
         gateway_id_ = addr;
     }
 
-    Ip4Address router_id() const {return router_id_;}
-    const Ip4Address *router_ip_ptr() const {return &router_id_;}
+    Ip4Address router_id() const {return router_id_;  }
+    IpAddress router_id6() const {return router_id6_;}
+    const Ip4Address *router_ip_ptr() const {
+        return &router_id_;
+    }
     void set_router_id(const Ip4Address &addr) {
         router_id_ = addr;
+        router_id6_ = Ip6Address::v4_mapped(addr);
         set_router_id_configured(true);
     }
     bool router_id_configured() { return router_id_configured_; }
@@ -1454,6 +1458,7 @@ private:
     // Interface Mirror config table
     IntfMirrorCfgTable *intf_mirror_cfg_table_;
 
+    IpAddress router_id6_;
     Ip4Address router_id_;
     Ip4Address prefix_;
     uint32_t prefix_len_;

@@ -34,6 +34,7 @@
     entry.set_icmpv6_ping_request(stats.icmpv6_ping_request_);                 \
     entry.set_icmpv6_ping_response(stats.icmpv6_ping_response_);               \
     entry.set_icmpv6_neighbor_solicit(stats.icmpv6_neighbor_solicit_);         \
+    entry.set_icmpv6_neighbor_solicited(stats.icmpv6_neighbor_solicited_);         \
     entry.set_icmpv6_neighbor_advert_solicited                                 \
         (stats.icmpv6_neighbor_advert_solicited_);                             \
     entry.set_icmpv6_neighbor_advert_unsolicited                                 \
@@ -327,6 +328,7 @@ void ServicesSandesh::Icmpv6StatsSandesh(std::string ctxt, bool more) {
     icmp->set_icmpv6_ping_response(istats.icmpv6_ping_response_);
     icmp->set_icmpv6_drop(istats.icmpv6_drop_);
     icmp->set_icmpv6_neighbor_solicit(istats.icmpv6_neighbor_solicit_);
+    icmp->set_icmpv6_neighbor_solicited(istats.icmpv6_neighbor_solicited_);
     icmp->set_icmpv6_neighbor_advert_solicited
         (istats.icmpv6_neighbor_advert_solicited_);
     icmp->set_icmpv6_neighbor_advert_unsolicited

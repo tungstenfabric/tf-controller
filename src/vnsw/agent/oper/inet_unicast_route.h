@@ -305,6 +305,18 @@ public:
                          const VnListType &dest_vn_list,
                          const SecurityGroupList &sg_list,
                          const TagList &tag_list);
+    static void NdpRoute(DBRequest::DBOperation op,
+                         const string &route_vrf_name,
+                         const IpAddress &ip,
+                         const MacAddress &mac,
+                         const string &nh_vrf_name,
+                         const Interface &intf,
+                         bool resolved,
+                         const uint8_t plen,
+                         bool policy,
+                         const VnListType &dest_vn_list,
+                         const SecurityGroupList &sg_list,
+                         const TagList &tag_list);
     static void AddResolveRoute(const Peer *peer,
                                 const string &vrf_name, const Ip4Address &ip,
                                 const uint8_t plen,
