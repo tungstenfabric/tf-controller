@@ -17,6 +17,7 @@
 #include "services/icmpv6_proto.h"
 #include "services/bfd_proto.h"
 #include "services/igmp_proto.h"
+#include "services/icmpv6_proto.h"
 #include "services/metadata_proxy.h"
 #include "init/agent_param.h"
 
@@ -25,6 +26,7 @@ SandeshTraceBufferPtr DhcpTraceBuf(SandeshTraceBufferCreate("Dhcp", 1000));
 SandeshTraceBufferPtr Dhcpv6TraceBuf(SandeshTraceBufferCreate("Dhcpv6", 1000));
 SandeshTraceBufferPtr Icmpv6TraceBuf(SandeshTraceBufferCreate("Icmpv6", 500));
 SandeshTraceBufferPtr ArpTraceBuf(SandeshTraceBufferCreate("Arp", 1000));
+SandeshTraceBufferPtr NdpTraceBuf(SandeshTraceBufferCreate("Ndp", 1000));
 SandeshTraceBufferPtr MetadataTraceBuf(SandeshTraceBufferCreate("Metadata", 500));
 SandeshTraceBufferPtr BfdTraceBuf(SandeshTraceBufferCreate("Bfd", 500));
 SandeshTraceBufferPtr IgmpTraceBuf(SandeshTraceBufferCreate("Igmp", 500));
@@ -32,7 +34,8 @@ SandeshTraceBufferPtr IgmpTraceBuf(SandeshTraceBufferCreate("Igmp", 500));
 ServicesModule::ServicesModule(Agent *agent, const std::string &metadata_secret)
     : agent_(agent), metadata_secret_key_(metadata_secret), dhcp_proto_(NULL),
       dhcpv6_proto_(NULL), dns_proto_(NULL), arp_proto_(NULL), bfd_proto_(NULL),
-      icmp_proto_(NULL), icmpv6_proto_(NULL), igmp_proto_(NULL), metadata_proxy_(NULL) {
+      icmp_proto_(NULL), icmpv6_proto_(NULL), igmp_proto_(NULL),
+      metadata_proxy_(NULL) {
 }
 
 ServicesModule::~ServicesModule() {

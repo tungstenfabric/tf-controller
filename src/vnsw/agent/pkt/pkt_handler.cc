@@ -368,6 +368,11 @@ PktHandler::PktModuleName PktHandler::ParsePacket(const AgentHdr &hdr,
         return ICMP;
     }
 
+    // Look for IP6 packets that need NDP resolution
+    if (pkt_info->ip6 && hdr.cmd == AgentHdr::TRAP_RESOLVE) {
+        return ICMPV6;
+    }
+
     if (pkt_type == PktType::ICMPV6) {
         if (hdr.cmd == AgentHdr::TRAP_HANDLE_DF) {
             return ICMPV6_ERROR;
@@ -643,6 +648,10 @@ int PktHandler::ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
                 pkt_info->sport = pkt_info->dport;
                 pkt_info->dport = port;
             }
+        //} else if (icmp->icmp6_type >= ND_ROUTER_SOLICIT &&
+                   //icmp->icmp6_type <= ND_REDIRECT) {
+            // To handle ND packets, populate pkt_info
+            //ParseIpPacket(pkt_info, pkt_type, pkt + len + sizeof(icmp));
         } else {
             pkt_info->sport = 0;
         }

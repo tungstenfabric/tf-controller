@@ -35,12 +35,26 @@ Icmpv6Handler::Icmpv6Handler(Agent *agent, boost::shared_ptr<PktInfo> info,
                     ((uint8_t *)icmp_ - (uint8_t *)pkt_info_->ip6);
     else
         icmp_len_ = 0;
+    refcount_ = 0;
 }
 
 Icmpv6Handler::~Icmpv6Handler() {
 }
 
 bool Icmpv6Handler::Run() {
+    assert(agent());
+    assert(agent()->icmpv6_proto());
+
+    switch(pkt_info_->type) {
+        case PktType::MESSAGE:
+            return HandleMessage();
+
+        default:
+            return HandlePacket();
+    }
+}
+
+bool Icmpv6Handler::HandlePacket() {
     Icmpv6Proto *icmpv6_proto = agent()->icmpv6_proto();
     Interface *itf =
         agent()->interface_table()->FindInterface(GetInterfaceIndex());
@@ -61,6 +75,7 @@ bool Icmpv6Handler::Run() {
         return true;
     }
     nd_neighbor_advert *icmp = (nd_neighbor_advert *)icmp_;
+    nd_neighbor_solicit *ns = (nd_neighbor_solicit *)icmp_;
     switch (icmp_->icmp6_type) {
         case ND_ROUTER_SOLICIT:
             icmpv6_proto->IncrementStatsRouterSolicit(vm_itf);
@@ -133,7 +148,57 @@ bool Icmpv6Handler::Run() {
                 agent()->oper_db()->route_preference_module()->
                     EnqueueTrafficSeen(addr, 128, itf->id(),
                                        itf->vrf()->vrf_id(), mac);
+                NdpKey key(addr, itf->vrf());
+                NdpEntry *entry = icmpv6_proto->FindNdpEntry(key);
+                if (entry) {
+                    entry->EnqueueNaIn(icmp, mac);
+                }
                 return true;
+            }
+            ICMPV6_TRACE(Trace, "Ignoring Neighbor Advert with wrong cksum");
+            break;
+
+        case ND_NEIGHBOR_SOLICIT:
+            icmpv6_proto->IncrementStatsNeighborSolicited(vm_itf);
+            if (CheckPacket()) {
+                Ip6Address::bytes_type bytes;
+                for (int i = 0; i < 16; i++) {
+                    bytes[i] = pkt_info_->ip6->ip6_src.s6_addr[i];
+                }
+                Ip6Address addr(bytes);
+                uint16_t offset = sizeof(nd_neighbor_solicit);
+                nd_opt_hdr *opt = (nd_opt_hdr *) (((uint8_t *)ns) + offset);
+                if (addr.is_unspecified()) {
+                    ICMPV6_TRACE(Trace, "Ignoring Neighbor Solicit with "
+                                 "unspecified address");
+                    icmpv6_proto->IncrementStatsDrop();
+                    return true;
+                }
+                uint8_t *buf = NULL;
+                if (opt->nd_opt_type == ND_OPT_TARGET_LINKADDR) {
+                    offset += 2;
+                    buf = (((uint8_t *)icmp) + offset);
+                }
+
+                //Enqueue a request to trigger state machine
+                NdpKey key(addr, itf->vrf());
+                NdpEntry *entry = icmpv6_proto->FindNdpEntry(key);
+                bool ret = true;
+                if (!entry) {
+                    entry = new NdpEntry(io_, this, key, itf->vrf(), itf);
+                    if (!icmpv6_proto->AddNdpEntry(entry)) {
+                        delete entry;
+                        return true;
+                    }
+                    ret = false;
+                }
+                if (entry) {
+                    if (buf)
+                        entry->HandleNsRequest(ns, MacAddress(buf));
+                    else
+                        entry->HandleNsRequest(ns, MacAddress());
+                }
+                return ret;
             }
             ICMPV6_TRACE(Trace, "Ignoring Neighbor Solicit with wrong cksum");
             break;
@@ -142,6 +207,112 @@ bool Icmpv6Handler::Run() {
     }
     icmpv6_proto->IncrementStatsDrop();
     return true;
+}
+
+bool Icmpv6Handler::HandleMessage() {
+    bool ret = true;
+    Icmpv6Proto::Icmpv6Ipc *ipc = static_cast<Icmpv6Proto::Icmpv6Ipc *>(
+                                  pkt_info_->ipc);
+    Icmpv6Proto *icmp_proto = agent()->icmpv6_proto();
+    switch(pkt_info_->ipc->cmd) {
+        case Icmpv6Proto::NDP_RESOLVE: {
+            NdpEntry *entry = icmp_proto->FindNdpEntry(ipc->key);
+            if (!entry) {
+                entry = new NdpEntry(io_, this, ipc->key, ipc->key.vrf,
+                                     ipc->interface_.get());
+                if (icmp_proto->AddNdpEntry(entry) == false) {
+                    delete entry;
+                    break;
+                }
+                ret = false;
+            }
+            const Interface* interface = ipc->interface_.get();
+            const VmInterface *vmi = static_cast<const VmInterface *>(interface);
+            IpAddress ip;
+            uint32_t vrf_id = VrfEntry::kInvalidIndex;
+            if (interface->type() == Interface::VM_INTERFACE) {
+                ip = vmi->GetServiceIp(ipc->key.ip);
+                if (vmi->vmi_type() == VmInterface::VHOST) {
+                    ip = agent()->router_id6();
+                }
+                vrf_id = ipc->key.vrf->vrf_id();
+            } else {
+                ip = agent()->router_id6();
+                VrfEntry *vrf =
+                    agent()->vrf_table()->FindVrfFromName(agent()->fabric_vrf_name());
+                if (vrf) {
+                    vrf_id = vrf->vrf_id();
+                }
+            }
+            if (vrf_id != VrfEntry::kInvalidIndex) {
+                if (ip.is_v6()) {
+                    SendNeighborSolicit(ip.to_v6(), ipc->key.ip, vmi, vrf_id);
+                    VmInterface *vmif = const_cast<VmInterface *>(vmi);
+                    icmp_proto->IncrementStatsNeighborSolicited(vmif);
+                }
+            }
+            break;
+        }
+
+        case Icmpv6Proto::NDP_DELETE: {
+            EntryDelete(ipc->key);
+            break;
+        }
+
+        case Icmpv6Proto::NDP_SEND_UNSOL_NA: {
+            bool key_valid = false;
+            Icmpv6Proto::UnsolNaIterator it =
+                icmp_proto->UnsolNaEntryIterator(ipc->key, &key_valid);
+            if (key_valid && !ipc->interface_->IsDeleted()) {
+                NdpEntry *entry = NULL;
+                Icmpv6Proto::NdpEntrySet::iterator sit = it->second.begin();
+                for (; sit != it->second.end(); sit++) {
+                    entry = *sit;
+                    if (entry->get_interface() == ipc->interface_.get())
+                        break;
+                }
+                if (sit == it->second.end()) {
+                    entry = new NdpEntry(io_, this, ipc->key, ipc->key.vrf,
+                                         ipc->interface_.get());
+                    it->second.insert(entry);
+                    ret = false;
+                }
+                if (entry) {
+                    entry->SendNeighborAdvert(false);
+                    const VmInterface *vmi = static_cast<const VmInterface *>(
+                                                       ipc->interface_.get());
+                    VmInterface *vmif = const_cast<VmInterface *>(vmi);
+                    icmp_proto->IncrementStatsNeighborAdvertUnSolicited(vmif);
+                }
+            }
+            break;
+        }
+
+        case Icmpv6Proto::AGING_TIMER_EXPIRED: {
+            NdpEntry *entry = icmp_proto->FindNdpEntry(ipc->key);
+            if (entry) {
+                icmp_proto->DeleteNdpEntry(entry);
+            }
+            break;
+        }
+
+        default:
+            ICMPV6_TRACE(Trace, "Received Invalid internal NDP message : " +
+                      integerToString(pkt_info_->ipc->cmd));
+            break;
+    }
+
+    delete ipc;
+    return ret;
+}
+
+void Icmpv6Handler::EntryDelete(NdpKey &key) {
+    Icmpv6Proto *icmp_proto = agent()->icmpv6_proto();
+    NdpEntry *entry = icmp_proto->FindNdpEntry(key);
+    if (entry) {
+        // this request comes when NDP NH is deleted; nothing more to do
+        icmp_proto->DeleteNdpEntry(entry);
+    }
 }
 
 bool Icmpv6Handler::RouterAdvertisement(Icmpv6Proto *proto) {
@@ -333,6 +504,34 @@ uint16_t Icmpv6Handler::FillNeighborSolicit(uint8_t *buf,
     return offset;
 }
 
+uint16_t Icmpv6Handler::FillNeighborAdvertisement(uint8_t *buf,
+                                                  uint8_t *dip, uint8_t *sip,
+                                                  const Ip6Address &target,
+                                                  const MacAddress &dmac,
+                                                  bool solicited) {
+    nd_neighbor_advert *icmp = (nd_neighbor_advert *)buf;
+    icmp->nd_na_type = ND_NEIGHBOR_ADVERT;
+    icmp->nd_na_code = 0;
+    icmp->nd_na_cksum = 0;
+    icmp->nd_na_flags_reserved = 0;
+    memcpy(icmp->nd_na_target.s6_addr, target.to_bytes().data(), 16);
+    if (solicited)
+        icmp->nd_na_flags_reserved |= ND_NA_FLAG_SOLICITED;
+    uint16_t offset = sizeof(nd_neighbor_advert);
+
+    // add source linklayer address information
+    nd_opt_hdr *src_linklayer_addr = (nd_opt_hdr *)(buf + offset);
+    src_linklayer_addr->nd_opt_type = ND_OPT_TARGET_LINKADDR;
+    src_linklayer_addr->nd_opt_len = 1;
+    //XXX instead of ETHER_ADDR_LEN, actual buffer size should be given
+    //to preven buffer overrun.
+    dmac.ToArray(buf + offset + 2, ETHER_ADDR_LEN);
+    offset += sizeof(nd_opt_hdr) + ETHER_ADDR_LEN;
+
+    icmp->nd_na_cksum = Icmpv6Csum(sip, dip, (icmp6_hdr *)icmp, offset);
+    return offset;
+}
+
 void Icmpv6Handler::Ipv6Lower24BitsExtract(uint8_t *dst, uint8_t *src) {
     for (int i = 0; i < 16; i++) {
         dst[i] &= src[i];
@@ -374,10 +573,39 @@ void Icmpv6Handler::SolicitedMulticastIpAndMac(const Ip6Address &dip,
     mac[5] = ip[15];
 }
 
+void Icmpv6Handler::SendNeighborAdvert(const Ip6Address &sip,
+                                       const Ip6Address &tip,
+                                       const MacAddress &smac,
+                                       const MacAddress &dmac,
+                                       uint32_t itf, uint32_t vrf,
+                                       bool solicited) {
+    if (pkt_info_->packet_buffer() == NULL) {
+        pkt_info_->AllocPacketBuffer(agent(), PktHandler::ICMPV6, ICMP_PKT_SIZE,
+                                     0);
+    }
+
+    char *buf = (char *)pkt_info_->pkt;
+    memset(buf, 0, pkt_info_->max_pkt_len);
+    pkt_info_->eth = (struct ether_header *)buf;
+    pkt_info_->ip6 = (ip6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header));
+    icmp_ = pkt_info_->transp.icmp6 =
+            (icmp6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header) +
+                          sizeof(ip6_hdr));
+    uint8_t dip[16], source_ip[16];
+    memcpy(source_ip, sip.to_bytes().data(), sizeof(source_ip));
+    boost::system::error_code ec;
+    Ip6Address ip = Ip6Address::from_string(IPV6_ALL_NODES_ADDRESS, ec);
+    memcpy(dip, ip.to_bytes().data(), sizeof(dip));
+    uint16_t len = FillNeighborAdvertisement((uint8_t *)icmp_, &dip[0], &source_ip[0],
+                                             tip, dmac, solicited);
+    icmp_len_ = len;
+    SendIcmpv6Response(itf, vrf, source_ip, &dip[0], dmac, len);
+}
+
 void Icmpv6Handler::SendNeighborSolicit(const Ip6Address &sip,
-                                        const Ip6Address &dip,
+                                        const Ip6Address &tip,
                                         const VmInterface *vmi,
-                                        uint32_t vrf) {
+                                        uint32_t vrf, bool send_unicast) {
     if (pkt_info_->packet_buffer() == NULL) {
         pkt_info_->AllocPacketBuffer(agent(), PktHandler::ICMPV6, ICMP_PKT_SIZE,
                                      0);
@@ -386,18 +614,21 @@ void Icmpv6Handler::SendNeighborSolicit(const Ip6Address &sip,
     pkt_info_->eth = (struct ether_header *)(pkt_info_->pkt);
     pkt_info_->ip6 = (ip6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header));
     uint32_t vlan_offset = 0;
-    if (vmi->tx_vlan_id() != VmInterface::kInvalidVlanId)
+    if (vmi && vmi->tx_vlan_id() != VmInterface::kInvalidVlanId)
         vlan_offset += 4;
     icmp_ = pkt_info_->transp.icmp6 =
             (icmp6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header) +
                           vlan_offset + sizeof(ip6_hdr));
-    uint8_t solicited_mcast_ip[16], source_ip[16];
+    uint8_t solicited_mcast_ip[16], source_ip_bytes[16];
     MacAddress dmac;
-    memcpy(source_ip, sip.to_bytes().data(), sizeof(source_ip));
-    SolicitedMulticastIpAndMac(dip, solicited_mcast_ip, dmac);
-    uint16_t len = FillNeighborSolicit((uint8_t *)icmp_, dip, source_ip,
+    memcpy(source_ip_bytes, sip.to_bytes().data(), sizeof(source_ip_bytes));
+    if (send_unicast)
+        memcpy(solicited_mcast_ip, tip.to_bytes().data(), sizeof(tip));
+    else
+        SolicitedMulticastIpAndMac(tip, solicited_mcast_ip, dmac);
+    uint16_t len = FillNeighborSolicit((uint8_t *)icmp_, tip, source_ip_bytes,
                                        solicited_mcast_ip);
-    SendIcmpv6Response(vmi->id(), vrf, source_ip,
+    SendIcmpv6Response(vmi?vmi->id():0, vrf, source_ip_bytes,
                        solicited_mcast_ip, dmac, len);
 }
 
@@ -416,4 +647,14 @@ bool Icmpv6Handler::IsDefaultGatewayConfigured(uint32_t ifindex,
         return false;
     }
     return !(ipam->default_gw.to_v6().is_unspecified());
+}
+
+void intrusive_ptr_add_ref(const Icmpv6Handler *p) {
+    p->refcount_++;
+}
+
+void intrusive_ptr_release(const Icmpv6Handler *p) {
+    if (p->refcount_.fetch_and_decrement() == 1) {
+        delete p;
+    }
 }
