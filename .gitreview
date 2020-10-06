@@ -2,4 +2,4 @@
 host=review.opencontrail.org
 port=29418
 project=tungstenfabric/tf-controller.git
-defaultbranch=master
+defaultbranch=R2011
