@@ -10,6 +10,9 @@
 #define IPV6_ADDR_SIZE_BYTES  16
 #define IPV6_ICMP_NEXT_HEADER 58
 
+struct NdpKey;
+class NdpEntry;
+
 // ICMPv6 protocol handler
 class Icmpv6Handler : public ProtoHandler {
 public:
@@ -24,14 +27,26 @@ public:
 
     bool Run();
     bool RouterAdvertisement(Icmpv6Proto *proto);
+    void SendNeighborAdvert(const Ip6Address &sip, const Ip6Address &dip,
+                            const MacAddress &smac, const MacAddress &dmac,
+                            uint32_t itf, uint32_t vrf, bool solicited);
     void SendNeighborSolicit(const Ip6Address &sip, const Ip6Address &dip,
-                             const VmInterface *vmi, uint32_t vrf);
+                             const VmInterface *vmi, uint32_t vrf,
+                             bool send_unicast=false);
+    friend void intrusive_ptr_add_ref(const Icmpv6Handler *p);
+    friend void intrusive_ptr_release(const Icmpv6Handler *p);
 
 private:
     bool CheckPacket();
+    bool HandlePacket();
+    bool HandleMessage();
+    void EntryDelete(NdpKey &key);
     uint16_t FillRouterAdvertisement(uint8_t *buf, uint32_t ifindex,
                                      uint8_t *src, uint8_t *dest,
                                      const Ip6Address &prefix, uint8_t plen);
+    uint16_t FillNeighborAdvertisement(uint8_t *buf, uint8_t *dip,
+                                       uint8_t *sip, const Ip6Address &target,
+                                       const MacAddress &dmac, bool solicited);
     void SendRAResponse(uint32_t ifindex, uint32_t vrfindex,
                         uint8_t *src_ip, uint8_t *dest_ip,
                         const MacAddress &dest_mac,
@@ -51,6 +66,7 @@ private:
 
     icmp6_hdr *icmp_;
     uint16_t icmp_len_;
+    mutable tbb::atomic<uint32_t> refcount_;
     DISALLOW_COPY_AND_ASSIGN(Icmpv6Handler);
 };
 

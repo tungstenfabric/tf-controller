@@ -531,6 +531,7 @@ void Agent::CopyConfig(AgentParam *params) {
         router_id_configured_ = false;
     }
 
+    router_id6_ = Ip6Address::v4_mapped(router_id_);
     compute_node_ip_ = router_id_;
     if (params_->tunnel_type() == "MPLSoUDP")
         TunnelType::SetDefaultType(TunnelType::MPLS_UDP);
@@ -757,7 +758,7 @@ Agent::Agent() :
     vxlan_table_(NULL), service_instance_table_(NULL),
     physical_device_table_(NULL), physical_device_vn_table_(NULL),
     config_manager_(), mirror_cfg_table_(NULL),
-    intf_mirror_cfg_table_(NULL), router_id_(0), prefix_len_(0),
+    intf_mirror_cfg_table_(NULL), router_id6_(Ip4Address(0)), router_id_(0), prefix_len_(0),
     gateway_id_(0), compute_node_ip_(0), xs_cfg_addr_(""), xs_idx_(0),
     xs_addr_(), xs_port_(),
     xs_stime_(), xs_auth_enable_(false), xs_dns_idx_(0), dns_addr_(),

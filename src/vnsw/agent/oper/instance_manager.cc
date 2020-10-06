@@ -137,11 +137,10 @@ InstanceManager::InstanceManager(Agent *agent)
           stale_timer_(TimerManager::CreateTimer(*(agent->event_manager()->io_service()),
                       "NameSpaceStaleTimer", TaskScheduler::GetInstance()->
                       GetTaskId(INSTANCE_MANAGER_TASK_NAME), 0)), agent_(agent) {
-          if (agent->isMockMode()) {
-              loadbalancer_config_path_ = "/tmp/" + agent->AgentGUID()
-              + loadbalancer_config_path_default;
-              namespace_store_path_ = "/tmp/" +  agent->AgentGUID()
-              + namespace_store_path_default;
+          //if (agent->isMockMode()) {
+          if (1) {
+              loadbalancer_config_path_ = string("/tmp/") + string(loadbalancer_config_path_default);
+              namespace_store_path_ = string("/tmp/") + string(namespace_store_path_default);
           }
           work_queue_.set_name("Instance Manager");
 
