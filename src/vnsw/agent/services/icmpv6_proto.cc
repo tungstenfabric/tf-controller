@@ -3,9 +3,9 @@
  */
 
 #include "base/os.h"
-#include <cmn/agent_cmn.h>
 #include <init/agent_init.h>
 #include <pkt/pkt_handler.h>
+#include "pkt/pkt_init.h"
 #include <oper/route_common.h>
 #include <services/icmpv6_proto.h>
 
@@ -22,6 +22,8 @@ Icmpv6Proto::Icmpv6Proto(Agent *agent, boost::asio::io_service &io) :
     interface_listener_id_ = agent->interface_table()->Register(
                              boost::bind(&Icmpv6Proto::InterfaceNotify,
                                          this, _2));
+    nexthop_listener_id_ = agent->nexthop_table()->Register(
+                           boost::bind(&Icmpv6Proto::NexthopNotify, this, _2));
 
     boost::shared_ptr<PktInfo> pkt_info(new PktInfo(PktHandler::ICMPV6, NULL));
     icmpv6_handler_.reset(new Icmpv6Handler(agent, pkt_info, io));
@@ -31,7 +33,7 @@ Icmpv6Proto::Icmpv6Proto(Agent *agent, boost::asio::io_service &io) :
              PktHandler::ICMPV6);
     timer_->Start(kRouterAdvertTimeout,
                   boost::bind(&Icmpv6Handler::RouterAdvertisement,
-                              icmpv6_handler_.get(), this));
+                  icmpv6_handler_.get(), this));
 }
 
 Icmpv6Proto::~Icmpv6Proto() {
@@ -111,8 +113,6 @@ void Icmpv6Proto::VnNotify(DBEntryBase *entry) {
 
 void Icmpv6Proto::VrfNotify(DBTablePartBase *part, DBEntryBase *entry) {
     VrfEntry *vrf = static_cast<VrfEntry *>(entry);
-    if (vrf->GetName() == agent_->fabric_vrf_name())
-        return;
 
     Icmpv6VrfState *state = static_cast<Icmpv6VrfState *>(vrf->GetState(
                              vrf->get_table_partition()->parent(),
@@ -143,8 +143,6 @@ void Icmpv6Proto::VrfNotify(DBTablePartBase *part, DBEntryBase *entry) {
 
 void Icmpv6Proto::InterfaceNotify(DBEntryBase *entry) {
     Interface *intrface = static_cast<Interface *>(entry);
-    if (intrface->type() != Interface::VM_INTERFACE)
-        return;
 
     Icmpv6Stats stats;
     VmInterface *vm_interface = static_cast<VmInterface *>(entry);
@@ -153,10 +151,55 @@ void Icmpv6Proto::InterfaceNotify(DBEntryBase *entry) {
         if (it != vm_interfaces_.end()) {
             vm_interfaces_.erase(it);
         }
+        if (intrface->type() == Interface::PHYSICAL &&
+            intrface->name() == agent_->fabric_interface_name()) {
+            set_ip_fabric_interface(NULL);
+            set_ip_fabric_interface_index(-1);
+        }
     } else {
         if (it == vm_interfaces_.end()) {
             vm_interfaces_.insert(VmInterfacePair(vm_interface, stats));
         }
+        if (intrface->type() == Interface::PHYSICAL &&
+            intrface->name() == agent_->fabric_interface_name()) {
+            set_ip_fabric_interface(intrface);
+            set_ip_fabric_interface_index(intrface->id());
+            set_ip_fabric_interface_mac(intrface->mac());
+        }
+
+    }
+}
+
+void Icmpv6Proto::SendIcmpv6Ipc(Icmpv6Proto::Icmpv6MsgType type, Ip6Address ip,
+                                const VrfEntry *vrf, InterfaceConstRef itf) {
+    Icmpv6Ipc *ipc = new Icmpv6Ipc(type, ip, vrf, itf);
+    agent_->pkt()->pkt_handler()->SendMessage(PktHandler::ICMPV6, ipc);
+}
+
+void Icmpv6Proto::SendIcmpv6Ipc(Icmpv6Proto::Icmpv6MsgType type, NdpKey &key,
+                                InterfaceConstRef itf) {
+    Icmpv6Ipc *ipc = new Icmpv6Ipc(type, key, itf);
+    agent_->pkt()->pkt_handler()->SendMessage(PktHandler::ICMPV6, ipc);
+}
+
+void Icmpv6Proto::NexthopNotify(DBEntryBase *entry) {
+    NextHop *nh = static_cast<NextHop *>(entry);
+
+    switch(nh->GetType()) {
+    case NextHop::NDP: {
+        NdpNH *ndp_nh = (static_cast<NdpNH *>(nh));
+        if (ndp_nh->IsDeleted()) {
+            SendIcmpv6Ipc(Icmpv6Proto::NDP_DELETE, ndp_nh->GetIp()->to_v6(),
+                          ndp_nh->GetVrf(), ndp_nh->GetInterface());
+        } else if (ndp_nh->IsValid() == false && ndp_nh->GetInterface()) {
+            SendIcmpv6Ipc(Icmpv6Proto::NDP_RESOLVE, ndp_nh->GetIp()->to_v6(),
+                          ndp_nh->GetVrf(), ndp_nh->GetInterface());
+        }
+        break;
+    }
+
+    default:
+        break;
     }
 }
 
@@ -195,8 +238,19 @@ void Icmpv6VrfState::RouteUpdate(DBTablePartBase *part, DBEntryBase *entry) {
     Icmpv6RouteState *state = static_cast<Icmpv6RouteState *>
         (entry->GetState(part->parent(), route_table_listener_id_));
 
+    const InterfaceNH *intf_nh = dynamic_cast<const InterfaceNH *>(
+            route->GetActiveNextHop());
+    const Interface *intf = (intf_nh) ?
+        static_cast<const Interface *>(intf_nh->GetInterface()) : NULL;
+
+    NdpKey key(route->addr().to_v6(), route->vrf());
+    NdpEntry *ndpentry = icmp_proto_->UnsolNaEntry(key, intf);
+    if (route->vrf()->GetName() == agent_->fabric_vrf_name()) {
+        ndpentry = icmp_proto_->UnsolNaEntry(key, icmp_proto_->ip_fabric_interface());
+    }
     if (entry->IsDeleted() || deleted_) {
         if (state) {
+            icmp_proto_->DeleteUnsolNaEntry(ndpentry);
             entry->ClearState(part->parent(), route_table_listener_id_);
             delete state;
         }
@@ -207,6 +261,16 @@ void Icmpv6VrfState::RouteUpdate(DBTablePartBase *part, DBEntryBase *entry) {
         state = new Icmpv6RouteState(this, route->vrf_id(), route->addr(),
                                      route->plen());
         entry->SetState(part->parent(), route_table_listener_id_, state);
+    }
+
+    if (route->vrf()->GetName() == agent_->fabric_vrf_name() &&
+        route->GetActiveNextHop()->GetType() == NextHop::RECEIVE &&
+        icmp_proto_->agent()->router_id6() == route->addr().to_v6()) {
+        //Send unsolicited NA
+        icmp_proto_->AddUnsolNaEntry(key);
+        icmp_proto_->SendIcmpv6Ipc(Icmpv6Proto::NDP_SEND_UNSOL_NA,
+                              route->addr().to_v6(), route->vrf(),
+                              icmp_proto_->ip_fabric_interface());
     }
 
     //Check if there is a local VM path, if yes send a
@@ -566,6 +630,14 @@ void Icmpv6Proto::IncrementStatsNeighborSolicit(VmInterface *vmi) {
     }
 }
 
+void Icmpv6Proto::IncrementStatsNeighborSolicited(VmInterface *vmi) {
+    stats_.icmpv6_neighbor_solicited_++;
+    Icmpv6Stats *stats = VmiToIcmpv6Stats(vmi);
+    if (stats) {
+        stats->icmpv6_neighbor_solicited_++;
+    }
+}
+
 void Icmpv6Proto::IncrementStatsNeighborAdvertSolicited(VmInterface *vmi) {
     stats_.icmpv6_neighbor_advert_solicited_++;
     Icmpv6Stats *stats = VmiToIcmpv6Stats(vmi);
@@ -580,4 +652,121 @@ void Icmpv6Proto::IncrementStatsNeighborAdvertUnSolicited(VmInterface *vmi) {
     if (stats) {
         stats->icmpv6_neighbor_advert_unsolicited_++;
     }
+}
+
+NdpEntry* Icmpv6Proto::FindUnsolNaEntry(NdpKey &key) {
+    Icmpv6Proto::UnsolNaIterator iter = unsol_na_cache_.find(key);
+    if (iter == unsol_na_cache_.end()) {
+        return NULL;
+    }
+    return *iter->second.begin();
+}
+
+void Icmpv6Proto::AddUnsolNaEntry(NdpKey &key) {
+     NdpEntrySet empty_set;
+     unsol_na_cache_.insert(UnsolNaCachePair(key, empty_set));
+}
+
+void Icmpv6Proto::DeleteUnsolNaEntry(NdpEntry *entry) {
+    if (!entry)
+        return ;
+
+    Icmpv6Proto::UnsolNaIterator iter = unsol_na_cache_.find(entry->key());
+    if (iter == unsol_na_cache_.end()) {
+        return;
+    }
+
+    iter->second.erase(entry);
+    delete entry;
+    if (iter->second.empty()) {
+        unsol_na_cache_.erase(iter);
+    }
+}
+
+NdpEntry *
+Icmpv6Proto::UnsolNaEntry(const NdpKey &key, const Interface *intf) {
+    Icmpv6Proto::UnsolNaIterator it = unsol_na_cache_.find(key);
+    if (it == unsol_na_cache_.end())
+        return NULL;
+
+    for (NdpEntrySet::iterator sit = it->second.begin();
+         sit != it->second.end(); sit++) {
+        NdpEntry *entry = *sit;
+        if (entry->get_interface() == intf)
+            return *sit;
+    }
+
+    return NULL;
+}
+
+Icmpv6Proto::UnsolNaIterator
+Icmpv6Proto::UnsolNaEntryIterator(const NdpKey &key, bool *key_valid) {
+    Icmpv6Proto::UnsolNaIterator it = unsol_na_cache_.find(key);
+    if (it == unsol_na_cache_.end())
+        return it;
+    const VrfEntry *vrf = key.vrf;
+    if (!vrf)
+        return it;
+    const Icmpv6VrfState *state = static_cast<const Icmpv6VrfState *>
+                         (vrf->GetState(vrf->get_table_partition()->parent(),
+                          vrf_table_listener_id_));
+    // If VRF is delete marked, do not add Ndp entries to cache
+    if (state == NULL || state->deleted() == true)
+        return it;
+    *key_valid = true;
+    return it;
+}
+
+bool Icmpv6Proto::AddNdpEntry(NdpEntry *entry) {
+    const VrfEntry *vrf = entry->key().vrf;
+    const Icmpv6VrfState *state = static_cast<const Icmpv6VrfState *>
+                         (vrf->GetState(vrf->get_table_partition()->parent(),
+                          vrf_table_listener_id_));
+    // If VRF is delete marked, do not add Ndp entries to cache
+    if (state == NULL || state->deleted() == true)
+        return false;
+
+    bool ret = ndp_cache_.insert(NdpCachePair(entry->key(), entry)).second;
+    uint32_t intf_id = entry->get_interface()->id();
+    InterfaceNdpMap::iterator it = interface_ndp_map_.find(intf_id);
+    if (it == interface_ndp_map_.end()) {
+        InterfaceNdpInfo intf_entry;
+        intf_entry.ndp_key_list.insert(entry->key());
+        interface_ndp_map_.insert(InterfaceNdpPair(intf_id, intf_entry));
+    } else {
+        InterfaceNdpInfo &intf_entry = it->second;
+        NdpKeySet::iterator key_it = intf_entry.ndp_key_list.find(entry->key());
+        if (key_it == intf_entry.ndp_key_list.end()) {
+            intf_entry.ndp_key_list.insert(entry->key());
+        }
+    }
+    return ret;
+}
+
+bool Icmpv6Proto::DeleteNdpEntry(NdpEntry *entry) {
+    if (!entry)
+        return false;
+
+    Icmpv6Proto::NdpIterator iter = ndp_cache_.find(entry->key());
+    if (iter == ndp_cache_.end()) {
+        return false;
+    }
+
+    DeleteNdpEntry(iter);
+    return true;
+}
+
+Icmpv6Proto::NdpIterator
+Icmpv6Proto::DeleteNdpEntry(Icmpv6Proto::NdpIterator iter) {
+    NdpEntry *entry = iter->second;
+    ndp_cache_.erase(iter++);
+    delete entry;
+    return iter;
+}
+
+NdpEntry *Icmpv6Proto::FindNdpEntry(const NdpKey &key) {
+    NdpIterator it = ndp_cache_.find(key);
+    if (it == ndp_cache_.end())
+        return NULL;
+    return it->second;
 }

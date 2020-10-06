@@ -346,6 +346,7 @@ public:
     void set_ecmp_suppressed(bool suppresed) { ecmp_suppressed_ = suppresed;}
 
     bool CopyArpData();
+    bool CopyNdpData();
     const IpAddress& GetFixedIp() const {
         return path_preference_.dependent_ip();
     }
@@ -959,6 +960,31 @@ private:
     SecurityGroupList sg_list_;
     TagList tag_list_;
     DISALLOW_COPY_AND_ASSIGN(Inet4UnicastArpRoute);
+};
+
+class InetUnicastNdpRoute : public AgentRouteData {
+public:
+    InetUnicastNdpRoute(const std::string &vrf_name,
+                         const IpAddress &addr, bool policy,
+                         const VnListType &vn_list, const SecurityGroupList &sg,
+                         const TagList &tag) :
+        AgentRouteData(AgentRouteData::ADD_DEL_CHANGE, false, 0),
+        vrf_name_(vrf_name), addr_(addr), policy_(policy),
+        vn_list_(vn_list), sg_list_(sg), tag_list_(tag) {
+    }
+    virtual ~InetUnicastNdpRoute() { }
+
+    virtual bool AddChangePathExtended(Agent *agent, AgentPath *path,
+                                       const AgentRoute *rt);
+    virtual std::string ToString() const {return "ndp";}
+private:
+    std::string vrf_name_;
+    IpAddress addr_;
+    bool policy_;
+    VnListType vn_list_;
+    SecurityGroupList sg_list_;
+    TagList tag_list_;
+    DISALLOW_COPY_AND_ASSIGN(InetUnicastNdpRoute);
 };
 
 class Inet4UnicastGatewayRoute : public AgentRouteData {
