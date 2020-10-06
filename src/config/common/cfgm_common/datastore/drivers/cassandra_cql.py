@@ -41,7 +41,11 @@ except ImportError:
 
 
 DEFAULT_CQL_PORT = 9042
-DEFAULT_THRIFT_PORT = 9160
+
+COMPAT_PORTS = {
+    9160: 9042,
+    9161: 9041,
+}
 
 # Properties passed to the column familly
 TABLE_PROPERTIES = {
@@ -373,16 +377,15 @@ class CassandraDriverCQL(datastore_api.CassandraDriver):
                 endpoints.append(address)
 
         # Best-effort to support upgrade from thrift to cql
-        if port == DEFAULT_THRIFT_PORT:
+        if port in six.viewkeys(COMPAT_PORTS):
             self.options.logger(
                 "Usage of thrift port '{}' detected for CQL driver. "
                 "Please consider fixing port number. Trying "
                 "best-effort by switching to default port for "
                 "CQL '{}'.".format(
-                    DEFAULT_THRIFT_PORT,
-                    DEFAULT_CQL_PORT),
+                    port, COMPAT_PORTS[port]),
                 level=SandeshLevel.SYS_WARN)
-            port = None
+            port = COMPAT_PORTS[port]
 
         connector.ProtocolVersion.SUPPORTED_VERSIONS = self.ProtocolVersions
         try:
