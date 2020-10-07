@@ -16,6 +16,24 @@
       "revId": "e77140d45f0a534557457837a1497ef8f2596a53",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6c5ce0fd_91d638a0",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/roles/wait_for_fpc_online/tasks/do_until_loop.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 992
+      },
+      "writtenOn": "2020-10-07T07:21:02Z",
+      "side": 1,
+      "message": "Yes, that it was agreed upon.",
+      "parentUuid": "fcdb42a7_333dcd6e",
+      "revId": "e77140d45f0a534557457837a1497ef8f2596a53",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
