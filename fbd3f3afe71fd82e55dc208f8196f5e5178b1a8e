@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1262ab1a_68e75048",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/conf/predef_payloads.json",
+        "patchSetId": 6
+      },
+      "lineNbr": 2016,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-07T04:17:01Z",
+      "side": 1,
+      "message": "snmp and netconf default profiles created, are we using in any other place?",
+      "revId": "fbd3f3afe71fd82e55dc208f8196f5e5178b1a8e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
