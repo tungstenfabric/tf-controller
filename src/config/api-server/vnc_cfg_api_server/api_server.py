@@ -3574,6 +3574,13 @@ class VncApiServer(object):
         return id_perms_dict
     # end _get_default_id_perms
 
+
+    def _is_fabric_vpg(self,obj_type,parent_type):
+        if obj_type == 'virtual_port_group' and parent_type == 'fabric' :
+           return True
+        return False
+    # end _is_fabric_vpg
+
     def _ensure_perms2_present(self, obj_type, obj_uuid, obj_dict,
                                project_id=None):
         """
@@ -3601,7 +3608,7 @@ class VncApiServer(object):
                     raise cfgm_common.exceptions.HttpError(400, msg)
                 parent_type = r_class.parent_types[0].replace('-', '_')
 
-            if parent_type == 'domain':
+            if parent_type == 'domain' or self._is_fabric_vpg(obj_type,parent_type):
                 if project_id:
                     perms2['owner'] = project_id
                 else:
