@@ -16,6 +16,24 @@
       "revId": "fbd3f3afe71fd82e55dc208f8196f5e5178b1a8e",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7d9af240_f08fa950",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/conf/predef_payloads.json",
+        "patchSetId": 6
+      },
+      "lineNbr": 2016,
+      "author": {
+        "id": 504
+      },
+      "writtenOn": "2020-10-07T17:08:40Z",
+      "side": 1,
+      "message": "You are right, not anywhere in DM. However these default profiles might be needed by user to attach netconf/ snmp profiles (through telemetry profiles) to devices with zero intervention. Basically the netconf and snmp profiles will only have a place in the vnc db and will be used by UI to relay health sensors to appformix.",
+      "parentUuid": "1262ab1a_68e75048",
+      "revId": "fbd3f3afe71fd82e55dc208f8196f5e5178b1a8e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
