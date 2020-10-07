@@ -742,12 +742,10 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
             const AgentPath *p = evpn_rt->GetActivePath();
             if ( p->peer()->GetType() != Peer::BGP_PEER)
                 return true;
-            DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
             const VrfEntry *routing_vrf = lr_vrf_info.routing_vrf_;
-            nh_req.key.reset((static_cast<NextHopKey *>
-                     (evpn_rt->GetActiveNextHop()->GetDBRequestKey().get()))->
-                     Clone());
-            nh_req.data.reset(new TunnelNHData());
+            DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+            nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
+            nh_req.data.reset(new VrfNHData(false, false, false));
             inet_table->AddEvpnRoutingRoute(evpn_rt->ip_addr(),
                                     evpn_rt->GetVmIpPlen(),
                                     bridge_vrf,
@@ -779,7 +777,6 @@ bool VxlanRoutingManager::EvpnType5RouteNotify(DBTablePartBase *partition,
 
     if (vrf->vn() && vrf->vn()->vxlan_routing_vn() && (evpn_rt->GetVmIpPlen() != 32)) {
         RouteNotifyInLrEvpnTable(partition, e, vrf->vn()->logical_router_uuid(), NULL, true, false);
-        return true;
     }
 
     if (evpn_rt->IsDeleted()) {
