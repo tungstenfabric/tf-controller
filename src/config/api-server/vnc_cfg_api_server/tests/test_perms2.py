@@ -1710,6 +1710,45 @@ class TestPermissions(test_case.ApiServerTestCase):
         #Enable GW external as user admin
         self.admin.vnc_lib.logical_router_update(lr)
 
+    def test_rbac_lr_ownership(self):
+
+        rv = self.admin.vnc_lib.set_aaa_mode("rbac")
+
+        fabric_obj = Fabric('%s-fabric' % (self.id()))
+        self._vnc_lib.fabric_create(fabric_obj)
+
+        # Create  logical router as user alice
+        lr = LogicalRouter('router-test-v4-%s' % self.id(), fabric_obj)
+        lr_uuid = self.alice.vnc_lib.logical_router_create(lr)
+
+        lr = self._vnc_lib.logical_router_read(id=lr.uuid)
+
+        self.assertEquals(lr.get_perms2().owner, self.alice.project_uuid)
+
+
+    def test_rbac_vpg_ownership(self):
+
+        rv = self.admin.vnc_lib.set_aaa_mode("rbac")
+
+        fabric_obj = Fabric('%s-fabric' % (self.id()))
+        fabric_uuid = self.admin.vnc_lib.fabric_create(fabric_obj)
+        fabric_obj = self.admin.vnc_lib.fabric_read(id=fabric_uuid)
+
+        # share fabric with alice
+        set_perms(fabric_obj, share=[(self.alice.project_uuid, PERMS_RWX)])
+        self.admin.vnc_lib.fabric_update(fabric_obj)
+
+        vpg_name = "vpg-" + self.id()
+        vpg_obj = VirtualPortGroup(vpg_name, parent_obj=fabric_obj)
+
+        # create vpg as alice
+        vpg_uuid = self.alice.vnc_lib.virtual_port_group_create(vpg_obj)
+        vpg_obj = self._vnc_lib.virtual_port_group_read(
+            id=vpg_uuid)
+
+        self.assertEquals(vpg_obj.get_perms2().owner,
+                          self.alice.project_uuid.replace('-', ''))
+
     def tearDown(self):
         super(TestPermissions, self).tearDown()
     # end tearDown
