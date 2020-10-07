@@ -16,6 +16,10 @@ set groups {{cfg_group}} routing-options resolution rib bgp.rtarget.0 resolution
 set groups {{cfg_group}} routing-options autonomous-system {{bf_global_asn}} loops 2
 {%         set bgp_group_name = bgp.get('name') %}
 {%         set bgp_group_type = bgp.get('type_') %}
+{%         set bgp_auth_key = bgp.get('authentication_key', '') %}
+{%         if bgp_auth_key != '' %}
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} authentication-key {{bgp_auth_key}}
+{%         endif %}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} local-as {{bgp.autonomous_system}} loops 2
 {%         set encap_priorities = device_abstract_config.get('system', {}).get('encapsulation_priorities', []) %}
 {%         set mode = [] %}

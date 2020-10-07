@@ -23,6 +23,10 @@ set groups {{cfg_group}} routing-options resolution rib {{rib_name}} resolution-
 {%             set bgp_group_type = bgp.get('type_') %}
 {%             set hold_time = bgp.get('hold_time') %}
 {%             set families = bgp.get('families', []) %}
+{%             set bgp_auth_key = bgp.get('authentication_key', '') %}
+{%             if bgp_auth_key != '' %}
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} authentication-key {{bgp_auth_key}}
+{%             endif %}
 {%             set import_policy_list = bgp.get('import_policy', []) %}
 {%             set ns = namespace(dci_bgp=false) %}
 {%             if import_policy_list|length > 0 %}
