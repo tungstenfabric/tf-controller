@@ -131,11 +131,42 @@ class DMTestCase(test_common.TestCase):
         return sf_profile_obj
     # end create_sflow_profile
 
-    def create_telemetry_profile(self, name, sflow_obj=None):
+    def create_grpc_profile(self, name, allow_clients=None):
+
+        grpc_params = GrpcParameters()
+
+        if allow_clients:
+            subnet_list = []
+            for allow_client in allow_clients:
+                subnet_obj = SubnetType(allow_client.get("prefix"),
+                                        allow_client.get("prefix_len"))
+                subnet_list.append(subnet_obj)
+            grpc_params.set_allow_clients(SubnetListType(subnet_list))
+        
+        enabled_sensor_params = EnabledSensorParams(
+            physical_health=True,
+            interface_health=True,
+            control_plane_health=True,
+            service_layer_health=True
+        )
+        grpc_params.set_enabled_sensor_params(enabled_sensor_params)
+        
+        grpc_params.set_secure_mode('cleartext')
+            
+        grpc_profile_obj = GrpcProfile(name=name,
+                                       grpc_parameters=grpc_params)
+
+        self._vnc_lib.grpc_profile_create(grpc_profile_obj)
+        return grpc_profile_obj
+    # end create_grpc_profile
+
+    def create_telemetry_profile(self, name, sflow_obj=None, grpc_obj=None):
 
         tm_profile_obj = TelemetryProfile(name=name)
         if sflow_obj:
             tm_profile_obj.set_sflow_profile(sflow_obj)
+        if grpc_obj:
+            tm_profile_obj.set_grpc_profile(grpc_obj)
         self._vnc_lib.telemetry_profile_create(tm_profile_obj)
 
         return tm_profile_obj
