@@ -1288,14 +1288,24 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
 
     // Add evpn type 5 route from bgp peer in Lr vrf
     if ( vrf->vn() && vrf->vn()->vxlan_routing_vn() && vrf->routing_vrf() &&
-            MacAddress::FromString(mac_str).IsZero()) {
+            MacAddress::FromString(mac_str).IsZero() && (plen < 32)) {
         VnListType vn_list;
         vn_list.insert(item->entry.virtual_network);
 
+        boost::system::error_code ec;
+        string nexthop_addr = item->entry.next_hops.next_hop[0].address;
+        const Ip4Address dip_tunnel = Ip4Address::from_string(nexthop_addr, ec);
+        if (ec.value() != 0) {
+            CONTROLLER_TRACE(Trace, GetBgpPeerName(), vrf_name,
+                         "Error parsing nexthop ip address");
+            return;
+        }
+        TunnelType::TypeBmap encap = agent_->controller()->GetTypeBitmap
+        (item->entry.next_hops.next_hop[0].tunnel_encapsulation_list);
+        TunnelType::Type type = TunnelType::ComputeType(encap);
         DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-        const Ip4Address dip_tunnel = Ip4Address::from_string(item->entry.nlri.address);
         nh_req.key.reset(new TunnelNHKey(vrf->GetName(), agent_->router_id(), dip_tunnel,
-                                     false, TunnelType::VXLAN));
+                                     false, type));
         nh_req.data.reset(new TunnelNHData());
         EvpnRoutingData *data =  new EvpnRoutingData(nh_req,
                                  item->entry.security_group_list.security_group,
