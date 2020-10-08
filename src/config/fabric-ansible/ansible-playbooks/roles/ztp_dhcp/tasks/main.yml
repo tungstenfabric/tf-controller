@@ -50,6 +50,11 @@
     - name: Restart dhcp server
       set_fact:
         publish_result: "{{ ztp_dhcp_config_file | restart_dhcp_server(fabric_name, job_ctx) }}"
+
+    - name: Remove stale PR Objects
+      set_fact:
+        del_pr_obj: "{{ job_ctx | remove_stale_pr_objects() }}"
+
   rescue:
     - set_fact:
         dhcp_output: {
