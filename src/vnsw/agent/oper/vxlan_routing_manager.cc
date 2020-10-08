@@ -704,10 +704,6 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
     if (evpn_rt->GetVmIpPlen() == 32)
         return true;
 
-    const IpAddress &ip_addr = evpn_rt->ip_addr();
-    if (ip_addr.is_unspecified())
-        return true;
-
     if (withdraw && vn->GetVrf()) {
         const VrfEntry *del_bridge_vrf = vn->GetVrf();
         InetUnicastAgentRouteTable *deleted_vn_inet_table =
