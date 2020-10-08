@@ -1,30 +1,33 @@
 #!/usr/bin/python
 
-from builtins import str
 from builtins import object
-from ansible import errors
-import json
+from builtins import str
 import glob
+import json  # noqa
 import os
-import sys
 import re
-import traceback
 import sys
+import traceback
 
-#Link the variable to configuration group if defined by user, pre 2008 the group name used was "__cli_contrail_group__"
+from ansible import errors
+from vnc_api.exceptions import NoIdError
+
+from job_manager.job_utils import JobVncApi
+
+# Link the variable to configuration group if defined by user,
+# pre 2008 the group name used was "__cli_contrail_group__"
 CLI_GROUP = ""
 try:
     PLAYBOOK_BASE = 'opt/contrail/fabric_ansible_playbooks'
     sys.path.append(PLAYBOOK_BASE + "/module_utils")
     from filter_utils import _task_done, _task_error_log, _task_log, FilterLog
-except:
+except:  # noqa: B901, E722
     sys.path.append("../fabric-ansible/ansible-playbooks/module_utils")
     PLAYBOOK_BASE = ("../fabric-ansible/ansible-playbooks")
-    from filter_utils import _task_done, _task_error_log, _task_log, FilterLog
+    from filter_utils import _task_done, _task_error_log, _task_log, FilterLog  # noqa
 
 # from job_manager.job_utils import JobVncApi
-from vnc_api.exceptions import NoIdError
-from job_manager.job_utils import JobVncApi
+
 
 # Modules to split string into a list - used by rollback compare role
 def split_string(string, seperator=' '):
@@ -151,7 +154,7 @@ class FilterModule(object):
                     # Read the referenced cli object from PR
                     device_cli_objects = dict_item['cli_objects']
                     device_cli_objects = sorted(device_cli_objects,
-                                                key = lambda i: i['time'])
+                                                key=lambda i: i['time'])
                     cli_obj_name = prouter_name + "_" + "cli_config"
                     cli_fq_name = [
                         'default-global-system-config',
@@ -171,24 +174,23 @@ class FilterModule(object):
                                 pr_commit_processed_list.append(pr_commit_item)
                                 action_to_be_performed = cli_item.get('status')
                                 if action_to_be_performed == "accept":
-                                    partial_accepted_config += \
-                                        self._accept_routine(pr_commit_item, device_mgmt_ip)
+                                    partial_accepted_config += self._accept_routine(pr_commit_item, device_mgmt_ip)  # noqa: E501
                                 elif action_to_be_performed == "reject":
-                                    self._reject_routine(pr_commit_item, device_mgmt_ip)
+                                    self._reject_routine(pr_commit_item, device_mgmt_ip)  # noqa: E501
                                 else:
-                                    self._ignore_routine(pr_commit_item, device_mgmt_ip)
+                                    self._ignore_routine(pr_commit_item, device_mgmt_ip)  # noqa: E501
 
             # Process file one last time for any delete commands for accept
             # case
-            file_path = PLAYBOOK_BASE + "/manual_config" "/" + \
-                        device_mgmt_ip + "/approve_config.conf"
-            if action_to_be_performed == "accept" and os.path.exists(file_path):
-                complete_accepted_config = self._process_file_for_delete_commands(
-                    partial_accepted_config, device_mgmt_ip)
+            file_path = PLAYBOOK_BASE + "/manual_config" + "/" + device_mgmt_ip + "/approve_config.conf"  # noqa: E501
+            if action_to_be_performed == "accept" and os.path.exists(file_path):  # noqa: E501
+                complete_accepted_config = self.\
+                    _process_file_for_delete_commands(partial_accepted_config,
+                                                      device_mgmt_ip)
                 original_acc_config = pr_cli_obj_raw.get_accepted_cli_config()
                 if original_acc_config is None:
                     original_acc_config = ""
-                updated_acc_config = original_acc_config + complete_accepted_config
+                updated_acc_config = original_acc_config + complete_accepted_config  # noqa: E501
                 pr_cli_obj_raw.set_accepted_cli_config(updated_acc_config)
                 vnc_lib.cli_config_update(pr_cli_obj_raw)
             data_dict = {
@@ -210,17 +212,17 @@ class FilterModule(object):
 
             }
 
-
     # Routine to accept config. This does the following
-    # 1.Re-generate detected config to be pushed down to the device from the diffs.
+    # 1.Re-generate detected config
+    #   to be pushed down to the device from the diffs.
     # 2.Save this config is the database to be later pushed down during RMA.
-    def _accept_routine(self, pr_commit_item,
-                        device_mgmt_ip):
+    def _accept_routine(self, pr_commit_item, device_mgmt_ip):
         contrail_cli_group = CLI_GROUP
         user_commited_config = pr_commit_item.get('config_changes')
-        partial_accepted_config_final = self._accept_config(user_commited_config,
-                                                      contrail_cli_group,
-                                                      device_mgmt_ip)
+        partial_accepted_config_final = self.\
+            _accept_config(user_commited_config,
+                           contrail_cli_group,
+                           device_mgmt_ip)
         return partial_accepted_config_final
 
     # Routine to reject config
@@ -229,10 +231,10 @@ class FilterModule(object):
         user_commited_config = pr_commit_item.get('config_changes')
         self._reject_config(user_commited_config, device_mgmt_ip)
 
-
-    #Routine to ignore configs. This does the follwing
-    #1.Change will get detected and left as is. No config is regenerated.
-    #2.Config ignored will NOT be saved in the database to be pushed down during  RMA.
+    # Routine to ignore configs. This does the follwing
+    # 1.Change will get detected and left as is. No config is regenerated.
+    # 2.Config ignored will NOT be saved in the database
+    #   to be pushed down during RMA.
     def _ignore_routine(self, pr_commit_item, device_mgmt_ip):
         pass
 
@@ -319,28 +321,30 @@ class FilterModule(object):
         path_to_file = PLAYBOOK_BASE + "/manual_config" "/" + \
             device_mgmt_ip + "/reject_config.conf"
         final_command = command + " " + leaf
-        file_to_write = ""
+        # file_to_write = ""
         if os.path.exists(path_to_file):
             with open(path_to_file, 'r') as original:
                 data = original.read()
             with open(path_to_file, 'w') as modified:
                 modified.write(final_command + "\n" + data)
         else:
-            with open(path_to_file, 'w') as modified: modified.write(final_command + "\n")
+            with open(path_to_file, 'w') as modified:
+                modified.write(final_command + "\n")
 
     # Process the config diff that have been accepted
     def _accept_config(self, config, group, device_mgmt_ip):
         accept_config = ""
-        l = config.split('\n')
-        for i in range(len(l)):
-            elem = l[i]
+        lines = config.split('\n')
+        for i in range(len(lines)):
+            elem = lines[i]
             # Assign root element in []
             if (elem.startswith('[')):
                 root_elem = re.sub(r'\[edit(\s|\])', '', elem).replace(']', '')
                 root_elem = root_elem.split(" ")
                 line_out = ['set']
                 line_out.extend(root_elem)
-                # ignore changes in Contrail managed groups, not __cli_contrail_group_
+                # ignore changes in Contrail managed groups,
+                # not __cli_contrail_group_
                 restricted_group = '__contrail_' in str(root_elem)
 
             # Lines active or inactive
@@ -351,49 +355,85 @@ class FilterModule(object):
                 if ("inactive" in clean_elem):
                     clean_elem = clean_elem.replace("inactive: ", "")
                     line_out[0] = "deactivate"
-                    accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                    accept_config = self.\
+                        final_set_command_approve_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip,
+                                                       accept_config)
 
                 elif ("active" in clean_elem):
                     clean_elem = clean_elem.replace("active: ", "")
                     line_out[0] = "activate"
-                    accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                    accept_config = self.\
+                        final_set_command_approve_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip,
+                                                       accept_config)
 
             # Lines added to configuration with +
             if (elem.startswith('+')) and (not restricted_group):
                 clean_elem = elem.strip('+{ ')
                 line_out[0] = "set"
-                # IF de/activate, term has to be first added and then deactivated.
-                # in case there is active/inactive element added to configuration
+                # IF de/activate,
+                # term has to be first added and then deactivated.
+                # in case active/inactive element is added to configuration
                 if ("inactive" in clean_elem):
                     clean_elem = clean_elem.replace("inactive: ", "")
-                    accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                    accept_config = self.\
+                        final_set_command_approve_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip,
+                                                       accept_config)
                     if (';' not in clean_elem):
                         line_out[0] = "deactivate"
-                        accept_config = self.final_set_command_approve_case(line_out, clean_elem, device_mgmt_ip, accept_config)
+                        accept_config = self.\
+                            final_set_command_approve_case(line_out,
+                                                           clean_elem,
+                                                           device_mgmt_ip,
+                                                           accept_config)
                 elif ("active" in clean_elem):
                     clean_elem = clean_elem.replace("active: ", "")
-                    accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                    accept_config = self.\
+                        final_set_command_approve_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip,
+                                                       accept_config)
                     if (';' not in clean_elem):
                         line_out[0] = "activate"
-                        accept_config = self.final_set_command_approve_case(line_out, clean_elem, device_mgmt_ip, accept_config)
+                        accept_config = self.\
+                            final_set_command_approve_case(line_out,
+                                                           clean_elem,
+                                                           device_mgmt_ip,
+                                                           accept_config)
 
-                if (';' in clean_elem ) and ('apply-groups' not in clean_elem):
+                if (';' in clean_elem) and ('apply-groups' not in clean_elem):
                     if group:
                         # If custom group is defined
-                        # added comment have has be first deleted before being added to custom group provide by user via value "group"
+                        # added comment must be first deleted
+                        # before being added to custom group
+                        # provided by user via value "group"
                         line_out[0] = "delete"
-                        # if old command contained [], items in bracket need due junos limitation
+                        # if old command contained [],
+                        # items in bracket need due junos limitation
                         if '[' and ']' in clean_elem:
                             strip_chars = [';', '[', ']']
-                            new_clean_elem = clean_elem.translate(None, ''.join(strip_chars))
+                            new_clean_elem = clean_elem.translate(None, ''.join(strip_chars))  # noqa: E501
                             new_clean_elem = new_clean_elem.split(' ')
                             line_out.append(new_clean_elem[0])
                             for k in new_clean_elem:
                                 if (k not in new_clean_elem[0]):
-                                    accept_config = self.final_set_command_approve_case(line_out, k, device_mgmt_ip, accept_config)
+                                    accept_config = self.\
+                                        final_set_command_approve_case(line_out,  # noqa: E501
+                                                                       k,
+                                                                       device_mgmt_ip,  # noqa: E501
+                                                                       accept_config)  # noqa: E501
                             line_out.pop()
                         else:
-                            accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                            accept_config = self.\
+                                final_set_command_approve_case(line_out,
+                                                               clean_elem.split(";")[0],  # noqa: E501
+                                                               device_mgmt_ip,
+                                                               accept_config)
                         group_out = line_out[:]
                         # check if old command was part of groups, if not add
                         # groups
@@ -403,12 +443,24 @@ class FilterModule(object):
                         else:
                             group_tmp = 'set groups ' + group
                             group_out[0] = group_tmp
-                        accept_config = self.final_set_command_approve_case(group_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                        accept_config = self.\
+                            final_set_command_approve_case(group_out,
+                                                           clean_elem.split(";")[0],  # noqa: E501
+                                                           device_mgmt_ip,
+                                                           accept_config)
                     else:
-                        accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                        accept_config = self.\
+                            final_set_command_approve_case(line_out,
+                                                           clean_elem.split(";")[0],  # noqa: E501
+                                                           device_mgmt_ip,
+                                                           accept_config)
                 elif 'apply-groups' in clean_elem:
                     line_out = ['set']
-                    accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                    accept_config = self.\
+                        final_set_command_approve_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip,
+                                                       accept_config)
                 elif clean_elem == '}':  # Up one level remove parent
                     line_out.pop()
                 else:
@@ -426,19 +478,30 @@ class FilterModule(object):
                     clean_elem = clean_elem.replace("active: ", "")
 
                 if ';' in clean_elem:
-                    # if old command contained [], items in bracket need due junos limitation deleted individually
-                    # delete apply-groups [ TEST TEST2 TEST3 ] does not work, only set does
+                    # if old command contained [],
+                    # items in bracket need
+                    # due junos limitation deleted individually
+                    # delete apply-groups [ TEST TEST2 TEST3 ] does not work,
+                    # only set does
                     if '[' and ']' in clean_elem:
                         strip_chars = [';', '[', ']']
-                        new_clean_elem = clean_elem.translate(None, ''.join(strip_chars))
+                        new_clean_elem = clean_elem.translate(None, ''.join(strip_chars))  # noqa: E501
                         new_clean_elem = new_clean_elem.split(' ')
                         line_out.append(new_clean_elem[0])
                         for k in new_clean_elem:
                             if (k not in new_clean_elem[0]):
-                                accept_config = self.final_set_command_approve_case(line_out, k, device_mgmt_ip, accept_config)
+                                accept_config = self.\
+                                    final_set_command_approve_case(line_out,
+                                                                   k,
+                                                                   device_mgmt_ip,  # noqa: E501
+                                                                   accept_config)  # noqa: E501
                         line_out.pop()
                     else:
-                        accept_config = self.final_set_command_approve_case(line_out, clean_elem.split(";")[0], device_mgmt_ip, accept_config)
+                        accept_config = self.\
+                            final_set_command_approve_case(line_out,
+                                                           clean_elem.split(";")[0],  # noqa: E501
+                                                           device_mgmt_ip,
+                                                           accept_config)
                 elif clean_elem == '}':  # Up one level remove parent
                     line_out.pop()
                 else:
@@ -448,18 +511,19 @@ class FilterModule(object):
 
     # Process config diffs that have been rejected
     def _reject_config(self, config, device_mgmt_ip):
-        reject_case = True
+        reject_case = True  # noqa: F841
         root_elem = ['']
-        l = config.split('\n')
+        lines = config.split('\n')
         line_out = ['delete']
-        for i in range(len(l)):
-            elem = l[i]
+        for i in range(len(lines)):
+            elem = lines[i]
             # Assign root element in []
             if (elem.startswith('[')):
-                root_elem = re.sub(r'\[edit(\s|\])', '', elem).replace(']', '')
+                root_elem = re.sub(r'\[edit(\s|\])', '', elem).replace(']', '')  # noqa: E501
                 line_out = ['delete']
                 line_out.append(root_elem)
-                # ignore changes in Contrail managed groups, not __cli_contrail_group__
+                # ignore changes in Contrail managed groups,
+                # not __cli_contrail_group__
                 restricted_group = '__contrail_' in str(root_elem)
 
             # Lines added to configuration with +
@@ -468,11 +532,15 @@ class FilterModule(object):
                 if ("inactive" in clean_elem):
                     clean_elem = clean_elem.replace("inactive: ", "")
                     line_out[0] = "activate"
-                    self.final_set_command_reject_case(line_out, clean_elem.split(";")[0], device_mgmt_ip)
+                    self.final_set_command_reject_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip)
                 elif ("active" in clean_elem):
                     clean_elem = clean_elem.replace("active: ", "")
                     line_out[0] = "deactivate"
-                    self.final_set_command_reject_case(line_out, clean_elem.split(";")[0], device_mgmt_ip)
+                    self.final_set_command_reject_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip)
 
             # Lines added to configuration with +
             if (elem.startswith('+')) and (not restricted_group):
@@ -487,15 +555,19 @@ class FilterModule(object):
                 if ';' in clean_elem:
                     if '[' and ']' in clean_elem:
                         strip_chars = [';', '[', ']']
-                        new_clean_elem = clean_elem.translate(None, ''.join(strip_chars))
+                        new_clean_elem = clean_elem.translate(None, ''.join(strip_chars))  # noqa: E501
                         new_clean_elem = new_clean_elem.split(' ')
                         line_out.append(new_clean_elem[0])
                         for k in new_clean_elem:
                             if (k not in new_clean_elem[0]):
-                                self.final_set_command_reject_case(line_out, k, device_mgmt_ip)
+                                self.final_set_command_reject_case(line_out,
+                                                                   k,
+                                                                   device_mgmt_ip)  # noqa: E501
                         line_out.pop()
                     else:
-                        self.final_set_command_reject_case(line_out, clean_elem.split(";")[0], device_mgmt_ip)
+                        self.final_set_command_reject_case(line_out,
+                                                           clean_elem.split(";")[0],  # noqa: E501
+                                                           device_mgmt_ip)
                 elif clean_elem == '}':  # Up one level remove parent
                     line_out.pop()
                 else:
@@ -507,22 +579,33 @@ class FilterModule(object):
                 root_elem = ''
                 line_out = list(line_out)
                 line_out[0] = "set"
-                # IF de/activate, term has to be first added and then deactivated.
+                # IF de/activate,
+                # term has to be first added and then deactivated.
                 if ("inactive" in clean_elem):
                     clean_elem = clean_elem.replace("inactive: ", "")
-                    self.final_set_command_reject_case(line_out, clean_elem.split(";")[0], device_mgmt_ip)
+                    self.final_set_command_reject_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip)
                     line_out[0] = "deactivate"
                     if (';' not in clean_elem):
-                        self.final_set_command_reject_case(line_out, clean_elem, device_mgmt_ip)
+                        self.final_set_command_reject_case(line_out,
+                                                           clean_elem,
+                                                           device_mgmt_ip)
                 elif ("active" in clean_elem):
                     clean_elem = clean_elem.replace("active: ", "")
-                    self.final_set_command_reject_case(line_out, clean_elem.split(";")[0], device_mgmt_ip)
+                    self.final_set_command_reject_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip)
                     line_out[0] = "activate"
                     if (';' not in clean_elem):
-                        self.final_set_command_reject_case(line_out, clean_elem, device_mgmt_ip)
+                        self.final_set_command_reject_case(line_out,
+                                                           clean_elem,
+                                                           device_mgmt_ip)
 
                 if ';' in clean_elem:
-                    self.final_set_command_reject_case(line_out, clean_elem.split(";")[0], device_mgmt_ip)
+                    self.final_set_command_reject_case(line_out,
+                                                       clean_elem.split(";")[0],  # noqa: E501
+                                                       device_mgmt_ip)
                 elif clean_elem == '}':  # Up one level remove parent
                     line_out.pop()
                 else:

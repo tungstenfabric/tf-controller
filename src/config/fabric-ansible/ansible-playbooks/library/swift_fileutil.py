@@ -13,13 +13,14 @@ swift download URL for the uploaded image file
 
 from builtins import object
 from builtins import str
-from future import standard_library
-standard_library.install_aliases()  # noqa
-import logging
+
+from future import standard_library  # noqa
+standard_library.install_aliases()   # noqa
+import logging                       # noqa
 import re
 from threading import RLock
 import time
-from urllib.parse import urlparse
+from urllib.parse import urlparse  # noqa
 
 from ansible.module_utils.fabric_utils import FabricAnsibleModule
 import requests
@@ -61,21 +62,21 @@ options:
         type: string
         required: false
         default: 'admin'
-        
+
     user_domain_name:
         description:
             - User domain name.
         type: string
         required: false
         default: 'Default'
-        
+
     project_domain_name:
         description:
             - Project domain name.
         type: string
         required: false
         default: 'Default'
-        
+
     auth_version:
         description:
             - Keystone Auth version.
@@ -131,9 +132,10 @@ connection_lock = RLock()
 
 
 class FileSvcUtil(object):  # pragma: no cover
-    def __init__(self, authtoken, authurl, user, key, tenant_name, user_domain_name,
-                 project_domain_name, auth_version, container_name, temp_url_key,
-                 temp_url_key2, connection_retry_count, chosen_temp_url_key):
+    def __init__(self, authtoken, authurl, user, key, tenant_name,
+                 user_domain_name, project_domain_name, auth_version,
+                 container_name, temp_url_key, temp_url_key2,
+                 connection_retry_count, chosen_temp_url_key):
         """Init routine."""
         self.requests = requests
         self.authurl = authurl
@@ -156,7 +158,8 @@ class FileSvcUtil(object):  # pragma: no cover
     def generateToken(self):
         retry_count = 0
         incr_sleep = 10
-        os_options = {'user_domain_name': self.user_domain_name, 'project_domain_name': self.project_domain_name}
+        os_options = {'user_domain_name': self.user_domain_name,
+                      'project_domain_name': self.project_domain_name}
         while retry_count <= self.connection_retry_count:
             try:
                 acquired = connection_lock.acquire()
@@ -263,7 +266,7 @@ def main():
     temp_url_key_2 = m_args['temp_url_key_2']
     chosen_temp_url_key = m_args['chosen_temp_url_key']
     container_name = m_args['container_name']
-    filename = m_args['filename']
+    filename = m_args['filename']  # noqa: F841
     connection_retry_count = m_args['connection_retry_count']
     device_image_file_uri = m_args['device_image_file_uri']
 
@@ -301,4 +304,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

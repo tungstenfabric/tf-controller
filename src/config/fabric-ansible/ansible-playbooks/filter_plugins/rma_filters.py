@@ -10,12 +10,13 @@ from builtins import str
 import sys
 import traceback
 
-from job_manager.job_utils import JobVncApi
-
-sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")
-from filter_utils import FilterLog, _task_error_log, get_job_transaction, \
+sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")  # noqa
+from filter_utils import _task_error_log, FilterLog, get_job_transaction, \
     set_job_transaction  # noqa
 from vnc_api.exceptions import NoIdError
+
+from job_manager.job_utils import JobVncApi
+
 
 class FilterModule(object):
 
@@ -37,7 +38,7 @@ class FilterModule(object):
         }
     # end filters
 
-    #retrieve first device's password
+    # retrieve first device's password
     def rma_get_device_password(self, job_ctx, rma_devices_list):
         try:
             self.vncapi = JobVncApi.vnc_init(job_ctx)
@@ -112,7 +113,9 @@ class FilterModule(object):
             device_obj = self.vncapi.physical_router_read(id=device_uuid)
             device_name = device_obj.name
             device_cli_obj_name = device_name + "_" + "cli_config"
-            cli_obj_fq_name = ['default-global-system-config', device_name, device_cli_obj_name]
+            cli_obj_fq_name = ['default-global-system-config',
+                               device_name,
+                               device_cli_obj_name]
             underlay_managed = \
                 device_obj.get_physical_router_underlay_managed()
 
@@ -127,7 +130,8 @@ class FilterModule(object):
                 self.vncapi.physical_router_update(device_obj)
                 continue
 
-            # Try to read cli config object if present, else return empty string for config
+            # Try to read cli config object if present,
+            # else return empty string for config
             try:
                 cli_obj = self.vncapi.cli_config_read(fq_name=cli_obj_fq_name)
                 accepted_cli_config = cli_obj.get_accepted_cli_config()
@@ -142,7 +146,8 @@ class FilterModule(object):
                 device_supp_cfg = ""
             self._supplemental_config_append(device_name,
                                              new_serial_number,
-                                             device_supp_cfg, accepted_cli_config)
+                                             device_supp_cfg,
+                                             accepted_cli_config)
             temp = {}
             temp['device_management_ip'] = \
                 device_obj.get_physical_router_management_ip()
@@ -171,7 +176,8 @@ class FilterModule(object):
 
             self.vncapi.physical_router_update(device_obj)
 
-            ip_tbl.update({device_uuid: {'dynamic_mgmt_ip': mgmt_ip,'device_serial_number': new_serial_number}})
+            ip_tbl.update({device_uuid: {'dynamic_mgmt_ip': mgmt_ip,
+                                         'device_serial_number': new_serial_number}})  # noqa: E501
 
         rma_device_info = {
             'device_info': device_info,
@@ -216,4 +222,3 @@ class FilterModule(object):
             dev2ztp_entry['supplemental_day_0_cfg'] = cfg_name
 
         self.device_to_ztp.append(dev2ztp_entry)
-

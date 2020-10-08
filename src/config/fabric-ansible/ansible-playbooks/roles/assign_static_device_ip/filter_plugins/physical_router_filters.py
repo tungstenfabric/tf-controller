@@ -6,14 +6,14 @@
 
 from builtins import object
 from builtins import str
+import ipaddress
 
 from cfgm_common.exceptions import NoIdError
+from filter_utils import _task_error_log  # noqa
 from netaddr import IPAddress, IPNetwork
-from netifaces import interfaces, ifaddresses, AF_INET
-from vnc_api.vnc_api import VncApi
+from netifaces import AF_INET, ifaddresses, interfaces
 from pyroute2 import IPRoute
-import ipaddress
-from filter_utils import _task_error_log
+from vnc_api.vnc_api import VncApi
 
 
 class FilterModule(object):
@@ -38,9 +38,10 @@ class FilterModule(object):
             add_list = ifaddresses(ifaceName).get(AF_INET, None)
             for index in add_list or []:
                 if index['addr'] == lookup_ip:
-                    return ipaddress.ip_network(unicode(
-                                index['addr']+'/'+index['netmask']),
-                                strict=False)
+                    # F821: undefined name 'unicode'
+                    return ipaddress.ip_network(unicode(  # noqa: F821
+                        index['addr'] + '/' + index['netmask']),
+                        strict=False)
         return None
 
     @classmethod

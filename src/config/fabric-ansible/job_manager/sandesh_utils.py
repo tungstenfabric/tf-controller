@@ -14,7 +14,7 @@ class SandeshUtils(object):
 
     def __init__(self, logger):
         """
-        Creates an instance of SandeshUtils.
+        Create an instance of SandeshUtils.
 
         :param logger: Sandesh logger
         """

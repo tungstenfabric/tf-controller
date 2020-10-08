@@ -29,8 +29,9 @@ class FilterModule(object):
             fpc_slots = [fpc_slots]
         for fpc in fpc_slots:
             if not fpc.get('state') or fpc.get('state').lower() != 'online':
-                msg.append("fpc at slot {0} is {1}".format(fpc.get('slot', ''),
-                fpc.get('state', 'Offline')))
+                msg.append("fpc at slot {0} is {1}".
+                           format(fpc.get('slot', ''),
+                                  fpc.get('state', 'Offline')))
                 continue
             pic_slots = fpc.get('pic')
             if pic_slots is None:
@@ -42,9 +43,10 @@ class FilterModule(object):
             for pic in pic_slots:
                 if not pic.get('pic-state') or \
                         pic.get('pic-state').lower() != 'online':
-                    msg.append("pic at pic-slot {0} of fpc slot {1} is {2}".format(
-                        pic.get('pic-slot', ''), fpc.get('slot', ''),
-                        pic.get('state', 'Offline')))
+                    msg.append("pic at pic-slot {0} of fpc slot {1} is {2}".
+                               format(pic.get('pic-slot', ''),
+                                      fpc.get('slot', ''),
+                                      pic.get('state', 'Offline')))
                     continue
         out['status'] = True
         out['msg'] = ('; '.join(msg))
