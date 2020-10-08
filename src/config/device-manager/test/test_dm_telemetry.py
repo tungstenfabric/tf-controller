@@ -17,14 +17,14 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
         # is set to their default values.
         # create objects
 
-        sf_name = 'sflow_upd_2'
+        sf_name = 'sflow_upd_1'
         agent_id = '10.0.0.1'
         enbld_intf_type = 'access'
 
         self.create_feature_objects_and_params()
 
         sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
-        tm_obj = self.create_telemetry_profile('TP_2', sf_obj)
+        tm_obj = self.create_telemetry_profile('TP_1', sflow_obj=sf_obj)
 
         # intf_obj_list will be list of 3 types of interfaces
         # in the order xe-0/0/0 - service
@@ -139,7 +139,7 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
         self.create_feature_objects_and_params()
 
         sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
-        tm_obj = self.create_telemetry_profile('TP_disassociate', sf_obj)
+        tm_obj = self.create_telemetry_profile('TP_disassociate', sflow_obj=sf_obj)
 
         # intf_obj_list will be list of 3 types of interfaces
         # in the order xe-0/0/0 - service
@@ -257,7 +257,7 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
                                            enbld_intf_type=enbld_intf_type,
                                            enbld_intf_params=enbld_intf_params)
 
-        tm_obj = self.create_telemetry_profile('TP_custom_intf', sf_obj)
+        tm_obj = self.create_telemetry_profile('TP_custom_intf', sflow_obj=sf_obj)
 
         tm_obj_fqname = tm_obj.get_fq_name()
         sf_obj_fqname = sf_obj.get_fq_name()
@@ -356,7 +356,7 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
         self.create_feature_objects_and_params()
 
         sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
-        tm_obj = self.create_telemetry_profile('TP_collector', sf_obj)
+        tm_obj = self.create_telemetry_profile('TP_collector', sflow_obj=sf_obj)
 
         # intf_obj_list will be list of 3 types of interfaces
         # in the order xe-0/0/0 - service
@@ -422,7 +422,7 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
 
         self.delete_objects()
 
-    def test_05_multiple_pr_same_telemetry(self):
+    def test_05_multiple_pr_same_sflow_telemetry(self):
 
         # check if sample rt, polling interval and adaptive sample rate
         # is set to their default values.
@@ -435,7 +435,7 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
         self.create_feature_objects_and_params()
 
         sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
-        tm_obj = self.create_telemetry_profile('TP_multi_pr', sf_obj)
+        tm_obj = self.create_telemetry_profile('TP_multi_pr', sflow_obj=sf_obj)
         tm_obj_fqname = tm_obj.get_fq_name()
         sf_obj_fqname = sf_obj.get_fq_name()
 
@@ -553,8 +553,8 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
         self.create_feature_objects_and_params()
 
         sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
-        tm_obj_1 = self.create_telemetry_profile('TP_1', sf_obj)
-        tm_obj_2 = self.create_telemetry_profile('TP_2', sf_obj)
+        tm_obj_1 = self.create_telemetry_profile('TP_1', sflow_obj=sf_obj)
+        tm_obj_2 = self.create_telemetry_profile('TP_2', sflow_obj=sf_obj)
 
         # intf_obj_list will be list of 3 types of interfaces
         # in the order xe-0/0/0 - service
@@ -674,7 +674,7 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
         self.create_feature_objects_and_params()
 
         sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
-        tm_obj = self.create_telemetry_profile('TP_all', sf_obj)
+        tm_obj = self.create_telemetry_profile('TP_all', sflow_obj=sf_obj)
 
         # intf_obj_list will be list of 3 types of interfaces
         # in the order xe-0/0/0 - service
@@ -732,6 +732,1033 @@ class TestAnsibleTelemetryDM(TestAnsibleCommonDM):
             self.assertIn(phy_intf.get('name'), intf_obj_list_names)
             self.assertEqual(phy_intf.get('telemetry_profile'),
                              tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_08_grpc_profile_create_and_update(self):
+
+        # create grpc object
+
+        grpc_name = 'grpc_upd_1'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            },
+            {
+                "prefix": "20.1.1.1",
+                "prefix_len": 32
+            }
+        ]
+
+        self.create_feature_objects_and_params()
+
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients=allow_clients)
+        tm_obj = self.create_telemetry_profile('TP_1', grpc_obj=grpc_obj)
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, _, _ = self.create_telemetry_dependencies()
+
+        # Now link tm_obj to pr1
+
+        pr1.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr1)
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        tm_obj_fqname = tm_obj.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[-1].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # now update the grpc profile object and check if
+        # update causes device abstract config also to update
+        allow_clients = [
+            {
+                "prefix": "30.0.0.0",
+                "prefix_len": 24
+            }
+        ]
+        
+        grpc_params = GrpcParameters(
+            allow_clients=SubnetListType([SubnetType("30.0.0.0", 24)])
+        )
+        grpc_obj.set_grpc_parameters(grpc_params)
+        self._vnc_lib.grpc_profile_update(grpc_obj)
+
+        # Now check the changes in the device abstract config
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get('device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[1].name)
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_09_disassociate_grpc_profile_from_telemetry_profile(self):
+
+        # create grpc object
+
+        grpc_name = 'grpc_disassociate_telemetry'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            }
+        ]
+
+        self.create_feature_objects_and_params()
+
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients=allow_clients)
+        tm_obj = self.create_telemetry_profile('TP_disassociate', grpc_obj=grpc_obj)
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, _, _ = self.create_telemetry_dependencies()
+
+        # Now link tm_obj to pr1
+
+        pr1.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr1)
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        tm_obj_fqname = tm_obj.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[0].name)
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # Now disassociate grpc from telemetry profile
+        tm_obj.del_grpc_profile(grpc_obj)
+        self._vnc_lib.telemetry_profile_update(tm_obj)
+
+        # Now check the changes in the device abstract config
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get('device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+
+        self.assertEqual(telemetry_profiles, [])
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertEqual(phy_interfaces, [])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_10_multiple_pr_same_grpc_telemetry(self):
+
+        # check if sample rt, polling interval and adaptive sample rate
+        # is set to their default values.
+        # create objects
+
+        grpc_name = 'grpc_multiple_pr_one_tp'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            }
+        ]
+
+        self.create_feature_objects_and_params()
+
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients)
+        tm_obj = self.create_telemetry_profile('TP_multi_pr2', grpc_obj=grpc_obj)
+        tm_obj_fqname = tm_obj.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, pr2, intf_obj_list_2 = self.create_telemetry_dependencies(
+            phy_router_no=2
+        )
+
+        # Now link tm_obj to pr1 and pr2
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        pr1.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        pr2.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr2)
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+        
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list_2[1].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # Verify if telemetry profiles are still attached
+
+        pr1.set_physical_router_product_name('qfx5110-6s-4c')
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[1].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_11_multiple_grpc_backrefs_same_telemetry(self):
+
+        # create objects
+
+        grpc_name = 'grpc_backrefs_tp'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            }
+        ]
+
+        self.create_feature_objects_and_params()
+
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients=allow_clients)
+        tm_obj_1 = self.create_telemetry_profile('TP_grpc_1', grpc_obj=grpc_obj)
+        tm_obj_2 = self.create_telemetry_profile('TP_grpc_2', grpc_obj=grpc_obj)
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, pr2, intf_obj_list_2 = self.create_telemetry_dependencies(
+                phy_router_no=2
+            )
+
+        # Now link tm_obj_1 to pr1
+
+        pr1.set_telemetry_profile(tm_obj_1)
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        # Now link tm_obj_2 to pr2
+
+        pr2.set_telemetry_profile(tm_obj_2)
+        self._vnc_lib.physical_router_update(pr2)
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        tm_obj1_fqname = tm_obj_1.get_fq_name()
+        tm_obj2_fqname = tm_obj_2.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj2_fqname[-1] + "-" + tm_obj2_fqname[-2])
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list_2[0].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj2_fqname[-1] + "-" + tm_obj2_fqname[-2])
+
+        pr1.set_physical_router_product_name('qfx5110-6s-4c')
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj1_fqname[-1] + "-" + tm_obj1_fqname[-2])
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[0].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj1_fqname[-1] + "-" + tm_obj1_fqname[-2])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_12_sflow_and_grpc_profile_create_and_update(self):
+
+        # create both sflow and grpc objects
+
+        sf_name = 'sflow_upd_2'
+        agent_id = '10.0.0.1'
+        enbld_intf_type = 'access'
+        
+        grpc_name = 'grpc_upd_2'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            },
+            {
+                "prefix": "20.1.1.1",
+                "prefix_len": 32
+            }
+        ]
+        
+        self.create_feature_objects_and_params()
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients=allow_clients)
+        sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
+        tm_obj = self.create_telemetry_profile('tp_sf_grpc', sflow_obj=sf_obj, grpc_obj=grpc_obj)
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, _, _ = self.create_telemetry_dependencies()
+
+        # Now link tm_obj to pr1
+
+        pr1.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr1)
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        tm_obj_fqname = tm_obj.get_fq_name()
+        sf_obj_fqname = sf_obj.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        sflow_profile = telemetry_profile.get('sflow_profile')
+        grpc_profile = telemetry_profile.get('grpc_profile')
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # test sflow
+        self.assertIsNotNone(sflow_profile)
+        self.assertEqual(sflow_profile.get('name'),
+                         sf_obj_fqname[-1] + "-" + sf_obj_fqname[-2])
+
+        self.assertEqual(sflow_profile.get('sample_rate'), 2000)
+        self.assertEqual(sflow_profile.get('adaptive_sample_rate'), 300)
+        self.assertEqual(sflow_profile.get('polling_interval'), 0)
+        self.assertEqual(sflow_profile.get('agent_id'), agent_id)
+        self.assertEqual(sflow_profile.get('enabled_interface_type'),
+                         enbld_intf_type)
+        self.assertIsNone(sflow_profile.get('enabled_interface_params'))
+
+        # test grpc
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        # test phyiscal interfaces
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[-1].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # now update the sflow and grpc profile object and check if
+        # update causes device abstract config also to update
+
+        sf_params_list = SflowParameters(
+            adaptive_sample_rate=500,
+            enabled_interface_type='fabric')
+
+        sf_obj.set_sflow_parameters(sf_params_list)
+        self._vnc_lib.sflow_profile_update(sf_obj)
+
+        allow_clients = [
+            {
+                "prefix": "30.0.0.0",
+                "prefix_len": 24
+            }
+        ]
+        grpc_params = GrpcParameters(allow_clients=SubnetListType([SubnetType("30.0.0.0", 24)]))
+        grpc_obj.set_grpc_parameters(grpc_params)
+        self._vnc_lib.grpc_profile_update(grpc_obj)
+
+        # Now check the changes in the device abstract config
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get('device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        sflow_profile = telemetry_profile.get('sflow_profile')
+        grpc_profile = telemetry_profile.get('grpc_profile')
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # test sflow
+        self.assertIsNotNone(sflow_profile)
+        self.assertEqual(sflow_profile.get('name'),
+                         sf_obj_fqname[-1] + "-" + sf_obj_fqname[-2])
+
+        self.assertEqual(sflow_profile.get('adaptive_sample_rate'), 500)
+        self.assertEqual(sflow_profile.get('enabled_interface_type'),
+                         'fabric')
+        self.assertIsNone(sflow_profile.get('enabled_interface_params'))
+
+        # test grpc
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        # test physical interfaces
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[1].name)
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_13_disassociate_sflow_and_grpc_from_telemetry_profile(self):
+
+        # create both sflow and grpc objects
+
+        sf_name = 'sflow_disassociate_telemetry_2'
+        agent_id = '10.0.0.1'
+        enbld_intf_type = 'access'
+        
+        grpc_name = 'grpc_disassociate_telemetry_2'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            },
+            {
+                "prefix": "20.1.1.1",
+                "prefix_len": 32
+            }
+        ]
+        
+        self.create_feature_objects_and_params()
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients=allow_clients)
+        sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
+        tm_obj = self.create_telemetry_profile(name='TP_disassociate2', sflow_obj=sf_obj, grpc_obj=grpc_obj)
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, _, _ = self.create_telemetry_dependencies()
+
+        # Now link tm_obj to pr1
+
+        pr1.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr1)
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        tm_obj_fqname = tm_obj.get_fq_name()
+        sf_obj_fqname = sf_obj.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        sflow_profile = telemetry_profile.get('sflow_profile')
+        grpc_profile = telemetry_profile.get('grpc_profile')
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # test sflow
+        self.assertIsNotNone(sflow_profile)
+        self.assertEqual(sflow_profile.get('name'),
+                         sf_obj_fqname[-1] + "-" + sf_obj_fqname[-2])
+
+        self.assertEqual(sflow_profile.get('sample_rate'), 2000)
+        self.assertEqual(sflow_profile.get('adaptive_sample_rate'), 300)
+        self.assertEqual(sflow_profile.get('polling_interval'), 0)
+        self.assertEqual(sflow_profile.get('agent_id'), agent_id)
+        self.assertEqual(sflow_profile.get('enabled_interface_type'),
+                         enbld_intf_type)
+        self.assertIsNone(sflow_profile.get('enabled_interface_params'))
+
+        # test grpc
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        # test physical interfaces
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[-1].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # Now disassociate sflow and grpc from telemetry profile
+        tm_obj.del_sflow_profile(sf_obj)
+        tm_obj.del_grpc_profile(grpc_obj)
+        self._vnc_lib.telemetry_profile_update(tm_obj)
+
+        # Now check the changes in the device abstract config
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get('device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+
+        self.assertEqual(telemetry_profiles, [])
+
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertEqual(phy_interfaces, [])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_14_multiple_pr_same_sflow_and_grpc_telemetry(self):
+
+        # create objects
+
+        sf_name = 'sflow_multiple_pr_one_tp2'
+        agent_id = '10.0.0.1'
+        enbld_intf_type = 'fabric'
+
+        grpc_name = 'grpc_multiple_pr_one_tp2'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            }
+        ]
+
+        self.create_feature_objects_and_params()
+
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients=allow_clients)
+        sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
+        tm_obj = self.create_telemetry_profile('TP_multi_pr2', sflow_obj=sf_obj, grpc_obj=grpc_obj)
+        tm_obj_fqname = tm_obj.get_fq_name()
+        sf_obj_fqname = sf_obj.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, pr2, intf_obj_list_2 = self.create_telemetry_dependencies(
+            phy_router_no=2
+        )
+
+        # Now link tm_obj to pr1 and pr2
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        pr1.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        pr2.set_telemetry_profile(tm_obj)
+        self._vnc_lib.physical_router_update(pr2)
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        grpc_profile = telemetry_profile.get("grpc_profile")
+        sflow_profile = telemetry_profile.get('sflow_profile')
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+        
+        # test sflow
+        self.assertIsNotNone(sflow_profile)
+        self.assertEqual(sflow_profile.get('name'),
+                         sf_obj_fqname[-1] + "-" + sf_obj_fqname[-2])
+
+        self.assertEqual(sflow_profile.get('sample_rate'), 2000)
+        self.assertEqual(sflow_profile.get('adaptive_sample_rate'), 300)
+        self.assertEqual(sflow_profile.get('polling_interval'), 0)
+        self.assertEqual(sflow_profile.get('agent_id'), agent_id)
+        self.assertEqual(sflow_profile.get('enabled_interface_type'),
+                         enbld_intf_type)
+        self.assertIsNone(sflow_profile.get('enabled_interface_params'))
+
+        # test grpc
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        # test physical interfaces
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list_2[1].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # Verify if telemetry profiles are still attached
+
+        pr1.set_physical_router_product_name('qfx5110-6s-4c')
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        sflow_profile = telemetry_profile.get('sflow_profile')
+        grpc_profile = telemetry_profile.get('grpc_profile')
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # test sflow
+        self.assertIsNotNone(sflow_profile)
+        self.assertEqual(sflow_profile.get('name'),
+                         sf_obj_fqname[-1] + "-" + sf_obj_fqname[-2])
+
+        self.assertEqual(sflow_profile.get('sample_rate'), 2000)
+        self.assertEqual(sflow_profile.get('adaptive_sample_rate'), 300)
+        self.assertEqual(sflow_profile.get('polling_interval'), 0)
+        self.assertEqual(sflow_profile.get('agent_id'), agent_id)
+        self.assertEqual(sflow_profile.get('enabled_interface_type'),
+                         enbld_intf_type)
+        self.assertIsNone(sflow_profile.get('enabled_interface_params'))
+
+        # test grpc
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        # test physical interfaces
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[1].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj_fqname[-1] + "-" + tm_obj_fqname[-2])
+
+        # delete workflow
+
+        self.delete_objects()
+
+    def test_15_multiple_sflow_and_grpc_backrefs_same_telemetry(self):
+
+        # check if sample rt, polling interval and adaptive sample rate
+        # is set to their default values.
+        # create objects
+
+        sf_name = 'sflow_backrefs_tp2'
+        agent_id = '10.0.0.1'
+        enbld_intf_type = 'service'
+
+        grpc_name = 'grpc_backrefs_tp2'
+        allow_clients = [
+            {
+                "prefix": "10.0.0.0",
+                "prefix_len": 24
+            }
+        ]
+
+        self.create_feature_objects_and_params()
+
+        grpc_obj = self.create_grpc_profile(grpc_name, allow_clients=allow_clients)
+        sf_obj = self.create_sflow_profile(sf_name, agent_id=agent_id, enbld_intf_type=enbld_intf_type)
+        tm_obj_1 = self.create_telemetry_profile('TP_1', sflow_obj=sf_obj, grpc_obj=grpc_obj)
+        tm_obj_2 = self.create_telemetry_profile('TP_2', sflow_obj=sf_obj, grpc_obj=grpc_obj)
+
+        # intf_obj_list will be list of 3 types of interfaces
+        # in the order xe-0/0/0 - service
+        # xe-0/0/1 - fabric and xe-0/0/2:0 - access
+        pr1, intf_obj_list, pr2, intf_obj_list_2 = self.create_telemetry_dependencies(
+                phy_router_no=2
+            )
+
+        # Now link tm_obj_1 to pr1
+
+        pr1.set_telemetry_profile(tm_obj_1)
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        self.check_dm_ansible_config_push()
+
+        # Now link tm_obj_2 to pr2
+
+        pr2.set_telemetry_profile(tm_obj_2)
+        self._vnc_lib.physical_router_update(pr2)
+
+        # this should trigger reaction map so that PR
+        # config changes and device abstract config is generated.
+        # verify the generated device abstract config properties
+
+        tm_obj1_fqname = tm_obj_1.get_fq_name()
+        tm_obj2_fqname = tm_obj_2.get_fq_name()
+        sf_obj_fqname = sf_obj.get_fq_name()
+        grpc_obj_fqname = grpc_obj.get_fq_name()
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry',{}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        sflow_profile = telemetry_profile.get('sflow_profile')
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj2_fqname[-1] + "-" + tm_obj2_fqname[-2])
+
+        # test sflow
+        self.assertIsNotNone(sflow_profile)
+        self.assertEqual(sflow_profile.get('name'),
+                         sf_obj_fqname[-1] + "-" + sf_obj_fqname[-2])
+
+        self.assertEqual(sflow_profile.get('sample_rate'), 2000)
+        self.assertEqual(sflow_profile.get('adaptive_sample_rate'), 300)
+        self.assertEqual(sflow_profile.get('polling_interval'), 0)
+        self.assertEqual(sflow_profile.get('agent_id'), agent_id)
+        self.assertEqual(sflow_profile.get('enabled_interface_type'),
+                         enbld_intf_type)
+        self.assertIsNone(sflow_profile.get('enabled_interface_params'))
+
+        # test grpc
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        # test physical interfaces
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list_2[0].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj2_fqname[-1] + "-" + tm_obj2_fqname[-2])
+
+        pr1.set_physical_router_product_name('qfx5110-6s-4c')
+        self._vnc_lib.physical_router_update(pr1)
+
+        gevent.sleep(1)
+        abstract_config = self.check_dm_ansible_config_push()
+        device_abstract_config = abstract_config.get(
+            'device_abstract_config')
+
+        # Will be a list of one telemetry profile for a physical
+        # router
+        telemetry_profiles = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('telemetry', [])
+        telemetry_profile = telemetry_profiles[-1]
+        sflow_profile = telemetry_profile.get('sflow_profile')
+        grpc_profile = telemetry_profile.get('grpc_profile')
+
+        self.assertEqual(telemetry_profile.get('name'),
+                         tm_obj1_fqname[-1] + "-" + tm_obj1_fqname[-2])
+
+        # test sflow
+        self.assertIsNotNone(sflow_profile)
+        self.assertEqual(sflow_profile.get('name'),
+                         sf_obj_fqname[-1] + "-" + sf_obj_fqname[-2])
+
+        self.assertEqual(sflow_profile.get('sample_rate'), 2000)
+        self.assertEqual(sflow_profile.get('adaptive_sample_rate'), 300)
+        self.assertEqual(sflow_profile.get('polling_interval'), 0)
+        self.assertEqual(sflow_profile.get('agent_id'), agent_id)
+        self.assertEqual(sflow_profile.get('enabled_interface_type'),
+                         enbld_intf_type)
+        self.assertIsNone(sflow_profile.get('enabled_interface_params'))
+
+        # test grpc
+        self.assertIsNotNone(grpc_profile)
+        self.assertEqual(grpc_profile.get('name'),
+                         grpc_obj_fqname[-1] + "-" + grpc_obj_fqname[-2])
+
+        self.assertEqual(grpc_profile.get('allow_clients'), allow_clients)
+        self.assertIsNone(grpc_profile.get('enabled_sensor_params'))
+        self.assertIsNone(grpc_profile.get('secure_mode'))
+
+        # test physical interfaces
+        phy_interfaces = device_abstract_config.get(
+            'features', {}).get('telemetry', {}).get('physical_interfaces', [])
+
+        self.assertIsNotNone(phy_interfaces)
+        for phy_intf in phy_interfaces:
+            self.assertEqual(phy_intf.get('name'), intf_obj_list[0].name.replace('_', ':'))
+            self.assertEqual(phy_intf.get('telemetry_profile'),
+                             tm_obj1_fqname[-1] + "-" + tm_obj1_fqname[-2])
 
         # delete workflow
 
