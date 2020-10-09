@@ -1853,6 +1853,13 @@ void VmInterface::LearntMacIp::Copy(const Agent *agent,
     vrf_ = vmi->vrf();
     ethernet_tag_ = vmi->ethernet_tag();
 }
+
+bool VmInterface::IsMaxMacIpLearnt() const {
+    if (learnt_mac_ip_list_.list_.size() >= kMaxMacIpLimit) {
+        return true;
+    }
+    return false;
+}
 /////////////////////////////////////////////////////////////////////////////
 // FloatingIp routines
 /////////////////////////////////////////////////////////////////////////////

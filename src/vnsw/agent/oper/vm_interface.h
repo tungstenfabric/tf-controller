@@ -358,6 +358,7 @@ public:
     static const uint32_t kInvalidIsid = 0xFFFFFF;
     static const uint8_t vHostUserClient = 0;
     static const uint8_t vHostUserServer = 1;
+    static const uint32_t kMaxMacIpLimit = 50;
 
     // Interface route type
     static const char *kInterface;
@@ -1546,6 +1547,7 @@ public:
     void set_service_intf_type(std::string type) { service_intf_type_ = type; }
     VmInterface * PortTuplePairedInterface() const;
     void BuildFatFlowExcludeList(FatFlowExcludeList *list) const;
+    bool IsMaxMacIpLearnt() const;
 
     // Static methods
     // Add a vm-interface
