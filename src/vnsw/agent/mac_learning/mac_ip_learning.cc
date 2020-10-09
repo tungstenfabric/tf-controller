@@ -82,13 +82,10 @@ void MacIpLearningTable::Add(MacLearningEntryPtr ptr) {
                     "mac address is same as of interface , ignoring");
         return;
     }
-
-
-    std::pair<MacIpLearningEntryMap::iterator, bool> it =
-        mac_ip_learning_entry_map_.insert(MacIpLearningEntryPair(key, ptr));
-    if (it.second == false ) {
+    MacIpLearningEntryMap::iterator it = mac_ip_learning_entry_map_.find(key);
+    if (it != mac_ip_learning_entry_map_.end()) {
         MacIpLearningEntry *existing_entry =
-            dynamic_cast<MacIpLearningEntry *>(it.first->second.get());
+            dynamic_cast<MacIpLearningEntry *>(it->second.get());
         if ( existing_entry && existing_entry->Mac() == entry->Mac()) {
             // ignore duplicate add requests, it is possible that
             // duplicate requests may come till route processing is done.
@@ -98,19 +95,29 @@ void MacIpLearningTable::Add(MacLearningEntryPtr ptr) {
                     "duplicate add request, ingoring");
             return;
         }
-
         MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, entry->vrf()->GetName(),
                     entry->IpAddr().to_string(), entry->Mac().ToString(),
                     entry->intf()->name(),
                     "local IP move detected, delete and add with new mac");
         //Entry already present, clear the entry
-        if (it.first->second->deleted() == false) {
-            it.first->second->Delete();
-            EnqueueMgmtReq(it.first->second, false);
+        if (it->second->deleted() == false) {
+            it->second->Delete();
+            EnqueueMgmtReq(it->second, false);
         }
         mac_ip_learning_entry_map_[key] = ptr;
-    }
+    } else {
+        // check whether mac limit reached for learning new mac-ip
+        // on the interface
+        if (vm_intf->IsMaxMacIpLearnt()) {
+            MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, entry->vrf()->GetName(),
+                        entry->IpAddr().to_string(), entry->Mac().ToString(),
+                        entry->intf()->name(),
+                        "max mac ip learnt limit reached on interface");
+            return;
+        }
 
+        mac_ip_learning_entry_map_.insert(MacIpLearningEntryPair(key, ptr));
+    }
     ptr->Add();
     EnqueueMgmtReq(ptr, true);
 }
@@ -151,6 +158,7 @@ void MacIpLearningTable::Resync(MacLearningEntryPtr ptr) {
                     entry->IpAddr().to_string(), entry->Mac().ToString(),
                     entry->intf()->name(), "Resync");
     ptr->Resync();
+    EnqueueMgmtReq(ptr, true);
 }
 
 void MacIpLearningTable::DetectIpMove(MacLearningEntryRequestPtr ptr) {
