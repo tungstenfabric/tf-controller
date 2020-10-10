@@ -191,6 +191,7 @@ class TestInPlaceUpgradeR2002(test_case.InPlaceUpgradeTestCase):
                     'physical_router_managed_state': 'dhcp',
                     'physical_router_management_ip': '10.100.100.255',
                     'physical_router_management_mac': 'some_string',
+                    'physical_router_onboarding_state': 'topology_discovered',
                     'physical_router_os_version': 'some_string',
                     'physical_router_product_name': 'some_string',
                     'physical_router_replicator_loopback_ip': 'some_string',
