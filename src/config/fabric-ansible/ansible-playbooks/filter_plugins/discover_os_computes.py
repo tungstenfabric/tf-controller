@@ -323,16 +323,16 @@ class FilterModule(object):
         return node
 
     @staticmethod
-    def import_nodes_to_contrail(all_nodes, cc_node_obj):
+    def import_nodes_to_contrail(all_nodes, cc_client):
         """
         Import nodes to CC using import_server job trigger.
 
         :param all_nodes: Dictionary
-        :param cc_node_obj: CreateCCNode object class
+        :param cc_client: CreateCCResource object class
         :return: None
         """
         logging.info("Begin adding nodes {} to Contrail Command".format(str(all_nodes)))  # noqa: E501
-        FilterModuleImportServer().import_nodes(all_nodes, cc_node_obj)
+        FilterModuleImportServer().import_nodes(all_nodes, cc_client)
 
     @staticmethod
     def get_switch_name(node):
@@ -385,7 +385,7 @@ class FilterModule(object):
         contain "node_type: <ovs/sriov>" information in its LLDP description.
         If this description is not added, the device will be skipped.
 
-        :param cc_node_obj: CreateCCNode object class
+        :param cc_client: CommandClient object class
         :param fabric_uuid: String
         :param vnc_api: vnc_api class established connection:
         :param devices_command_output: Dictionary
