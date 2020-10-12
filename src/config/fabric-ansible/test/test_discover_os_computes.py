@@ -13,7 +13,6 @@ from vnc_cfg_api_server.tests import test_case
 sys.path.append('/opt/contrail/fabric_ansible_playbooks/filter_plugins')
 sys.path.append('/opt/contrail/fabric_ansible_playbooks/common')
 sys.path.append('../fabric-ansible/ansible-playbooks/module_utils')
-sys.modules['import_server'] = MagicMock()
 sys.modules['contrail_command'] = MagicMock()
 from discover_os_computes import FilterModule
 
