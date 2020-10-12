@@ -198,7 +198,7 @@ bool ArpPathPreferenceState::SendArpRequest(WaitForTrafficIntfMap
         // Post message to delete MIL entry.
         MacAddress mil_mac = vrf_state_->agent->mac_learning_proto()->
                         GetMacIpLearningTable()->GetPairedMacAddress(
-                                vm_intf->vrf()->vrf_id(), ip());
+                                vm_intf->vrf_id(), ip());
         if (mil_mac != MacAddress()) {
             ++data.arp_try_count;
             if (data.arp_try_count == kArpTryCount) {
@@ -206,7 +206,7 @@ bool ArpPathPreferenceState::SendArpRequest(WaitForTrafficIntfMap
                 MacAddress mac = mil_mac;
                 vrf_state_->agent->mac_learning_proto()->
                         GetMacIpLearningTable()->MacIpEntryUnreachable(
-                                vm_intf->vrf()->vrf_id(), ip, mac);
+                                vm_intf->vrf_id(), ip, mac);
                 return true;
             }
         }
