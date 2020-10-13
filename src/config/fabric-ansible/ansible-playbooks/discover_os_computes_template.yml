@@ -15,10 +15,6 @@
       when: playbook_input.input.fabric_fq_name is defined
 
     - set_fact:
-        fabric_uuid: "{{ playbook_input.input.fabric_uuid }}"
-      when: playbook_input.input.fabric_uuid is defined
-
-    - set_fact:
         contrail_command_host: "{{ playbook_input.input.contrail_command_host }}"
       when: playbook_input.input.contrail_command_host is defined
 
