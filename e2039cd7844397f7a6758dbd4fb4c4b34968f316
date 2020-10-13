@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "68497138_fcbfa06c",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/fabric_config_filters.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-13T04:18:58Z",
+      "side": 1,
+      "message": "why don\u0027t we remove this import?",
+      "revId": "e2039cd7844397f7a6758dbd4fb4c4b34968f316",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
