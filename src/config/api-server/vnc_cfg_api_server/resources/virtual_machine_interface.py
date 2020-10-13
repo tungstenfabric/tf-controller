@@ -671,7 +671,7 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
 
         old_vlan = (read_result.get('virtual_machine_interface_properties') or
                     {}).get('sub_interface_vlan_tag') or 0
-        new_vlan = None
+        new_vlan = old_vlan
         if 'virtual_machine_interface_properties' in obj_dict:
             new_vlan = (obj_dict['virtual_machine_interface_properties'] or
                         {}).get('sub_interface_vlan_tag') or 0
