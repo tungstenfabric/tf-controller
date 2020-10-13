@@ -10,7 +10,9 @@ from builtins import str
 from collections import OrderedDict
 import copy
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    IpAddress, LogicalInterface, PhysicalInterface, Reference, Route, Subnet
+)
 from attrdict import AttrDict
 
 from .db import BgpRouterDM, GlobalVRouterConfigDM, LogicalRouterDM, \
@@ -23,6 +25,7 @@ class abstractclassmethod(classmethod):
     __isabstractmethod__ = True
 
     def __init__(self, callable):
+        """Abstract class method initializer"""
         callable.__isabstractmethod__ = True
         super(abstractclassmethod, self).__init__(callable)
 # end abstractclassmethod
@@ -82,7 +85,7 @@ class FeatureBase(object):
             except Exception as e:
                 exceptions.append(str(e))
         if exceptions:
-            raise PluginRegistrationFailed(exceptions)
+            raise cls.PluginRegistrationFailed(exceptions)
     # end register_plugins
 
     @classmethod
@@ -137,6 +140,7 @@ class FeatureBase(object):
     # end _add_ip_address
 
     def __init__(self, logger, physical_router, configs):
+        """Initialize Base class for feature plugins"""
         self._logger = logger
         self._physical_router = physical_router
         self._configs = configs

@@ -27,10 +27,18 @@ from abstract_device_api import abstract_device_xsd as AbstractDevXsd
 from attrdict import AttrDict
 from cfgm_common import vnc_greenlets
 from cfgm_common.exceptions import ResourceExistsError
-from cfgm_common.uve.feature_flags.ttypes import *
-from cfgm_common.uve.physical_router.ttypes import *
-from cfgm_common.uve.physical_router_config.ttypes import *
-from cfgm_common.uve.service_status.ttypes import *
+from cfgm_common.uve.feature_flags.ttypes import (
+    UveFeatureFlagConfig, UveFeatureFlagConfigTrace
+)
+from cfgm_common.uve.physical_router.ttypes import (
+    UvePhysicalRouterConfig, UvePhysicalRouterConfigTrace
+)
+from cfgm_common.uve.physical_router_config.ttypes import (
+    UvePhysicalRouterConfiguration, UvePhysicalRouterConfigurationTrace
+)
+from cfgm_common.uve.service_status.ttypes import (
+    UveServiceStatus, UveServiceStatusTrace
+)
 from cfgm_common.vnc_db import DBBase
 from cfgm_common.vnc_db import FeatureFlagBase
 from cfgm_common.vnc_object_db import VncObjectDBClient
@@ -43,7 +51,7 @@ from past.builtins import basestring
 from past.utils import old_div
 import pyhash
 from sandesh_common.vns.constants import DEVICE_MANAGER_KEYSPACE_NAME
-from vnc_api.vnc_api import *
+from vnc_api.vnc_api import VirtualNetwork
 
 from .ansible_base import AnsibleBase
 from .device_conf import DeviceConf
@@ -250,6 +258,7 @@ class FeatureFlagDM(DBBaseDM, FeatureFlagBase):
                 'callbacks': {}}
 
     def __init__(self, uuid, obj_dict=None):
+        """Feature Flag Object"""
         self.uuid = uuid
         self.name = None
         self.feature_flag = {}
@@ -302,7 +311,8 @@ class FeatureFlagDM(DBBaseDM, FeatureFlagBase):
     # end uve_send
 
     def delete_obj(self):
-        cls.delete_feature_flag(self.feature_flag.get('feature_id'))
+        self.delete_feature_flag(self.feature_flag.get('feature_id'),
+                                 self.feature_flag.get('feature_flag_version'))
     # end delete_obj
 
 # end FeatureFlagDM
@@ -313,6 +323,7 @@ class BgpRouterDM(DBBaseDM):
     obj_type = 'bgp_router'
 
     def __init__(self, uuid, obj_dict=None):
+        """BGP Router Object"""
         self.uuid = uuid
         self.bgp_routers = {}
         self.physical_router = None
@@ -396,6 +407,7 @@ class FeatureDM(DBBaseDM):
     obj_type = 'feature'
 
     def __init__(self, uuid, obj_dict=None):
+        """Feature Object"""
         self.uuid = uuid
         self.name = None
         self.features = set()
@@ -421,6 +433,7 @@ class PhysicalRoleDM(DBBaseDM):
     obj_type = 'physical_role'
 
     def __init__(self, uuid, obj_dict=None):
+        """Physical Role Object"""
         self.uuid = uuid
         self.name = None
         self.update(obj_dict)
@@ -439,6 +452,7 @@ class OverlayRoleDM(DBBaseDM):
     obj_type = 'overlay_role'
 
     def __init__(self, uuid, obj_dict=None):
+        """Overlay Role Object"""
         self.uuid = uuid
         self.name = None
         self.update(obj_dict)
@@ -457,6 +471,7 @@ class FeatureConfigDM(DBBaseDM):
     obj_type = 'feature_config'
 
     def __init__(self, uuid, obj_dict=None):
+        """Feature Config Object"""
         self.uuid = uuid
         self.name = None
         self.additional_params = None
@@ -482,6 +497,7 @@ class RoleDefinitionDM(DBBaseDM):
     obj_type = 'role_definition'
 
     def __init__(self, uuid, obj_dict=None):
+        """Role Definition Object"""
         self.uuid = uuid
         self.name = None
         self.features = set()
@@ -521,6 +537,7 @@ class PhysicalRouterDM(DBBaseDM):
     _sandesh = None
 
     def __init__(self, uuid, obj_dict=None):
+        """Physical Router Object"""
         self.uuid = uuid
         self.physical_role = None
         self.overlay_roles = set()
@@ -1193,14 +1210,14 @@ class PhysicalRouterDM(DBBaseDM):
                    and vn.ipv6_ll_vn_id is not None:
                     vn_uuid = vn.ipv6_ll_vn_id
                 ret = self.free_ip(vn_uuid, ip_map[vn_subnet])
-                if ret == False:
+                if ret is False:
                     self._logger.error("Unable to free ip for vn/subnet/pr "
                                        "(%s/%s/%s)" % (vn_uuid, subnet_prefix,
                                                        self.uuid))
 
             ret = self._object_db.delete_ip(
                 self.uuid + ':' + vn_uuid + ':' + subnet_prefix, ip_used_for)
-            if ret == False:
+            if ret is False:
                 self._logger.error("Unable to free ip from db for vn/subnet/pr"
                                    " (%s/%s/%s)" % (vn_uuid, subnet_prefix,
                                                     self.uuid))
@@ -1240,11 +1257,11 @@ class PhysicalRouterDM(DBBaseDM):
             ret = self._object_db.add_ip(
                 self.uuid + ':' + vn_uuid + ':' + subnet_prefix, ip_used_for,
                 ip_addr + '/' + length)
-            if ret == False:
+            if ret is False:
                 self._logger.error("Unable to store ip for vn/subnet/pr "
                                    "(%s/%s/%s)" % (vn_uuid, subnet_prefix,
                                                    self.uuid))
-                if self.free_ip(vn_uuid, ip_addr) == False:
+                if self.free_ip(vn_uuid, ip_addr) is False:
                     self._logger.error("Unable to free ip for vn/subnet/pr "
                                        "(%s/%s/%s)" % (vn_uuid, subnet_prefix,
                                                        self.uuid))
@@ -1519,13 +1536,13 @@ class PhysicalRouterDM(DBBaseDM):
         if not rp_params:
             return
         keyname = 'import_routing_policy_uuid'
-        if imported == False:
+        if imported is False:
             keyname = 'export_routing_policy_uuid'
         for rp_uuid in rp_params.get(keyname) or []:
             rp_obj = RoutingPolicyDM.get(rp_uuid)
             # only include routing policy who has abstract config
             # supported protocol.
-            if self._is_routing_poilcy_supported(rp_obj) == True:
+            if self._is_routing_poilcy_supported(rp_obj) is True:
                 rp_name = rp_obj.name
                 rp_list.append(rp_name)
                 if rp_name not in rp_obj_list:
@@ -1828,6 +1845,7 @@ class GlobalVRouterConfigDM(DBBaseDM):
     global_encapsulation_priority = None
 
     def __init__(self, uuid, obj_dict=None):
+        """Global VRouter Config Object"""
         self.uuid = uuid
         self.update(obj_dict)
     # end __init__
@@ -1886,6 +1904,7 @@ class GlobalSystemConfigDM(DBBaseDM):
     ip_fabric_subnets = None
 
     def __init__(self, uuid, obj_dict=None):
+        """Global System Config Object"""
         self.uuid = uuid
         self.physical_routers = set()
         self.data_center_interconnects = set()
@@ -1915,6 +1934,7 @@ class PhysicalInterfaceDM(DBBaseDM):
     _esi_map = {}
 
     def __init__(self, uuid, obj_dict=None):
+        """Physical Interface Object"""
         self.uuid = uuid
         self.name = None
         self.physical_router = None
@@ -1984,6 +2004,7 @@ class LogicalInterfaceDM(DBBaseDM):
     obj_type = 'logical_interface'
 
     def __init__(self, uuid, obj_dict=None):
+        """Logical Interface Object"""
         self.uuid = uuid
         self.virtual_machine_interface = None
         self.vlan_tag = 0
@@ -2046,17 +2067,6 @@ class LogicalInterfaceDM(DBBaseDM):
         return sg_list
     # end get_attached_sgs
 
-    def get_attached_acls(self):
-        acl_list = []
-        sg_list = li_obj.get_attached_sgs()
-        for sg in sg_list or []:
-            for acl in sg.access_control_lists or []:
-                acl = AccessControlListDM.get(acl)
-                if acl:
-                    acl_list.append(acl)
-        return acl_list
-    # end get_attached_acls
-
     def delete_obj(self):
         if self.physical_interface:
             parent = PhysicalInterfaceDM.get(self.physical_interface)
@@ -2077,6 +2087,7 @@ class FloatingIpDM(DBBaseDM):
     obj_type = 'floating_ip'
 
     def __init__(self, uuid, obj_dict=None):
+        """Floating Ip Object"""
         self.uuid = uuid
         self.virtual_machine_interface = None
         self.floating_ip_address = None
@@ -2127,6 +2138,7 @@ class FloatingIpPoolDM(DBBaseDM):
     obj_type = 'floating_ip_pool'
 
     def __init__(self, uuid, obj_dict=None):
+        """Floating Ip Pool Object"""
         self.uuid = uuid
         self.virtual_network = None
         self.floating_ips = set()
@@ -2159,6 +2171,7 @@ class InstanceIpDM(DBBaseDM):
     obj_type = 'instance_ip'
 
     def __init__(self, uuid, obj_dict=None):
+        """Instance IP Object"""
         self.name = None
         self.fq_name = None
         self.uuid = uuid
@@ -2205,6 +2218,7 @@ class AccessControlListDM(DBBaseDM):
     obj_type = 'access_control_list'
 
     def __init__(self, uuid, obj_dict=None):
+        """Access Control List Object"""
         self.uuid = uuid
         self.vnc_obj = None
         self.security_group = None
@@ -2239,6 +2253,7 @@ class SecurityGroupDM(DBBaseDM):
     obj_type = 'security_group'
 
     def __init__(self, uuid, obj_dict=None):
+        """Security Group Object"""
         self.uuid = uuid
         self.name = None
         self.virtual_machine_interfaces = set()
@@ -2306,6 +2321,7 @@ class VirtualMachineInterfaceDM(DBBaseDM):
     obj_type = 'virtual_machine_interface'
 
     def __init__(self, uuid, obj_dict=None):
+        """Virtual Machine Interface Object"""
         self.uuid = uuid
         self.name = None
         self.virtual_network = None
@@ -2461,6 +2477,7 @@ class LogicalRouterDM(DBBaseDM):
     obj_type = 'logical_router'
 
     def __init__(self, uuid, obj_dict=None):
+        """Logical Router Object"""
         self.uuid = uuid
         self.physical_routers = set()
         self.fabric = None
@@ -2620,7 +2637,7 @@ class LogicalRouterDM(DBBaseDM):
                         elif route_param.get('routing_protocol')\
                                 == 'static-routes':
                             static_routes = True
-                    if bgp == True and static_routes == True:
+                    if bgp is True and static_routes is True:
                         return static_routes, bgp
         return static_routes, bgp
     # end get_connected_networks
@@ -2655,6 +2672,7 @@ class NetworkIpamDM(DBBaseDM):
     obj_type = 'network_ipam'
 
     def __init__(self, uuid, obj_dict=None):
+        """Network Ipam Object"""
         self.uuid = uuid
         self.name = None
         self.ipam_subnets = set()
@@ -2695,6 +2713,7 @@ class IntentMapDM(DBBaseDM):
     obj_type = 'intent_map'
 
     def __init__(self, uuid, obj_dict=None):
+        """Intent Map Object"""
         self.uuid = uuid
         self.name = None
         self.physical_routers = set()
@@ -2732,6 +2751,7 @@ class VirtualNetworkDM(DBBaseDM):
     obj_type = 'virtual_network'
 
     def __init__(self, uuid, obj_dict=None):
+        """Virtual Network Object"""
         self.uuid = uuid
         self.name = None
         self.physical_routers = set()
@@ -2914,7 +2934,7 @@ class VirtualNetworkDM(DBBaseDM):
         if self.logical_router:
             lr = LogicalRouterDM.get(self.logical_router)
         if not lr or not lr.logical_router_gateway_external:
-            if only_routedvn_prefix == True:
+            if only_routedvn_prefix is True:
                 if self.virtual_network_category == 'routed':
                     return set(self.gateways.keys())
                 else:
@@ -2928,7 +2948,7 @@ class VirtualNetworkDM(DBBaseDM):
         for vn in vn_list:
             vn_obj = VirtualNetworkDM.get(vn)
             if vn_obj and list(vn_obj.gateways.keys()):
-                if only_routedvn_prefix == True:
+                if only_routedvn_prefix is True:
                     if vn_obj.virtual_network_category == 'routed':
                         prefix_set = prefix_set.union(vn_obj.gateways.keys())
                 else:
@@ -2968,7 +2988,7 @@ class VirtualNetworkDM(DBBaseDM):
         self.instance_ip_map = {}
         for vmi_uuid in self.virtual_machine_interfaces:
             vmi = VirtualMachineInterfaceDM.get(vmi_uuid)
-            if vmi is None or vmi.is_device_owner_bms() == False:
+            if vmi is None or vmi.is_device_owner_bms() is False:
                 continue
             if vmi.floating_ip is not None and vmi.instance_ip is not None:
                 fip = FloatingIpDM.get(vmi.floating_ip)
@@ -3002,7 +3022,7 @@ class VirtualNetworkDM(DBBaseDM):
                     continue
                 vmi = VirtualMachineInterfaceDM.get(
                     fip_obj.virtual_machine_interface)
-                if vmi is None or vmi.is_device_owner_bms() == False:
+                if vmi is None or vmi.is_device_owner_bms() is False:
                     continue
                 if vmi.floating_ip is not None and vmi.instance_ip is not None:
                     fip = FloatingIpDM.get(vmi.floating_ip)
@@ -3036,7 +3056,7 @@ class VirtualNetworkDM(DBBaseDM):
             return import_targets
         for dci_uuid in self.data_center_interconnects:
             dci = DataCenterInterconnectDM.get(dci_uuid)
-            if not dci or dci.is_this_inter_fabric() == False or \
+            if not dci or dci.is_this_inter_fabric() is False or \
                     dci.dci_mode == 'l3':
                 continue
             for f_uuid in dci.fabrics:
@@ -3084,6 +3104,7 @@ class RoutingInstanceDM(DBBaseDM):
     obj_type = 'routing_instance'
 
     def __init__(self, uuid, obj_dict=None):
+        """Routing Instance Object"""
         self.uuid = uuid
         self.name = None
         self.virtual_network = None
@@ -3143,6 +3164,7 @@ class ServiceTemplateDM(DBBaseDM):
     obj_type = 'service_template'
 
     def __init__(self, uuid, obj_dict=None):
+        """Service Template Object"""
         self.uuid = uuid
         self.service_instances = set()
         self.service_appliance_set = None
@@ -3181,6 +3203,7 @@ class ServiceApplianceDM(DBBaseDM):
     obj_type = 'service_appliance'
 
     def __init__(self, uuid, obj_dict=None):
+        """Service Appliance Object"""
         self.uuid = uuid
         self.service_appliance_set = None
         self.physical_interfaces = {}
@@ -3255,6 +3278,7 @@ class ServiceApplianceSetDM(DBBaseDM):
     obj_type = 'service_appliance_set'
 
     def __init__(self, uuid, obj_dict=None):
+        """Service Appliance Set Object"""
         self.uuid = uuid
         self.service_appliances = set()
         self.service_template = None
@@ -3288,6 +3312,7 @@ class ServiceInstanceDM(DBBaseDM):
     obj_type = 'service_instance'
 
     def __init__(self, uuid, obj_dict=None):
+        """Service Instance Object"""
         self.uuid = uuid
         self.fq_name = None
         self.name = None
@@ -3337,6 +3362,7 @@ class PortTupleDM(DBBaseDM):
     obj_type = 'port_tuple'
 
     def __init__(self, uuid, obj_dict=None):
+        """Port Tuple Object"""
         self.uuid = uuid
         self.virtual_machine_interfaces = set()
         self.logical_routers = set()
@@ -3457,6 +3483,7 @@ class ServiceEndpointDM(DBBaseDM):
     obj_type = 'service_endpoint'
 
     def __init__(self, uuid, obj_dict=None):
+        """Service Endpoint Object"""
         self.uuid = uuid
         self.physical_router = None
         self.service_connection_modules = set()
@@ -3491,6 +3518,7 @@ class ServiceConnectionModuleDM(DBBaseDM):
     obj_type = 'service_connection_module'
 
     def __init__(self, uuid, obj_dict=None):
+        """Service Connection Module Object"""
         self.uuid = uuid
         self.service_endpoints = set()
         self.service_object = None
@@ -3539,6 +3567,7 @@ class ServiceObjectDM(DBBaseDM):
     obj_type = 'service_object'
 
     def __init__(self, uuid, obj_dict=None):
+        """Service Object Object"""
         self.uuid = uuid
         self.service_connection_module = None
         self.sep_list = None
@@ -3573,7 +3602,7 @@ class ServiceObjectDM(DBBaseDM):
                     pr_uuid = sep.physical_router
                     pr = PhysicalRouterDM.get(pr_uuid)
                     if pr is not None and pr.vendor.lower() == "juniper" \
-                       and found != True:
+                       and found is not True:
                         self.management_ip = pr.management_ip
                         self.user_creds = pr.user_credentials
                         self.service_type = scm.service_type
@@ -3582,7 +3611,7 @@ class ServiceObjectDM(DBBaseDM):
                         bgp_uuid = pr.bgp_router
                         bgp_entry = BgpRouterDM.get(bgp_uuid)
                         neigbor_id = bgp_entry.params.get('address')
-                if found == True:
+                if found is True:
                     service_params = {
                         "service_type": self.service_type,
                         "circuit_id": circuit_id,
@@ -3622,6 +3651,7 @@ class NetworkDeviceConfigDM(DBBaseDM):
     obj_type = 'network_device_config'
 
     def __init__(self, uuid, obj_dict=None):
+        """Network Device Config Object"""
         self.uuid = uuid
         self.physical_router = None
         self.management_ip = None
@@ -3673,6 +3703,7 @@ class DataCenterInterconnectDM(DBBaseDM):
     obj_type = 'data_center_interconnect'
 
     def __init__(self, uuid, obj_dict=None):
+        """Initialise Data Center Interconnect Object"""
         self.uuid = uuid
         self.name = None
         self.logical_routers = set()
@@ -3782,7 +3813,7 @@ class DataCenterInterconnectDM(DBBaseDM):
         lpr_uuid = pr_obj.uuid
         lfabric_uuid = pr_obj.fabric
         for dci in list(cls._dict.values()) or []:
-            if dci.is_this_inter_fabric() == False:
+            if dci.is_this_inter_fabric() is False:
                 continue
             neigh_bgpr_fabric = {}
             import_policies = set()
@@ -3822,7 +3853,7 @@ class DataCenterInterconnectDM(DBBaseDM):
                         if pr.has_rb_role("DCI-Gateway") and pr.bgp_router:
                             neigh_bgpr_fabric[pr.bgp_router] = fabric_obj.name
 
-            if dci_include == True and len(neigh_bgpr_fabric) > 0:
+            if dci_include is True and len(neigh_bgpr_fabric) > 0:
                 cls.update_peer_dict(
                     neigh_bgpr_dict, neigh_bgpr_fabric, dci.name)
                 dci_dict[dci.name] = {'import_policy': import_policies,
@@ -3870,7 +3901,7 @@ class DataCenterInterconnectDM(DBBaseDM):
         return pr_id_list
 
     def get_lr(self, pr):
-        if not self.logical_routers or self.is_this_inter_fabric() == False:
+        if not self.logical_routers or self.is_this_inter_fabric() is False:
             return None
         for lr_uuid in self.logical_routers:
             lr = LogicalRouterDM.get(lr_uuid)
@@ -3883,7 +3914,7 @@ class DataCenterInterconnectDM(DBBaseDM):
     # end get_lr
 
     def get_lr_vn(self, pr):
-        if not self.logical_routers or self.is_this_inter_fabric() == False:
+        if not self.logical_routers or self.is_this_inter_fabric() is False:
             return None
         for lr_uuid in self.logical_routers:
             lr = LogicalRouterDM.get(lr_uuid)
@@ -3958,7 +3989,7 @@ class DataCenterInterconnectDM(DBBaseDM):
     def _build_rp_from_vn_intrafabric(self, for_ribgrp=True,
                                       vrf_srcexport=True):
         rplist = {}
-        if for_ribgrp == True:
+        if for_ribgrp is True:
             rp = AbstractDevXsd.RoutingPolicy(
                 name=DMUtils.get_dci_rib_rp_name(self),
                 comment=DMUtils.get_dci_rib_rp_comment(self),
@@ -4032,7 +4063,7 @@ class DataCenterInterconnectDM(DBBaseDM):
             comment=DMUtils.get_dci_vrf_rp_comment(self),
             term_type='network-device')
         rp_entries = AbstractDevXsd.RoutingPolicyEntry()
-        if vrf_srcexport == False:
+        if vrf_srcexport is False:
             rp_props = []
             for subnet in self.get_all_vn_subnets():
                 rp_props.append(AbstractDevXsd.RouteFilterProperties(
@@ -4085,7 +4116,7 @@ class DataCenterInterconnectDM(DBBaseDM):
             if len(rp_obj_list) > 0:
                 RoutingPolicyDM.create_abstract_routing_policies(
                     rp_list=rplist, rp_obj_list=rp_obj_list, dci_obj=self)
-            if for_ribgrp == True:
+            if for_ribgrp is True:
                 rp_rib_list = {}
                 # add terms named reject_else { then reject } for each RP
                 # with terms having 'from route_filter'
@@ -4102,11 +4133,11 @@ class DataCenterInterconnectDM(DBBaseDM):
                             add_reject_term = True
                             break
                     # do not add duplicate reject_else terms at the end
-                    if add_reject_term == True:
+                    if add_reject_term is True:
                         l_tname = rp_entries.get_terms()[-1].get_name() or ''
                         if l_tname == 'reject_else':
                             add_reject_term = False
-                    if add_reject_term == True:
+                    if add_reject_term is True:
                         tactionlist = AbstractDevXsd.TermActionListType(
                             action="reject")
                         reject_term = AbstractDevXsd.RoutingPolicyTerm(
@@ -4116,7 +4147,7 @@ class DataCenterInterconnectDM(DBBaseDM):
                 return rp_rib_list
 
             # route leaks RP using VRF (LR exists on different PR device):
-            if vrf_srcexport == True:
+            if vrf_srcexport is True:
                 rp_vrf_export_list = {}
                 # RP for Src LR (used as vrf-export):
                 for rp in rplist:
@@ -4187,7 +4218,7 @@ class DataCenterInterconnectDM(DBBaseDM):
         vrf_dst_dci_list = set()
         src_ri_dci_map = {}
         for int_ri in internal_vn_ris or []:
-            if int_ri.get_virtual_network_is_internal() != True:
+            if int_ri.get_virtual_network_is_internal() is not True:
                 continue
             lr_uuid = None
             if DMUtils.get_lr_internal_vn_prefix() in int_ri.name:
@@ -4201,11 +4232,11 @@ class DataCenterInterconnectDM(DBBaseDM):
             if not lr:
                 continue
             ri_name = int_ri.get_description()[:127]
-            if lr.is_master == True:
+            if lr.is_master is True:
                 ri_name = 'inet.0'
             for dci_uuid in lr.data_center_interconnects:
                 dci = DataCenterInterconnectDM.get(dci_uuid)
-                if not dci or dci.is_this_inter_fabric() == True or \
+                if not dci or dci.is_this_inter_fabric() is True or \
                         dci.src_lr_uuid is None:
                     continue
 
@@ -4214,7 +4245,7 @@ class DataCenterInterconnectDM(DBBaseDM):
                     continue
                 src_irb_name = "__contrail_%s_%s" % (
                     src_lrobj.name, src_lrobj.uuid)
-                if src_lrobj.is_master == True:
+                if src_lrobj.is_master is True:
                     src_irb_name = 'inet.0'
                 src_irb_name = src_irb_name[:127]
                 curlr_in_dstlr = True if (lr_uuid in dci.dst_lr_pr and
@@ -4278,7 +4309,7 @@ class DataCenterInterconnectDM(DBBaseDM):
                     dstlrprs = set()
                     for dprlist in dci.dst_lr_pr.values():
                         dstlrprs.update(dprlist)
-                    if bool(dstlrprs.difference(srclrprs)) == False:
+                    if bool(dstlrprs.difference(srclrprs)) is False:
                         continue
                 if dci.name not in vrf_dst_dci_list:
                     # do vrf-export settings for current src lr
@@ -4315,6 +4346,7 @@ class FabricDM(DBBaseDM):
     obj_type = 'fabric'
 
     def __init__(self, uuid, obj_dict=None):
+        """Fabric Object"""
         self.uuid = uuid
         self.name = None
         self.fq_name = None
@@ -4435,6 +4467,7 @@ class FabricNamespaceDM(DBBaseDM):
     obj_type = 'fabric_namespace'
 
     def __init__(self, uuid, obj_dict=None):
+        """Fabric Namespace Object"""
         self.uuid = uuid
         self.name = None
         self.as_numbers = None
@@ -4498,6 +4531,7 @@ class NodeProfileDM(DBBaseDM):
     obj_type = 'node_profile'
 
     def __init__(self, uuid, obj_dict=None):
+        """Node Profile Object"""
         self.uuid = uuid
         self.name = None
         self.role_configs = set()
@@ -4533,6 +4567,7 @@ class PortDM(DBBaseDM):
     obj_type = 'port'
 
     def __init__(self, uuid, obj_dict=None):
+        """Port Object"""
         self.uuid = uuid
         self.tags = set()
         self.physical_interfaces = set()
@@ -4559,6 +4594,7 @@ class TagDM(DBBaseDM):
     obj_type = 'tag'
 
     def __init__(self, uuid, obj_dict=None):
+        """Tag Object"""
         self.uuid = uuid
         self.virtual_networks = set()
         self.update(obj_dict)
@@ -4582,6 +4618,7 @@ class PortProfileDM(DBBaseDM):
     obj_type = 'port_profile'
 
     def __init__(self, uuid, obj_dict=None):
+        """Port Profile Object"""
         self.uuid = uuid
         self.storm_control_profile = None
         self.port_profile_params = None
@@ -4657,6 +4694,7 @@ class StormControlProfileDM(DBBaseDM):
     obj_type = 'storm_control_profile'
 
     def __init__(self, uuid, obj_dict=None):
+        """Storm Control Profile Object"""
         self.uuid = uuid
         self.port_profiles = set()
         self.storm_control_params = None
@@ -4752,6 +4790,7 @@ class TelemetryProfileDM(DBBaseDM):
     obj_type = 'telemetry_profile'
 
     def __init__(self, uuid, obj_dict=None):
+        """Telemetry Profile Object"""
         self.uuid = uuid
         self.sflow_profile = None
         self.physical_routers = set()
@@ -4779,6 +4818,7 @@ class SflowProfileDM(DBBaseDM):
     obj_type = 'sflow_profile'
 
     def __init__(self, uuid, obj_dict=None):
+        """Sflow Profile Object"""
         self.uuid = uuid
         self.telemetry_profiles = set()
         self.update(obj_dict)
@@ -4804,6 +4844,7 @@ class FlowNodeDM(DBBaseDM):
     obj_type = 'flow_node'
 
     def __init__(self, uuid, obj_dict=None):
+        """Flow Node Object"""
         self.uuid = uuid
         self.virtual_network = None
         self.virtual_ip_addr = None
@@ -4830,6 +4871,7 @@ class LinkAggregationGroupDM(DBBaseDM):
     obj_type = 'link_aggregation_group'
 
     def __init__(self, uuid, obj_dict=None):
+        """Link Aggregation Group Object"""
         self.uuid = uuid
         self.name = None
         self.physical_interfaces = set()
@@ -4857,6 +4899,7 @@ class VirtualPortGroupDM(DBBaseDM):
     obj_type = 'virtual_port_group'
 
     def __init__(self, uuid, obj_dict=None):
+        """Virtual Port Group Object"""
         self.uuid = uuid
         self.name = None
         self.physical_interfaces = set()
@@ -4981,6 +5024,7 @@ class RoleConfigDM(DBBaseDM):
     obj_type = 'role_config'
 
     def __init__(self, uuid, obj_dict=None):
+        """Role Config Object"""
         self.uuid = uuid
         self.name = None
         self.node_profile = None
@@ -5011,6 +5055,7 @@ class E2ServiceProviderDM(DBBaseDM):
     obj_type = 'e2_service_provider'
 
     def __init__(self, uuid, obj_dict=None):
+        """E2 Service Provider Object"""
         self.uuid = uuid
         self.promiscuous = None
         self.physical_routers = set()
@@ -5042,6 +5087,7 @@ class PeeringPolicyDM(DBBaseDM):
     obj_type = 'peering_policy'
 
     def __init__(self, uuid, obj_dict=None):
+        """Peering Policy Object"""
         self.uuid = uuid
         self.e2_service_providers = set()
         self.update(obj_dict)
@@ -5069,6 +5115,7 @@ class RoutingPolicyDM(DBBaseDM):
     obj_type = 'routing_policy'
 
     def __init__(self, uuid, obj_dict=None):
+        """Routing Policy Object"""
         self.uuid = uuid
         self.routing_policy_entries = []
         self.term_type = 'vrouter'
@@ -5294,6 +5341,7 @@ class InterfaceRouteTableDM(DBBaseDM):
     obj_type = 'interface_route_table'
 
     def __init__(self, uuid, obj_dict=None):
+        """Interface Route Table Object"""
         self.uuid = uuid
         self.prefix = {}
         self.virtual_machine_interfaces = set()
@@ -5364,6 +5412,7 @@ class DMCassandraDB(VncObjectDBClient):
     # end
 
     def __init__(self, zkclient, args, logger):
+        """Cassandra DB Object"""
         self._zkclient = zkclient
         self._args = args
 
@@ -5616,7 +5665,7 @@ class DMCassandraDB(VncObjectDBClient):
             ip_used_for = vn_subnet_ip_used_for[1]
             ret = self.delete(self._PR_VN_IP_CF, pr_uuid + ':' + vn_subnet,
                               [DMUtils.get_ip_cs_column_name(ip_used_for)])
-            if ret == False:
+            if ret is False:
                 self._logger.error(
                     "Unable to free ip from db for vn/pr/subnet/ip_used_for "
                     "(%s/%s/%s)" % (pr_uuid, vn_subnet, ip_used_for))
