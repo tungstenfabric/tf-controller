@@ -16,6 +16,24 @@
       "revId": "ee096ef8705208c8c42cad6ba29d28943738b8f4",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "37a6b5c4_38c640da",
+        "filename": "src/config/device-manager/device_manager/db.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2069,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-13T16:14:57Z",
+      "side": 1,
+      "message": "I actually wasn\u0027t aware of moving from li to vmi.\n \nSo the error reported with this was: li_obj undefined. I checked when this method was last modified and this was written 3 years ago and untouched since then: https://github.com/Juniper/contrail-controller/blame/9805d95f05a9a14f3303b4f775ec04106dcefb48/src/config/device-manager/device_manager/db.py#L2063\n\nI grepped for this method to see if it was being used anywhere and it wasn\u0027t. The only place this method was mentioned was these lines itself.\n\n[root@c998a47d818e contrail]# pwd\n/root/contrail\n[root@c998a47d818e contrail]# rg get_attached_acls\ncontroller/src/config/device-manager/device_manager/db.py\n2049:    def get_attached_acls(self):\n2058:    # end get_attached_acls\n[root@c998a47d818e contrail]# \n\nThat was the actual reason I removed it. Do you think the method should be fixed instead of removing?",
+      "parentUuid": "7491039d_7a40f2c1",
+      "revId": "ee096ef8705208c8c42cad6ba29d28943738b8f4",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
