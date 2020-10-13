@@ -26,7 +26,7 @@
 
     - name: Creating OS compute nodes
       set_fact:
-        output: "{{ playbook_input | create_os_node_filter(devices_command_output) }}"
+        output: "{{ playbook_input | create_os_ml2_node_filter(devices_command_output) }}"
 
     - name: Update job log with percentage
       include_tasks: percentage_update.yml
