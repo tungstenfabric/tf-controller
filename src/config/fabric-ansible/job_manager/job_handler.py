@@ -34,7 +34,7 @@ class JobHandler(object):
                  playbook_timeout, playbook_seq, vnc_api_init_params,
                  zk_client, job_description,
                  transaction_id, transaction_descr):
-        """Initializes JobHandler and saves all required information."""
+        """Initialize JobHandler and save all required information."""
         self.is_multi_device_playbook = False
         self._logger = logger
         self._vnc_api = vnc_api

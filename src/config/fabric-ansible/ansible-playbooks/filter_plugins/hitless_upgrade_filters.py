@@ -11,13 +11,13 @@ from builtins import object
 from builtins import str
 import copy
 from datetime import timedelta
-import re
+import re  # noqa
 import sys
 import traceback
 
-sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")
+sys.path.append("/opt/contrail/fabric_ansible_playbooks/module_utils")  # noqa
 # unit test
-sys.path.append("../fabric-ansible/ansible-playbooks/module_utils")
+sys.path.append("../fabric-ansible/ansible-playbooks/module_utils")  # noqa
 from filter_utils import _task_error_log, FilterLog
 
 from job_manager.job_utils import JobAnnotations, JobVncApi
@@ -59,7 +59,7 @@ class FilterModule(object):
             'hitless_all_devices': self.get_all_devices,
             'hitless_device_info': self.get_device_info,
             'hitless_failure_update': self.hitless_failure_update,
-            'validate_hitless_critical_roles': self.validate_critical_roles_for_hitless,
+            'validate_hitless_critical_roles': self.validate_critical_roles_for_hitless,  # noqa: E501
             'mm_validate': self.validate_critical_roles_for_mm
         }
     # end filters
@@ -344,13 +344,13 @@ class FilterModule(object):
         for critical_routing_bridging_role in\
                 FilterModule.critical_routing_bridging_roles:
             self.critical_routing_bridging_roles_count[
-                    critical_routing_bridging_role] = 0
+                critical_routing_bridging_role] = 0
         for device_uuid, device_info in list(self.device_table.items()):
             for routing_bridging_role in device_info.get('rb_roles'):
                 if routing_bridging_role in\
                         FilterModule.critical_routing_bridging_roles:
                     self.critical_routing_bridging_roles_count[
-                            routing_bridging_role] += 1
+                        routing_bridging_role] += 1
 
     # Assumes that critical_routing_bridging_roles_count has been initialized.
     def _calc_max_number_of_repr_of_critical_rb_roles_per_batch(self):
@@ -358,7 +358,7 @@ class FilterModule(object):
         for role_name, number_of_occurences \
                 in list(self.critical_routing_bridging_roles_count.items()):
             self.max_number_of_repr_of_critical_rb_roles_per_batch[role_name] \
-                    = number_of_occurences / 2 + number_of_occurences % 2
+                = number_of_occurences / 2 + number_of_occurences % 2
 
     def _calculate_max_number_of_spines_updated_in_batch(self):
         number_of_spines = 0
@@ -373,7 +373,7 @@ class FilterModule(object):
         for critical_routing_bridging_role in\
                 FilterModule.critical_routing_bridging_roles:
             critical_routing_bridging_roles_count[
-                    critical_routing_bridging_role] = 0
+                critical_routing_bridging_role] = 0
         for device_uuid in batch['device_list']:
             rb_roles = self.device_table[device_uuid].get('rb_roles')
             for rb_role in rb_roles:
@@ -414,10 +414,10 @@ class FilterModule(object):
         device_info = self.device_table[device_uuid]
         rb_roles = device_info.get('rb_roles')
         critical_rb_roles_in_device = list(
-                FilterModule.critical_routing_bridging_roles & set(rb_roles))
+            FilterModule.critical_routing_bridging_roles & set(rb_roles))
         if critical_rb_roles_in_device:
             critical_rb_roles_in_batch_count = self.\
-                    _calc_number_of_repr_of_critical_rb_roles_in_batch(batch)
+                _calc_number_of_repr_of_critical_rb_roles_in_batch(batch)
             for rb_role in critical_rb_roles_in_device:
                 if critical_rb_roles_in_batch_count[rb_role] + 1 > self.\
                         max_number_of_repr_of_critical_rb_roles_per_batch[
@@ -431,7 +431,7 @@ class FilterModule(object):
             self._check_vpg_buddies_in_batch(device_uuid, batch) and \
             self._check_number_of_spines_in_batch(device_uuid, batch) and \
             self._check_number_of_critical_rb_roles_in_batch(
-                    device_uuid, batch)
+                device_uuid, batch)
 
     def _add_batch_index_to_device_info(self, batches):
         for batch in batches:
@@ -484,7 +484,7 @@ class FilterModule(object):
                 device_list = self.role_device_groups.get(role, [])
                 for device_uuid in device_list:
                     self._add_device_to_the_batch(
-                            device_uuid, batch_load_list, batches)
+                        device_uuid, batch_load_list, batches)
             # move remaining batches from the load list to the master list
             for batch in batch_load_list:
                 batches.append(batch)
@@ -873,9 +873,9 @@ class FilterModule(object):
                 image_uuid = image_entry.get('image_uuid')
                 image_obj = self.vncapi.device_image_read(id=image_uuid)
                 for device_uuid in device_list:
-                    device_obj = self.vncapi.physical_router_read(id=device_uuid)
+                    device_obj = self.vncapi.physical_router_read(id=device_uuid)  # noqa: E501
                     if image_obj.device_image_os_version !=\
-                         device_obj.physical_router_os_version:
+                            device_obj.physical_router_os_version:
                         self.device_uuid_list.append(device_uuid)
             results = self._validate_critical_roles_for_hitless_upgrade()
             return results
@@ -920,7 +920,7 @@ class FilterModule(object):
         missing_roles = set()
         if upgrade_list_spine_count == 1:
             found = self._find_critical_phy_role(
-                    'spine', critical_dev_list)
+                'spine', critical_dev_list)
             if not found:
                 missing_roles.add(physical_role)
 

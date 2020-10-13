@@ -34,5 +34,5 @@ class FilterModule(object):
     @classmethod
     def decrypt_device_password(cls, encrypted_password, secret_key):
         return JobVncApi.decrypt_password(
-                    encrypted_password=encrypted_password,
-                    pwd_key=secret_key)
+            encrypted_password=encrypted_password,
+            pwd_key=secret_key)

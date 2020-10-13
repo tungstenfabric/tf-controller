@@ -4,23 +4,24 @@
 # Copyright (c) 2020 Juniper Networks, Inc. All rights reserved.
 #
 
+from builtins import object
 import logging
-import traceback
 import re
 import sys
-from builtins import object
-from job_manager.job_utils import JobVncApi
+import traceback
 
-sys.path.append('/opt/contrail/fabric_ansible_playbooks/filter_plugins')
-sys.path.append('/opt/contrail/fabric_ansible_playbooks/common')
+sys.path.append('/opt/contrail/fabric_ansible_playbooks/filter_plugins')  # noqa
+sys.path.append('/opt/contrail/fabric_ansible_playbooks/common')  # noqa
 from contrail_command import CreateCCNode
 from import_server import FilterModule as FilterModuleImportServer
+
+from job_manager.job_utils import JobVncApi
 
 DOCUMENTATION = '''
 ---
 Discover OS Computes.
 
-This file contains implementation of identifying all leaf nodes in provided fabric network and creating OS compute
+This file contains implementation of identifying all leaf nodes in provided fabric network and creating OS compute  # noqa: E501
 
 find_leaf_devices filter:
 
@@ -60,14 +61,15 @@ class FilterModule(object):
 
     @staticmethod
     def _init_logging():
-        """
+        """Initialize logging.
+
         :return: type=<logging.Logger>
         """
         logger = logging.getLogger('OsComputesDiscoveryFilter')
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.WARN)
 
-        formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s',
+        formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s',  # noqa: E501
                                       datefmt='%Y/%m/%d %H:%M:%S')
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
@@ -75,12 +77,11 @@ class FilterModule(object):
         return logger
 
     def __init__(self):
+        """Initialize Fabric Filter Module."""
         self._logger = FilterModule._init_logging()
 
     def filters(self):
-        """
-        Return filters that will be used.
-        """
+        """Return filters that will be used."""
         return {
             'find_leaf_devices_filter': self.find_leaf_devices_filter,
             'create_os_node_filter': self.create_os_node_filter
@@ -88,9 +89,7 @@ class FilterModule(object):
 
     @staticmethod
     def _validate_job_ctx(job_ctx):
-        """
-        Validate input params.
-        """
+        """Validate input params."""
         job_input = job_ctx.get('input')
         if not job_input:
             raise ValueError('Invalid job_ctx: missing job_input')
@@ -101,11 +100,10 @@ class FilterModule(object):
 
     @staticmethod
     def _get_password(device_obj):
-        """
-        Get and return decrypted password.
-        """
+        """Get and return decrypted password."""
         password = device_obj.physical_router_user_credentials.get_password()
-        return JobVncApi.decrypt_password(encrypted_password=password, pwd_key=device_obj.uuid)
+        return JobVncApi.decrypt_password(encrypted_password=password,
+                                          pwd_key=device_obj.uuid)
 
     @staticmethod
     def get_fabric_name(fabric):
@@ -130,7 +128,7 @@ class FilterModule(object):
             physical_router_refs = []
         return physical_router_refs
 
-    # ***************** find_leaf_devices filter *********************************
+    # ***************** find_leaf_devices filter *****************************
 
     def find_leaf_devices(self, fabric_uuid, vnc_api):
         """
@@ -142,40 +140,42 @@ class FilterModule(object):
         :param fabric_uuid: string
         :param vnc_api: vnc_api established connection
         :return:
-            example
-            [
-                {
-                    "host": "10.10.10.2",
-                    "password": "admin",
-                    "username": "admin"
-                },
-                {
-                    "host": "10.10.10.4",
-                    "password": "admin",
-                    "username": "admin"
-                }
-            ]
+            # example
+            # [
+            #     {
+            #         "host": "10.10.10.2",
+            #         "password": "admin",
+            #         "username": "admin"
+            #     },
+            #     {
+            #         "host": "10.10.10.4",
+            #         "password": "admin",
+            #         "username": "admin"
+            #     }
+            # ]
         """
         fabric = vnc_api.fabric_read(id=fabric_uuid)
         fabric_name = FilterModule.get_fabric_name(fabric)
-        self._logger.info("Begin process of discovering leaf devices in fabric network %s" % fabric_name)
+        self._logger.info("Begin process of discovering leaf devices in fabric network %s" % fabric_name)  # noqa: E501
         physical_router_refs = FilterModule.get_physical_router_devices(fabric)
         self._logger.info(
-            "In fabric %s Found the following list of physical routers %s" % (fabric_name, physical_router_refs))
+            "In fabric %s Found the following list of physical routers %s" % (fabric_name, physical_router_refs))  # noqa: E501
         results = []
         for p_router in physical_router_refs:
             physical_router = vnc_api.physical_router_read(id=p_router['uuid'])
             if physical_router.physical_router_role != LEAF:
                 continue
             host_details = {
-                'username': physical_router.physical_router_user_credentials.username,
+                'username': physical_router.physical_router_user_credentials.username,  # noqa: E501
                 'password': (FilterModule._get_password(physical_router)),
                 'host': physical_router.physical_router_management_ip
             }
             results.append(host_details)
-            self._logger.info("In fabric %s Found the following leaf device %s "
-                              "On this device 'show lldp neighbor details' command will be applied"
-                              % (fabric_name, physical_router.physical_router_management_ip))
+            self._logger.\
+                info("In fabric %s Found the following leaf device %s "
+                     "On this device 'show lldp neighbor details' command "
+                     "will be applied"
+                     % (fabric_name, physical_router.physical_router_management_ip))  # noqa: E501
         return results
 
     def find_leaf_devices_filter(self, job_ctx):
@@ -183,31 +183,31 @@ class FilterModule(object):
         Validate input and call method to find leaf devices in provided fabric.
 
         :param job_ctx: Dictionary
-            example:
-             {
-                'job_transaction_descr': 'Discover OS Computes',
-                'fabric_uuid': '123412341234-123412341234',
-                'contrail_command_host': '10.10.10.10:9091',
-                'cc_username': 'root',
-                'cc_password': "root"
-            }
+            # example:
+            #  {
+            #     'job_transaction_descr': 'Discover OS Computes',
+            #     'fabric_uuid': '123412341234-123412341234',
+            #     'contrail_command_host': '10.10.10.10:9091',
+            #     'cc_username': 'root',
+            #     'cc_password': "root"
+            # }
         :return: Dictionary
-            if success, returns
-            {
-                'status': 'success',
-                'leaf_devices': [
-                        {
-                            'username': u'admin',
-                            'host': '10.10.10.4',
-                            'password': 'admin'
-                        }
-                    ]
-            }
-            if failure, returns
-            {
-                'status': 'failure',
-                'error_msg': <string: error message>
-            }
+            # if success, returns
+            # {
+            #     'status': 'success',
+            #     'leaf_devices': [
+            #             {
+            #                 'username': u'admin',
+            #                 'host': '10.10.10.4',
+            #                 'password': 'admin'
+            #             }
+            #         ]
+            # }
+            # if failure, returns
+            # {
+            #     'status': 'failure',
+            #     'error_msg': <string: error message>
+            # }
         """
         try:
             FilterModule._validate_job_ctx(job_ctx)
@@ -229,7 +229,7 @@ class FilterModule(object):
             LEAF_DEVICES: leaf_devices,
         }
 
-    # ***************** create_os_node_filter filter *********************************
+    # ***************** create_os_node_filter filter *************************
 
     def get_mapping_ip_to_hostname(self, vnc_api, fabric_uuid):
         """
@@ -237,12 +237,12 @@ class FilterModule(object):
 
         :param vnc_api: vnc_api class established connection
         :param fabric_uuid: string
-        :return Dictionary
-            example:
-             {
-                '10.10.10.4': 'Router_1',
-                '10.10.10.7': 'Router_2'
-            }
+        :return: Dictionary
+            # example:
+            #     {
+            #     '10.10.10.4': 'Router_1',
+            #     '10.10.10.7': 'Router_2'
+            # }
         """
         fabric = vnc_api.fabric_read(id=fabric_uuid)
         physical_router_refs = FilterModule.get_physical_router_devices(fabric)
@@ -252,13 +252,13 @@ class FilterModule(object):
             device_ip_address = physical_router.physical_router_management_ip
             device_hostname = physical_router.get_physical_router_hostname()
             ip_to_hostname[device_ip_address] = device_hostname
-        self._logger.debug("Found the following IP to Hostname mapping dictionary:  %s" % ip_to_hostname)
+        self._logger.debug("Found the following IP to Hostname mapping dictionary:  %s" % ip_to_hostname)  # noqa: E501
         return ip_to_hostname
 
     @staticmethod
     def get_node_type(system_description):
         """
-        Basing on provided system_description verify and return node_type of OS compute.
+        Basing on provided system_description verify and return node_type of OS compute.  # noqa: E501
 
         There are 2 possibilities: OVS and SRiOV, system description is mandatory value that
         should be set in LLDP system description on connected OS Compute node.
@@ -277,40 +277,42 @@ class FilterModule(object):
             return SRIOV_COMPUTE
 
     @staticmethod
-    def create_node_properties(device_neighbor_details, node_type, device_display_name):
+    def create_node_properties(device_neighbor_details,
+                               node_type,
+                               device_display_name):
         """
         Create and return node properties.
 
         :param device_neighbor_details: Dictionary
-            example:
-             {
-                'lldp-remote-system-name': 'node-4',
-                'lldp-local-interface': 'xe-0/0/3',
-                'lldp-remote-port-description': u'ens224',
-                'lldp-remote-port-id': '00:0c:29:8b:ef:26',
-                (...)
-            }
+            # example:
+            #  {
+            #     'lldp-remote-system-name': 'node-4',
+            #     'lldp-local-interface': 'xe-0/0/3',
+            #     'lldp-remote-port-description': u'ens224',
+            #     'lldp-remote-port-id': '00:0c:29:8b:ef:26',
+            #     (...)
+            # }
         :param node_type: String
         :param device_display_name: String
         :return: Dictionary
-            example:
-            {
-                'nodes_type': 'ovs-compute',
-                'name': u'node-1',
-                'ports':
-                    [{
-                        'mac_address': u'00:0c:29:13:37:bb',
-                        'port_name': u'xe-0/0/0',
-                        'switch_name': u'VM283DD71D00',
-                        'name': u'ens224'
-                    }]
-            }
+            # example:
+            # {
+            #     'nodes_type': 'ovs-compute',
+            #     'name': u'node-1',
+            #     'ports':
+            #         [{
+            #             'mac_address': u'00:0c:29:13:37:bb',
+            #             'port_name': u'xe-0/0/0',
+            #             'switch_name': u'VM283DD71D00',
+            #             'name': u'ens224'
+            #         }]
+            # }
         """
         port = {
-            'port_name': str(device_neighbor_details['lldp-local-interface']),
+            'port_name': str(device_neighbor_details['lldp-local-interface']),  # noqa: E501
             'switch_name': device_display_name,
-            'name': str(device_neighbor_details['lldp-remote-port-description']),
-            'mac_address': str(device_neighbor_details['lldp-remote-port-id'])
+            'name': str(device_neighbor_details['lldp-remote-port-description']),  # noqa: E501
+            'mac_address': str(device_neighbor_details['lldp-remote-port-id'])  # noqa: E501
         }
         node = {
             'node_type': node_type,
@@ -323,13 +325,13 @@ class FilterModule(object):
     @staticmethod
     def import_nodes_to_contrail(all_nodes, cc_node_obj):
         """
-        Using import_server job trigger, import nodes to CC.
+        Import nodes to CC using import_server job trigger.
 
         :param all_nodes: Dictionary
         :param cc_node_obj: CreateCCNode object class
         :return: None
         """
-        logging.info("Begin adding nodes {} to Contrail Command".format(str(all_nodes)))
+        logging.info("Begin adding nodes {} to Contrail Command".format(str(all_nodes)))  # noqa: E501
         FilterModuleImportServer().import_nodes(all_nodes, cc_node_obj)
 
     @staticmethod
@@ -346,7 +348,7 @@ class FilterModule(object):
         """
         Get and return IP address of a device.
 
-        The structure of input Dictionary is gathered directly from Juniper device.
+        The structure of input Dictionary is gathered directly from Juniper device.  # noqa: E501
         """
         return device_command_output['item']['host']
 
@@ -355,31 +357,30 @@ class FilterModule(object):
         """
         Get and return LLDP neighbor details.
 
-        The structure of input Dictionary is gathered directly from Juniper device.
+        The structure of input Dictionary is gathered directly from Juniper device.  # noqa: E501
         """
-        return device_command_output['parsed_output']['lldp-neighbors-information']['lldp-neighbor-information']
+        return device_command_output['parsed_output']['lldp-neighbors-information']['lldp-neighbor-information']  # noqa: E501
 
     @staticmethod
     def get_system_description(device_neighbor_details):
         """
         Get and return LLDP neighbor system description.
 
-        The structure of input Dictionary is gathered directly from Juniper device.
+        The structure of input Dictionary is gathered directly from Juniper device.  # noqa: E501
         """
-        return device_neighbor_details['lldp-system-description']['lldp-remote-system-description']
+        return device_neighbor_details['lldp-system-description']['lldp-remote-system-description']  # noqa: E501
 
     @staticmethod
     def get_hostname(ip_to_hostname_mapping, device_ip_address):
-        """
-        Get and return hostname.
-        """
+        """Get and return hostname."""
         return ip_to_hostname_mapping[device_ip_address]
 
-    def create_os_node(self, vnc_api, devices_command_output, fabric_uuid, cc_node_obj):
+    def create_os_node(self, vnc_api, devices_command_output,
+                       fabric_uuid, cc_node_obj):
         """
         Create and return list of OS Object nodes and its properties.
 
-        Nodes are created basing on devices_command_output.
+        Nodes are created basing on devices_command_output.  # noqa: E501
         Device that is going to be created as a node in Autodiscovery process must have
         contain "node_type: <ovs/sriov>" information in its LLDP description.
         If this description is not added, the device will be skipped.
@@ -390,37 +391,40 @@ class FilterModule(object):
         :param devices_command_output: Dictionary
 
         :return: list
-        example:
-        [
-            {
-                'nodes_type': 'ovs-compute',
-                'name': u'node-1',
-                'ports':
-                    [{
-                        'mac_address': u'00:0c:29:13:37:bb',
-                        'port_name': u'xe-0/0/0',
-                        'switch_name': u'VM283DD71D00',
-                        'name': u'ens224'
-                    }]
-            }
-        ]
+            # example:
+            # [
+            #     {
+            #         'nodes_type': 'ovs-compute',
+            #         'name': u'node-1',
+            #         'ports':
+            #             [{
+            #                 'mac_address': u'00:0c:29:13:37:bb',
+            #                 'port_name': u'xe-0/0/0',
+            #                 'switch_name': u'VM283DD71D00',
+            #                 'name': u'ens224'
+            #             }]
+            #     }
+            # ]
         """
-        self._logger.info("Begin process of creating OS nodes object in fabric network")
+        self._logger.info("Begin process of creating OS nodes object in fabric network")  # noqa: E501
         nodes = []
         ip_to_hostname = self.get_mapping_ip_to_hostname(vnc_api, fabric_uuid)
         for device_command_output in devices_command_output['results']:
-            device_ip_address = FilterModule.get_ip_address(device_command_output)
-            device_hostname = FilterModule.get_hostname(ip_to_hostname, device_ip_address)
-            devices_neighbors_details = FilterModule.get_dev_neighbors_details(device_command_output)
+            device_ip_address = FilterModule.get_ip_address(device_command_output)  # noqa: E501
+            device_hostname = FilterModule.get_hostname(ip_to_hostname, device_ip_address)  # noqa: E501
+            devices_neighbors_details = FilterModule.get_dev_neighbors_details(device_command_output)  # noqa: E501
             for device_neighbor_details in devices_neighbors_details:
-                system_description = FilterModule.get_system_description(device_neighbor_details)
+                system_description = FilterModule.get_system_description(device_neighbor_details)  # noqa: E501
                 node_type = FilterModule.get_node_type(system_description)
                 if node_type is None:
                     continue
-                node = FilterModule.create_node_properties(device_neighbor_details, node_type, device_hostname)
+                node = FilterModule.\
+                    create_node_properties(device_neighbor_details,
+                                           node_type,
+                                           device_hostname)
                 nodes.append(node)
                 switch_name = FilterModule.get_switch_name(node)
-                self._logger.info("On device %s found node: %s connected to %s" % (device_hostname, node, switch_name))
+                self._logger.info("On device %s found node: %s connected to %s" % (device_hostname, node, switch_name))  # noqa: E501
         created_nodes = {
             'nodes': nodes
         }
@@ -430,72 +434,71 @@ class FilterModule(object):
 
     def create_os_node_filter(self, job_ctx, devices_command_outputs):
         """
-        Param (devices_command_outputs) is a result from "show lldp neighbors detail" command.
+        Param (devices_command_outputs) is a result from "show lldp neighbors detail" command.  # noqa: E501
 
         This param was gathered automatically in previous task, when above command was run on all
         leaf devices in fabric.
 
         :param devices_command_outputs: Dictionary
-            example:
-            {
-                'msg': u'All items completed',
-                'changed': False,
-                'results': [
-                    {
-                        "parsed_output": {
-                            "lldp-neighbors-information": {
-                                "lldp-neighbor-information": [
-                                    {
-                                        (...)
-                                        "lldp-local-interface": "xe-0/0/0",
-                                        (...)
-                                        "lldp-remote-management-address": "10.5.5.5",
-                                       (...)
-                                        "lldp-remote-port-description": "ens256",
-                                        "lldp-remote-port-id": "00:0c:29:13:37:c5"
-                                    }
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                ]
-            }
+            # example:
+            # {
+            #     'msg': u'All items completed',
+            #     'changed': False,
+            #     'results': [
+            #         {
+            #             "parsed_output": {
+            #                 "lldp-neighbors-information": {
+            #                     "lldp-neighbor-information": [
+            #                         {
+            #                             (...)
+            #                             "lldp-local-interface": "xe-0/0/0",
+            #                             (...)
+            #                             "lldp-remote-management-address": "10.5.5.5",
+            #                            (...)
+            #                             "lldp-remote-port-description": "ens256",
+            #                             "lldp-remote-port-id": "00:0c:29:13:37:c5"
+            #                         }
+            #                     ]
+            #                 }
+            #             }
+            #         }
+            #     ]
+            # }
         :param job_ctx: Dictionary
-            example:
-            {
-                'job_transaction_descr': 'Discover OS Computes',
-                'fabric_uuid': '123412341234-123412341234',
-                'contrail_command_host': '10.10.10.10:9091',
-                'cc_username': 'root',
-                'cc_password': "root"
-            }
+            # example:
+            # {
+            #     'job_transaction_descr': 'Discover OS Computes',
+            #     'fabric_uuid': '123412341234-123412341234',
+            #     'contrail_command_host': '10.10.10.10:9091',
+            #     'cc_username': 'root',
+            #     'cc_password': "root"
+            # }
         :return: Dictionary
-            if success, returns
-            {
-                'status': 'success'
-                'os_compute_nodes':
-                    {
-                        'nodes':
-                        [
-                            {
-                                'name': 'node-1'
-                                'node_type': 'ovs-compute',
-                                'ports': [{
-                                    'address': '00:0c:29:13:37:c5',
-                                    'port_name': 'xe-0/0/0',
-                                    'switch_name': 'VM283DF6BA00',
-                                    'name': 'ens256'
-                                }]
-                            }
-                        ]
-                    }
-            }
-            if failure, returns
-            {
-                'status': 'failure',
-                'error_msg': <string: error message>
-            }
+            # if success, returns
+            # {
+            #     'status': 'success'
+            #     'os_compute_nodes':
+            #         {
+            #             'nodes':
+            #             [
+            #                 {
+            #                     'name': 'node-1'
+            #                     'node_type': 'ovs-compute',
+            #                     'ports': [{
+            #                         'address': '00:0c:29:13:37:c5',
+            #                         'port_name': 'xe-0/0/0',
+            #                         'switch_name': 'VM283DF6BA00',
+            #                         'name': 'ens256'
+            #                     }]
+            #                 }
+            #             ]
+            #         }
+            # }
+            # if failure, returns
+            # {
+            #     'status': 'failure',
+            #     'error_msg': <string: error message>
+            # }
         """
         try:
             FilterModule._validate_job_ctx(job_ctx)
@@ -507,8 +510,15 @@ class FilterModule(object):
             cc_host = job_input['contrail_command_host']
             cc_username = job_input['cc_username']
             cc_password = job_input['cc_password']
-            cc_node_obj = CreateCCNode(cc_host, cluster_id, cluster_token, cc_username, cc_password)
-            os_compute_nodes = self.create_os_node(vnc_api, devices_command_outputs, fabric_uuid, cc_node_obj)
+            cc_node_obj = CreateCCNode(cc_host,
+                                       cluster_id,
+                                       cluster_token,
+                                       cc_username,
+                                       cc_password)
+            os_compute_nodes = self.create_os_node(vnc_api,
+                                                   devices_command_outputs,
+                                                   fabric_uuid,
+                                                   cc_node_obj)
         except Exception as e:
             errmsg = "Unexpected error: %s\n%s" % (
                 str(e), traceback.format_exc()
