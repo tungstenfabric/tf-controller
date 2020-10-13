@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7491039d_7a40f2c1",
+        "filename": "src/config/device-manager/device_manager/db.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 2069,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-13T04:58:22Z",
+      "side": 1,
+      "message": "is this removed as we moved from li to vmi for the SGs?",
+      "revId": "ee096ef8705208c8c42cad6ba29d28943738b8f4",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
