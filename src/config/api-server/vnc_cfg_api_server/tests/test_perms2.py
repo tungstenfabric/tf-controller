@@ -1734,6 +1734,48 @@ class TestPermissions(test_case.ApiServerTestCase):
         self.assertEquals(vpg_obj.get_perms2().owner,
                           self.alice.project_uuid.replace('-', ''))
 
+    def test_rbac_pi_sharing(self):
+
+        self.gsc_obj = self.admin.vnc_lib.global_system_config_read(
+            GlobalSystemConfig().fq_name)
+        self.default_gsc_name = 'default-global-system-config'
+
+        # Create Physical Router object
+        self.pr_obj = PhysicalRouter('pnf-' + self.id(), self.gsc_obj)
+        self.pr_obj.set_physical_router_role('pnf')
+        pr_uuid = self.admin.vnc_lib.physical_router_create(self.pr_obj)
+
+        pr_obj = self.admin.vnc_lib.physical_router_read(
+            id=pr_uuid)
+
+        # create  PI
+        self.pi_1 = PhysicalInterface(
+            'ge-0/0/1-' + self.id(), parent_obj=self.pr_obj)
+        self.pi_2 = PhysicalInterface(
+            'ge-0/0/2-' + self.id(), parent_obj=self.pr_obj)
+        pi1_uuid = self.admin.vnc_lib.physical_interface_create(self.pi_1)
+        pi2_uuid = self.admin.vnc_lib.physical_interface_create(self.pi_2)
+
+        pi1_obj = self.admin.vnc_lib.physical_interface_read(
+            id=pi1_uuid)
+
+        # share pr with tenant alice
+        set_perms(pr_obj, share=[(self.alice.project_uuid, PERMS_RWX)])
+        self.admin.vnc_lib.physical_router_update(pr_obj)
+
+        # share pi_1 with tenant alice
+        set_perms(pi1_obj, share=[(self.alice.project_uuid, PERMS_RWX)])
+        self.admin.vnc_lib.physical_interface_update(pi1_obj)
+
+        # read pi1 as tenant alice
+        vpg_obj = self.alice.vnc_lib.physical_interface_read(
+            id=pi1_uuid)
+        # list pi as tenant alice
+        vpg_obj = self.alice.vnc_lib.physical_interfaces_list()
+
+        # confirm that only one PI is shared with tenant alice
+        self.assertEquals(len(vpg_obj['physical-interfaces']), 1)
+
     def tearDown(self):
         super(TestPermissions, self).tearDown()
     # end tearDown
