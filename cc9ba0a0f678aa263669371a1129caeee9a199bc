@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c730cc19_941da69e",
+        "filename": "src/vnsw/agent/services/icmpv6_proto.cc",
+        "patchSetId": 5
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 213
+      },
+      "writtenOn": "2020-10-14T11:17:26Z",
+      "side": 1,
+      "message": "all this will also go away",
+      "range": {
+        "startLine": 246,
+        "startChar": 32,
+        "endLine": 246,
+        "endChar": 39
+      },
+      "revId": "cc9ba0a0f678aa263669371a1129caeee9a199bc",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6a28c42c_4b205aa4",
+        "filename": "src/vnsw/agent/services/icmpv6_proto.cc",
+        "patchSetId": 5
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 213
+      },
+      "writtenOn": "2020-10-14T11:17:26Z",
+      "side": 1,
+      "message": "we dont need to send grat arp for vhost, comment out the code",
+      "range": {
+        "startLine": 267,
+        "startChar": 27,
+        "endLine": 269,
+        "endChar": 30
+      },
+      "revId": "cc9ba0a0f678aa263669371a1129caeee9a199bc",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "152ccc90_7d54312f",
+        "filename": "src/vnsw/agent/services/icmpv6_proto.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 213
+      },
+      "writtenOn": "2020-10-14T11:17:26Z",
+      "side": 1,
+      "message": "is this and aging timer being used?",
+      "range": {
+        "startLine": 41,
+        "startChar": 31,
+        "endLine": 41,
+        "endChar": 37
+      },
+      "revId": "cc9ba0a0f678aa263669371a1129caeee9a199bc",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "01db4a29_c4f3c002",
+        "filename": "src/vnsw/agent/services/ndp_entry.cc",
+        "patchSetId": 5
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 213
+      },
+      "writtenOn": "2020-10-14T11:17:26Z",
+      "side": 1,
+      "message": "this one is not required",
+      "range": {
+        "startLine": 286,
+        "startChar": 34,
+        "endLine": 286,
+        "endChar": 53
+      },
+      "revId": "cc9ba0a0f678aa263669371a1129caeee9a199bc",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a1f51958_c3fc14bd",
+        "filename": "src/vnsw/agent/services/ndp_entry.cc",
+        "patchSetId": 5
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 213
+      },
+      "writtenOn": "2020-10-14T11:17:26Z",
+      "side": 1,
+      "message": "delay would not be here in probe",
+      "range": {
+        "startLine": 550,
+        "startChar": 32,
+        "endLine": 550,
+        "endChar": 43
+      },
+      "revId": "cc9ba0a0f678aa263669371a1129caeee9a199bc",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}

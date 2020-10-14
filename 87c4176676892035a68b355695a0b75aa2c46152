@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f462c03_595a978d",
+        "filename": "src/vnsw/agent/services/icmpv6_proto.cc",
+        "patchSetId": 5
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 213
+      },
+      "writtenOn": "2020-10-14T11:17:26Z",
+      "side": 0,
+      "message": "this needs to go",
+      "range": {
+        "startLine": 146,
+        "startChar": 26,
+        "endLine": 148,
+        "endChar": 0
+      },
+      "revId": "87c4176676892035a68b355695a0b75aa2c46152",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
