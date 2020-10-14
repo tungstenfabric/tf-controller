@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a823bf4b_8f1842b5",
+        "filename": "src/config/device-manager/device_manager/device_manager.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 419,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-14T16:33:54Z",
+      "side": 1,
+      "message": "This extra space is causing the build failure, can you take care?",
+      "revId": "fe0a5b38b43d2eb91f6a4ba65c324c75db3c1a3d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
