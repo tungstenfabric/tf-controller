@@ -27,8 +27,8 @@ std::string linklocal_ip[] =
 uint16_t linklocal_port[] = { 80, 8000, 12125, 22000, 34567 };
 
 std::string fabric_dns_name[] =
-    { "localhost", "www.juniper.net", "www.google.com",
-      "www.cnn.com", "github.com" };
+    { "localhost", "localhost", "localhost",
+      "localhost", "localhost" };
 
 std::string fabric_ip[] =
     { "10.1.2.3", "10.1.2.4", "10.1.2.5", "10.1.2.6", "10.1.2.7" };
@@ -65,9 +65,7 @@ public:
     }
 
     virtual void TearDown() {
-        // dns query for entries in fabric_dns_name is sent to dns server (resolve.conf)
-        // of build machine increase retries for successful lookup.
-        WAIT_FOR(50000, 100,
+        WAIT_FOR(50, 100,
                  (agent_->oper_db()->global_vrouter()->PendingFabricDnsRequests()
                   == 0));
     }
