@@ -45,8 +45,7 @@ class MacIpLearningHCTest : public ::testing::Test {
 public:
     MacIpLearningHCTest() {
         arp_try_count = 0;
-        send_count = 0;
-        sent_count = 0;
+        disable_arp_reply = false;
 
         TestPkt0Interface *tap = (TestPkt0Interface *)
                     (Agent::GetInstance()->pkt()->control_interface());
@@ -122,12 +121,11 @@ public:
         memcpy(&sip, arp->arp_spa, sizeof(in_addr_t));
         uint32_t tip;
         memcpy(&tip, arp->arp_tpa, sizeof(in_addr_t));
-        if ((proto == 0x0806) && (tip == inet_addr("1.1.1.10"))) {
+        if (proto == 0x0806) {
             arp_try_count++;
-            if (sent_count < send_count) {
+            if (!disable_arp_reply) {
                 SendArpReply(ntohs(agent->hdr_ifindex), ntohs(agent->hdr_vrf),
                     ntohl(tip), ntohl(sip));
-                sent_count++;
             }
         } else if (proto == 0x0800) {
             bfd_count++;
@@ -136,9 +134,8 @@ public:
 
     Agent *agent_;
     uint8_t arp_try_count;
-    uint8_t send_count;
-    uint8_t sent_count;
     uint8_t bfd_count;
+    bool disable_arp_reply;
 };
 
 void TxL2Packet(int ifindex, const char *smac, const char *dmac,
@@ -167,9 +164,7 @@ void TxL2Packet(int ifindex, const char *smac, const char *dmac,
 // by not sending the ARP reqlies
 TEST_F(MacIpLearningHCTest, ArpTest1) {
 
-    send_count = 0;
-    sent_count = 0;
-
+    disable_arp_reply = true;
     const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
     TxL2Packet(intf->id(), "00:00:00:11:22:33", "00:00:00:33:22:11",
                "1.1.1.10", "1.1.1.11", 1, intf->vrf()->vrf_id(), 1, 1);
@@ -192,9 +187,6 @@ TEST_F(MacIpLearningHCTest, ArpTest1) {
 // and make sure MAC IP learnt entry still exist after
 // 20 seconds (8 tries * 2 seconds)
 TEST_F(MacIpLearningHCTest, ArpTest2) {
-
-    send_count = 9;
-    sent_count = 0;
 
     const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
     TxL2Packet(intf->id(), "00:00:00:11:22:33", "00:00:00:33:22:11",
@@ -313,9 +305,6 @@ TEST_F(MacIpLearningHCTest, BfdTest2) {
 // Attach BFD HC and detach BFD HC and check in MAC IP learning entry
 TEST_F(MacIpLearningHCTest, BfdTest3) {
 
-    send_count = 9;
-    sent_count = 0;
-
     boost::system::error_code ec;
 
     const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
@@ -400,50 +389,9 @@ TEST_F(MacIpLearningHCTest, BfdTest4) {
     client->WaitForIdle();
 }
 
-// Attach BFD HC. Change timeout and retry values
-// Wait for timeout and the MAC IP learning entry should get deleted
-TEST_F(MacIpLearningHCTest, BfdTest5) {
-
-    const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
-    boost::system::error_code ec;
-
-    AddVnHealthCheckService("HC-1", 1, 1, 1, 3, true, NULL, 0);
-    AddLink("virtual-network", "vn1",
-            "service-health-check", "HC-1");
-    client->WaitForIdle();
-
-    AddVnHealthCheckService("HC-1", 1, 1, 1, 2, true, NULL, 0);
-    client->WaitForIdle();
-
-    TxL2Packet(intf->id(), "00:00:00:11:22:31", "00:00:00:11:22:30",
-               "1.1.1.10", "1.1.1.11", 1, intf->vrf()->vrf_id(), 1, 1);
-    client->WaitForIdle();
-
-    intf = static_cast<const VmInterface *>(VmPortGet(2));
-    IpAddress ip = IpAddress(Ip4Address::from_string("1.1.1.10", ec));
-    MacIpLearningKey key(GetVrfId("vrf1"), ip);
-    MacIpLearningEntry *entry = agent_->mac_learning_proto()->
-                GetMacIpLearningTable()->Find(key);
-    EXPECT_TRUE(entry != NULL);
-    EXPECT_TRUE(entry->HcService() != NULL);
-    EXPECT_TRUE(entry->HcService()->name() == "HC-1");
-    EXPECT_TRUE(entry->HcInstance() != NULL);
-
-    sleep(20);
-
-    MacAddress smac(0x00, 0x00, 0x00, 0x11, 0x22, 0x31);
-    EXPECT_TRUE(EvpnRouteGet("vrf1", smac, Ip4Address(0), 0) == NULL);
-    client->WaitForIdle();
-
-    DelLink("virtual-network", "vn1",
-            "service-health-check", "HC-1");
-    client->WaitForIdle();
-    DelHealthCheckService("HC-1");
-    client->WaitForIdle();
-}
 
 // Move IP to another interface and check for HC
-TEST_F(MacIpLearningHCTest, BfdTest6) {
+TEST_F(MacIpLearningHCTest, BfdTest5) {
 
     const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
 
@@ -491,6 +439,40 @@ TEST_F(MacIpLearningHCTest, BfdTest6) {
     client->WaitForIdle();
     DelHealthCheckService("HC-1");
     client->WaitForIdle();
+}
+// verify that mac-ip are not learnt once limit is reached on interface
+TEST_F(MacIpLearningHCTest, scale_test) {
+    //disable arp timeout
+    const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
+    for ( int i = 1; i < VmInterface::kMaxMacIpLimit + 20; i++) {
+        std::stringstream mac_str;
+        std::stringstream ip_str;
+        mac_str << "00:00:00:11:22:" << i+12;
+        ip_str << "1.1.1." << i+12;
+        boost::system::error_code error_code;
+        const string ip = ip_str.str();
+        const string mac = mac_str.str();
+        IpAddress sip = AddressFromString(ip_str.str(), &error_code);
+        MacAddress smac(0x00, 0x00, 0x00, 0x11, 0x22, i+12);
+        TxL2Packet(intf->id(), smac.ToString().c_str(), "00:00:00:33:22:11",
+               sip.to_string().c_str(), "1.1.1.11", 1, intf->vrf()->vrf_id(), 1, 1);
+        client->WaitForIdle();
+        if ( i <= VmInterface::kMaxMacIpLimit) {
+            EXPECT_TRUE(intf->learnt_mac_ip_list().list_.size()  == i);
+            EXPECT_TRUE(EvpnRouteGet("vrf1", smac, Ip4Address(0), 0) != NULL);
+            EXPECT_TRUE(EvpnRouteGet("vrf1", smac, sip, 0) != NULL);
+            EXPECT_TRUE(L2RouteGet("vrf1", smac) != NULL);
+            EXPECT_TRUE(RouteGet("vrf1", sip.to_v4(), 32) != NULL);
+        } else {
+            EXPECT_TRUE(intf->learnt_mac_ip_list().list_.size()
+                    == VmInterface::kMaxMacIpLimit);
+            EXPECT_TRUE(EvpnRouteGet("vrf1", smac, Ip4Address(0), 0) == NULL);
+            EXPECT_TRUE(EvpnRouteGet("vrf1", smac, sip, 0) == NULL);
+            EXPECT_TRUE(L2RouteGet("vrf1", smac) == NULL);
+            EXPECT_TRUE(RouteGet("vrf1", sip.to_v4(), 32) == NULL);
+        }
+    }
+
 }
 
 int main(int argc, char *argv[]) {
