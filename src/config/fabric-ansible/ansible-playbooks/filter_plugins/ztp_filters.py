@@ -9,6 +9,7 @@
 
 from builtins import object
 import logging
+import time
 
 from cfgm_common.exceptions import NoIdError
 from vnc_api.vnc_api import VncApi
@@ -39,6 +40,7 @@ class FilterModule(object):
             'read_dhcp_leases_using_count': self.read_dhcp_leases_using_count,
             'read_dhcp_leases_using_info': self.read_dhcp_leases_using_info,
             'read_only_dhcp_leases': self.read_only_dhcp_leases,
+            'remove_stale_pr_objects': self.remove_stale_pr_objects,
         }
 
     # Method to get interface name and configured ip address from
@@ -250,6 +252,38 @@ class FilterModule(object):
                              payload={})
         return {'status': 'success'}
     # end restart_dhcp_server
+
+    @classmethod
+    def remove_stale_pr_objects(cls, job_ctx):
+        """
+        Method that cleans up stale temporary PR objects when
+        ZTP workflow fails.
+        """
+        filters = {}
+
+        try:
+            vnc_api = VncApi(auth_type=VncApi._KEYSTONE_AUTHN_STRATEGY,
+                             auth_token=job_ctx.get('auth_token'))
+        except Exception as ex:
+            logging.error("Error connecting to API server: {}".format(ex))
+            return True
+
+        # A case was noticed where the object deletion is attempted
+        # before it is even created. To avoid this, wait for a
+        # couple of seconds before trying to delete the PR
+        time.sleep(2)
+
+        filters['physical_router_managed_state'] = "dhcp"
+        pr_list = vnc_api.physical_routers_list(
+            filters=filters).get('physical-routers')
+
+        for pr in pr_list:
+            vnc_api.physical_router_delete(id=pr['uuid'])
+            logging.info("Router {} in dhcp state deleted".format(
+                pr['fq_name'][-1]))
+
+        return True
+    # end remove_stale_pr_objects
 
     @classmethod
     def _publish_file(cls, name, contents, action, routing_key,
