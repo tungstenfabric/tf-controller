@@ -37,7 +37,7 @@ from .db import AccessControlListDM, BgpRouterDM, DataCenterInterconnectDM, \
     FabricNamespaceDM, FeatureConfigDM, FeatureDM, \
     FeatureFlagDM, FloatingIpDM, \
     FloatingIpPoolDM, FlowNodeDM, GlobalSystemConfigDM, \
-    GlobalVRouterConfigDM, \
+    GlobalVRouterConfigDM, GrpcProfileDM, \
     InstanceIpDM, IntentMapDM, InterfaceRouteTableDM, \
     LinkAggregationGroupDM, LogicalInterfaceDM, \
     LogicalRouterDM, NetworkDeviceConfigDM, NetworkIpamDM, NodeProfileDM, \
@@ -198,8 +198,12 @@ class DeviceManager(object):
         'telemetry_profile': {
             'self': ['physical_router'],
             'sflow_profile': ['physical_router'],
+            'grpc_profile': ['physical_router'],
         },
         'sflow_profile': {
+            'self': ['telemetry_profile'],
+        },
+        'grpc_profile': {
             'self': ['telemetry_profile'],
         },
         'service_appliance_set': {
@@ -452,6 +456,7 @@ class DeviceManager(object):
         StormControlProfileDM.locate_all()
         TelemetryProfileDM.locate_all()
         SflowProfileDM.locate_all()
+        GrpcProfileDM.locate_all()
         ServiceInstanceDM.locate_all()
         ServiceApplianceSetDM.locate_all()
         ServiceApplianceDM.locate_all()
