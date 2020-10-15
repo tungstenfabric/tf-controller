@@ -2,6 +2,19 @@
 {% set tm_phy_intfs = device_abstract_config.get('features', {}).get('telemetry',{}).get('physical_interfaces', []) %}
 {% set intf_scf_map = {} %}
 {% for telemetry_profile in telemetry_profiles %}
+{%     set tm_grpc_profile = telemetry_profile.get('grpc_profile', {}) %}
+{%     if tm_grpc_profile %}
+{%         set allow_clients = tm_grpc_profile.get('allow_clients', []) %}
+{%         set cidr_list = [] %}
+{%         for allow_client in allow_clients %}
+{%                 set cidr = allow_client.get('prefix') + '/' + allow_client.get('prefix_len')|string %}
+{%                 set x = cidr_list.append(cidr) %}
+{%         endfor %}
+{%         set cidrs = ' '.join(cidr_list)%}
+set groups {{cfg_group}} system services extension-service request-response grpc clear-text port 50051
+set groups {{cfg_group}}  system services extension-service request-response grpc skip-authentication
+set groups {{cfg_group}}  system services extension-service notification allow-clients address [{{cidrs}}]
+{%     endif %}
 {%     set tm_sflow_profile = telemetry_profile.get('sflow_profile', {}) %}
 {%     if tm_sflow_profile %}
 {%         set tm_sflow_adap_smpl_rt = tm_sflow_profile.get('adaptive_sample_rate') %}
