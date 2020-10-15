@@ -565,6 +565,8 @@ public:
 
     float vr_object_high_watermark() const { return vr_object_high_watermark_; }
 
+    const Ip4Address &loopback_ip() const { return loopback_ip_; }
+
 protected:
     void set_hypervisor_mode(HypervisorMode m) { hypervisor_mode_ = m; }
     virtual void InitFromSystem();
@@ -838,6 +840,7 @@ private:
     bool cat_MockDPDK_;
     std::string cat_kSocketDir_;
     float vr_object_high_watermark_;
+    Ip4Address loopback_ip_;
     DISALLOW_COPY_AND_ASSIGN(AgentParam);
 };
 

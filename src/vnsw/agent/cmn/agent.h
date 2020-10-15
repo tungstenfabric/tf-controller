@@ -699,6 +699,20 @@ public:
         return (collector_chksum_);
     }
 
+    Ip4Address loopback_ip() const {return loopback_ip_;}
+    void set_loopback_ip(const Ip4Address &addr) {
+        loopback_ip_ = addr;
+    }
+
+    void set_is_l3mh(bool flag) {
+        is_l3mh_ = flag;
+    }
+
+    bool is_l3mh() const {
+        return is_l3mh_;
+    }
+
+
     // Common XMPP Client for control-node and config clients
     const std::string &controller_ifmap_xmpp_server(uint8_t idx) const {
         return xs_addr_[idx];
@@ -1599,6 +1613,10 @@ private:
     // Percentage of allowed nexthop and label, alarm is raised once exceeded
     float vr_limit_high_watermark_;
     float vr_limit_low_watermark_;
+    // L3MH variables
+    Ip4Address loopback_ip_;
+    bool is_l3mh_;
+
 public:
     static const std::string config_file_;
     static const std::string log_file_;

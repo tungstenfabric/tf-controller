@@ -254,8 +254,25 @@ void ContrailInitCommon::CreateInterfaces() {
     InetUnicastAgentRouteTable *inet_mpls_table =
         static_cast<InetUnicastAgentRouteTable *>
         (agent()->fabric_vrf()->GetInet4MplsUnicastRouteTable());
-    inet_mpls_table->AddVhostMplsRoute(agent()->params()->vhost_addr(),
-                            agent()->fabric_rt_export_peer());
+    inet_mpls_table->AddVhostMplsRoute(agent()->is_l3mh() ?
+                                       agent()->params()->loopback_ip() :
+                                       agent()->params()->vhost_addr(),
+                                       agent()->fabric_rt_export_peer());
+
+    /* Add Receive route for agent loopback incase of l3mh */
+    if (agent()->is_l3mh()) {
+        InetUnicastAgentRouteTable *rt_table =
+            agent()->fabric_inet4_unicast_table();
+
+        VmInterfaceKey vmi_key(AgentKey::ADD_DEL_CHANGE,
+                boost::uuids::nil_uuid(),
+                agent()->params()->vhost_name());
+        rt_table->AddVHostRecvRouteReq(agent()->local_peer(),
+                agent()->fabric_vrf_name(),
+                vmi_key, agent()->params()->loopback_ip(), 32,
+                agent()->fabric_vn_name(), false,
+                true);
+    }
 
     agent()->InitXenLinkLocalIntf();
     if (agent_param()->isVmwareMode()) {

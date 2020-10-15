@@ -527,6 +527,11 @@ void Agent::CopyConfig(AgentParam *params) {
     prefix_len_ = params_->vhost_plen();
     gateway_id_ = params_->vhost_gw();
     router_id_ = params_->vhost_addr();
+    loopback_ip_ = params_->loopback_ip();
+    if (params_->loopback_ip() != Ip4Address(0)) {
+        router_id_ = params_->loopback_ip();
+        is_l3mh_ = true;
+    }
     if (router_id_.to_ulong()) {
         router_id_configured_ = false;
     }
@@ -795,7 +800,8 @@ Agent::Agent() :
     tbb_keepawake_timeout_(kDefaultTbbKeepawakeTimeout),
     task_monitor_timeout_msec_(kDefaultTaskMonitorTimeout),
     vr_limit_high_watermark_(kDefaultHighWatermark),
-    vr_limit_low_watermark_(kDefaultLowWatermark) {
+    vr_limit_low_watermark_(kDefaultLowWatermark),
+    loopback_ip_(), is_l3mh_(false) {
 
     assert(singleton_ == NULL);
     singleton_ = this;

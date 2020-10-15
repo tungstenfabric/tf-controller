@@ -764,6 +764,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 InterfaceKSyncEntry *xconnect =
                     static_cast<InterfaceKSyncEntry *>(xconnect_.get());
                 encoder.set_vifr_cross_connect_idx(xconnect->os_index_);
+                encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             } else {
                 encoder.set_vifr_cross_connect_idx(Interface::kInvalidIndex);
             }
@@ -979,6 +980,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 InterfaceKSyncEntry *xconnect =
                    static_cast<InterfaceKSyncEntry *>(xconnect_.get());
                 encoder.set_vifr_cross_connect_idx(xconnect->os_index_);
+                encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             } else {
                 encoder.set_vifr_cross_connect_idx(Interface::kInvalidIndex);
             }
