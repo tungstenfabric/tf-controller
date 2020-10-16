@@ -314,6 +314,18 @@ class BgpRouterST(ResourceBaseST):
             router.update_peering(rr_changed=True)
     # end update_full_mesh_to_rr_peering
 
+    def _peerings_to_be_deleted(self, old_peerings, new_peerings):
+        peer_to_be_deleted = []
+        for peer in old_peerings:
+            found = False
+            for new_peer in new_peerings:
+                if peer == new_peer:
+                    found = True
+                    break
+            if not found:
+                peer_to_be_deleted.append(peer)
+        return peer_to_be_deleted
+
     def update_peering(self, rr_changed=False):
         if not ResourceBaseST.get_obj_type_map().get(
                 'global_system_config').get_ibgp_auto_mesh():
@@ -374,6 +386,8 @@ class BgpRouterST(ResourceBaseST):
 
         new_peerings_set = [ref['to'] for ref in (
             obj.get_bgp_router_refs() or [])]
+
+        self._peerings_to_be_deleted(peerings_set, new_peerings_set)
         if rr_changed:
             obj.set_bgp_router_list(new_peerings_list, new_peerings_attrs)
             try:
