@@ -4847,6 +4847,7 @@ class GrpcProfileDM(DBBaseDM):
     obj_type = 'grpc_profile'
 
     def __init__(self, uuid, obj_dict=None):
+        """Grpc Profile Object"""
         self.uuid = uuid
         self.telemetry_profiles = set()
         self.update(obj_dict)

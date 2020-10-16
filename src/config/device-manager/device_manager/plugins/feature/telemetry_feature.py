@@ -12,8 +12,8 @@ telemetry feature
 from collections import OrderedDict
 
 from abstract_device_api.abstract_device_xsd import (
-    CollectorParams, EnabledInterfaceParams, Feature, PhysicalInterface,
-    SflowProfile, Telemetry
+    CollectorParams, EnabledInterfaceParams, Feature, GrpcProfile,
+    PhysicalInterface, SflowProfile, Subnet, Telemetry
 )
 
 from .db import FlowNodeDM, GrpcProfileDM, PhysicalInterfaceDM, \
