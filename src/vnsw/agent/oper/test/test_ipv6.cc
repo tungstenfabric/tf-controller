@@ -791,6 +791,49 @@ TEST_F(Ipv6Test, VlanNHServiceIp_2) {
     client->WaitForIdle();
 }
 
+//Create a dual stack vm, delete ipv6 addr and ensure route gets deleted
+TEST_F(Ipv6Test, DeleteIpDualStack) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1, "fd11::2"},
+    };
+    IpamInfo ipam_info[] = {
+        {"1.1.1.0", 24, "1.1.1.10"},
+        {"fd11::", 96, "fd11::1"},
+    };
+
+    CreateV6VmportEnv(input, 1, 0);
+    client->WaitForIdle();
+    WAIT_FOR(100, 1000, (VmPortActive(input, 0)) == true);
+    WAIT_FOR(100, 1000, (VmPortV6Active(input, 0)) == true);
+
+    AddInstanceIp("instance2", input[0].vm_id, input[0].ip6addr);
+    AddLink("virtual-machine-interface", input[0].name,
+            "instance-ip", "instance2");
+    client->WaitForIdle();
+
+    AddVn("default-project:vn2", 2);
+    AddLink("virtual-network", "default-project:vn2", "instance-ip",
+            "instance2");
+    boost::system::error_code ec;
+    Ip6Address addr = Ip6Address::from_string(input[0].ip6addr, ec);
+    InetUnicastRouteEntry* rt = RouteGetV6("vrf1", addr, 128);
+    EXPECT_TRUE(rt != NULL);
+
+    //Clean up instance-ip links
+    DelLink("virtual-network", "default-project:vn2", "instance-ip",
+            "instance2");
+    DelLink("virtual-machine-interface", input[0].name, "instance-ip", "instance2");
+    client->WaitForIdle();
+    DelInstanceIp("instance2");
+
+    rt = RouteGetV6("vrf1", addr, 128);
+    EXPECT_TRUE(rt == NULL);
+
+    //clean up
+    DelVn("default-project:vn2");
+    DeleteVmportEnv(input, 1, 1, 0, NULL, NULL, true, true);
+    client->WaitForIdle();
+}
 
 int main(int argc, char **argv) {
     GETUSERARGS();
