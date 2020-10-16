@@ -489,6 +489,9 @@ bool Dhcpv6Handler::FindLeaseData() {
                          << ip.to_string());
             return false;
         }
+        if (ip == Ip6Address()) {
+            return false;
+        }
 
         const std::vector<VnIpam> &ipam = vm_itf_->vn()->GetVnIpam();
         for (uint32_t i = 0; i < ipam.size(); ++i) {

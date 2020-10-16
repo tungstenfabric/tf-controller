@@ -242,6 +242,12 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
 bool VmInterface::CopyIp6Address(const Ip6Address &addr) {
     bool ret = false;
 
+    // Update primary_ip6_addr_ if v6 addr gets deleted in dual stack ip
+    if (addr.is_unspecified() && (primary_ip_addr_ != Ip4Address(0))) {
+        primary_ip6_addr_ = addr;
+        return true;
+    }
+
     // Retain the old if new IP could not be got
     if (addr.is_unspecified()) {
         return false;
@@ -474,10 +480,6 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
     }
 
     Ip6Address ip6_addr = data->ip6_addr_;
-    if (nova_ip6_addr_ != Ip6Address()) {
-        ip6_addr = nova_ip6_addr_;
-    }
-
     if (CopyIp6Address(ip6_addr)) {
         ret = true;
     }
@@ -681,10 +683,15 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
     InstanceIpSet new_ipv6_list = data->instance_ipv6_list_.list_;
     if (nova_ip6_addr_ != Ip6Address() &&
             data->vrf_name_ != Agent::NullString()) {
-        new_ipv6_list.insert(
-            VmInterface::InstanceIp(nova_ip6_addr_, Address::kMaxV6PrefixLen,
+        if(new_ipv6_list.empty() && nova_ip_addr_ != Ip4Address(0)) {
+        //don't insert in list in case of v6 addr deletion in dual stack ip
+            ;
+        } else {
+            new_ipv6_list.insert(
+                VmInterface::InstanceIp(nova_ip6_addr_, Address::kMaxV6PrefixLen,
                                     data->ecmp6_, true, false, false, false,
                                     Ip4Address(0)));
+        }
     }
 
     if (AuditList<InstanceIpList, InstanceIpSet::iterator>
