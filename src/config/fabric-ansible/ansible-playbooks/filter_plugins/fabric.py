@@ -717,6 +717,10 @@ class FilterModule(object):
                         "asn_min={} and asn_max={} are same.".
                         format(asn_min, asn_max))
 
+        if " " in fabric_info.get('fabric_fq_name')[-1]:
+            raise ValueError(
+                "Fabric name with spaces are invalid")
+
     def _valid_loopback_ip(self, fabric_info, dtz):
         loopback_ip = dtz.get('loopback_ip')
         if not loopback_ip:
@@ -729,10 +733,13 @@ class FilterModule(object):
             loopback_ip, dtz.get('hostname')))
         return False
 
-    def _valid_mgmt_ip(self, fabric_info, dtz):
+    def _valid_mgmt_ip(self, fabric_info, dtz, dtz_ip_list, existing_pr_list):
         mgmt_ip = dtz.get('mgmt_ip')
         if not mgmt_ip:
             return True
+        if mgmt_ip in dtz_ip_list or mgmt_ip in existing_pr_list:
+            return False
+        dtz_ip_list.append(mgmt_ip)
         mgmt_subnets = fabric_info.get('management_subnets', [])
         for mgmt_subnet in mgmt_subnets:
             if mgmt_ip in IPNetwork(mgmt_subnet.get('cidr')):
@@ -758,7 +765,15 @@ class FilterModule(object):
     def _validate_device_to_ztp(self, vnc_api, fabric_info):
         # Make sure physical router does not already exist with a different
         # serial number
+        filters=["physical_router_management_ip"]
+        physcal_routers = vnc_api.physical_routers_list(fields=filters).\
+                get('physical-routers')
+        physical_router_ip_list = list()
+        for phy_router in phy_routers or []:
+            physical_router_ip_list.append(
+                phy_router.get('physical_router_management_ip'))
         final_device_to_ztp = []
+        dtz_ips = list()
         for dtz in fabric_info.get('device_to_ztp', []):
             ser_num = dtz.get('serial_number')
             device_name = dtz.get('hostname')
@@ -779,7 +794,10 @@ class FilterModule(object):
                 del dtz['loopback_ip']
 
             # Validate the mgmt_ip is within range
-            if not self._valid_mgmt_ip(fabric_info, dtz):
+            if not self._valid_mgmt_ip(fabric_info,
+                                       dtz,
+                                       dtz_ips,
+                                       physical_router_ip_list):
                 del dtz['mgmt_ip']
 
             # Validate the underlay_asn is within range
