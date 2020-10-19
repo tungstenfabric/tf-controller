@@ -73,7 +73,7 @@ def default_options():
         'tftp_dir': None,
         'dhcp_leases_file': None,
         'dnsmasq_reload_by_signal': False,
-        'ztp_timeout': 600,
+        'ztp_timeout': 530,
         'rabbit_health_check_interval': 0,
         'job_manager_db_conn_retry_timeout': '10',
         'job_manager_db_conn_max_retries': '6',
