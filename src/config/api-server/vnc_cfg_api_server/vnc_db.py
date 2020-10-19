@@ -1375,6 +1375,14 @@ class VncDbClient(object):
                     if not ok:
                         return ok, res
 
+    def _remove_vpg_annotations(self, vpg_dict, vmi_uuid):
+        if not vpg_dict['annotations']:
+            return
+        for key_val in  vpg_dict['annotations']['key_value_pair']:
+            if key_val['value'] == vmi_uuid:
+                vpg_dict['annotations']['key_value_pair'].remove(key_val)
+                break
+
     def _dbe_resync(self, obj_type, obj_uuids):
         msg = "Start DB Resync for %s" % obj_type
         self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
@@ -1503,7 +1511,6 @@ class VncDbClient(object):
                                                       obj_uuid, obj_dict)
                     if not vpg_ref:
                         # Non fabric VMI
-                        #continue
                         return
 
                     # Read validation type
@@ -1518,12 +1525,10 @@ class VncDbClient(object):
                     ok, vn_uuid = r_class.get_vn_id(obj_dict,
                         self._api_svr_mgr._db_conn, vpg_uuid)
                     if not ok:
-                        #continue
                         return
                     ok, (vlan_id, is_untagged_vlan, links) = r_class.get_vlan_phy_links(
                         None, obj_dict)
                     if not ok:
-                        #continue
                         return
 
                     if not fabric_enterprise_style:  # Service-provider
@@ -1582,8 +1587,13 @@ class VncDbClient(object):
                                         value=vn_uuid)
                                 except ResourceExistsError:
                                     pass
+                        # Remove vpg annotations
+                        self._remove_vpg_annotations(vpg_dict, obj_uuid)
+                        (ok, res) = self._object_db.object_update(
+                            'virtual_port_group', vpg_uuid, vpg_dict)
+                        if not ok:
+                            continue
                     except ResourceExistsError:
-                        #continue
                         return
 
                 elif obj_type == 'physical_router':
@@ -1755,8 +1765,8 @@ class VncDbClient(object):
             except Exception as e:
                 tb = cfgm_common.utils.detailed_traceback()
                 self.config_log(tb, level=SandeshLevel.SYS_ERR)
-                #continue
                 return
+
     # end _dbe_resync_worker
 
     def _dbe_check(self, obj_type, obj_uuids):
