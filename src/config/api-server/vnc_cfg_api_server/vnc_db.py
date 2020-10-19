@@ -1375,6 +1375,14 @@ class VncDbClient(object):
                     if not ok:
                         return ok, res
 
+    def _remove_vpg_annotations(self, vpg_dict, vmi_uuid):
+        if not vpg_dict['annotations']:
+            return
+        for key_val in  vpg_dict['annotations']['key_value_pair']:
+            if key_val['value'] == vmi_uuid:
+                vpg_dict['annotations']['key_value_pair'].remove(key_val)
+                break
+
     def _dbe_resync(self, obj_type, obj_uuids):
         msg = "Start DB Resync for %s" % obj_type
         self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
@@ -1582,9 +1590,14 @@ class VncDbClient(object):
                                         value=vn_uuid)
                                 except ResourceExistsError:
                                     pass
+                        # Remove vpg annotations
+                        self._remove_vpg_annotations(vpg_dict, obj_uuid)
+                        (ok, res) = self._object_db.object_update(
+                            'virtual_port_group', vpg_uuid, vpg_dict)
+                        if not ok:
+                            continue
                     except ResourceExistsError:
-                        #continue
-                        return
+                        continue
 
                 elif obj_type == 'physical_router':
                     # Encrypt PR pwd if not already done
@@ -1755,8 +1768,14 @@ class VncDbClient(object):
             except Exception as e:
                 tb = cfgm_common.utils.detailed_traceback()
                 self.config_log(tb, level=SandeshLevel.SYS_ERR)
-                #continue
-                return
+                continue
+        # end for all objects
+
+        # Send UVEs resync with a pool of workers
+        uve_workers = gevent.pool.Group()
+        def format_args_for_dbe_uve_trace(args):
+            return self.dbe_uve_trace(*args)
+        uve_workers.map(format_args_for_dbe_uve_trace, uve_trace_list)
     # end _dbe_resync_worker
 
     def _dbe_check(self, obj_type, obj_uuids):
