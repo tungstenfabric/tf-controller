@@ -791,6 +791,7 @@ class TestPolicy(STTestCase, VerifyPolicy):
                non-provider VNs connected to it is not allowed
             2. Check a non provider-VN can not be created
                with is_provider_network property set to True
+               if not provider_details provided
             3. Check is_provider_network property of a
                provider-VN is True by default
             4. Check is_provider_network property of a
@@ -798,7 +799,7 @@ class TestPolicy(STTestCase, VerifyPolicy):
             5. Check is_provider_network property of provider-VN
                can not be set as False
             6. Check is_provider_network property of non provider-VN
-               can  not be set as True
+               can  not be set as True if not provider_details provided
             7. Check is_provider_network property of non provider-VN
                can be set as False
             8. Check setting other parameters of a non provider-VN
@@ -824,13 +825,18 @@ class TestPolicy(STTestCase, VerifyPolicy):
         vn2_name = self.id() + '_vn2'
         vn3_name = self.id() + '_vn3'
         vn4_name = self.id() + '_vn4'
+        vn5_name = self.id() + '_vn5'
+        vn6_name = self.id() + '_vn6'
         vn1_obj1 = VirtualNetwork(vn1_name)
         vn2_obj1 = VirtualNetwork(vn2_name)
         vn3_obj1 = VirtualNetwork(vn3_name)
         vn4_obj1 = VirtualNetwork(vn4_name)
+        vn5_obj1 = VirtualNetwork(vn5_name)
+        vn6_obj1 = VirtualNetwork(vn6_name)
         self._vnc_lib.virtual_network_create(vn1_obj1)
         self._vnc_lib.virtual_network_create(vn2_obj1)
         self._vnc_lib.virtual_network_create(vn3_obj1)
+        self._vnc_lib.virtual_network_create(vn6_obj1)
 
         # try creating non provider_vn with linked
         # non provider_vn (linked before creating)
@@ -850,13 +856,11 @@ class TestPolicy(STTestCase, VerifyPolicy):
         vn4_obj1.del_virtual_network(vn2_obj1)
 
         # set is_provider_network on a non provider-vn
-        # and try creating it
-        vn4_obj1.set_is_provider_network(True)
-        self.assertRaises(BadRequest,
-                          self._vnc_lib.virtual_network_create,
-                          vn4_obj1)
+        # and try to create it
+        vn5_obj1.set_is_provider_network(True)
+        self._vnc_lib.virtual_network_create(vn5_obj1)
 
-        # set it as False and retry creating it
+        # set it as False and create
         vn4_obj1.set_is_provider_network(False)
         self._vnc_lib.virtual_network_create(vn4_obj1)
 
@@ -885,15 +889,12 @@ class TestPolicy(STTestCase, VerifyPolicy):
 
         # check is_provider_network of non provider_vn
         # can be set to False
-        vn4_obj1.set_is_provider_network(False)
-        self._vnc_lib.virtual_network_update(vn4_obj1)
+        vn6_obj1.set_is_provider_network(False)
+        self._vnc_lib.virtual_network_update(vn6_obj1)
 
-        # check is_provider_network of non provider_vn
-        # can not be set to True
-        vn4_obj1.set_is_provider_network(True)
-        self.assertRaises(BadRequest,
-                          self._vnc_lib.virtual_network_update,
-                          vn4_obj1)
+        # check update is_provider_network to True of non provider_vn
+        vn6_obj1.set_is_provider_network(True)
+        self._vnc_lib.virtual_network_update(vn6_obj1)
 
         # check db_resync sets is_provider_network property
         # as True in provider-vn
