@@ -1372,6 +1372,13 @@ class VncDbClient(object):
                     if not ok:
                         return ok, res
 
+    def _remove_vpg_annotations(self, vpg_dict, vmi_uuid):
+        if vpg_dict['annotations']:
+            return
+        for key_value in vpg_dict['annotations'].values()[0]:
+            if key_value == vmi_uuid:
+                vpg_dict['annotations'].values()[0].remove(key_value)
+
     def _dbe_resync(self, obj_type, obj_uuids):
         obj_class = cfgm_common.utils.obj_type_to_vnc_class(obj_type, __name__)
         obj_fields = list(obj_class.prop_fields) + list(obj_class.ref_fields)
@@ -1541,6 +1548,10 @@ class VncDbClient(object):
                                         value=vn_uuid)
                                 except ResourceExistsError:
                                     pass
+                        # Remove vpg annotations
+                        self._remove_vpg_annotations(vpg_dict, obj_uuid)
+                        self._object_db.object_update(
+                            'virtual_port_group', vpg_uuid, vpg_dict)
                     except ResourceExistsError:
                         continue
 
