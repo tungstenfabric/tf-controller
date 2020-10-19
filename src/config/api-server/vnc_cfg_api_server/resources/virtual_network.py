@@ -31,34 +31,22 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
         # no further checks if is_provider_network is not set
         if 'is_provider_network' not in obj_dict:
             return (True, '')
-        if not vn_ref:
-            # must be set as False for non provider VN
-            if obj_dict.get('is_provider_network'):
-                return (False,
-                        'Non provider VN (%s) can not be '
-                        'configured with is_provider_network = True' % (
-                            obj_dict.get('uuid')))
-        else:
-            # compare obj_dict with db and fail
-            # if not same as this is a read-only property
-            if obj_dict.get('is_provider_network') != \
-               vn_ref.get('is_provider_network', False):
-                return (False,
-                        'Update is_provider_network property of VN (%s) '
-                        'is not allowed' % obj_dict.get('uuid'))
+        # compare obj_dict with db
+        # update from True to False is not allowed
+        if vn_ref.get('is_provider_network', False) and \
+           not obj_dict.get('is_provider_network'):
+            return (False,
+                    'Update is_provider_network property'
+                    'from True to False of VN (%s) '
+                    'is not allowed' % obj_dict.get('uuid'))
         return (True, '')
 
     @classmethod
-    def _check_provider_network(cls, obj_dict, db_conn, vn_ref=None):
+    def _check_provider_network(cls, obj_dict, db_conn):
         # no further checks if not linked
         # to a provider network
         if not obj_dict.get('virtual_network_refs'):
             return (True, '')
-        # retrieve this VN
-        if not vn_ref:
-            vn_ref = {'uuid': obj_dict['uuid'],
-                      'is_provider_network': obj_dict.get(
-                          'is_provider_network')}
         uuids = []
         for vn in obj_dict.get('virtual_network_refs'):
             if 'uuid' not in vn:
@@ -72,11 +60,11 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
 
         # if not a provider_vn, not more
         # than one virtual_network_refs is allowed
-        if not vn_ref.get('is_provider_network') and \
+        if not obj_dict.get('is_provider_network') and \
            len(obj_dict.get('virtual_network_refs')) != 1:
             return(False,
                    'Non Provider VN (%s) can connect to one provider VN but '
-                   'trying to connect to VN (%s)' % (vn_ref['uuid'], uuids))
+                   'trying to connect to VN (%s)' % (obj_dict['uuid'], uuids))
 
         # retrieve vn_refs of linked VNs
         (ok, provider_vns, _) = db_conn.dbe_list('virtual_network',
@@ -88,19 +76,19 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
                                                          True]})
         if not ok:
             return (ok, 'Error reading VN refs (%s)' % uuids)
-        if vn_ref.get('is_provider_network'):
+        if obj_dict.get('is_provider_network'):
             # this is a provider-VN, no linked provider_vns is expected
             if provider_vns:
                 return (False,
                         'Provider VN (%s) can not connect to another '
-                        'provider VN (%s)' % (vn_ref.get('uuid'), uuids))
+                        'provider VN (%s)' % (obj_dict.get('uuid'), uuids))
         else:
             # this is a non-provider VN, only one provider vn is expected
             if len(provider_vns) != 1:
                 return (False,
                         'Non Provider VN (%s) can connect only to one '
                         'provider VN but not (%s)' % (
-                            vn_ref.get('uuid'), uuids))
+                            obj_dict.get('uuid'), uuids))
         return (True, '')
 
     @classmethod
@@ -142,58 +130,99 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
 
     @classmethod
     def _check_provider_details(cls, obj_dict, db_conn, create):
-
         properties = obj_dict.get('provider_properties')
         if not properties:
             return (True, '')
 
         if not create:
-            ok, result = cls.dbe_read(
+            ok, vn = cls.dbe_read(
                 db_conn,
                 'virtual_network',
                 obj_dict['uuid'],
                 obj_fields=['virtual_machine_interface_back_refs',
                             'provider_properties'])
             if not ok:
-                return ok, result
+                return ok, vn
 
-            old_properties = result.get('provider_properties')
-            if 'virtual_machine_interface_back_refs' in result:
-                if old_properties and (old_properties != properties):
-                    msg = ("Provider values can not be changed"
-                           "when VMs are already using")
-                    return False, msg
-                if (not old_properties) and properties:
-                    segmentation_id = properties.get('segmentation_id', None)
-                    if segmentation_id is None:
-                        return (False,
-                                "Segmenation ID must be configured to update")
-                    physical_network = properties.get('physical_network', None)
-                    if physical_network is None:
-                        return (False,
-                                "Physical Network must be configured"
-                                "to update")
+            # VN is provider network
+            if vn.get('is_provider_network', False):
+                old_properties = vn.get('provider_properties', {})
+                if properties.get('segmentation_id', None) is None:
+                    properties['segmentation_id'] = old_properties.get('segmentation_id')
+                if properties.get('physical_network', None) is None:
+                    properties['physical_network'] = old_properties.get('physical_network')
+                if old_properties != properties:
+                    return (False,
+                            'Update provider_details property'
+                            'of provider VN (%s) '
+                            'is not allowed' % vn.get('uuid', ''))
+                return (True, '')
+            # VN is not provider network
+            # update it to provider network
+            if obj_dict.get('is_provider_network', False):
+                if properties.get('segmentation_id', None) is None:
+                    return (False, "Segmenation ID must be configured to update")
+                if properties.get('physical_network', None) is None:
+                    return (False, "Physical Network must be configured to update")
+                return (True, '')
+            # not updating it to provider network
+            return (False,
+                    'Update provider_details property'
+                    'of non-provider VN (%s) '
+                    'without update is_provider_network '
+                    'to True is not allowed' % vn.get('uuid', ''))
 
-            if old_properties:
-                segmentation_id = properties.get('segmentation_id', None)
-                if segmentation_id is None:
-                    properties['segmentation_id'] = old_properties.get(
-                        'segmentation_id')
-
-                physical_network = properties.get('physical_network', None)
-                if physical_network is None:
-                    properties['physical_network'] = old_properties.get(
-                        'physical_network')
-
-        segmentation_id = properties.get('segmentation_id', None)
-        if segmentation_id is None:
+        if properties.get('segmentation_id', None) is None:
             return (False, "Segmenation ID must be configured")
 
-        physical_network = properties.get('physical_network', None)
-        if physical_network is None:
+        if properties.get('physical_network', None) is None:
             return (False, "Physical Network must be configured")
 
         return (True, '')
+
+    def _check_provider_details(cls, obj_dict, db_conn, vn_ref=None):
+        # VN is not created
+        if not vn_ref:
+            # only provider network can have provider_details
+            if obj_dict.get('is_provider_network', False):
+                properties = obj_dict.get('provider_properties', {})
+                if properties.get('segmentation_id', None) is None:
+                    return (False,
+                            "Segmenation ID must be configured to create")
+                if properties.get('physical_network', None) is None:
+                    return (False,
+                            "Physical Network must be configured to create")
+                return (True, '')
+            else:
+                return (False,
+                        'Set ptovider_details property '
+                        'for non-provider VN (%s) '
+                        'is not allowed' % vn_ref.get('uuid', ''))
+        # VN is created
+        new_properties = obj_dict.get('provider_properties', {})
+        # VN is provider network
+        if vn_ref.get('is_provider_network', False):
+            old_properties = vn_ref.get('provider_properties', {})
+            if old_properties != new_properties:
+                return (False,
+                        'Update provider_details property'
+                        'of provider VN (%s) '
+                        'is not allowed' % vn_ref.get('uuid', ''))
+            return (True, '')
+        # VN is not provider network
+        # Update VN to provider network
+        if obj_dict.get('is_provider_network', False):
+            if new_properties.get('segmentation_id', None) is None:
+                return (False, "Segmenation ID must be configured to update")
+            if new_properties.get('physical_network', None) is None:
+                return (False, "Physical Network must be configured to update")
+            return (True, '')
+        return (False,
+                'Update provider_details property'
+                'of non-provider VN (%s) '
+                'without update is_provider_network '
+                'to True is not allowed' % vn_ref.get('uuid', ''))
+    # end _check_provider_details
 
     @classmethod
     def _is_multi_policy_service_chain_supported(cls, obj_dict,
@@ -525,12 +554,12 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
             if not ok:
                 return (False, (400, error))
 
-        (ok, error) = cls._check_provider_details(obj_dict, db_conn, True)
+        (ok, error) = cls._check_is_provider_network_property(obj_dict,
+                                                              db_conn)
         if not ok:
             return (False, (400, error))
 
-        (ok, error) = cls._check_is_provider_network_property(obj_dict,
-                                                              db_conn)
+        (ok, error) = cls._check_provider_details(obj_dict, db_conn, True)
         if not ok:
             return (False, (400, error))
 
