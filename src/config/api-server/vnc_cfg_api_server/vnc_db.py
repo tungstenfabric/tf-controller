@@ -1481,11 +1481,44 @@ class VncDbClient(object):
                     if not ok:
                         return ok, res
 
+    def _remove_vpg_annotations(self, vpg_dict, vmi_uuid):
+        if 'annotations' not in vpg_dict:
+            return
+        for key_val in  vpg_dict['annotations']['key_value_pair']:
+            if key_val['value'] == vmi_uuid:
+                vpg_dict['annotations']['key_value_pair'].remove(key_val)
+                break
+
     def _dbe_resync(self, obj_type, obj_uuids):
         obj_class = cfgm_common.utils.obj_type_to_vnc_class(obj_type, __name__)
         obj_fields = list(obj_class.prop_fields) + list(obj_class.ref_fields)
         if obj_type == 'project':
             obj_fields.append('logical_routers')
+<<<<<<< HEAD   (dcbbf7 Merge "Add flag to indentify MAC-IP learnt inet routes" into)
+=======
+        elif obj_type == 'virtual_machine_interface':
+            obj_fields.extend(['virtual_port_group_refs', 'virtual_port_group_back_refs'])
+            # get the list of vpg
+            ok, vpg_fqname_uuid_map, _ = self._object_db.object_list('virtual_port_group')
+            vpg_uuids = [vpg_uuid for _, vpg_uuid in vpg_fqname_uuid_map]
+            ok, vpg_list = self._object_db.object_read(
+                    'virtual_port_group',
+                    vpg_uuids,
+                    field_names=['parent_uuid', 'annotations'])
+            vpgs = {vpg_dict['uuid']: vpg_dict for vpg_dict in vpg_list}
+
+            # get the list of fabric
+            ok, fabric_fqname_uuid_map, _ = self._object_db.object_list('fabric')
+            fabric_uuids = [fabric_uuid for _, fabric_uuid in fabric_fqname_uuid_map]
+            ok, fabric_list = self._object_db.object_read(
+                    'fabric',
+                    fabric_uuids,
+                    field_names=['fabric_enterprise_style'])
+            fabrics = {fabric_dict['uuid']: fabric_dict for fabric_dict in fabric_list}
+
+            # update kwargs with vpg, fabric list 
+            kwargs.update({'vpgs': vpgs, 'fabrics': fabrics})
+>>>>>>> CHANGE (f69728 New UT and remove annotations after fabric validation redesi)
 
         (ok, obj_dicts) = self._object_db.object_read(
                                obj_type, obj_uuids, field_names=obj_fields)
@@ -1530,6 +1563,96 @@ class VncDbClient(object):
                         obj_dict['virtual_machine_interface_device_owner'] = 'PhysicalRouter'
                         self._object_db.object_update('virtual_machine_interface',
                                                       obj_uuid, obj_dict)
+<<<<<<< HEAD   (dcbbf7 Merge "Add flag to indentify MAC-IP learnt inet routes" into)
+=======
+                    if not vpg_ref:
+                        # Non fabric VMI
+                        return
+
+                    # Read validation type
+                    vpg_dict = kwargs['vpgs'][vpg_uuid]
+                    # Check for fabric to read from vpg
+                    fabric = None
+                    if 'parent_uuid' in vpg_dict:
+                        fabric = kwargs['fabrics'][vpg_dict['parent_uuid']]
+                    fabric_uuid = fabric.get('uuid')
+                    fabric_enterprise_style = \
+                        (fabric.get('fabric_enterprise_style') or False)
+                    ok, vn_uuid = r_class.get_vn_id(obj_dict,
+                        self._api_svr_mgr._db_conn, vpg_uuid)
+                    if not ok:
+                        return
+                    ok, (vlan_id, is_untagged_vlan, links) = r_class.get_vlan_phy_links(
+                        None, obj_dict)
+                    if not ok:
+                        return
+
+                    if not fabric_enterprise_style:  # Service-provider
+                        untagged_validation_znode = \
+                            r_class._format_sp_untagged_znode(vpg_uuid)
+                        tagged_validation_znode = \
+                            r_class._format_sp_tagged_znode(
+                                vpg_uuid, vn_uuid, vlan_id)
+                    else:  # Enterprise
+                        untagged_validation_znode = \
+                            r_class._format_ep_untagged_znode(
+                                vpg_uuid)
+                        tagged_vn_validation_znode = \
+                            r_class._format_ep_tagged_vpg_vn_znode(
+                                vpg_uuid, vn_uuid)
+                        tagged_vlan_validation_znode = \
+                            r_class._format_ep_tagged_vpg_vlan_znode(
+                                vpg_uuid, vlan_id)
+                        tagged_fabric_vn_validation_znode = \
+                            r_class._format_ep_tagged_fabric_vn_znode(
+                                fabric_uuid, vn_uuid)
+                        tagged_fabric_vlan_validation_znode = \
+                             r_class._format_ep_tagged_fabric_vlan_znode(
+                                 fabric_uuid, vlan_id)
+
+                    try:
+                        if is_untagged_vlan:  # Untagged
+                            self._zk_db._zk_client.create_node(
+                                untagged_validation_znode, value=obj_uuid)
+                        else:  # Tagged
+                            if not fabric_enterprise_style:
+                                self._zk_db._zk_client.create_node(
+                                    tagged_validation_znode, value=obj_uuid)
+                            else:
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_vn_validation_znode,
+                                        value=vlan_id)
+                                except ResourceExistsError:
+                                    pass
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_vlan_validation_znode,
+                                        value=obj_uuid)
+                                except ResourceExistsError:
+                                    pass
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_fabric_vn_validation_znode,
+                                        value=vlan_id)
+                                except ResourceExistsError:
+                                    pass
+                                try:
+                                    self._zk_db._zk_client.create_node(
+                                        tagged_fabric_vlan_validation_znode,
+                                        value=vn_uuid)
+                                except ResourceExistsError:
+                                    pass
+                        # Remove vpg annotations
+                        self._remove_vpg_annotations(vpg_dict, obj_uuid)
+                        (ok, res) = self._object_db.object_update(
+                            'virtual_port_group', vpg_uuid, vpg_dict)
+                        if not ok:
+                            return
+                    except ResourceExistsError:
+                        return
+
+>>>>>>> CHANGE (f69728 New UT and remove annotations after fabric validation redesi)
                 elif obj_type == 'physical_router':
                     # Encrypt PR pwd if not already done
                     if obj_dict.get('physical_router_user_credentials') and \
@@ -1704,6 +1827,7 @@ class VncDbClient(object):
             except Exception as e:
                 tb = cfgm_common.utils.detailed_traceback()
                 self.config_log(tb, level=SandeshLevel.SYS_ERR)
+<<<<<<< HEAD   (dcbbf7 Merge "Add flag to indentify MAC-IP learnt inet routes" into)
                 continue
         # end for all objects
 
@@ -1713,6 +1837,10 @@ class VncDbClient(object):
             return self.dbe_uve_trace(*args)
         uve_workers.map(format_args_for_dbe_uve_trace, uve_trace_list)
     # end _dbe_resync
+=======
+                return
+    # end _dbe_resync_worker
+>>>>>>> CHANGE (f69728 New UT and remove annotations after fabric validation redesi)
 
     def _dbe_check(self, obj_type, obj_uuids):
         for obj_uuid in obj_uuids:
