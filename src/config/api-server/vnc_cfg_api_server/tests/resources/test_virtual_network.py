@@ -356,19 +356,275 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
             .get_vxlan_network_identifier()
         self.assertEqual(vn_network_id, vxlan_id)
 
+<<<<<<< HEAD   (84e0d2 Merge "Added test for vlan tag in CSN replies" into R2011)
     def test_update_in_use_vn_to_provider_vn(self):
+=======
+    def test_context_undo_fail_db_create(self):
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_create', stub)]):
+                self.api.virtual_network_create(vn_obj)
+
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_vxlan_id_fail_db_create(self):
+        # enable vxlan routing on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        proj.set_vxlan_routing(True)
+        self._vnc_lib.project_update(proj)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_vxlan_network_identifier(6000)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_create', stub)]):
+                self.api.virtual_network_create(vn_obj)
+
+        # make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_fail_db_delete(self):
+        vn_obj = self.create_virtual_network('vn-l2-%s' % self.id())
+        vn_ipam_refs = vn_obj.get_network_ipam_refs()
+
+        mock_zk = self._api_server._db_conn._zk_db
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_delete', stub)]):
+                self.api.virtual_network_delete(id=vn_obj.uuid)
+
+        # Make sure ipam refs still present (undo action recreated it)
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_ipam_refs_after_delete_fail = vn_obj.get_network_ipam_refs()
+
+        self.assertEqual(vn_ipam_refs[0]['to'],
+                         vn_ipam_refs_after_delete_fail[0]['to'])
+        self.assertEqual(vn_ipam_refs[0]['uuid'],
+                         vn_ipam_refs_after_delete_fail[0]['uuid'])
+        self.assertEqual(vn_ipam_refs[0]['attr'].ipam_subnets[0].subnet_uuid,
+                         vn_ipam_refs_after_delete_fail[0][
+                             'attr'].ipam_subnets[0].subnet_uuid)
+        # Make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_vxlan_id_fail_db_update(self):
+        # enable vxlan routing on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        proj.set_vxlan_routing(True)
+        self._vnc_lib.project_update(proj)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        # Create vxlan
+        vxlan_id = 6000
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_vxlan_network_identifier(vxlan_id)
+        vn_obj_properties.set_forwarding_mode('l2_l3')
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        self.api.virtual_network_create(vn_obj)
+
+        vxlan_fqname = mock_zk.get_vn_from_id(vxlan_id)
+        # Update vxlan id (will fail)
+        new_vxlan_id = 6005
+        vn_obj_properties.set_vxlan_network_identifier(new_vxlan_id)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_update', stub)]):
+                self.api.virtual_network_update(vn_obj)
+
+        # Make sure vxlan_id is still allocated with same name
+        new_vxlan_fqname = mock_zk.get_vn_from_id(vxlan_id)
+        self.assertEqual(new_vxlan_fqname, vxlan_fqname)
+
+        # Make sure new_vxlan_id is deallocated
+        update_vxlan_fqname = mock_zk.get_vn_from_id(new_vxlan_id)
+        self.assertEqual(update_vxlan_fqname, None)
+
+        # Make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_context_undo_vn_to_vxlan_id_fail_db_update(self):
+        # Enable vxlan routing on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        proj.set_vxlan_routing(True)
+        self._vnc_lib.project_update(proj)
+
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        self.api.virtual_network_create(vn_obj)
+
+        vn_fqname = mock_zk.get_vn_from_id(vn_obj.virtual_network_network_id)
+        vn_id = vn_obj.virtual_network_network_id
+
+        # Change vn to vxlan type
+        vxlan_id = 6000
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_vxlan_network_identifier(vxlan_id)
+        vn_obj_properties.set_forwarding_mode('l2_l3')
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        def stub(*args, **kwargs):
+            return (False, (500, "Fake error"))
+
+        zk_alloc_count_start = mock_zk._vn_id_allocator.get_alloc_count()
+        with ExpectedException(HttpError):
+            with test_common.flexmocks(
+                    [(self._api_server._db_conn, 'dbe_update', stub)]):
+                self.api.virtual_network_update(vn_obj)
+
+        # Make sure vxlan_id was dealocated
+        new_vxlan_fqname = mock_zk.get_vn_from_id(vxlan_id)
+        self.assertEqual(new_vxlan_fqname, None)
+
+        # Make sure vn id is the same
+        new_vn_id = vn_obj.virtual_network_network_id
+        self.assertEqual(vn_id, new_vn_id)
+
+        # Make sure fqname is the same fot vn_id
+        update_vn_fqname = mock_zk.get_vn_from_id(
+            vn_obj.virtual_network_network_id)
+        self.assertEqual(vn_fqname, update_vn_fqname)
+
+        # Make sure allocation counter stays the same
+        zk_alloc_count_current = mock_zk._vn_id_allocator.get_alloc_count()
+        self.assertEqual(zk_alloc_count_start, zk_alloc_count_current)
+
+    def test_create_provider_vn(self):
+>>>>>>> CHANGE (b3f955 Enable update non-provider VN is_provider_network to True)
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
-        self.api.virtual_network_create(vn)
+        vn.set_is_provider_network(True)
+        vn.set_provider_properties(
+            ProviderDetails(
+                params_dict={"segmentation_id": 100,
+                             "physical_network": "physnet1"}))
+        vn_uuid = self.api.virtual_network_create(vn)
+
+        is_provider_network = (self
+                               .api.virtual_network_read(id=vn_uuid)
+                               .get_is_provider_network())
+        self.assertTrue(is_provider_network)
+    # end test_create_provider_vn
+
+    def test_create_provider_vn_without_provider_details(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn.set_is_provider_network(True)
+        vn_uuid = self.api.virtual_network_create(vn)
+
+        is_provider_network = (self
+                               .api.virtual_network_read(id=vn_uuid)
+                               .get_is_provider_network())
+        self.assertTrue(is_provider_network)
+    # end test_create_provider_vn_without_provider_details
+
+    def test_update_not_in_use_non_provider_vn_to_provider(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn_uuid = self.api.virtual_network_create(vn)
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertFalse(is_provider_network)
+
+        vn.set_is_provider_network(True)
+        vn.set_provider_properties(
+            ProviderDetails(
+                params_dict={"segmentation_id": 100,
+                             "physical_network": "physnet1"}))
+        self.api.virtual_network_update(vn)
+
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertTrue(is_provider_network)
+
+        updated_provider_properties = vn.get_provider_properties()
+        segmentation_id = updated_provider_properties.get_segmentation_id()
+        physical_network = updated_provider_properties.get_physical_network()
+
+        self.assertEqual((100, "physnet1"),
+                         (segmentation_id, physical_network))
+    # end test_update_non_provider_vn_to_provider
+
+    def test_update_non_provider_vn_to_provider_without_provider_details(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn_uuid = self.api.virtual_network_create(vn)
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertFalse(is_provider_network)
+
+        vn.set_is_provider_network(True)
+        self.api.virtual_network_update(vn)
+
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertTrue(is_provider_network)
+    # end test_update_non_provider_vn_to_provider_without_provider_details
+
+    def test_update_in_use_vn_to_provider_vn(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"segmentation_id": 100,
@@ -383,20 +639,23 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
 
         self.assertEqual((100, "physnet1"),
                          (segmentation_id, physical_network))
+    # end test_update_in_use_vn_to_provider_vn
 
     def test_update_in_use_vn_to_provider_vn_without_physnet_label(self):
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
-        self.api.virtual_network_create(vn)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"segmentation_id": 100}))
@@ -408,20 +667,23 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
                                        .get_provider_properties())
 
         self.assertEqual(None, updated_provider_properties)
+    # end test_update_in_use_vn_to_provider_vn_without_physnet_label
 
     def test_update_in_use_vn_to_provider_vn_without_segmentation(self):
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
-        self.api.virtual_network_create(vn)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"physical_network": "physnet1"}))
@@ -433,23 +695,26 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
                                        .get_provider_properties())
 
         self.assertEqual(None, updated_provider_properties)
+    # end test_update_in_use_vn_to_provider_vn_without_segmentation
 
     def test_update_in_use_provider_vn(self):
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"segmentation_id": 100,
                              "physical_network": "physnet1"}))
-        self.api.virtual_network_create(vn)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
         vn.set_provider_properties(
             ProviderDetails(
@@ -466,3 +731,4 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
 
         self.assertEqual((100, "physnet1"),
                          (segmentation_id, physical_network))
+    # end test_update_in_use_provider_vn
