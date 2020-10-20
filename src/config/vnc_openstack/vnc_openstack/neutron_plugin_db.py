@@ -1277,7 +1277,6 @@ class DBInterface(object):
             return ret_q_ports
 
         memo_req = {'networks': {},
-                    'subnets': {},
                     'virtual-machines': {},
                     'instance-ips': {},
                     'service-instances': {}}
@@ -1291,8 +1290,6 @@ class DBInterface(object):
         for net_obj in net_objs:
             # dictionary of iip_uuid to iip_obj
             memo_req['networks'][net_obj.uuid] = net_obj
-            subnets_info = self._virtual_network_to_subnets(net_obj)
-            memo_req['subnets'][net_obj.uuid] = subnets_info
 
         # Read only the instance-ips associated to port_objs
         iip_objs = self._instance_ip_list(
@@ -3080,8 +3077,6 @@ class DBInterface(object):
 
         if 'networks' not in port_req_memo:
             port_req_memo['networks'] = {}
-        if 'subnets' not in port_req_memo:
-            port_req_memo['subnets'] = {}
         if 'virtual-machines' not in port_req_memo:
             port_req_memo['virtual-machines'] = {}
         if 'service-instances' not in port_req_memo:
@@ -3092,8 +3087,6 @@ class DBInterface(object):
         except KeyError:
             net_obj = self._virtual_network_read(net_id=net_id)
             port_req_memo['networks'][net_id] = net_obj
-            subnets_info = self._virtual_network_to_subnets(net_obj)
-            port_req_memo['subnets'][net_id] = subnets_info
 
         if port_obj.parent_type != "project":
             proj_id = net_obj.parent_uuid.replace('-', '')
