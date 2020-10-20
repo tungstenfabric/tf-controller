@@ -1,0 +1,18 @@
+//
+// config_updater.sandesh
+//
+// Introspect structs for Updating API Server parameters
+//
+// Copyright (c) 2020 Juniper Networks, Inc. All rights reserved.
+//
+
+
+request sandesh ConfigApiUpdateReq {
+    1: bool enable_api_stats_log;
+    2: bool enable_latency_stats_log;
+}
+
+response sandesh ConfigApiUpdateResp {
+    1: bool enable_api_stats_log;
+    2: bool enable_latency_stats_log;
+}
