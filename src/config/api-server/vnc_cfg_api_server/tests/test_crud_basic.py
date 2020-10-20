@@ -1304,6 +1304,32 @@ class TestVncCfgApiServer(test_case.ApiServerTestCase):
         finally:
             api_server._db_conn._object_db.object_read = orig_read
 
+    def test_update_api_server_configs(self):
+        api_server = self._server_info['api_server']
+        introspect_port = api_server._args.http_server_port
+        update_url = 'http://localhost:%s/Snh_ConfigApiUpdateReq?%s'
+        test_dicts = [
+            {'enable_api_stats_log': '', 'enable_latency_stats_log': '', 'assert': (0, 0)},
+            {'enable_api_stats_log': 0, 'enable_latency_stats_log': '', 'assert': (0, 0)},
+            {'enable_api_stats_log': '', 'enable_latency_stats_log': 0, 'assert': (0, 0)},
+            {'enable_api_stats_log': 1, 'enable_latency_stats_log': '', 'assert': (1, 0)},
+            {'enable_api_stats_log': '', 'enable_latency_stats_log': 1, 'assert': (1, 1)},
+            {'enable_api_stats_log': '', 'enable_latency_stats_log': '', 'assert': (1, 1)},
+            {'enable_api_stats_log': 1, 'enable_latency_stats_log': 1, 'assert': (1, 1)},
+            {'enable_api_stats_log': '', 'enable_latency_stats_log': '', 'assert': (1, 1)},
+            {'enable_api_stats_log': 0, 'enable_latency_stats_log': 0, 'assert': (0, 0)},
+            {'enable_api_stats_log': '', 'enable_latency_stats_log': '', 'assert': (0, 0)},
+        ]
+
+        for test_dict in test_dicts:
+            assert_vals = test_dict['assert']
+            params = 'enable_api_stats_log=%s' % test_dict['enable_api_stats_log']
+            params += '&enable_latency_stats_log=%s' % test_dict['enable_latency_stats_log']
+            updates = requests.get(update_url % (introspect_port, params))
+            self.assertEqual(updates.status_code, 200)
+            self.assertEqual(api_server.enable_api_stats_log, bool(assert_vals[0]))
+            self.assertEqual(api_server.enable_latency_stats_log, bool(assert_vals[1]))
+
     def test_sandesh_trace(self):
         api_server = self._server_info['api_server']
         # the test
