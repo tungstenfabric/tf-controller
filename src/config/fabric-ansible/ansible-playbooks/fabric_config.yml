@@ -25,6 +25,7 @@
         enterprise_style: "{{ render_output.enterprise_style }}"
         conf_dir: "{{ render_output.conf_dir }}"
         source_file: "{{ render_output.combined_config }}"
+        snmp_community: "{{ render_output.snmp_community }}"
 
   roles:
     - commit_fabric_config
@@ -50,7 +51,7 @@
         set_fact:
           prouter_onboarding_state: "{{prouter_obj.obj.physical_router_onboarding_state | default(None)}}"
 
-      - name: Change onboarding state to underlay_configured
+      - name: Change onboarding state to underlay_configured and snmp community string
         vnc_db_mod:
           job_ctx: "{{ job_ctx }}"
           object_type: "physical_router"
@@ -58,7 +59,12 @@
           object_dict: |
             {
               "uuid": "{{ device_uuid }}",
-              "physical_router_onboarding_state": "underlay_configured"
+              "physical_router_onboarding_state": "underlay_configured",
+              "physical_router_snmp_credentials": {
+                   "version": 2,
+                   "local_port": 161,
+                   "v2_community": "{{ snmp_community }}"
+              }
             }
         when: prouter_onboarding_state != "underlay_configured"
       when: is_delete is undefined or is_delete == False
