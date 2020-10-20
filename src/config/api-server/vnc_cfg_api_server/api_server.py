@@ -138,6 +138,7 @@ from cfgm_common.uve.nodeinfo.ttypes import NodeStatusUVE, \
 from .sandesh.traces.ttypes import RestApiTrace
 from .vnc_bottle import get_bottle_server
 from cfgm_common.vnc_greenlets import VncGreenlet
+from cfgm_common.vnc_config_updater import ConfigUpdater
 from cfgm_common.kombu_amqp import KombuAmqpClient
 import ssl
 
@@ -2173,6 +2174,7 @@ class VncApiServer(object):
         self._sandesh.trace_buffer_create(name="DBUVERequestTraceBuf", size=1000)
         self._sandesh.trace_buffer_create(name="MessageBusNotifyTraceBuf",
                                           size=1000)
+        ConfigUpdater.register_config_update_handler(self)
         VncGreenlet.register_sandesh_handler()
 
         self._sandesh.set_logging_params(
