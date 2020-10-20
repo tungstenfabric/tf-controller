@@ -38,7 +38,11 @@ pkg = [
     env.SandeshGenPy('#controller/src/config/uve/physical_router_config.sandesh', 'cfgm_common/uve/', False),
     env.SandeshGenPy('#controller/src/config/uve/service_status.sandesh', 'cfgm_common/uve/', False),
     env.SandeshGenPy('#controller/src/config/uve/feature_flags.sandesh', 'cfgm_common/uve/', False),
+<<<<<<< HEAD   (3b2d9d [Fabric] Advertise a /32 route in underlay EBGP)
     env.SandeshGenPy('#controller/src/config/uve/config_api_worker.sandesh', 'cfgm_common/uve/', False),
+=======
+    env.SandeshGenPy('#controller/src/config/uve/config_updater.sandesh', 'cfgm_common/uve/', False),
+>>>>>>> CHANGE (ff7bcf [api-server] Added support for Updating and Reading Config L)
 ]
 
 # A set of scripts used by other python tests - they are expected in #build

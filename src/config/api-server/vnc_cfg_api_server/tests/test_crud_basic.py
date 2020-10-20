@@ -1304,6 +1304,23 @@ class TestVncCfgApiServer(test_case.ApiServerTestCase):
         finally:
             api_server._db_conn._object_db.object_read = orig_read
 
+    def test_update_api_server_configs(self):
+        api_server = self._server_info['api_server']
+        introspect_port = api_server._args.http_server_port
+        update_url = 'http://localhost:%s/Snh_ConfigApiUpdateReq?%s'
+        params = 'enable_api_stats_log=1&enable_latency_stats_log=1'
+        updates = requests.get(update_url % (introspect_port, params))
+        self.assertEqual(api_server.enable_latency_stats_log, True)
+        self.assertEqual(api_server.enable_api_stats_log, True)
+        self.assertEqual(updates.status_code, 200)
+
+        semi_filled_params = 'enable_api_stats_log=&enable_latency_stats_log=0'
+        updates = requests.get(
+            update_url %(introspect_port, semi_filled_params))
+        self.assertEqual(api_server.enable_latency_stats_log, False)
+        self.assertEqual(api_server.enable_api_stats_log, True)
+        self.assertEqual(updates.status_code, 200)
+
     def test_sandesh_trace(self):
         api_server = self._server_info['api_server']
         # the test
