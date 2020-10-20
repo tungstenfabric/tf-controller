@@ -333,10 +333,6 @@ TEST_F(TestFlowTable, ResetFlowStats) {
     EXPECT_TRUE(info != NULL);
     EXPECT_TRUE(info->flow_handle() == 10);
 
-    //Verify the stats of flow are reset after change of flow-handle
-    EXPECT_TRUE(FlowStatsMatch("vrf1", remote_vm1_ip, vm1_ip, IPPROTO_TCP, 1000,
-                               200, 0, 0, vif0->flow_key_nh()->id(), 10));
-
     //Invoke FlowStatsCollector to enqueue delete for reverse flow which is
     //marked as short flow
     util_.EnqueueFlowStatsCollectorTask();
