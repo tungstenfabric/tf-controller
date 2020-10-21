@@ -355,11 +355,21 @@ class BgpRouterST(ResourceBaseST):
             if router.router_type in ('bgpaas-server', 'bgpaas-client'):
                 continue
 
+            router_fq_name = router.name.split(':')
             if self._skip_bgp_router_peering_add(router, cluster_rr_supported,
                                                  control_rr_supported):
+                if router_fq_name in peerings_set:
+                    try:
+                        peer_obj = self._vnc_lib.bgp_router_read(
+                            fq_name=router_fq_name)
+                        obj.del_bgp_router(peer_obj)
+                    except Exception as e:
+                        # Logging error to handle further processing of other
+                        # bgp-refs
+                        self._logger.error("BGP router ref delete fail %s"
+                                           % (e))
                 continue
 
-            router_fq_name = router.name.split(':')
             if router_fq_name in peerings_set and not rr_changed:
                 continue
             router_obj = BgpRouter()
