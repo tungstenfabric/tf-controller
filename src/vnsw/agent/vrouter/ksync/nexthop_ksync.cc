@@ -82,6 +82,13 @@ NHKSyncEntry::NHKSyncEntry(NHKSyncObject *obj, const NextHop *nh) :
         break;
     }
 
+    case NextHop::NDP: {
+        const NdpNH *ndp = static_cast<const NdpNH *>(nh);
+        vrf_id_ = ndp->vrf_id();
+        sip_ = *(ndp->GetIp());
+        break;
+    }
+
     case NextHop::INTERFACE: {
         InterfaceKSyncObject *interface_object =
             ksync_obj_->ksync()->interface_ksync_obj();
@@ -262,7 +269,7 @@ bool NHKSyncEntry::IsLess(const KSyncEntry &rhs) const {
         return false;
     }
 
-    if (type_ == NextHop::ARP) {
+    if (type_ == NextHop::ARP || type_ == NextHop::NDP) {
         //Policy is ignored for ARP NH
         if (vrf_id_ != entry.vrf_id_) {
             return vrf_id_ < entry.vrf_id_;
@@ -463,6 +470,10 @@ std::string NHKSyncEntry::ToString() const {
         s << "ARP ";
         break;
     }
+    case NextHop::NDP: {
+        s << "NDP ";
+        break;
+    }
     case NextHop::VRF: {
         s << "VRF assign to ";
         const VrfEntry* vrf =
@@ -571,6 +582,32 @@ bool NHKSyncEntry::Sync(DBEntry *e) {
         break;
     }
 
+    case NextHop::NDP: {
+        InterfaceKSyncObject *interface_object =
+            ksync_obj_->ksync()->interface_ksync_obj();
+        NdpNH *ndp_nh = static_cast<NdpNH *>(e);
+        if (dmac_ != ndp_nh->GetMac()) {
+            dmac_ = ndp_nh->GetMac();
+            ret = true;
+        }
+
+        if (valid_) {
+            InterfaceKSyncEntry if_ksync(interface_object,
+                                         ndp_nh->GetInterface());
+            if (interface_ != interface_object->GetReference(&if_ksync)) {
+                interface_ = interface_object->GetReference(&if_ksync);
+                ret = true;
+            }
+        } else {
+            if (interface_ != NULL) {
+                interface_ = NULL;
+                dmac_.Zero();
+                ret = true;
+            }
+        }
+        break;
+    }
+
     case NextHop::INTERFACE: {
         InterfaceNH *intf_nh = static_cast<InterfaceNH *>(e);
         dmac_ = intf_nh->GetDMac();
@@ -652,6 +689,13 @@ bool NHKSyncEntry::Sync(DBEntry *e) {
             InterfaceKSyncEntry if_ksync(interface_object, arp_nh->GetInterface());
             interface = interface_object->GetReference(&if_ksync);
             dmac = arp_nh->GetMac();
+        } else if (active_nh->GetType() == NextHop::NDP) {
+            const NdpNH *ndp_nh = static_cast<const NdpNH *>(active_nh);
+            InterfaceKSyncObject *interface_object =
+                ksync_obj_->ksync()->interface_ksync_obj();
+            InterfaceKSyncEntry if_ksync(interface_object, ndp_nh->GetInterface());
+            interface = interface_object->GetReference(&if_ksync);
+            dmac = ndp_nh->GetMac();
         } else if (active_nh->GetType() == NextHop::INTERFACE) {
             const InterfaceNH *intf_nh =
                 static_cast<const InterfaceNH *>(active_nh);
@@ -741,6 +785,14 @@ bool NHKSyncEntry::Sync(DBEntry *e) {
                                          arp_nh->GetInterface());
             interface = interface_object->GetReference(&if_ksync);
             dmac = arp_nh->GetMac();
+        } else if (active_nh->GetType() == NextHop::NDP) {
+            const NdpNH *ndp_nh = static_cast<const NdpNH *>(active_nh);
+            InterfaceKSyncObject *interface_object =
+                ksync_obj_->ksync()->interface_ksync_obj();
+            InterfaceKSyncEntry if_ksync(interface_object,
+                                         ndp_nh->GetInterface());
+            interface = interface_object->GetReference(&if_ksync);
+            dmac = ndp_nh->GetMac();
         } else if (active_nh->GetType() == NextHop::RECEIVE) {
             const ReceiveNH *rcv_nh = static_cast<const ReceiveNH *>(active_nh);
             InterfaceKSyncObject *interface_object =
@@ -925,6 +977,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
     switch (type_) {
         case NextHop::VLAN:
         case NextHop::ARP:
+        case NextHop::NDP:
         case NextHop::INTERFACE :
             encoder.set_nhr_type(NH_ENCAP);
             if (if_ksync) {
@@ -1241,6 +1294,12 @@ void NHKSyncEntry::FillObjectLog(sandesh_op::type op, KSyncNhInfo &info)
         break;
     }
 
+    case NextHop::NDP: {
+        info.set_type("NDP");
+        //Fill dmac and smac???
+        break;
+    }
+
     case NextHop::VRF: {
         info.set_type("VRF");
         info.set_vrf(vrf_id_);
@@ -1362,6 +1421,14 @@ KSyncEntry *NHKSyncEntry::UnresolvedReference() {
         break;
     }
 
+    case NextHop::NDP: {
+        assert(if_ksync);
+        if (!if_ksync->IsResolved()) {
+            entry = if_ksync;
+        }
+        break;
+    }
+
     case NextHop::VLAN:
     case NextHop::INTERFACE: {
         assert(if_ksync);
@@ -1471,8 +1538,8 @@ void NHKSyncEntry::SetEncap(InterfaceKSyncEntry *if_ksync,
     /* SMAC encode */
     if (type_ == NextHop::VLAN) {
         smac = &smac_;
-    } else if ((type_ == NextHop::INTERFACE || type_ == NextHop::ARP)
-                    && if_ksync) {
+    } else if ((type_ == NextHop::INTERFACE || type_ == NextHop::ARP ||
+                type_ == NextHop::NDP) && if_ksync) {
         smac = &if_ksync->mac();
 
     } else {

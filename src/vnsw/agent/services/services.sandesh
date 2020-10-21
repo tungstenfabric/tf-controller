@@ -342,6 +342,7 @@ response sandesh Icmpv6Stats {
     6: i32 icmpv6_neighbor_solicit;
     7: i32 icmpv6_neighbor_advert_solicited;
     8: i32 icmpv6_neighbor_advert_unsolicited;
+    9: i32 icmpv6_neighbor_solicited;
 }
 
 /**
@@ -383,6 +384,7 @@ struct InterfaceIcmpv6Stats {
     6: u32 icmpv6_neighbor_solicit;
     7: u32 icmpv6_neighbor_advert_solicited;
     8: u32 icmpv6_neighbor_advert_unsolicited;
+    9: i32 icmpv6_neighbor_solicited;
 }
 
 /**
@@ -931,6 +933,18 @@ trace sandesh Dhcpv6Trace {
  */
 trace sandesh Icmpv6Trace {
     1: string msg;
+}
+
+/**
+ * @description: Trace message for ndp
+ * @type: Trace
+ * @severity: DEBUG
+ */
+trace sandesh NdpTrace {
+    1: string op;
+    2: string ip;
+    3: string vrf;
+    4: string mac;
 }
 
 /**

@@ -16,7 +16,7 @@ dhcp_test = AgentEnv.MakeTestCmd(env, 'dhcp_test', service_test_suite)
 env.Alias('src/vnsw:dhcp_test', dhcp_test)
 dns_test = AgentEnv.MakeTestCmd(env, 'dns_test', service_test_suite)
 env.Alias('src/vnsw:dns_test', dns_test)
-dns_resolver_test = AgentEnv.MakeTestCmd(env, 'dns_resolver_test', 
+dns_resolver_test = AgentEnv.MakeTestCmd(env, 'dns_resolver_test',
                                          service_test_suite)
 env.Alias('src/vnsw:dns_resolver_test', dns_resolver_test)
 arp_test = AgentEnv.MakeTestCmd(env, 'arp_test', service_test_suite)
@@ -29,6 +29,7 @@ igmp_evpn_test = AgentEnv.MakeTestCmd(env, 'igmp_evpn_test', service_test_suite)
 igmp_mpolicy_test = AgentEnv.MakeTestCmd(env, 'igmp_mpolicy_test', service_test_suite)
 icmpv6_test = AgentEnv.MakeTestCmd(env, 'icmpv6_test', service_test_suite)
 metadata_test = AgentEnv.MakeTestCmd(env, 'metadata_test', service_test_suite)
+ndp_test = AgentEnv.MakeTestCmd(env, 'ndp_test', service_test_suite)
 pkt_trace_test = AgentEnv.MakeTestCmd(env, 'pkt_trace_test', service_test_suite)
 arp_path_preference_test = AgentEnv.MakeTestCmd(env, 'arp_path_preference_test',
                                                 service_test_suite)

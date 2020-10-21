@@ -353,7 +353,8 @@ public:
         MIRROR,
         COMPOSITE,
         VLAN,
-        PBB
+        PBB,
+        NDP
     };
 
     NextHop(Type type, bool policy) :
@@ -846,6 +847,95 @@ private:
     InterfaceRef interface_;
     MacAddress mac_;
     DISALLOW_COPY_AND_ASSIGN(ArpNH);
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// NDP NH definition
+/////////////////////////////////////////////////////////////////////////////
+class NdpNHKey : public NextHopKey {
+public:
+    NdpNHKey(const string &vrf_name, const IpAddress &ip, bool policy) :
+        NextHopKey(NextHop::NDP, policy), vrf_key_(vrf_name), dip_(ip) {
+    }
+    virtual ~NdpNHKey() { };
+
+    virtual NextHop *AllocEntry() const;
+    virtual NextHopKey *Clone() const {
+        return new NdpNHKey(vrf_key_.name_, dip_, policy_);
+    }
+    string ToString() {
+        return vrf_key_.name_ + dip_.to_string();
+    }
+private:
+    friend class NdpNH;
+    VrfKey vrf_key_;
+    IpAddress dip_;
+    DISALLOW_COPY_AND_ASSIGN(NdpNHKey);
+};
+
+class NdpNHData : public NextHopData {
+public:
+    NdpNHData(InterfaceKey *intf_key) :
+        NextHopData(), intf_key_(intf_key),
+        mac_(), resolved_(false), valid_(false) { };
+
+    NdpNHData(const MacAddress &mac, InterfaceKey *intf_key,
+              bool resolved) : NextHopData(), intf_key_(intf_key), mac_(mac),
+        resolved_(resolved), valid_(true) {
+    }
+    virtual ~NdpNHData() { };
+
+private:
+    friend class NdpNH;
+    boost::scoped_ptr<InterfaceKey> intf_key_;
+    MacAddress mac_;
+    bool resolved_;
+    bool valid_;
+    DISALLOW_COPY_AND_ASSIGN(NdpNHData);
+};
+
+class NdpNH : public NextHop {
+public:
+    NdpNH(VrfEntry *vrf, const IpAddress &ip) :
+        NextHop(NDP, false, false), vrf_(vrf, this), ip_(ip), interface_(), mac_() {};
+    virtual ~NdpNH() { };
+
+    virtual std::string ToString() { return "NDP"; }
+    virtual bool NextHopIsLess(const DBEntry &rhs) const;
+    virtual void SetKey(const DBRequestKey *key);
+    virtual bool ChangeEntry(const DBRequest *req);
+    virtual void Delete(const DBRequest *req) {};
+    virtual KeyPtr GetDBRequestKey() const;
+    virtual void SendObjectLog(const NextHopTable *table,
+                               AgentLogEvent::type event) const;
+    virtual bool CanAdd() const;
+
+    const MacAddress &GetMac() const {return mac_;};
+    const Interface *GetInterface() const {return interface_.get();};
+    const boost::uuids::uuid &GetIfUuid() const;
+    const uint32_t vrf_id() const;
+    const IpAddress *GetIp() const {return &ip_;};
+    const VrfEntry *GetVrf() const {return vrf_.get();};
+    bool GetResolveState() const {return valid_;}
+    virtual bool DeleteOnZeroRefCount() const {
+        return true;
+    }
+
+    virtual bool MatchEgressData(const NextHop *nh) const {
+        const NdpNH *ndp_nh = dynamic_cast<const NdpNH *>(nh);
+        if (ndp_nh && vrf_ == ndp_nh->vrf_ && ip_ == ndp_nh->ip_) {
+            return true;
+        }
+        return false;
+    }
+    virtual bool NeedMplsLabel() { return false; }
+
+private:
+    VrfEntryRef vrf_;
+    IpAddress ip_;
+    InterfaceRef interface_;
+    MacAddress mac_;
+    DISALLOW_COPY_AND_ASSIGN(NdpNH);
 };
 
 /////////////////////////////////////////////////////////////////////////////

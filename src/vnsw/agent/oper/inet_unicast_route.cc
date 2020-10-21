@@ -639,6 +639,44 @@ bool Inet4UnicastArpRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
     return ret;
 }
 
+bool InetUnicastNdpRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
+                                                 const AgentRoute *rt) {
+    bool ret = true;
+
+    NdpNHKey key(vrf_name_, addr_, policy_);
+    NextHop *nh =
+        static_cast<NextHop *>(agent->nexthop_table()->FindActiveEntry(&key));
+    path->set_unresolved(false);
+
+    if (path->dest_vn_list() != vn_list_) {
+        path->set_dest_vn_list(vn_list_);
+        ret = true;
+    }
+
+    if (path->sg_list() != sg_list_) {
+        path->set_sg_list(sg_list_);
+        ret = true;
+    }
+
+    if (path->tag_list() != tag_list_) {
+        path->set_tag_list(tag_list_);
+        ret = true;
+    }
+
+    if (path->ChangeNH(agent, nh) == true)
+        ret = true;
+
+    if (nh) {
+        if (path->CopyNdpData()) {
+            ret = true;
+        }
+    }
+
+    path->set_tunnel_bmap(1 << TunnelType::NATIVE);
+
+    return ret;
+}
+
 bool Inet4UnicastGatewayRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
                                                      const AgentRoute *agent_rt) {
     path->set_vrf_name(vrf_name_);
@@ -1358,6 +1396,75 @@ InetUnicastAgentRouteTable::ArpRoute(DBRequest::DBOperation op,
     rt_req.key.reset(rt_key);
     rt_req.data.reset(data);
     Inet4UnicastTableEnqueue(agent, &rt_req);
+}
+
+void
+InetUnicastAgentRouteTable::NdpRoute(DBRequest::DBOperation op,
+                                     const string &route_vrf_name,
+                                     const IpAddress &ip,
+                                     const MacAddress &mac,
+                                     const string &nexthop_vrf_name,
+                                     const Interface &intf,
+                                     bool resolved,
+                                     const uint8_t plen,
+                                     bool policy,
+                                     const VnListType &vn_list,
+                                     const SecurityGroupList &sg,
+                                     const TagList &tag) {
+    Agent *agent = Agent::GetInstance();
+    DBRequest  nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    NdpNHKey *nh_key = new NdpNHKey(nexthop_vrf_name, ip, policy);
+    if (op == DBRequest::DB_ENTRY_DELETE) {
+        //In case of delete we want to set the
+        //nexthop as invalid, hence use resync operation
+        //We dont want the nexthop to created again
+        //in case of duplicate delete
+        nh_key->sub_op_ = AgentKey::RESYNC;
+    }
+    nh_req.key.reset(nh_key);
+    NdpNHData *ndp_data = new NdpNHData(mac,
+               static_cast<InterfaceKey *>(intf.GetDBRequestKey().release()),
+               resolved);
+    nh_req.data.reset(ndp_data);
+
+    DBRequest  rt_req(op);
+    InetUnicastRouteKey *rt_key =
+        new InetUnicastRouteKey(agent->local_peer(), route_vrf_name, ip, plen);
+    InetUnicastNdpRoute *data = NULL;
+
+    switch(op) {
+    case DBRequest::DB_ENTRY_ADD_CHANGE:
+        agent->nexthop_table()->Enqueue(&nh_req);
+        data = new InetUnicastNdpRoute(nexthop_vrf_name, ip, policy,
+                                        vn_list, sg, tag);
+        break;
+
+    case DBRequest::DB_ENTRY_DELETE: {
+        VrfEntry *vrf = agent->vrf_table()->FindVrfFromName(route_vrf_name);
+        InetUnicastRouteEntry *rt =
+            static_cast<InetUnicastRouteEntry *>(vrf->
+                          GetInet6UnicastRouteTable()->Find(rt_key));
+        assert(resolved==false);
+        agent->nexthop_table()->Enqueue(&nh_req);
+
+        // If no other route is dependent on this, remove the route; else ignore
+        if (rt && rt->IsDependantRouteEmpty() && rt->IsTunnelNHListEmpty()) {
+            data = new InetUnicastNdpRoute(nexthop_vrf_name, ip, policy,
+                                            vn_list, sg, tag);
+        } else {
+            rt_key->sub_op_ = AgentKey::RESYNC;
+            rt_req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+        }
+        break;
+    }
+
+    default:
+        assert(0);
+    }
+
+    rt_req.key.reset(rt_key);
+    rt_req.data.reset(data);
+    Inet6UnicastTableEnqueue(agent, route_vrf_name, &rt_req);
 }
 
 bool InetUnicastAgentRouteTable::ShouldAddArp(const Ip4Address &ip) {

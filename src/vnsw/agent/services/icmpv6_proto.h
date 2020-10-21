@@ -7,11 +7,17 @@
 
 #include "pkt/proto.h"
 #include "services/icmpv6_handler.h"
+#include "services/ndp_entry.h"
 
 #define ICMP_PKT_SIZE 1024
 #define IPV6_ALL_NODES_ADDRESS "FF02::1"
 #define IPV6_ALL_ROUTERS_ADDRESS "FF02::2"
 #define PKT0_LINKLOCAL_ADDRESS "FE80::5E00:0100"
+
+#define NDP_TRACE(obj, ...)                                                 \
+do {                                                                        \
+    Ndp##obj::TraceMsg(Icmpv6TraceBuf, __FILE__, __LINE__, ##__VA_ARGS__);     \
+} while (false)                                                             \
 
 #define ICMPV6_TRACE(obj, arg)                                               \
 do {                                                                         \
@@ -26,6 +32,26 @@ class Icmpv6PathPreferenceState;
 class Icmpv6Proto : public Proto {
 public:
     static const uint32_t kRouterAdvertTimeout = 30000; // milli seconds
+    static const uint16_t kMaxRetries = 8;
+    static const uint32_t kRetryTimeout = 2000;            // milli seconds
+    static const uint32_t kAgingTimeout = (5 * 60 * 1000); // milli seconds
+
+    enum Icmpv6MsgType {
+        NDP_RESOLVE,
+        NDP_DELETE,
+        NDP_SEND_UNSOL_NA,
+    };
+
+    struct Icmpv6Ipc : InterTaskMsg {
+        Icmpv6Ipc(Icmpv6Proto::Icmpv6MsgType msg, NdpKey &akey, InterfaceConstRef itf)
+            : InterTaskMsg(msg), key(akey), interface_(itf) {}
+        Icmpv6Ipc(Icmpv6Proto::Icmpv6MsgType msg, Ip6Address ip,
+                  const VrfEntry *vrf, InterfaceConstRef itf) :
+            InterTaskMsg(msg), key(ip, vrf), interface_(itf) {}
+
+        NdpKey key;
+        InterfaceConstRef interface_;
+    };
 
     struct Icmpv6Stats {
         Icmpv6Stats() { Reset(); }
@@ -33,6 +59,7 @@ public:
             icmpv6_router_solicit_ = icmpv6_router_advert_ = 0;
             icmpv6_ping_request_ = icmpv6_ping_response_ = icmpv6_drop_ = 0;
             icmpv6_neighbor_solicit_ = icmpv6_neighbor_advert_solicited_ = 0;
+            icmpv6_neighbor_solicited_ = 0;
             icmpv6_neighbor_advert_unsolicited_ = 0;
         }
 
@@ -42,12 +69,29 @@ public:
         uint32_t icmpv6_ping_response_;
         uint32_t icmpv6_drop_;
         uint32_t icmpv6_neighbor_solicit_;
+        uint32_t icmpv6_neighbor_solicited_;
         uint32_t icmpv6_neighbor_advert_solicited_;
         uint32_t icmpv6_neighbor_advert_unsolicited_;
     };
 
     typedef std::map<VmInterface *, Icmpv6Stats> VmInterfaceMap;
     typedef std::pair<VmInterface *, Icmpv6Stats> VmInterfacePair;
+    typedef std::map<NdpKey, NdpEntry *> NdpCache;
+    typedef std::pair<NdpKey, NdpEntry *> NdpCachePair;
+    typedef std::map<NdpKey, NdpEntry *>::iterator NdpIterator;
+    typedef std::set<NdpKey> NdpKeySet;
+    typedef std::set<NdpEntry *> NdpEntrySet;
+    typedef std::map<NdpKey, NdpEntrySet> UnsolNaCache;
+    typedef std::pair<NdpKey, NdpEntrySet> UnsolNaCachePair;
+    typedef std::map<NdpKey, NdpEntrySet>::iterator UnsolNaIterator;
+
+    struct InterfaceNdpInfo {
+        InterfaceNdpInfo() : ndp_key_list(), stats() {}
+        NdpKeySet ndp_key_list;
+        Icmpv6Stats stats;
+    };
+    typedef std::map<uint32_t, InterfaceNdpInfo> InterfaceNdpMap;
+    typedef std::pair<uint32_t, InterfaceNdpInfo> InterfaceNdpPair;
 
     void Shutdown();
     Icmpv6Proto(Agent *agent, boost::asio::io_service &io);
@@ -57,6 +101,9 @@ public:
     void VrfNotify(DBTablePartBase *part, DBEntryBase *entry);
     void VnNotify(DBEntryBase *entry);
     void InterfaceNotify(DBEntryBase *entry);
+    void NexthopNotify(DBEntryBase *entry);
+    void SendIcmpv6Ipc(Icmpv6Proto::Icmpv6MsgType type, Ip6Address ip,
+                       const VrfEntry *vrf, InterfaceConstRef itf);
 
     const VmInterfaceMap &vm_interfaces() { return vm_interfaces_; }
 
@@ -68,12 +115,42 @@ public:
     void IncrementStatsNeighborAdvertSolicited(VmInterface *vmi);
     void IncrementStatsNeighborAdvertUnSolicited(VmInterface *vmi);
     void IncrementStatsNeighborSolicit(VmInterface *vmi);
+    void IncrementStatsNeighborSolicited(VmInterface *vmi);
     const Icmpv6Stats &GetStats() const { return stats_; }
     Icmpv6Stats *VmiToIcmpv6Stats(VmInterface *i);
     void ClearStats() { stats_.Reset(); }
     bool ValidateAndClearVrfState(VrfEntry *vrf, Icmpv6VrfState *state);
     Icmpv6VrfState *CreateAndSetVrfState(VrfEntry *vrf);
 
+    Interface *ip_fabric_interface() const { return ip_fabric_interface_; }
+    uint32_t ip_fabric_interface_index() const {
+        return ip_fabric_interface_index_;
+    }
+    const MacAddress &ip_fabric_interface_mac() const {
+        return ip_fabric_interface_mac_;
+    }
+    void set_ip_fabric_interface(Interface *itf) { ip_fabric_interface_ = itf; }
+    void set_ip_fabric_interface_index(uint32_t ind) {
+        ip_fabric_interface_index_ = ind;
+    }
+    void set_ip_fabric_interface_mac(const MacAddress &mac) {
+        ip_fabric_interface_mac_ = mac;
+    }
+
+    bool AddNdpEntry(NdpEntry *entry);
+    bool DeleteNdpEntry(NdpEntry *entry);
+    NdpEntry *FindNdpEntry(const NdpKey &key);
+    std::size_t GetNdpCacheSize() { return ndp_cache_.size(); }
+    const NdpCache& ndp_cache() { return ndp_cache_; }
+    const UnsolNaCache& unsol_na_cache() { return unsol_na_cache_; }
+    const InterfaceNdpMap& interface_ndp_map() { return interface_ndp_map_; }
+
+    void AddUnsolNaEntry(NdpKey &key);
+    void DeleteUnsolNaEntry(NdpEntry *entry);
+    NdpEntry* FindUnsolNaEntry(NdpKey &key);
+    NdpEntry* UnsolNaEntry (const NdpKey &key, const Interface *intf);
+    Icmpv6Proto::UnsolNaIterator
+        UnsolNaEntryIterator(const NdpKey &key, bool *key_valid);
     DBTableBase::ListenerId vrf_table_listener_id() const {
         return vrf_table_listener_id_;
     }
@@ -82,11 +159,23 @@ private:
     Timer *timer_;
     Icmpv6Stats stats_;
     VmInterfaceMap vm_interfaces_;
+    NdpCache ndp_cache_;
+    UnsolNaCache unsol_na_cache_;
+    InterfaceNdpMap interface_ndp_map_;
+    bool HandlePacket();
+    bool HandleMessage();
+    Icmpv6Proto::NdpIterator DeleteNdpEntry(Icmpv6Proto::NdpIterator iter);
+    void SendIcmpv6Ipc(Icmpv6Proto::Icmpv6MsgType type, NdpKey &key,
+                       InterfaceConstRef itf);
     // handler to send router advertisements and neighbor solicits
     boost::scoped_ptr<Icmpv6Handler> icmpv6_handler_;
     DBTableBase::ListenerId vn_table_listener_id_;
     DBTableBase::ListenerId vrf_table_listener_id_;
     DBTableBase::ListenerId interface_listener_id_;
+    DBTableBase::ListenerId nexthop_listener_id_;
+    uint32_t ip_fabric_interface_index_;
+    MacAddress ip_fabric_interface_mac_;
+    Interface *ip_fabric_interface_;
     DISALLOW_COPY_AND_ASSIGN(Icmpv6Proto);
 };
 

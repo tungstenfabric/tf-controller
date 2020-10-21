@@ -368,6 +368,11 @@ PktHandler::PktModuleName PktHandler::ParsePacket(const AgentHdr &hdr,
         return ICMP;
     }
 
+    // Look for IP6 packets that need NDP resolution
+    if (pkt_info->ip6 && hdr.cmd == AgentHdr::TRAP_RESOLVE) {
+        return ICMPV6;
+    }
+
     if (pkt_type == PktType::ICMPV6) {
         if (hdr.cmd == AgentHdr::TRAP_HANDLE_DF) {
             return ICMPV6_ERROR;
