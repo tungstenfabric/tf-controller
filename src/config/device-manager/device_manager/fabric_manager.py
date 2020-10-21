@@ -168,9 +168,12 @@ class FabricManager(object):
                                 json.dumps(def_config_json)
                             )
 
-                        if object_type != 'telemetry-profile' and \
-                                object_type != 'sflow-profile' and \
-                                object_type != 'device-functional-group':
+                        if object_type not in ['telemetry-profile',
+                                               'sflow-profile',
+                                               'grpc-profile',
+                                               'snmp-profile',
+                                               'netconf-profile',
+                                               'device-functional-group']:
                             self._vnc_api._object_update(object_type,
                                                          instance_obj)
 
