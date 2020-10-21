@@ -182,6 +182,7 @@ feature_based_plugin_roles:
     - overlay_security_group
     - overlay_lag
     - overlay_multi_homing
+    - overlay_port_profile
   CRB-MCAST-Gateway@spine:
     - basic
     - underlay_ip_clos
@@ -197,6 +198,7 @@ feature_based_plugin_roles:
     - overlay_security_group
     - overlay_lag
     - overlay_multi_homing
+    - overlay_port_profile
   DC-Gateway@spine:
     - basic
     - underlay_ip_clos
@@ -204,6 +206,7 @@ feature_based_plugin_roles:
     - overlay_bgp
     - overlay_dhcp_relay
     - overlay_telemetry
+    - overlay_port_profile
   DCI-Gateway@spine:
     - basic
     - underlay_ip_clos
@@ -217,6 +220,7 @@ feature_based_plugin_roles:
     - overlay_evpn_type5
     - overlay_lag
     - overlay_multi_homing
+    - overlay_port_profile
   CRB-Gateway@leaf:
     - basic
     - underlay_ip_clos
@@ -231,6 +235,7 @@ feature_based_plugin_roles:
     - overlay_security_group
     - overlay_lag
     - overlay_multi_homing
+    - overlay_port_profile
   Collapsed-Spine@spine:
     - basic
     - underlay_ip_clos
@@ -262,6 +267,7 @@ feature_based_plugin_roles:
     - overlay_security_group
     - overlay_lag
     - overlay_multi_homing
+    - overlay_port_profile
   DC-Gateway@leaf:
     - basic
     - underlay_ip_clos
@@ -269,6 +275,7 @@ feature_based_plugin_roles:
     - overlay_bgp
     - overlay_dhcp_relay
     - overlay_telemetry
+    - overlay_port_profile
   DCI-Gateway@leaf:
     - basic
     - underlay_ip_clos
@@ -282,6 +289,7 @@ feature_based_plugin_roles:
     - overlay_evpn_type5
     - overlay_lag
     - overlay_multi_homing
+    - overlay_port_profile
   AR-Client@leaf:
     - overlay_assisted_replicator_client
     - overlay_telemetry
