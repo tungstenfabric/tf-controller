@@ -2464,6 +2464,12 @@
     },
     {
       "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "crb-gateway-spine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
+    },
+    {
+      "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "crb-gateway-leaf" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "l3-gateway" ]
@@ -2506,6 +2512,12 @@
     },
     {
       "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "crb-gateway-leaf" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
+    },
+    {
+      "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "crb-mcast-gateway-spine" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "l3-gateway" ]
@@ -2545,6 +2557,12 @@
       "from_fq_name": [ "default-global-system-config", "crb-mcast-gateway-spine" ],
       "to_type": "physical-role",
       "to_fq_name": [ "default-global-system-config", "spine" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "crb-mcast-gateway-spine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
     },
     {
       "from_type": "role-definition",
@@ -2590,6 +2608,12 @@
     },
     {
       "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "crb-mcast-gateway-leaf" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
+    },
+    {
+      "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "dc-gateway-spine" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "l3-gateway" ]
@@ -2629,6 +2653,12 @@
       "from_fq_name": [ "default-global-system-config", "dc-gateway-spine" ],
       "to_type": "physical-role",
       "to_fq_name": [ "default-global-system-config", "spine" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dc-gateway-spine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
     },
     {
       "from_type": "role-definition",
@@ -2710,6 +2740,12 @@
     },
     {
       "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dc-gateway-leaf" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
+    },
+    {
+      "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "dci-gateway-spine" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "l3-gateway" ]
@@ -2758,6 +2794,12 @@
     },
     {
       "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dci-gateway-spine" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
+    },
+    {
+      "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "dci-gateway-leaf" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "l3-gateway" ]
@@ -2803,6 +2845,12 @@
       "from_fq_name": [ "default-global-system-config", "dci-gateway-leaf" ],
       "to_type": "physical-role",
       "to_fq_name": [ "default-global-system-config", "leaf" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "dci-gateway-leaf" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
     },
     {
       "from_type": "role-definition",
