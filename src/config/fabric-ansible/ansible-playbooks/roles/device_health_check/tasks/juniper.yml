@@ -45,6 +45,7 @@
           host: "{{device_mgmt_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
+          timeout: 300
         action: "{{snap_action}}"
         dir: "{{jsnapy_dir}}"
         test_files: "{{snap_test_pfx}}.yml"
@@ -64,6 +65,7 @@
           host: "{{device_mgmt_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
+          timeout: 300
         action: "check"
         dir: "{{jsnapy_dir}}"
         test_files: "{{snap_test_pfx}}.yml"
