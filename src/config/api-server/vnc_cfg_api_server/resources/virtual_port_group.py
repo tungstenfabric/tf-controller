@@ -436,17 +436,101 @@ class VirtualPortGroupServer(ResourceMixin, VirtualPortGroup):
                 (400, "physical interfaces already added at other VPGs can not"
                       " be attached to this VPG (%s): %s" % (vpg_uuid, msg)))
 
-        for pi_uuid in to_be_added_pi_uuids or []:
-            try:
-                api_server.internal_request_update(
-                    'physical_interface',
-                    pi_uuid,
-                    {'physical_interface_type': 'access'},
-                )
-            except HttpError as e:
-                db_conn.config_log("PI (%s) add update failed (%s)" %
-                                   (pi_uuid, str(e)),
-                                   level=SandeshLevel.SYS_WARN)
+        # Check if the virtual network assigned to the vpg is routed.
+        # from vpg, get vmi uuid. Then from vmi, get vn uuid.
+        # Then using the vn, check if it's routed.
+        vpg_is_routed = False
+        vpg_uuid = obj_dict.get('uuid')
+        # 'physical_interface_refs' key exists only if vpg is already created
+        if obj_dict.__contains__('physical_interface_refs'):
+            ok, vpg_dict = db_conn.dbe_read(
+                obj_type='virtual-port-group',
+                obj_id=vpg_uuid,
+                obj_fields=['virtual_machine_interface_refs'])
+            if not ok:
+                return ok, (400, vpg_dict)
+            for vmi_ref in vpg_dict.get('virtual_machine_interface_refs') or []:  # noqa: E501
+                # Get vmi_uuid
+                if vmi_ref.get('uuid') is None:
+                    try:
+                        vmi_uuid = db_conn.fq_name_to_uuid(
+                            'virtual_machine_interface', vmi_ref.get('to'))
+                    except NoIdError as e:
+                        return False, (400, str(e))
+                else:
+                    vmi_uuid = vmi_ref['uuid']
+
+                # Get vmi_obj_dict based on the vmi_uuid
+                ok, vmi_obj_dict = db_conn.dbe_read(
+                    obj_type='virtual-machine-interface',
+                    obj_id=vmi_uuid,
+                    obj_fields=['virtual_network_refs'])
+                if not ok:
+                    return ok, (400, vmi_obj_dict)
+
+                # Get vn_uuid
+                for vn_ref in vmi_obj_dict.get('virtual_network_refs') or []:
+                    # Get vn_uuid.
+                    if vn_ref.get('uuid') is None:
+                        try:
+                            vn_uuid = db_conn.fq_name_to_uuid(
+                                'virtual_network', vn_ref.get('to'))
+                        except NoIdError as e:
+                            return False, (400, str(e))
+                    else:
+                        vn_uuid = vn_ref['uuid']
+
+                    # Get vn_obj_dict based on the vn_uuid
+                    ok, vn_obj_dict = db_conn.dbe_read(
+                        obj_type='virtual-network',
+                        obj_id=vn_uuid,
+                        obj_fields=['virtual_network_category'])
+                    if not ok:
+                        return ok, (400, vn_obj_dict)
+
+                    if vn_obj_dict.get('virtual_network_category') == 'routed':
+                        vpg_is_routed = True
+
+        # If vpg is routed, set physical interface type as 'service'
+        # Else, set the type as 'access'
+        if vpg_is_routed:
+            # initial pi is set to access, thus reset all pi
+            to_be_added_pi_uuids = new_uuid_list
+            for pi_uuid in to_be_added_pi_uuids or []:
+                # pi type cannot be changed directly. Must set to None first.
+                try:
+                    api_server.internal_request_update(
+                        'physical_interface',
+                        pi_uuid,
+                        {'physical_interface_type': None},
+                    )
+                except HttpError as e:
+                    db_conn.config_log("PI (%s) add update failed (%s)" %
+                                       (pi_uuid, str(e)),
+                                       level=SandeshLevel.SYS_WARN)
+                try:
+                    api_server.internal_request_update(
+                        'physical_interface',
+                        pi_uuid,
+                        {'physical_interface_type': 'service'},
+                    )
+                except HttpError as e:
+                    db_conn.config_log("PI (%s) add update failed (%s)" %
+                                       (pi_uuid, str(e)),
+                                       level=SandeshLevel.SYS_WARN)
+        else:
+            # default pi in vpgs that are not routed is 'access'
+            for pi_uuid in to_be_added_pi_uuids or []:
+                try:
+                    api_server.internal_request_update(
+                        'physical_interface',
+                        pi_uuid,
+                        {'physical_interface_type': 'access'},
+                    )
+                except HttpError as e:
+                    db_conn.config_log("PI (%s) add update failed (%s)" %
+                                       (pi_uuid, str(e)),
+                                       level=SandeshLevel.SYS_WARN)
 
         for pi_uuid in to_be_deleted_pi_uuids or []:
             try:
