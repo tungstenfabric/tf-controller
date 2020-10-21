@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53b5f4f0_76a16192",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/virtual_network.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-10-21T17:16:14Z",
+      "side": 1,
+      "message": "Here are the rules for this function.\n\nCreate non-provider VN without provider_details - PASS\nCreate non-provider VN with provider_details - FAIL\nCreate provider VN without provider_details - PASS\nCreate provider VN with provider_details - PASS\n\nUpdate non-provider VN with provider_details - PASS only when is_provider_network also updated to True\nUpdate non-provider VN without provider_details - PASS\nUpdate provider VN without provider_details - PASS\nUpdate provider VN with provider_details - PASS only if provider_details not changed",
+      "revId": "b3f955355d6fe50a0acc06f2bfe672fcd425ae32",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
