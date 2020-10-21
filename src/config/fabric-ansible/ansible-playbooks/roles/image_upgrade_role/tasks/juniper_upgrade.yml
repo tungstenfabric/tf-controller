@@ -1,5 +1,35 @@
 - name: Execute a basic Junos software upgrade.
   block:
+    - import_role:
+        name: read_re_information
+      vars:
+        prouter_dynamic_ip: "{{pr_host}}"
+        username: "{{pr_user}}"
+        password: "{{pr_password}}"
+        port: 22
+        timeout: 30
+
+    - name: disable the GRES if enabled on dual RE
+      juniper_junos_config:
+        load: "set"
+        lines:
+          - "set chassis redundancy graceful-switchover"
+          - "set routing-options nonstop-routing"
+          - "set system commit synchronize"
+          - "deactivate chassis redundancy graceful-switchover"
+          - "deactivate routing-options nonstop-routing"
+        comment: "Contrail execution ID: {{ job_ctx.job_execution_id }}"
+        ignore_warning: "True"
+        format: "set"
+        provider:
+          host: "{{ pr_host }}"
+          username: "{{ pr_user }}"
+          password: "{{ pr_password }}"
+          port: 22
+          timeout: "{{JUNOS_COMMIT_TIMEOUT | int}}"
+      register: junos_response
+      when : "routing_engines|length == 2"
+
     - juniper_junos_software:
         provider:
           host: "{{pr_host}}"
@@ -78,3 +108,21 @@
   include_tasks: percentage_update.yml
   vars:
     jl_message: "Fpc online for {{pr_vendor}} device, {{prouter_name}}"
+
+- name: Enable the GRES if enabled on dual RE
+  juniper_junos_config:
+    load: "set"
+    lines:
+        - "activate chassis redundancy graceful-switchover"
+        - "activate routing-options nonstop-routing"
+    comment: "Contrail execution ID: {{ job_ctx.job_execution_id }}"
+    ignore_warning: "True"
+    format: "set"
+    provider:
+      host: "{{ pr_host }}"
+      username: "{{ pr_user }}"
+      password: "{{ pr_password }}"
+      port: 22
+      timeout: "{{ JUNOS_COMMIT_TIMEOUT | int }}"
+  register: junos_response
+  when : "routing_engines | length == 2"
