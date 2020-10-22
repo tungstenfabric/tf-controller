@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "dfa14afd_f32e313a",
+        "filename": "src/config/device-manager/device_manager/plugins/feature/dc_gateway_feature.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 856
+      },
+      "writtenOn": "2020-10-22T22:38:46Z",
+      "side": 1,
+      "message": "Yes we support it, and above for default encap we add mplsogre. This was day one code, so definately must have tested before. also setting RI evpn is the case only for this encap, due to this no need logging since push config ri evpn type handles differently, meaning we can see this from deivice config, the issue of adding log line here will cause flood of logs since this gets run everytime for dc-gateway device in logs. due to this not adding logs as can see details from configs on Device too.",
+      "parentUuid": "ca962098_36f90f14",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "81cd0d81_4eec3d40",
         "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos-qfx_overlay_dc_gateway.j2",
         "patchSetId": 2
@@ -33,6 +51,24 @@
       "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c44f9906_542b1b89",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos-qfx_overlay_dc_gateway.j2",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 856
+      },
+      "writtenOn": "2020-10-22T22:38:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "81cd0d81_4eec3d40",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "564848dd_0e5aac8f",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos-qfx_overlay_dc_gateway.j2",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 856
+      },
+      "writtenOn": "2020-10-22T22:38:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "5f29d704_981334de",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "698ed1ca_381ee4f8",
         "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos_overlay_dc_gateway.j2",
         "patchSetId": 2
@@ -67,6 +121,24 @@
       "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9df8448d_7036c645",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos_overlay_dc_gateway.j2",
+        "patchSetId": 2
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 856
+      },
+      "writtenOn": "2020-10-22T22:38:46Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "698ed1ca_381ee4f8",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
