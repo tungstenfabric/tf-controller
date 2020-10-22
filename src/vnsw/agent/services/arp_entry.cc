@@ -275,7 +275,14 @@ void ArpEntry::AddArpRoute(bool resolved) {
         const VmInterface *vintf =
             static_cast<const VmInterface *>(interface_.get());
         if (vintf->vmi_type() == VmInterface::VHOST) {
-            itf = vintf->parent();
+            for (InterfaceList::size_type i = 0; i != vintf->parent_list().size(); i++) {
+                itf = vintf->parent_list()[i];
+                handler_->agent()->fabric_inet4_unicast_table()->ArpRoute(
+                        DBRequest::DB_ENTRY_ADD_CHANGE, vrf_name, ip, mac,
+                        nh_vrf_->GetName(), *itf, resolved, 32, policy,
+                        vn_list, sg, tag);
+            }
+            return;
         }
     }
 
