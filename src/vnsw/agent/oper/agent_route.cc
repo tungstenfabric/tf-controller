@@ -820,6 +820,15 @@ void AgentRoute::EnqueueRouteResync(void) const {
     req.key = GetDBRequestKey();
     (static_cast<AgentKey *>(req.key.get()))->sub_op_ = AgentKey::RESYNC;
     Agent *agent = (static_cast<AgentRouteTable *>(get_table()))->agent();
+    /* Setting req.data only for default route */
+    if (agent->is_l3mh() && this->ToString().compare("0.0.0.0/0") == 0) {
+        VnListType vn_list;
+        vn_list.insert(agent->fabric_vn_name());
+        req.data.reset(new Inet4UnicastGatewayRoute(agent->params()->gateway_list(), agent->fabric_vrf_name(),
+                    vn_list, MplsTable::kInvalidLabel, SecurityGroupList(),
+                    TagList(), CommunityList(),
+                    true));
+    }
     agent->fabric_inet4_unicast_table()->Enqueue(&req);
 }
 

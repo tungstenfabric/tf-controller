@@ -206,7 +206,12 @@ void ArpEntry::SendArpRequest() {
         }
         smac = vmi->GetVifMac(agent);
     } else {
-        ip = agent->router_id();
+        if (agent->is_l3mh() == true) {
+            intf_id = interface_->id();
+            ip = agent->ip_fabric_intf_addr_list()[intf_id];
+        } else {
+            ip = agent->router_id();
+        }
         VrfEntry *vrf =
             agent->vrf_table()->FindVrfFromName(agent->fabric_vrf_name());
         if (vrf) {
@@ -271,11 +276,21 @@ void ArpEntry::AddArpRoute(bool resolved) {
     }
 
     const Interface *itf = handler_->agent()->GetArpProto()->ip_fabric_interface();
+    if (interface_->type() == Interface::PHYSICAL) {
+        itf = interface_.get();
+    }
     if (interface_->type() == Interface::VM_INTERFACE) {
         const VmInterface *vintf =
             static_cast<const VmInterface *>(interface_.get());
         if (vintf->vmi_type() == VmInterface::VHOST) {
-            itf = vintf->parent();
+            for (InterfaceList::size_type i = 0; i != vintf->parent_list().size(); i++) {
+                itf = vintf->parent_list()[i];
+                handler_->agent()->fabric_inet4_unicast_table()->ArpRoute(
+                        DBRequest::DB_ENTRY_ADD_CHANGE, vrf_name, ip, mac,
+                        nh_vrf_->GetName(), *itf, resolved, 32, policy,
+                        vn_list, sg, tag);
+            }
+            return;
         }
     }
 
