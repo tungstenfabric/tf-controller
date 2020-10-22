@@ -2333,6 +2333,9 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
 
         # API server DB reinit
         self._api_server._db_init_entries()
+        while True:
+            if self._api_server._db_conn._db_resync_done.isSet():
+                break
 
         # Verify if Znodes are added back
         znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
@@ -2499,6 +2502,9 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
 
         # API server DB reinit
         self._api_server._db_init_entries()
+        while True:
+            if self._api_server._db_conn._db_resync_done.isSet():
+                break
 
         # Verify if Znodes are added back
         znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
