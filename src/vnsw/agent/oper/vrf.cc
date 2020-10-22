@@ -202,9 +202,9 @@ void VrfEntry::PostAdd() {
     // VRRP MAC on fabric vrf. So, we are good for now
     const VmInterface *vhost = dynamic_cast<const VmInterface *>
         (agent->vhost_interface());
-    if (vhost && vhost->parent()) {
+    if (vhost && vhost->parent_list().empty() == false) {
         l2_table->AddBridgeReceiveRoute(agent->local_vm_peer(), name_, 0,
-                                        vhost->parent()->mac(), "");
+                                        vhost->parent_list()[0]->mac(), "");
     }
 
     //Add receive route for vmware physical interface mac, so
@@ -748,9 +748,9 @@ bool VrfTable::OperDBDelete(DBEntry *entry, const DBRequest *req) {
                      agent()->right_si_mac(), -1);
     const VmInterface *vhost = dynamic_cast<const VmInterface *>
         (agent()->vhost_interface());
-    if (vhost && vhost->parent()) {
+    if (vhost && vhost->parent_list().empty() == false) {
         l2_table->Delete(agent()->local_vm_peer(), vrf->GetName(),
-                         vhost->parent()->mac(), 0);
+                         vhost->parent_list()[0]->mac(), 0);
     }
 
     if (agent()->isVmwareMode()) {
