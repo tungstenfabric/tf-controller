@@ -411,8 +411,8 @@ void InterfaceTable::CreateVhost() {
                               agent()->fabric_vrf_name(),
                               params->vhost_addr(),
                               params->vhost_plen(),
-                              params->vhost_gw(),
-                              params->eth_port(),
+                              params->gateway_list()[0],
+                              params->eth_port_list()[0],
                               agent()->fabric_vn_name(), transport);
     } else {
         DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
@@ -437,7 +437,7 @@ void InterfaceTable::CreateVhostReq() {
                                  agent()->fabric_vrf_name(),
                                  agent()->router_id(),
                                  agent()->vhost_prefix_len(),
-                                 agent()->vhost_default_gateway(),
+                                 agent()->vhost_default_gateway()[0],
                                  Agent::NullString(), agent_->fabric_vrf_name(),
                                  transport);
     } else {
