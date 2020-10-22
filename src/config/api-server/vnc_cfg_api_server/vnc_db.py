@@ -63,6 +63,9 @@ import functools
 
 import sys
 
+RESYNC_MAX_WORKERS = 500
+
+
 def get_trace_id():
     try:
         req_id = get_request().headers.get(
@@ -1373,19 +1376,69 @@ class VncDbClient(object):
                         return ok, res
 
     def _dbe_resync(self, obj_type, obj_uuids):
+        msg = "Start DB Resync for %s" % obj_type
+        self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
         obj_class = cfgm_common.utils.obj_type_to_vnc_class(obj_type, __name__)
         obj_fields = list(obj_class.prop_fields) + list(obj_class.ref_fields)
+        kwargs = {}
         if obj_type == 'project':
             obj_fields.append('logical_routers')
+        elif obj_type == 'virtual_machine_interface':
+            obj_fields.extend(['virtual_port_group_refs', 'virtual_port_group_back_refs'])
+            # get the list of vpg
+            ok, vpg_fqname_uuid_map, _ = self._object_db.object_list('virtual_port_group')
+            vpg_uuids = [vpg_uuid for _, vpg_uuid in vpg_fqname_uuid_map]
+            ok, vpg_list = self._object_db.object_read(
+                    'virtual_port_group',
+                    vpg_uuids,
+                    field_names=['parent_uuid'])
+            vpgs = {vpg_dict['uuid']: vpg_dict for vpg_dict in vpg_list}
+
+            # get the list of fabric
+            ok, fabric_fqname_uuid_map, _ = self._object_db.object_list('fabric')
+            fabric_uuids = [fabric_uuid for _, fabric_uuid in fabric_fqname_uuid_map]
+            ok, fabric_list = self._object_db.object_read(
+                    'fabric',
+                    fabric_uuids,
+                    field_names=['fabric_enterprise_style'])
+            fabrics = {fabric_dict['uuid']: fabric_dict for fabric_dict in fabric_list}
+
+            # update kwargs with vpg, fabric list 
+            kwargs.update({'vpgs': vpgs, 'fabrics': fabrics})
 
         (ok, obj_dicts) = self._object_db.object_read(
                                obj_type, obj_uuids, field_names=obj_fields)
 
         uve_trace_list = []
+        self._workers = []
+        worker_count = 0
         for obj_dict in obj_dicts:
+            uve_trace_list.append(("RESYNC", obj_type, obj_dict['uuid'], obj_dict))
+            self._workers.append(gevent.spawn(
+                self._dbe_resync_worker, obj_type, obj_dict, **kwargs))
+            worker_count += 1
+            if worker_count == RESYNC_MAX_WORKERS:
+                gevent.joinall(self._workers)
+                self._workers = []
+                worker_count = 0
+
+        # wait for all task to complete
+        gevent.joinall(self._workers)
+
+        # Send UVEs resync with a pool of workers
+        uve_workers = gevent.pool.Group()
+        def format_args_for_dbe_uve_trace(args):
+            return self.dbe_uve_trace(*args)
+        uve_workers.map(format_args_for_dbe_uve_trace, uve_trace_list)
+
+        msg = "Finished DB Resync for %s" % obj_type
+        self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
+    # end _dbe_resync
+
+    def _dbe_resync_worker(self, obj_type, obj_dict, **kwargs):
+            #obj_type, obj_dict = self.resync_task_q.get()
             try:
                 obj_uuid = obj_dict['uuid']
-                uve_trace_list.append(("RESYNC", obj_type, obj_uuid, obj_dict))
 
                 if obj_type == 'virtual_network':
                     # TODO remove backward compat (use RT instead of VN->LR ref)
@@ -1415,6 +1468,7 @@ class VncDbClient(object):
                             'virtual_network', obj_uuid, obj_dict)
 
                 elif obj_type == 'virtual_machine_interface':
+                    update_vmi = True
                     device_owner = obj_dict.get(
                         'virtual_machine_interface_device_owner')
                     li_back_refs = obj_dict.get('logical_interface_back_refs',
@@ -1425,15 +1479,7 @@ class VncDbClient(object):
                         update_vmi = True
 
                     # Upgrade to R2011 or greater
-                    ok, result = self._api_svr_mgr._db_conn.dbe_read(
-                        obj_type='virtual_machine_interface',
-                        obj_id=obj_uuid,
-                        obj_fields=['virtual_port_group_back_refs',
-                                    'virtual_port_group_refs'])
-                    if not ok:
-                        # dbe_read failed, continue processing next vmi
-                        continue
-                    vpg_ref = result.get('virtual_port_group_back_refs')
+                    vpg_ref = obj_dict.get('virtual_port_group_back_refs')
                     if vpg_ref:
                         vpg_uuid = vpg_ref[0].get('uuid')
 
@@ -1446,7 +1492,7 @@ class VncDbClient(object):
                         # maintained until we address CEM-10435, While fixing
                         # CEM-10435, VPG--->VMI ref will be removed as part of
                         # dbe resync
-                        if vlan_id and not result.get('virtual_port_group_refs', []):
+                        if vlan_id and not obj_dict.get('virtual_port_group_refs', []):
                             obj_dict = r_class.add_vpg_ref(
                                     obj_dict, vpg_uuid, vlan_id, is_untagged_vlan,
                                     self._api_svr_mgr._db_conn)
@@ -1457,33 +1503,28 @@ class VncDbClient(object):
                                                       obj_uuid, obj_dict)
                     if not vpg_ref:
                         # Non fabric VMI
-                        continue
+                        #continue
+                        return
 
                     # Read validation type
-                    ok, vpg_dict = self._api_svr_mgr._db_conn.dbe_read(
-                        obj_type='virtual-port-group', obj_id=vpg_uuid)
-                    if not ok:
-                        continue
+                    vpg_dict = kwargs['vpgs'][vpg_uuid]
                     # Check for fabric to read from vpg
                     fabric = None
                     if 'parent_uuid' in vpg_dict:
-                        ok, fabric = self._api_svr_mgr._db_conn.dbe_read(
-                            obj_type='fabric',
-                            obj_id=vpg_dict['parent_uuid'],
-                            obj_fields=['fabric_enterprise_style'])
-                    if not fabric:
-                        continue
+                        fabric = kwargs['fabrics'][vpg_dict['parent_uuid']]
                     fabric_uuid = fabric.get('uuid')
                     fabric_enterprise_style = \
                         (fabric.get('fabric_enterprise_style') or False)
                     ok, vn_uuid = r_class.get_vn_id(obj_dict,
                         self._api_svr_mgr._db_conn, vpg_uuid)
                     if not ok:
-                        continue
+                        #continue
+                        return
                     ok, (vlan_id, is_untagged_vlan, links) = r_class.get_vlan_phy_links(
                         None, obj_dict)
                     if not ok:
-                        continue
+                        #continue
+                        return
 
                     if not fabric_enterprise_style:  # Service-provider
                         untagged_validation_znode = \
@@ -1542,7 +1583,8 @@ class VncDbClient(object):
                                 except ResourceExistsError:
                                     pass
                     except ResourceExistsError:
-                        continue
+                        #continue
+                        return
 
                 elif obj_type == 'physical_router':
                     # Encrypt PR pwd if not already done
@@ -1713,15 +1755,9 @@ class VncDbClient(object):
             except Exception as e:
                 tb = cfgm_common.utils.detailed_traceback()
                 self.config_log(tb, level=SandeshLevel.SYS_ERR)
-                continue
-        # end for all objects
-
-        # Send UVEs resync with a pool of workers
-        uve_workers = gevent.pool.Group()
-        def format_args_for_dbe_uve_trace(args):
-            return self.dbe_uve_trace(*args)
-        uve_workers.map(format_args_for_dbe_uve_trace, uve_trace_list)
-    # end _dbe_resync
+                #continue
+                return
+    # end _dbe_resync_worker
 
     def _dbe_check(self, obj_type, obj_uuids):
         for obj_uuid in obj_uuids:
