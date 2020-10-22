@@ -991,7 +991,7 @@ void NdpEntry::AddNdpRoute(bool resolved) {
         const VmInterface *vintf =
             static_cast<const VmInterface *>(interface_.get());
         if (vintf->vmi_type() == VmInterface::VHOST) {
-            itf = vintf->parent();
+            itf = vintf->parent_list()[0];
         }
     }
 
