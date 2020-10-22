@@ -610,6 +610,10 @@ class TestVMIVirtualPortGroupRelation(test_case.ApiServerTestCase):
 
         # Simulate api-server restart by DB reinit
         self._api_server._db_init_entries()
+        # sleep 0.1 sec, so that the db_resync greenlet will get chance to
+        # be scheduled in UT env, where there is no I/O bound operation.
+        gevent.sleep(0.1)
+        self._api_server._db_conn.wait_for_resync_done()
 
         # Validate, Make sure vmi--->vpg ref is created
         vmi_obj = self.api.virtual_machine_interface_read(id=vmi_uuid)
