@@ -50,10 +50,10 @@ const timestamp = "20060102_150405"
 const crpdImageGetCommand = "sshpass -p c0ntrail123 ssh 10.84.5.39 cat /cs-shared/crpd/crpd.tgz | sudo --non-interactive docker load"
 
 // File where release numbers of previous releases are stored
-const previousReleases  = "../../../../controller/src/cat/release_list"
+const previousReleases = "../../../../controller/src/cat/release_list"
 
 // Link to download binaries of previous releases
-const binaryLink  = "http://svl-artifactory.juniper.net/artifactory/contrail-static-prod"
+const binaryLink = "https://svl-artifactory.juniper.net/artifactory/contrail-static-prod"
 
 // New creates and initializes a CAT instance.
 func New() (*CAT, error) {
@@ -230,7 +230,7 @@ func ReplaceAddress(input string, address string) (out string) {
 	return val5
 }
 
-// Parses the config file and changes the BGP port number and ip-address 
+// Parses the config file and changes the BGP port number and ip-address
 // of the control-nodes
 // Returns a list of control-nodes with new BGP port-number and ip-address
 func GetNumOfControlNodes() (ConNodesDS map[string]interface{}, err error) {
@@ -290,166 +290,165 @@ func GetNumOfControlNodes() (ConNodesDS map[string]interface{}, err error) {
 }
 
 func GetPreviousReleases() (Releases list.List, err error) {
-    file, err := os.Open(previousReleases)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer file.Close()
+	file, err := os.Open(previousReleases)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
 
-    scanner := bufio.NewScanner(file)
-    for scanner.Scan() {
-        rel := scanner.Text()
-        Releases.PushBack(rel)
-    }
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		rel := scanner.Text()
+		Releases.PushBack(rel)
+	}
 
-    if err := scanner.Err(); err != nil {
-        log.Fatal(err)
-    }
-    return Releases, nil
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	return Releases, nil
 }
 
 func GetAgentBinary(c *CAT, release string) (binary_path string) {
-    path := fmt.Sprintf("%s/%s/contrail-vrouter-agent.tgz", binaryLink, release)
-    out := fmt.Sprintf("%s/contrail-vrouter-agent.tgz", c.SUT.Manager.RootDir)
+	path := fmt.Sprintf("%s/%s/contrail-vrouter-agent.tgz", binaryLink, release)
+	out := fmt.Sprintf("%s/contrail-vrouter-agent.tgz", c.SUT.Manager.RootDir)
 
-    err := DownloadFile(path, out)
-    if err != nil {
-        log.Fatal(err)
-    }
+	err := DownloadFile(path, out)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    err = os.Chmod(out, 0777)
-    r, err := os.Open(out)
-    if err != nil {
-        fmt.Println("error")
-    }
-    ExtractTarGz(c.SUT.Manager.RootDir, r)
-    ext := strings.ReplaceAll(release, "/", ".")
-    ext = strings.ReplaceAll(ext, "R", "")
-    name := strings.ReplaceAll("contrail-vrouter-agent", "-", ".")
-    binary_path = fmt.Sprintf("%s/%s.%s", c.SUT.Manager.RootDir, name, ext)
-    return
+	err = os.Chmod(out, 0777)
+	r, err := os.Open(out)
+	if err != nil {
+		fmt.Println("error")
+	}
+	ExtractTarGz(c.SUT.Manager.RootDir, r)
+	ext := strings.ReplaceAll(release, "/", ".")
+	ext = strings.ReplaceAll(ext, "R", "")
+	name := strings.ReplaceAll("contrail-vrouter-agent", "-", ".")
+	binary_path = fmt.Sprintf("%s/%s.%s", c.SUT.Manager.RootDir, name, ext)
+	return
 }
 
 func ExtractTarGz(path string, gzipStream io.Reader) {
-    uncompressedStream, err := gzip.NewReader(gzipStream)
-    if err != nil {
-        log.Fatal("ExtractTarGz: NewReader failed")
-    }
+	uncompressedStream, err := gzip.NewReader(gzipStream)
+	if err != nil {
+		log.Fatal("ExtractTarGz: NewReader failed")
+	}
 
-    tarReader := tar.NewReader(uncompressedStream)
+	tarReader := tar.NewReader(uncompressedStream)
 
-    for true {
-        header, err := tarReader.Next()
+	for true {
+		header, err := tarReader.Next()
 
-        if err == io.EOF {
-            break
-        }
+		if err == io.EOF {
+			break
+		}
 
-        if err != nil {
-            log.Fatalf("ExtractTarGz: Next() failed: %s", err.Error())
-        }
+		if err != nil {
+			log.Fatalf("ExtractTarGz: Next() failed: %s", err.Error())
+		}
 
-        switch header.Typeflag {
-        case tar.TypeDir:
-            if err := os.Mkdir(fmt.Sprintf("%s/%s", path, strings.ReplaceAll(header.Name, "-", ".")), 0755); err != nil {
-                log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
-            }
-        case tar.TypeReg:
-            name := fmt.Sprintf("%s/%s", path, strings.ReplaceAll(header.Name, "-", "."))
-            outFile, err := os.Create(name)
-            if err != nil {
-                log.Fatalf("ExtractTarGz: Create() failed: %s", err.Error())
-            }
-            if _, err := io.Copy(outFile, tarReader); err != nil {
-                log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
-            }
-            outFile.Close()
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.Mkdir(fmt.Sprintf("%s/%s", path, strings.ReplaceAll(header.Name, "-", ".")), 0755); err != nil {
+				log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
+			}
+		case tar.TypeReg:
+			name := fmt.Sprintf("%s/%s", path, strings.ReplaceAll(header.Name, "-", "."))
+			outFile, err := os.Create(name)
+			if err != nil {
+				log.Fatalf("ExtractTarGz: Create() failed: %s", err.Error())
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
+			}
+			outFile.Close()
 
-        default:
-            log.Fatalf(
-                "ExtractTarGz: unknown type: %s in %s",
-                header.Typeflag,
-                header.Name)
-        }
+		default:
+			log.Fatalf(
+				"ExtractTarGz: unknown type: %s in %s",
+				header.Typeflag,
+				header.Name)
+		}
 
-    }
+	}
 }
 
 func DownloadFile(url string, filepath string) error {
-    // Create the file
-    out, err := os.Create(filepath)
-    if err != nil {
-        return err
-    }
-    defer out.Close()
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
 
-    // Get the data
-    resp, err := http.Get(url)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-    // Write the body to file
-    _, err = io.Copy(out, resp.Body)
-    if err != nil {
-        return err
-    }
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 func CheckIfApplicable() (err error) {
-    path := binaryLink
-    _, err = http.Get(path)
-    return err
+	path := binaryLink
+	_, err = http.Get(path)
+	return err
 }
 
 func GetParamsAddPort(vmi_id string) (vm_id, vn_id, proj_id, vm_name string, err error) {
-        confile := controlnode.GetConfFile()
-        jsonFile, err := os.Open(confile)
-        if err != nil {
-                return "", "", "", "", fmt.Errorf("failed to open ConfFile: %v", err)
-        }
+	confile := controlnode.GetConfFile()
+	jsonFile, err := os.Open(confile)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("failed to open ConfFile: %v", err)
+	}
 
-        byteValue, _ := ioutil.ReadAll(jsonFile)
-        jsonFile.Close()
-        var result map[string]interface{}
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	jsonFile.Close()
+	var result map[string]interface{}
 
 	json.Unmarshal([]byte(byteValue), &result)
-        cassandra := result["cassandra"].(map[string]interface{})
-        config_db_uuid := cassandra["config_db_uuid"].(map[string]interface{})
-        re := regexp.MustCompile(":")
-        uuid_table := config_db_uuid["obj_uuid_table"].(map[string]interface{})
-        vmis := uuid_table[vmi_id].(map[string]interface{})
-        for key := range vmis {
-                if strings.Contains(key, "ref:virtual_machine") {
-                        val1 := re.Split(key, -1)
-                        vm_id = val1[2]
-                        continue
-                }
-                if strings.Contains(key, "ref:virtual_network") {
-                        val1 := re.Split(key, -1)
-                        vn_id = val1[2]
-                        continue
-                }
-                if strings.Contains(key, "parent:project") {
-                        val1 := re.Split(key, -1)
-                        proj_id = val1[2]
-                        continue
-                }
-        }
+	cassandra := result["cassandra"].(map[string]interface{})
+	config_db_uuid := cassandra["config_db_uuid"].(map[string]interface{})
+	re := regexp.MustCompile(":")
+	uuid_table := config_db_uuid["obj_uuid_table"].(map[string]interface{})
+	vmis := uuid_table[vmi_id].(map[string]interface{})
+	for key := range vmis {
+		if strings.Contains(key, "ref:virtual_machine") {
+			val1 := re.Split(key, -1)
+			vm_id = val1[2]
+			continue
+		}
+		if strings.Contains(key, "ref:virtual_network") {
+			val1 := re.Split(key, -1)
+			vn_id = val1[2]
+			continue
+		}
+		if strings.Contains(key, "parent:project") {
+			val1 := re.Split(key, -1)
+			proj_id = val1[2]
+			continue
+		}
+	}
 
-        fq_name_table := config_db_uuid["obj_fq_name_table"].(map[string]interface{})
-        vms := fq_name_table["virtual_machine"].(map[string]interface{})
-        for key := range vms {
-                val := re.Split(key, -1)
-                if val[1] == vm_id {
-                        vm_name = val[0]
-                        break
-                }
-        }
+	fq_name_table := config_db_uuid["obj_fq_name_table"].(map[string]interface{})
+	vms := fq_name_table["virtual_machine"].(map[string]interface{})
+	for key := range vms {
+		val := re.Split(key, -1)
+		if val[1] == vm_id {
+			vm_name = val[0]
+			break
+		}
+	}
 
-        return vm_id, vn_id, proj_id, vm_name, nil
+	return vm_id, vn_id, proj_id, vm_name, nil
 }
-
