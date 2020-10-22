@@ -45,13 +45,13 @@ void RouteLeakState::AddIndirectRoute(const AgentRoute *route) {
     peer_list_.insert(peer);
 
     if (gw_ip == uc_rt->addr().to_v4()) {
-        gw_ip = agent_->vhost_default_gateway();
+        gw_ip = agent_->vhost_default_gateway()[0]; /* PKC: Using the first element for now */
     }
 
     table->AddGatewayRoute(peer, dest_vrf_->GetName(),
                            uc_rt->addr().to_v4(),
                            uc_rt->plen(),
-                           gw_ip,
+                           AddressList(1, gw_ip),  /* PKC: Making it as a list */
                            active_path->dest_vn_list(),
                            MplsTable::kInvalidExportLabel,
                            active_path->sg_list(),
@@ -198,6 +198,7 @@ bool RouteLeakState::CanAdd(const InetUnicastRouteEntry *rt) {
     //Never replace resolve route and default route
     InetUnicastAgentRouteTable *table =
         agent_->fabric_vrf()->GetInet4UnicastRouteTable();
+    std::vector<Ip4Address> gateway_list = agent_->vhost_default_gateway();
 
     if (rt->addr() == Ip4Address(0) && rt->plen() == 0) {
         return false;
@@ -211,7 +212,8 @@ bool RouteLeakState::CanAdd(const InetUnicastRouteEntry *rt) {
     }
 
     if (rt->IsHostRoute() &&
-        rt->addr() == agent_->vhost_default_gateway()) {
+        std::find(gateway_list.begin(), gateway_list.end(),
+                  rt->addr()) != gateway_list.end()) {
         return false;
     }
 

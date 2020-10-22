@@ -651,7 +651,8 @@ TEST_F(UveVrouterUveTest, BandwidthTest_1) {
     uve.set_phy_band_in_bps(empty_map);
     uve.set_phy_band_out_bps(empty_map);
 
-    PhysicalInterfaceKey key(agent_->params()->eth_port());
+    //PhysicalInterfaceKey key(agent_->params()->eth_port());
+    PhysicalInterfaceKey key(agent_->params()->eth_port_list()[0].c_str()); /* PKC: Using only first element for now */
     Interface *intf = static_cast<Interface *>
         (agent_->interface_table()->FindActiveEntry(&key));
     EXPECT_TRUE((intf != NULL));
@@ -721,7 +722,8 @@ TEST_F(UveVrouterUveTest, BandwidthTest_2) {
     vr->clear_count();
     VrouterStatsAgent &uve = vr->prev_stats();
 
-    PhysicalInterfaceKey key(agent_->params()->eth_port());
+    //PhysicalInterfaceKey key(agent_->params()->eth_port());
+    PhysicalInterfaceKey key(agent_->params()->eth_port_list()[0].c_str()); /* PKC: Using only first element for now */
     Interface *intf = static_cast<Interface *>
         (agent_->interface_table()->FindActiveEntry(&key));
     EXPECT_TRUE((intf != NULL));
@@ -956,7 +958,7 @@ TEST_F(UveVrouterUveTest, config_1) {
         EXPECT_TRUE(vr->first_uve_dispatched());
         const VrouterAgent &uve = vr->first_vrouter_uve();
 
-        EXPECT_STREQ(uve.get_eth_name().c_str(), "vnet0");
+        EXPECT_STREQ(uve.get_eth_name()[0].c_str(), "vnet0");
         EXPECT_STREQ(uve.get_vhost_cfg().get_name().c_str(), "vhost0");
         EXPECT_STREQ(uve.get_vhost_cfg().get_ip().c_str(), "10.1.1.1");
         EXPECT_STREQ(uve.get_vhost_cfg().get_gateway().c_str(), "10.1.1.254");

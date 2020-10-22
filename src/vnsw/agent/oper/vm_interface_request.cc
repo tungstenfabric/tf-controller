@@ -95,7 +95,7 @@ VmInterfaceConfigData::VmInterfaceConfigData(Agent *agent, IFMapNode *node) :
     qos_config_uuid_(), learning_enabled_(false),
     vhostuser_mode_(VmInterface::vHostUserClient), is_left_si_(false), service_mode_(VmInterface::SERVICE_MODE_ERROR),
     si_other_end_vmi_(nil_uuid()), vmi_cfg_uuid_(nil_uuid()),
-    service_intf_type_("") {
+    service_intf_type_(""), physical_interface_list_() {
 }
 
 VmInterface *VmInterfaceConfigData::OnAdd(const InterfaceTable *table,
@@ -198,11 +198,11 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
     vmi_type_ = VmInterface::VHOST;
 
     vrf_name_ = agent->fabric_policy_vrf_name();
-    if (agent->router_id() != Ip4Address(0)) {
+    if (agent->router_id() != Ip4Address(0) && agent->is_l3mh() == false) {
         addr_ = agent->router_id();
         instance_ipv4_list_.list_.insert(
-            VmInterface::InstanceIp(agent->router_id(), 32, false, true,
-                                    false, false, false, Ip4Address(0)));
+                VmInterface::InstanceIp(agent->router_id(), 32, false, true,
+                    false, false, false, Ip4Address(0)));
     }
 
     boost::system::error_code ec;
@@ -223,7 +223,7 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
         subnet_plen_ = agent->vhost_prefix_len();
     }
 
-    physical_interface_ = agent->fabric_interface_name();
+    physical_interface_list_ = agent->fabric_interface_name_list();
 
     PhysicalInterfaceKey physical_key(agent->fabric_interface_name());
     const Interface *pif =
@@ -234,7 +234,7 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
     //Add default route pointing to gateway
     static_route_list_.list_.insert(
             VmInterface::StaticRoute(Ip4Address(0), 0,
-                                     agent->params()->vhost_gw(),
+                                     agent->params()->gateway_list(),
                                      CommunityList()));
 }
 
@@ -785,7 +785,16 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
         ret = true;
     }
     Interface *new_parent = NULL;
-    if (data->physical_interface_.empty() == false) {
+    InterfaceList new_parent_list;
+    if (data->physical_interface_list_.empty() == false) {
+        std::vector<std::string>::const_iterator ptr;
+        for (ptr = data->physical_interface_list_.begin();
+             ptr < data->physical_interface_list_.end(); ptr++) {
+            PhysicalInterfaceKey key(*ptr);
+            new_parent_list.push_back(static_cast<Interface *>
+                   (table->agent()->interface_table()->FindActiveEntry(&key)));
+        }
+    } else if (data->physical_interface_.empty() == false) {
         PhysicalInterfaceKey key(data->physical_interface_);
         new_parent = static_cast<Interface *>
             (table->agent()->interface_table()->FindActiveEntry(&key));
@@ -795,6 +804,11 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
             (table->agent()->interface_table()->FindActiveEntry(&key));
     } else {
         new_parent = parent_.get();
+    }
+
+    if (parent_list_ != new_parent_list) {
+        parent_list_ = new_parent_list;
+        ret = true;
     }
 
     if (parent_ != new_parent) {

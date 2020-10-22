@@ -99,7 +99,7 @@ public:
 TEST_F(FabricVmiTest, CrossConnect) {
     const VmInterface *vm_intf =
         static_cast<const VmInterface *>(VhostGet("vhost0"));
-    EXPECT_TRUE(vm_intf->parent()->name() == "vnet0");
+    EXPECT_TRUE(vm_intf->parent_list()[0]->name() == "vnet0");
     EXPECT_TRUE(vm_intf->vmi_type() == VmInterface::VHOST);
     EXPECT_TRUE(vm_intf->bridging() == false);
     EXPECT_TRUE(vm_intf->proxy_arp_mode() == VmInterface::PROXY_ARP_NONE);
