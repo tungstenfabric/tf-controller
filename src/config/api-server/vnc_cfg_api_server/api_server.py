@@ -3822,7 +3822,7 @@ class VncApiServer(object):
             tag.display_name = type_str
             self.create_singleton_entry(tag, user_visible=False)
 
-        self._db_conn.db_resync()
+        gevent.spawn(self._db_conn.db_resync)
 
         # make default ipam available across tenants for backward compatability
         obj_type = 'network_ipam'
@@ -5269,6 +5269,17 @@ def main(args_str=None, server=None):
     hub.signal(signal.SIGHUP, vnc_api_server.sighup_handler)
     if pipe_start_app is None:
         pipe_start_app = vnc_api_server.api_bottle
+
+    @vnc_api_server.api_bottle.hook('before_request')
+    def check_db_resync_status():
+        try:
+            if not vnc_api_server._db_conn._db_resync_done.isSet():
+                err_msg = "Api server is Initializing:DB Resync in progress"
+                raise bottle.HTTPError(503, err_msg)
+        except AttributeError:
+            err_msg = "Api server is Initializing:DB Resync in progress"
+            raise bottle.HTTPError(503, err_msg)
+
     try:
         vnc_args = vnc_api_server.get_args()
         if enable_ssl:
