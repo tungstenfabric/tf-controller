@@ -513,7 +513,7 @@ TEST_F(TestKSyncRoute, IndirectRoute) {
     VnListType vn_list;
     agent_->fabric_inet4_unicast_table()->
         AddGatewayRouteReq(agent_->local_peer(), agent_->fabric_vrf_name(),
-                           ip, 32, server_ip, vn_list,
+                           ip, 32, AddressList(1, server_ip), vn_list, /* PKC: making it as a list */
                            MplsTable::kInvalidLabel, SecurityGroupList(),
                            TagList(), CommunityList(), true);
     client->WaitForIdle();

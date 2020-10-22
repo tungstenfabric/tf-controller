@@ -214,6 +214,9 @@ typedef std::set<std::string> VnListType;
 typedef std::map<std::string, std::string> VrLimitExceeded;
 typedef std::pair<std::string, std::string> VrLimitData;
 
+typedef std::vector<Ip4Address> AddressList;
+typedef std::vector<Interface *> InterfaceList;
+
 class AgentDBTable;
 class InterfaceTable;
 class HealthCheckTable;
@@ -394,6 +397,7 @@ public:
     static const int kDropNewFlowsRecoveryThreshold = 90;
     static const int kDefaultHighWatermark = 80;
     static const int kDefaultLowWatermark = 75;
+    typedef std::vector<Ip4Address> AddressList;
 
     enum ForwardingMode {
         NONE,
@@ -648,9 +652,9 @@ public:
     uint32_t vhost_prefix_len() const {return prefix_len_;}
     void set_vhost_prefix_len(uint32_t plen) {prefix_len_ = plen;}
 
-    Ip4Address vhost_default_gateway() const {return gateway_id_;}
-    void set_vhost_default_gateway(const Ip4Address &addr) {
-        gateway_id_ = addr;
+    AddressList vhost_default_gateway() const {return gateway_list_;}
+    void set_vhost_default_gateway(const AddressList &addr_list) {
+        gateway_list_ = addr_list;
     }
 
     Ip4Address router_id() const {return router_id_;  }
@@ -701,6 +705,19 @@ public:
 
     uint32_t GetCollectorlistChksum() {
         return (collector_chksum_);
+    }
+
+    Ip4Address loopback_ip() const {return loopback_ip_;}
+    void set_loopback_ip(const Ip4Address &addr) {
+        loopback_ip_ = addr;
+    }
+
+    void set_is_l3mh(bool flag) {
+        is_l3mh_ = flag;
+    }
+
+    bool is_l3mh() const {
+        return is_l3mh_;
     }
 
     // Common XMPP Client for control-node and config clients
@@ -1103,6 +1120,10 @@ public:
         return ip_fabric_intf_name_;
     }
 
+    const std::vector<std::string> &fabric_interface_name_list() const {
+        return ip_fabric_intf_name_list_;
+    }
+
     const std::string &crypt_interface_name() const {
         return crypt_intf_name_;
     }
@@ -1462,7 +1483,7 @@ private:
     Ip4Address router_id_;
     Ip4Address prefix_;
     uint32_t prefix_len_;
-    Ip4Address gateway_id_;
+    AddressList gateway_list_;
 
     // IP address on the compute node used by agent to run services such
     // as metadata service. This is different than router_id when vhost0
@@ -1604,6 +1625,10 @@ private:
     // Percentage of allowed nexthop and label, alarm is raised once exceeded
     float vr_limit_high_watermark_;
     float vr_limit_low_watermark_;
+    // L3MH variables
+    Ip4Address loopback_ip_;
+    bool is_l3mh_;
+    std::vector<std::string> ip_fabric_intf_name_list_;
 public:
     static const std::string config_file_;
     static const std::string log_file_;

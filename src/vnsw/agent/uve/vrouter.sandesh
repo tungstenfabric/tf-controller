@@ -59,7 +59,7 @@ struct AgentVhostConfig {
     /** Prefix len of vhost interface*/
     3: i32       ip_prefix_len;
     /** Gateway configuration */
-    4: string    gateway;
+    4: list<string> gateway;
 }
 
 /**
@@ -153,7 +153,7 @@ struct VrouterAgent {
    /** Host interface configuration as specified in confgiration file*/
    22: optional AgentVhostConfig vhost_cfg;
    /** Physical interface name as specified in confgiration file*/
-   23: optional string eth_name;
+   23: optional list<string> eth_name;
    /** Encapsulation type for tunnel as specified in confgiration file*/
    24: optional string tunnel_type;
    /** Hypervisor type as specified in confgiration file*/
@@ -254,6 +254,12 @@ struct VrouterAgent {
    60: optional bool res_limit;
    /** Flag is set when resource usage reaches configured table limit for any resource */
    61: optional bool res_table_limit;
+
+   /** L3 Multihoming configurations */
+   /** Loopback interface name as specified in confgiration file */
+   62: optional string loopback_name;
+   /** Loopback interface ip as specified in confgiration file */
+   63: optional string loopback_ip;
 }
 
 /**
