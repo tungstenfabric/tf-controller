@@ -2331,8 +2331,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         mock_zk._zk_client.delete_node(validation_node2, True)
         mock_zk._zk_client.delete_node(validation_node3, True)
 
+        self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
+        self._api_server._db_conn.wait_for_resync_done()
 
         # Verify if Znodes are added back
         znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
@@ -2497,8 +2499,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         mock_zk._zk_client.delete_node(validation_node2, True)
         mock_zk._zk_client.delete_node(validation_node3, True)
 
+        self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
+        self._api_server._db_conn.wait_for_resync_done()
 
         # Verify if Znodes are added back
         znode_vmi_1_uuid = mock_zk._zk_client.read_node(validation_node1)
