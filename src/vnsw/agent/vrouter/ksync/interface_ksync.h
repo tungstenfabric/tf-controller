@@ -137,6 +137,7 @@ private:
     bool igmp_enable_;
     bool mac_ip_learning_enable_;
     boost::optional<InterfaceOsParams::IfGuid> os_guid_;
+    std::vector<KSyncEntryPtr> xconnect_list_;
     DISALLOW_COPY_AND_ASSIGN(InterfaceKSyncEntry);
 };
 
