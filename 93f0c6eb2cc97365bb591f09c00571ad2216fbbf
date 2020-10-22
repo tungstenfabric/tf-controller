@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ca962098_36f90f14",
+        "filename": "src/config/device-manager/device_manager/plugins/feature/dc_gateway_feature.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-22T03:12:16Z",
+      "side": 1,
+      "message": "do we support MPLSoGRE/MPLSoUDP if not can we add a error log saying encap not supported so that we can identify if user mistakenly configured encap priorities wrongly ?",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "81cd0d81_4eec3d40",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos-qfx_overlay_dc_gateway.j2",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-22T03:12:16Z",
+      "side": 1,
+      "message": "is this being used anywhere in this file ?",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f29d704_981334de",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos-qfx_overlay_dc_gateway.j2",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-22T03:12:16Z",
+      "side": 1,
+      "message": "could you set default to empty dictionary ?",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "698ed1ca_381ee4f8",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_dc_gateway/juniper_junos_overlay_dc_gateway.j2",
+        "patchSetId": 2
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-22T03:12:16Z",
+      "side": 1,
+      "message": "is this being used anywhere in this file ?",
+      "revId": "93f0c6eb2cc97365bb591f09c00571ad2216fbbf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
