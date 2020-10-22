@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8e243126_c88445de",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/bgp_router.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-10-22T05:07:01Z",
+      "side": 1,
+      "message": "Could you please add a comment why just logging is done and no further processing is required in case of this exception?",
+      "revId": "f67a85d789fe476304b8c2cc9963aa5634a05f69",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
