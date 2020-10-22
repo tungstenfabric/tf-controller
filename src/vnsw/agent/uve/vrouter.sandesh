@@ -153,7 +153,7 @@ struct VrouterAgent {
    /** Host interface configuration as specified in confgiration file*/
    22: optional AgentVhostConfig vhost_cfg;
    /** Physical interface name as specified in confgiration file*/
-   23: optional string eth_name;
+   23: optional list<string> eth_name;
    /** Encapsulation type for tunnel as specified in confgiration file*/
    24: optional string tunnel_type;
    /** Hypervisor type as specified in confgiration file*/
@@ -257,6 +257,8 @@ struct VrouterAgent {
    /** L3 Multihoming configurations */
    /** Loopback interface ip as specified in configuration file */
    62: optional string loopback_ip;
+   /** List of gateway */
+   63: optional list<string> gateway_list;
 }
 
 /**

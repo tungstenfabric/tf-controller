@@ -562,12 +562,16 @@ void VrouterUveEntryBase::BuildAgentConfig(VrouterAgent &vrouter_agent) {
     vrouter_agent.set_control_ip(param->mgmt_ip().to_string());
 
     vhost_cfg.set_name(param->vhost_name());
-    vhost_cfg.set_ip(param->vhost_addr().to_string());
-    vhost_cfg.set_ip_prefix_len(param->vhost_plen());
-    vhost_cfg.set_gateway(param->vhost_gw().to_string());
+    if (agent_->is_l3mh() == false) {
+        vhost_cfg.set_ip(param->vhost_addr().to_string());
+        vhost_cfg.set_ip_prefix_len(param->vhost_plen());
+        if (param->gateway_list().empty() == false) {
+            vhost_cfg.set_gateway(param->gateway_list()[0].to_string());
+        }
+    }
     vrouter_agent.set_vhost_cfg(vhost_cfg);
 
-    vrouter_agent.set_eth_name(param->eth_port());
+    vrouter_agent.set_eth_name(param->eth_port_list());
 
     if (param->isKvmMode()) {
         hypervisor = "kvm";
@@ -611,6 +615,12 @@ void VrouterUveEntryBase::BuildAgentConfig(VrouterAgent &vrouter_agent) {
             agent_->oper_db()->bgp_as_a_service()->IsConfigured());
     vrouter_agent.set_port_mirror_enabled(MirrorTable::GetInstance()->IsConfigured());
     vrouter_agent.set_loopback_ip(param->loopback_ip().to_string());
+    std::vector<string> gateway_list;
+    for (std::vector<Ip4Address>::const_iterator iter = param->gateway_list().begin();
+         iter != param->gateway_list().end(); ++iter) {
+        gateway_list.push_back((*iter).to_string());
+    }
+    vrouter_agent.set_gateway_list(gateway_list);
 }
 
 
