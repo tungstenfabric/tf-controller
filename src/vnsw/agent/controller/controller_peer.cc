@@ -1108,7 +1108,7 @@ void AgentXmppChannel::AddFabricVrfRoute(const Ip4Address &prefix_addr,
     Ip4Address nh = addr;
 
     if (table->FindResolveRoute(addr) == NULL) {
-        nh = agent_->vhost_default_gateway();
+        nh = agent_->vhost_default_gateway()[0];  /* PKC: Using first element for now */
     }
 
     if (prefix_addr == addr && prefix_len == 32 &&
@@ -1125,7 +1125,7 @@ void AgentXmppChannel::AddFabricVrfRoute(const Ip4Address &prefix_addr,
 
     CommunityList cl;
     table->AddGatewayRoute(bgp_peer_id(), agent_->fabric_vrf_name(),
-                           prefix_addr, prefix_len, nh,
+                           prefix_addr, prefix_len, AddressList(1, nh),             /* PKC: Making it as a list */
                            vn_list, MplsTable::kInvalidExportLabel,
                            sg_list, tag_list, cl, true);
 }
