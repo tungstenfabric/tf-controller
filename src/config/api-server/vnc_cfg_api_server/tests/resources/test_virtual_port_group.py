@@ -2361,8 +2361,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
             "(%s) kv pair found in vpg kvps (%s)" % (
                 vmi3_kvp, vpg_kvps)
 
+        self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
+        self._api_server._db_conn.wait_for_resync_done()
 
         # verify that annoations are added back
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
@@ -2548,8 +2550,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
             "(%s) kv pair found in vpg kvps (%s)" % (
                 vmi3_kvp, vpg_kvps)
 
+        self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
+        self._api_server._db_conn.wait_for_resync_done()
 
         # verify that annoations are added back
         vpg_obj = self.api.virtual_port_group_read(id=vpg_obj.uuid)
