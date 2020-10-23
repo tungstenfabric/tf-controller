@@ -245,6 +245,17 @@ class FilterModule(object):
         with open(self.combined_config_path, 'w') as f:
             f.write(self.final_config)
 
+        # extract snmp community from snmp credentials to be
+        # used in return output for playbook
+
+        v2_community = 'public'
+
+        if self.additional_feature_params:
+            v2_communities = self.additional_feature_params.get('basic', {})\
+                .get('snmp', {}).get('communities', [])
+            if v2_communities:
+                v2_community = v2_communities[-1].get('name', 'public')
+
         # Generate return output to be used by playbook
         render_output = {
             'conf_dir': self.conf_dir,
@@ -255,6 +266,7 @@ class FilterModule(object):
             'device_uuid': self.device_uuid,
             'device_username': self.device_username,
             'device_password': "(hidden)",
+            'snmp_community': v2_community,
             'is_delete': self.is_delete,
             'enterprise_style': self.enterprise_style,
             'onboard_log': FilterLog.instance().dump(),
