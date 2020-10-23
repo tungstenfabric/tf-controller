@@ -1720,7 +1720,7 @@ class TestPermissions(test_case.ApiServerTestCase):
         fabric_obj = self.admin.vnc_lib.fabric_read(id=fabric_uuid)
 
         # share fabric with alice
-        set_perms(fabric_obj, share=[(self.alice.project_uuid, PERMS_RWX)])
+        set_perms(fabric_obj, share=[(self.alice.project_uuid, PERMS_RX)])
         self.admin.vnc_lib.fabric_update(fabric_obj)
 
         vpg_name = "vpg-" + self.id()
