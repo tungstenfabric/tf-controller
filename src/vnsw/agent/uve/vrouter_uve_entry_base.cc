@@ -610,6 +610,7 @@ void VrouterUveEntryBase::BuildAgentConfig(VrouterAgent &vrouter_agent) {
     vrouter_agent.set_bgpaas_enabled(
             agent_->oper_db()->bgp_as_a_service()->IsConfigured());
     vrouter_agent.set_port_mirror_enabled(MirrorTable::GetInstance()->IsConfigured());
+    vrouter_agent.set_loopback_ip(param->loopback_ip().to_string());
 }
 
 

@@ -254,6 +254,9 @@ struct VrouterAgent {
    60: optional bool res_limit;
    /** Flag is set when resource usage reaches configured table limit for any resource */
    61: optional bool res_table_limit;
+   /** L3 Multihoming configurations */
+   /** Loopback interface ip as specified in configuration file */
+   62: optional string loopback_ip;
 }
 
 /**
