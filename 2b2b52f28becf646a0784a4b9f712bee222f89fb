@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "305d7b99_c69f13e9",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/fabric.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 313,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-23T18:48:16Z",
+      "side": 1,
+      "message": "for check could you see if you can use ipaddress python library for subnet validation.. this would help us when we move to ipv6 too in future...",
+      "revId": "2b2b52f28becf646a0784a4b9f712bee222f89fb",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "317e3a85_1d3bc607",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/fabric.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-23T18:48:16Z",
+      "side": 1,
+      "message": "use single helper function to validate subnets and call that from different places like line 392.",
+      "revId": "2b2b52f28becf646a0784a4b9f712bee222f89fb",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "cd82b43e_b524e6f0",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/fabric.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-23T18:48:16Z",
+      "side": 1,
+      "message": "since we have existing check that gateway is part of magmt subnet this check would not be required.",
+      "revId": "2b2b52f28becf646a0784a4b9f712bee222f89fb",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
