@@ -255,6 +255,15 @@ class FilterModule(object):
         FilterModule._validate_mgmt_subnets(
             vnc_api, fab_fq_name, mgmt_subnets, brownfield
         )
+        # check subnet values for valid cidr length and prefix
+        fabric_subnets = job_input.get('fabric_subnets')
+        loopback_subnets = job_input.get('loopback_subnets')
+        FilterModule._validate_subnets(
+            fabric_subnets, "fabric"
+        )
+        FilterModule._validate_subnets(
+            loopback_subnets, "loopback"
+        )
 
         # change device_auth to conform with brownfield device_auth schema
         if not brownfield:
@@ -297,6 +306,43 @@ class FilterModule(object):
                     )
             _task_done()
 
+        for mgmt_subnet in mgmt_subnets:
+            _task_log(
+                'Validating management subnets cidr values and prefix length '
+            )
+            if int(mgmt_subnet.get('cidr').split('.')[0]) == 0 or \
+               int(mgmt_subnet.get('cidr').split('/')[-1]) == 0:
+                raise ValueError(
+                    "Invalid mgmt subnet %s" % mgmt_subnet.get('cidr')
+                )
+            if int(mgmt_subnet.get('cidr').split('.')[0]) == 127 or \
+                (int(mgmt_subnet.get('cidr').split('.')[0]) == 169 and
+                 int(mgmt_subnet.get('cidr').split('.')[1]) == 254):
+                raise ValueError(
+                    'Invalid mgmt subnet %s, subnet value combinations '
+                    '127.x.y.z and 169.254.x.y can not be used'
+                    % mgmt_subnet.get('cidr')
+                )
+            if 224 <= int(mgmt_subnet.get('cidr').split('.')[0]) <= 239:
+                raise ValueError(
+                    'Invalid management subnet %s, subnet value belonging '
+                    'to Class D of IP addresses[224-239] can not be used'
+                    % mgmt_subnet.get('cidr')
+                )
+
+            if not mgmt_subnet.get('gateway'):
+                raise ValueError(
+                    "missing gateway ip for subnet %s"
+                    % mgmt_subnet.get('cidr')
+                )
+            else:
+                if int(mgmt_subnet.get('gateway').split('.')[0]) == 0:
+                    raise ValueError(
+                        "invalid gateway ip for subnet %s"
+                        % mgmt_subnet.get('cidr')
+                    )
+            _task_done()
+
         _task_log(
             'Validating management subnets not overlapping with management '
             'subnets of any existing fabric'
@@ -334,6 +380,40 @@ class FilterModule(object):
                                              "detected")
         _task_done()
     # end _validate_mgmt_subnets
+
+    @staticmethod
+    def _validate_subnets(ip_subnets, subnet_type):
+        """Validate fabric and loopback subnets
+
+        :param ip_subnets: List
+        :param subnet_type: string
+        :return: <boolean>
+        """
+        _task_log(
+            'Validating %s subnets cidr values and prefix length' % subnet_type
+        )
+        for ip_subnet in ip_subnets:
+            if int(ip_subnet.split('.')[0]) == 0 or \
+               int(ip_subnet.split('/')[-1]) == 0:
+                raise ValueError(
+                    "Invalid %s subnet %s" % (subnet_type, ip_subnet)
+                )
+            if int(ip_subnet.split('.')[0]) == 127 or \
+               (int(ip_subnet.split('.')[0]) == 169 and
+                    int(ip_subnet.split('.')[1]) == 254):
+                raise ValueError(
+                    'Invalid %s subnet %s,subnet value combinations 127.x.y.z '
+                    'and 169.254.x.y can not be used' % (
+                        subnet_type, ip_subnet)
+                )
+            if 224 <= int(ip_subnet.split('.')[0]) <= 239:
+                raise ValueError(
+                    'Invalid %s subnet %s, subnet value belonging to Class D '
+                    'of IP addresses[224-239] can not be used' % (
+                        subnet_type, ip_subnet)
+                )
+        _task_done()
+    # end _validate_subnets
 
     def filters(self):
         """Fabric filters."""
@@ -720,6 +800,12 @@ class FilterModule(object):
                     raise ValueError(
                         "asn_min={} and asn_max={} are same.".
                         format(asn_min, asn_max))
+                elif fabric_info.get('overlay_ibgp_asn'):
+                    if asn_min < fabric_info.get('overlay_ibgp_asn') < asn_max:
+                        raise ValueError(
+                            'overlay_ibgp_asn overlapping the given '
+                            'fabric_asn_pool asn_min={} and asn_max={} '.
+                            format(asn_min, asn_max))
 
     def _valid_loopback_ip(self, fabric_info, dtz):
         loopback_ip = dtz.get('loopback_ip')
