@@ -16,6 +16,24 @@
       "revId": "049355de6881d3431f30122916204a4a5f274d74",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5a86464b_3a55f43e",
+        "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 971
+      },
+      "writtenOn": "2020-10-23T17:17:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "25480591_fd521180",
+      "revId": "049355de6881d3431f30122916204a4a5f274d74",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
