@@ -106,13 +106,12 @@ def run_device_manager(dm_logger, args):
 # end run_device_manager
 
 
-def run_full_dm():
+def run_full_dm(pid):
     # won master election, destroy any created process
-    # if the DM is run in non-containerized deployment, save the
-    # parent/first process instead of using pid 1
     running_procs = [x for x in psutil.process_iter()]
     for proc in running_procs:
-        if proc.pid == 1:
+        # dm shouldn't destroy itself
+        if proc.pid == pid:
             continue
         elif 'contrail-device-manager' in ' '.join(proc.cmdline()):
             proc.kill()
@@ -138,12 +137,12 @@ def dummy_gl(proc):
 # end dummy_gl
 
 
-def run_partial_dm():
+def run_partial_dm(pid):
     # if we are not master, start only DeviceJobManager
     is_master = False
     running_procs = [x for x in psutil.process_iter()]
     for proc in running_procs:
-        if proc.pid == 1:
+        if proc.pid == pid:
             continue
         elif 'contrail-device-manager' in ' '.join(proc.cmdline()):
             is_master = True
@@ -264,9 +263,10 @@ def main(args_str=None):
     else:
         _zookeeper_client = ZookeeperClient(client_pfx + "device-manager",
                                             args.zk_server_ip, args.host_ip)
-        run_partial_dm()
+        pid = os.getpid()
+        run_partial_dm(pid)
         _zookeeper_client.master_election(zk_path_pfx + "/device-manager",
-                                          os.getpid(), run_full_dm)
+                                          os.getpid(), run_full_dm, pid)
 # end main
 
 
