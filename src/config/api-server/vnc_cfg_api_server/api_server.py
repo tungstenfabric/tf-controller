@@ -1059,9 +1059,14 @@ class VncApiServer(object):
             try:
                 parent_uuid = self._db_conn.fq_name_to_uuid(parent_obj_type,
                                                             parent_fq_name)
-                (ok, status) = self._permissions.check_perms_write(
-                    get_request(), parent_uuid)
-                if not ok:
+               if parent_type in ['fabric']:
+                       (ok, status) = self._permissions.check_perms_link(
+                               get_request(), parent_uuid)
+               else :
+                       (ok, status) = self._permissions.check_perms_write(
+                               get_request(), parent_uuid)
+
+               if not ok:
                     (code, err_msg) = status
                     raise cfgm_common.exceptions.HttpError(code, err_msg)
                 self._permissions.set_user_role(get_request(), obj_dict)
