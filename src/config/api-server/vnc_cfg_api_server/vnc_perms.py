@@ -117,6 +117,12 @@ class VncPermissions(object):
             except NoIdError:
                 return True, ''
 
+        if not perms2['owner']:
+            msg = ("RBAC: %s doesn't have  perms2 owner set " %
+                   (obj_uuid))
+            self._server_mgr.config_log(msg, level=SandeshLevel.SYS_NOTICE)
+            return False, (403, err_msg)
+
         owner = perms2['owner'].replace('-','')
         perms = perms2['owner_access'] << 6
         perms |= perms2.get('global_access', 0)
