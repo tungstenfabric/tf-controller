@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "25480591_fd521180",
+        "filename": "src/config/api-server/vnc_cfg_api_server/uwsgi_api_server.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-23T04:02:21Z",
+      "side": 1,
+      "message": "As we are doing db_resync in greenlet , even single worker setup will be affected. so we need to move this function in api_server.py. so that both multi worker and single worker code path will add this hook.",
+      "revId": "049355de6881d3431f30122916204a4a5f274d74",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
