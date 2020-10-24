@@ -6,6 +6,7 @@ import functools
 import os
 import six
 
+from cfgm_common.datastore.keyspace import ConfigKeyspaceMap
 from sandesh_common.vns import constants as vns_constants
 from pysandesh.connection_info import ConnectionState
 from pysandesh.gen_py.process_info.ttypes import ConnectionStatus
@@ -18,14 +19,17 @@ from pysandesh.gen_py.process_info.ttypes import ConnectionType as ConnType
 UUID_KEYSPACE_NAME = vns_constants.API_SERVER_KEYSPACE_NAME
 
 # TODO describe layout
-OBJ_UUID_CF_NAME = 'obj_uuid_table'
+OBJ_UUID_CF_NAME = ConfigKeyspaceMap.get_cf_name(UUID_KEYSPACE_NAME,
+                                                 'OBJ_UUID_CF')
 
 # TODO describe layout
-OBJ_FQ_NAME_CF_NAME = 'obj_fq_name_table'
+OBJ_FQ_NAME_CF_NAME = ConfigKeyspaceMap.get_cf_name(UUID_KEYSPACE_NAME,
+                                                    'OBJ_FQ_NAME_CF')
 
 # key: object type, column ($type:$id, uuid)
 # where type is entity object is being shared with. Project initially
-OBJ_SHARED_CF_NAME = 'obj_shared_table'
+OBJ_SHARED_CF_NAME = ConfigKeyspaceMap.get_cf_name(UUID_KEYSPACE_NAME,
+                                                   'OBJ_SHARED_CF')
 
 UUID_KEYSPACE = {
     UUID_KEYSPACE_NAME: {
