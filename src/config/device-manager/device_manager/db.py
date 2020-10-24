@@ -26,6 +26,7 @@ import uuid
 from abstract_device_api import abstract_device_xsd as AbstractDevXsd
 from attrdict import AttrDict
 from cfgm_common import vnc_greenlets
+from cfgm_common.datastore.keyspace import ConfigKeyspaceMap
 from cfgm_common.exceptions import ResourceExistsError
 from cfgm_common.uve.feature_flags.ttypes import *
 from cfgm_common.uve.physical_router.ttypes import *
@@ -5376,11 +5377,12 @@ class InterfaceRouteTableDM(DBBaseDM):
 
 class DMCassandraDB(VncObjectDBClient):
     _KEYSPACE = DEVICE_MANAGER_KEYSPACE_NAME
-    _PR_VN_IP_CF = 'dm_pr_vn_ip_table'
-    _PR_ASN_CF = 'dm_pr_asn_table'
-    _NI_IPV6_LL_CF = 'dm_ni_ipv6_ll_table'
+    _PR_VN_IP_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'PR_VN_IP_CF')
+    _PR_ASN_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'PR_ASN_CF')
+    _NI_IPV6_LL_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'NI_IPV6_LL_CF')
     # PNF table
-    _PNF_RESOURCE_CF = 'dm_pnf_resource_table'
+    _PNF_RESOURCE_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE,
+                                                     'PNF_RESOURCE_CF')
 
     _zk_path_pfx = ''
 
