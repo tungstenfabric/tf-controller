@@ -10,16 +10,17 @@ from builtins import str
 import inspect
 
 from cfgm_common import jsonutils as json
+from cfgm_common.datastore.keyspace import ConfigKeyspaceMap
 from cfgm_common.vnc_object_db import VncObjectDBClient
 from sandesh_common.vns.constants import SVC_MONITOR_KEYSPACE_NAME
 
 class ServiceMonitorDB(VncObjectDBClient):
 
     _KEYSPACE = SVC_MONITOR_KEYSPACE_NAME
-    _SVC_SI_CF = 'service_instance_table'
-    _POOL_CF = 'pool_table'
-    _LB_CF = 'loadbalancer_table'
-    _HM_CF = 'healthmonitor_table'
+    _SVC_SI_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'SVC_SI_CF')
+    _POOL_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'POOL_CF')
+    _LB_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'LB_CF')
+    _HM_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'HM_CF')
 
     def __init__(self, args, logger):
         self._db_logger = logger

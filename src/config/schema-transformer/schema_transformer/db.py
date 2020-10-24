@@ -8,6 +8,7 @@ from builtins import str
 import uuid
 
 import cfgm_common as common
+from cfgm_common.datastore.keyspace import ConfigKeyspaceMap
 from cfgm_common.exceptions import NoIdError, ResourceExistsError, VncError
 from cfgm_common.vnc_object_db import VncObjectDBClient
 from cfgm_common.zkclient import IndexAllocator
@@ -17,10 +18,12 @@ from sandesh_common.vns.constants import SCHEMA_KEYSPACE_NAME
 class SchemaTransformerDB(VncObjectDBClient):
 
     _KEYSPACE = SCHEMA_KEYSPACE_NAME
-    _RT_CF = 'route_target_table'
-    _SC_IP_CF = 'service_chain_ip_address_table'
-    _SERVICE_CHAIN_CF = 'service_chain_table'
-    _SERVICE_CHAIN_UUID_CF = 'service_chain_uuid_table'
+    _RT_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'RT_CF')
+    _SC_IP_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE, 'SC_IP_CF')
+    _SERVICE_CHAIN_CF = ConfigKeyspaceMap.get_cf_name(_KEYSPACE,
+                                                      'SERVICE_CHAIN_CF')
+    _SERVICE_CHAIN_UUID_CF = ConfigKeyspaceMap.get_cf_name(
+        _KEYSPACE, 'SERVICE_CHAIN_UUID_CF')
     _zk_path_prefix = ''
 
     _BGP_RTGT_MAX_ID_TYPE0 = 1 << 24
