@@ -11,7 +11,20 @@ from six.moves import configparser
 from six import string_types
 import argparse
 import logging
+
+from cfgm_common.datastore.keyspace import ConfigKeyspaceMap
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
+from sandesh_common.vns.constants import API_SERVER_KEYSPACE_NAME
+from sandesh_common.vns.constants import DEVICE_MANAGER_KEYSPACE_NAME
+from sandesh_common.vns.constants import SCHEMA_KEYSPACE_NAME
+from sandesh_common.vns.constants import SVC_MONITOR_KEYSPACE_NAME
+from sandesh_common.vns.constants import USERAGENT_KEYSPACE_NAME
+
+API_SERVER_CFS = ConfigKeyspaceMap.get_issu_cfs(API_SERVER_KEYSPACE_NAME)
+DM_CFS = ConfigKeyspaceMap.get_issu_cfs(DEVICE_MANAGER_KEYSPACE_NAME)
+SCHEMA_CFS = ConfigKeyspaceMap.get_issu_cfs(SCHEMA_KEYSPACE_NAME)
+SVC_MONITOR_CFS = ConfigKeyspaceMap.get_issu_cfs(SVC_MONITOR_KEYSPACE_NAME)
+USERAGENT_CFS = ConfigKeyspaceMap.get_issu_cfs(USERAGENT_KEYSPACE_NAME)
 
 
 def _myprint(x, level):
@@ -29,54 +42,40 @@ logger = _myprint
 
 # Apps register respective translation functions and import paths
 
-issu_keyspace_config_db_uuid = {
-    'config_db_uuid': [
-        ('obj_uuid_table'), ('obj_fq_name_table'), ('obj_shared_table')]}
-
 issu_info_pre = [
-    (None, 'config_db_uuid', {
-        'obj_uuid_table': {},
-        'obj_fq_name_table': {},
-        'obj_shared_table': {}}),
-    (None, 'to_bgp_keyspace', {
-        'route_target_table': {}, 'service_chain_table': {},
-        'service_chain_ip_address_table': {},
-        'service_chain_uuid_table': {}}),
-    (None, 'useragent', {'useragent_keyval_table': {}}),
-    (None, 'svc_monitor_keyspace', {
-        'pool_table': {}, 'service_instance_table': {}}),
-    (None, 'dm_keyspace', {
-        'dm_pr_vn_ip_table': {}, 'dm_pnf_resource_table': {}})]
+    (None, API_SERVER_KEYSPACE_NAME, {cf: {} for cf in API_SERVER_CFS}),
+    (None, SCHEMA_KEYSPACE_NAME, {cf: {} for cf in SCHEMA_CFS}),
+    (None, USERAGENT_KEYSPACE_NAME, {cf: {} for cf in USERAGENT_CFS}),
+    (None, SVC_MONITOR_KEYSPACE_NAME, {cf: {} for cf in SVC_MONITOR_CFS}),
+    (None, DEVICE_MANAGER_KEYSPACE_NAME, {cf: {} for cf in DM_CFS}),
+]
+
+issu_keyspace_config_db_uuid = {
+    API_SERVER_KEYSPACE_NAME: [(cf) for cf in API_SERVER_CFS]}
 
 issu_keyspace_to_bgp_keyspace = {
-    'to_bgp_keyspace': [
-        ('route_target_table'), ('service_chain_table'),
-        ('service_chain_ip_address_table'), ('service_chain_uuid_table')]}
-
-issu_keyspace_user_agent = {'useragent': [('useragent_keyval_table')]}
+    SCHEMA_KEYSPACE_NAME: [(cf) for cf in SCHEMA_CFS]}
 
 issu_keyspace_svc_monitor_keyspace = {
-    'svc_monitor_keyspace': [('pool_table'), ('service_instance_table')]}
+    SVC_MONITOR_KEYSPACE_NAME: [(cf) for cf in SVC_MONITOR_CFS]}
+
+issu_keyspace_user_agent = {
+    USERAGENT_KEYSPACE_NAME: [(cf) for cf in USERAGENT_CFS]}
 
 issu_keyspace_dm_keyspace = {
-    'dm_keyspace': [('dm_pr_vn_ip_table'), ('dm_pnf_resource_table')]}
+    DEVICE_MANAGER_KEYSPACE_NAME: [(cf) for cf in DM_CFS]}
 
 
 issu_info_post = [
-    (None, 'to_bgp_keyspace', {
-        'route_target_table': {}, 'service_chain_table': {},
-        'service_chain_ip_address_table': {},
-        'service_chain_uuid_table': {}}),
-    (None, 'useragent', {'useragent_keyval_table': {}}),
-    (None, 'svc_monitor_keyspace', {
-        'pool_table': {}, 'service_instance_table': {}}),
-    (None, 'dm_keyspace', {
-        'dm_pr_vn_ip_table': {}, 'dm_pnf_resource_table': {}})]
+    (None, SCHEMA_KEYSPACE_NAME, {cf: {} for cf in SCHEMA_CFS}),
+    (None, USERAGENT_KEYSPACE_NAME, {cf: {} for cf in USERAGENT_CFS}),
+    (None, SVC_MONITOR_KEYSPACE_NAME, {cf: {} for cf in SVC_MONITOR_CFS}),
+    (None, DEVICE_MANAGER_KEYSPACE_NAME, {cf: {} for cf in DM_CFS}),
+]
 
 issu_info_config_db_uuid = [
-    (None, 'config_db_uuid', {
-        'obj_uuid_table': {},
-        'obj_fq_name_table': {}, 'obj_shared_table': {}})]
+    (None, API_SERVER_KEYSPACE_NAME, {cf: {} for cf in API_SERVER_CFS}),
+]
 
 issu_znode_list = ['fq-name-to-uuid', 'api-server', 'id']
 
