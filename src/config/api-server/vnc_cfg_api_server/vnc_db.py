@@ -30,6 +30,7 @@ from .event_dispatcher import EventDispatcher
 
 from cfgm_common.uve.vnc_api.ttypes import *
 from cfgm_common import ignore_exceptions
+from cfgm_common.datastore.keyspace import ConfigKeyspaceMap
 from cfgm_common.exceptions import ResourceExhaustionError
 from cfgm_common.exceptions import ResourceExistsError
 from cfgm_common.exceptions import ResourceOutOfRangeError
@@ -89,7 +90,8 @@ def trace_msg(trace_objs=[], trace_name='', sandesh_hdl=None, error_msg=None):
 class VncServerCassandraClient(VncCassandraClient):
     # Useragent datastore keyspace + tables (used by neutron plugin currently)
     _USERAGENT_KEYSPACE_NAME = constants.USERAGENT_KEYSPACE_NAME
-    _USERAGENT_KV_CF_NAME = 'useragent_keyval_table'
+    _USERAGENT_KV_CF_NAME = ConfigKeyspaceMap.get_cf_name(
+        _USERAGENT_KEYSPACE_NAME, 'USERAGENT_KV_CF')
 
     @classmethod
     def get_db_info(cls):
