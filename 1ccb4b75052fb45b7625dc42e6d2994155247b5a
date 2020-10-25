@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "10f5e779_3e1ec725",
+        "filename": "src/config/schema-transformer/schema_transformer/to_bgp.py",
+        "patchSetId": 39
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-25T19:23:53Z",
+      "side": 1,
+      "message": "@nagaendra/@sajeesh I see that this line 96 will not be hit. Without Jim\u0027s change at line 108.\n\nBut the history of this line is from day one of dependency tracker introduction,\nDo you guys know why we have line 96 in the reaction map.",
+      "revId": "1ccb4b75052fb45b7625dc42e6d2994155247b5a",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
