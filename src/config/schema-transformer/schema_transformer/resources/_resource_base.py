@@ -37,13 +37,20 @@ class ResourceBaseST(DBBase):
             try:
                 cls.locate(obj.get_fq_name_str(), obj)
             except Exception as e:
-                cls._logger.error("Error in reinit for %s %s: %s" % (
-                    cls.obj_type, obj.get_fq_name_str(), str(e)))
+                msg = "Error in reinit for %s %s: " % (
+                    cls.obj_type, obj.get_fq_name_str())
+                self.add_ignored_error(msg)
+                self._logger.error(msg + str(e)) 
             if (zk_timeout and
                     time.time() - start_time > int(zk_timeout / 8)):
                 gevent.sleep(0.1)
                 start_time = time.time()
     # end reinit
+
+    @classmethod
+    def resource_update(cls, rest_type, obj):
+        method = getattr(cls, '%s_update' % res_type)
+        method(obj)
 
     @classmethod
     def get_obj_type_map(cls):
@@ -82,4 +89,8 @@ class ResourceBaseST(DBBase):
             except AttributeError:
                 return
         return sandesh.RefList(ref_type, refs)
+
+
+
+
 # end ResourceBaseST
