@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a338975c_2436107d",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_machine_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 614,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-26T15:43:16Z",
+      "side": 1,
+      "message": "_db_init_entries needs to the called only once before while loop at line 612.",
+      "revId": "11af03bf9625f68b134d27057b3ace104611ec68",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
