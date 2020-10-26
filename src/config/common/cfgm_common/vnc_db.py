@@ -10,8 +10,11 @@ from __future__ import unicode_literals
 from builtins import object
 from future.utils import with_metaclass
 from past.builtins import basestring
+from collections import OrderedDict
+from six import StringIO
 from vnc_api.gen.resource_client import *
 
+from cfgm_common.utils import cgitb_hook
 from .exceptions import NoIdError
 from .utils import obj_type_to_vnc_class, compare_refs
 
@@ -46,6 +49,8 @@ class DBBase(object, with_metaclass(DBBaseMeta)):
     _logger = None
     _object_db = None
     _manager = None
+    _ignored_locate_errors = OrderedDict()
+    _ignored_evaluate_errors = OrderedDict()
 
     # objects in the database could be indexed by uuid or fq-name
     # set _indexed_by_name to True in the derived class to use fq-name as index
@@ -461,6 +466,33 @@ class DBBase(object, with_metaclass(DBBaseMeta)):
     def get_meta(cls):
         return cls._meta_data
 
+    @classmethod
+    def _add_errors(cls, kind, err_msg, traceback=None):
+        if not traceback:
+            import pdb; pdb.set_trace()
+            string_buf = StringIO()
+            cgitb_hook(file=string_buf, format="text")
+            traceback = string_buf.getvalue()
+        if kind == "locate":
+            cls._ignored_locate_errors[err_msg] = traceback
+        elif kind == "evaluate":
+            cls._ignored_evaluate_errors[err_msg] = traceback
+
+    @classmethod
+    def add_locate_error(cls, err_msg, traceback=None):
+        cls._add_errors('locate', err_msg, traceback)
+
+    @classmethod
+    def clear_locate_error(cls):
+        cls._ignored_locate_errors = OrderedDict()
+
+    @classmethod
+    def add_evaluate_error(cls, err_msg, traceback):
+        cls._add_errors('evaluate', err_msg, traceback)
+
+    @classmethod
+    def clear_evaluate_error(cls):
+        cls._ignored_evaluate_errors = OrderedDict()
 # end class DBBase
 
 

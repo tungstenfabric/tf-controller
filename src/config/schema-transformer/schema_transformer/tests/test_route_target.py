@@ -10,6 +10,7 @@ from vnc_api.vnc_api import GlobalSystemConfig, NoIdError, RouteTargetList
 from vnc_cfg_api_server import db_manage
 
 from schema_transformer.db import SchemaTransformerDB
+from schema_transformer.resources._resource_base import ResourceBaseST
 from schema_transformer.resources.routing_instance import RoutingInstanceST
 from .test_case import retries, STTestCase
 from .test_policy import VerifyPolicy
@@ -245,5 +246,35 @@ class TestRouteTarget(STTestCase, VerifyRouteTarget):
         self.assertNotIn(rt_exst_id_str, rts)
 
     # end test_route_target_id_collision
+
+    def test_missing_ri_to_rt_ref_created_during_vn_update(self):
+        """ Validate CEM-19894 
+        """
+        resource_update_orig = ResourceBaseST.resource_update
+
+        def mock_ri_update(*args, **kwargs):
+            if args[1] == 'routing_instance':
+                raise Exception("Mocked RI update failure exception")
+            return resource_update_orig(*args[1:], **kwargs)
+
+        ResourceBaseST.resource_update = mock_ri_update
+        # create  vn1
+        vn1_name = self.id() + 'vn1'
+        vn1_obj = self.create_virtual_network(vn1_name, '10.0.0.0/24', rt_list=['target:1:1'])
+        self.wait_to_get_object(RoutingInstanceST,
+                                vn1_obj.get_fq_name_str() + ':' + vn1_name)
+
+        # ensure RI to RT ref is removed
+        self.check_rt_in_ri(self.get_ri_name(vn1_obj), 'target:1:1', False)
+
+        # rever the mock of ri idbe_update
+        ResourceBaseST.resource_update = resource_update_orig
+
+        # attach policy to VN
+
+        # ensure RI to RT ref is recreated as part of VN evaluate(caused by any other change in VN)
+        #self.check_rt_in_ri(self.get_ri_name(vn1_obj), 'target:1:1', True)
+
+    # end test_missing_ri_to_rt_ref_created_during_vn_update
 
 # end class TestRouteTarget

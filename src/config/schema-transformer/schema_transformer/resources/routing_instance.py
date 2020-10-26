@@ -38,6 +38,7 @@ class RoutingInstanceST(ResourceBaseST):
         self.route_target = None
         self.routing_policys = {}
         self.route_aggregates = set()
+        self.route_targets = set()
         self.service_chain_info = self.obj.get_service_chain_information()
         self.v6_service_chain_info = \
             self.obj.get_ipv6_service_chain_information()
@@ -85,11 +86,17 @@ class RoutingInstanceST(ResourceBaseST):
             self.routing_policys[rp_name] = ref['attr']['sequence']
         if self.is_default:
             self.update_static_routes()
+        self.update_route_targets()
     # end __init__
 
     def update(self, obj=None):
         # Nothing to do
         return False
+
+    def update_route_targets(self):
+        self.route_targets = [
+            ':'.join(rt_ref['to'])
+            for rt_ref in self.obj.get_route_target_refs() or []]
 
     @classmethod
     def create(cls, fq_name, vn_obj, has_pnf=False):
@@ -303,11 +310,15 @@ class RoutingInstanceST(ResourceBaseST):
 
                 if update_ri:
                     try:
-                        self._vnc_lib.routing_instance_update(self.obj)
+                        self.resource_update('routing_instance', self.obj)
                     except Exception as e:
+                        msg = "Error while updating routing instance: "
+                        self.add_locate_error(msg)
                         # error due to inconsistency in db
-                        self._logger.error(
-                            "Error while updating routing instance: " + str(e))
+                        self._logger.error(msg + str(e))
+                    finally:
+                        # update local cache of ri-->rt refs
+                        self.update_route_targets()
                     return
         except NoIdError as e:
             self._logger.error(
@@ -468,6 +479,9 @@ class RoutingInstanceST(ResourceBaseST):
                 self._vnc_lib.routing_instance_update(self.obj)
             except NoIdError:
                 return
+            finally:
+                # update local cache of ri-->rt refs
+                self.update_route_targets()
     # end update_route_target_list
 
     def update_static_routes(self):

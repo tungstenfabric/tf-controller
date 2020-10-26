@@ -68,6 +68,23 @@ class VncAmqpHandle(object):
         except IOError:
             pass
 
+    def log_ignored_locate_errors(self, obj_class):
+        self.log_ignored_errors(obj_class._ignored_locate_errors)
+
+    def log_ignored_evaluate_errors(self, obj_class):
+        self.log_ignored_errors(obj_class._ignored_evaluate_errors)
+
+    def log_ignored_errors(self, ignored_errors):
+        if not self._trace_file:
+            return
+        try:
+            with open(self._trace_file, 'a') as err_file:
+                for err_msg, tb in ignored_errors.items():
+                    err_file.write("%s\n%s" % (err_msg, tb))
+        except IOError:
+            pass
+    
+
     def _vnc_subscribe_callback(self, oper_info):
         self._db_resync_done.wait()
         try:
@@ -156,7 +173,10 @@ class VncAmqpHandle(object):
         self.db_cls._object_db.cache_uuid_to_fq_name_add(
                 obj_id, obj_fq_name, self.obj_type)
         self._set_meta()
-        self.obj = self.obj_class.locate(obj_key)
+        try:
+            self.obj = self.obj_class.locate(obj_key)
+        finally:
+            self.log_ignored_locate_errors(self.obj_class)
         if self.obj is None:
             self.logger.info('%s id %s fq_name %s not found' % (
                 self.obj_type, obj_id, obj_fq_name))
@@ -255,10 +275,13 @@ class VncAmqpHandle(object):
             for res_id in res_id_list:
                 res_obj = cls.get(res_id)
                 if res_obj is not None:
-                    if evaluate_kwargs:
-                        res_obj.evaluate(**evaluate_kwargs)
-                    else:
-                        res_obj.evaluate()
+                    try:
+                        if evaluate_kwargs:
+                            res_obj.evaluate(**evaluate_kwargs)
+                        else:
+                            res_obj.evaluate()
+                    finally:
+                        self.log_ignored_evaluate_errors(res_obj)
                     if self.timer:
                         self.timer.timed_yield()
 
