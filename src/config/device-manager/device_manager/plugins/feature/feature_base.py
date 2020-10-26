@@ -341,4 +341,8 @@ class FeatureBase(object):
         return vn_dict
     # end _get_vn_li_map
 
+    def _is_service_chained(self):
+        return self._any_rb_role_matches('servicechain')
+    # end is_service_chained
+
 # end FeatureBase
