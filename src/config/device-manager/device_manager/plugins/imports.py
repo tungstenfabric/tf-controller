@@ -8,6 +8,7 @@
 #
 # flake8: noqa
 
+
 def import_plugins():
     from .juniper_conf import JuniperConf
     from .mx_conf import MxConf
@@ -38,4 +39,5 @@ def import_feature_plugins():
     from .infra_bms_access_feature import InfraBMSAccessFeature
     from .security_group_feature import SecurityGroupFeature
     from .dc_gateway_feature import DcGatewayFeature
+    from .pnf_service_chaining_feature import PNFSrvcChainingFeature
 # end import_feature_plugins
