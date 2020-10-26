@@ -7,13 +7,16 @@ set groups {{cfg_group}} routing-options router-id {{loopback_ip}}
 set groups {{cfg_group}} routing-options route-distinguisher-id {{loopback_ip}}
 {%         endif %}
 {%     endif %}
-
 {%     set encap_priorities = device_abstract_config.get('system', {}).get('encapsulation_priorities', []) %}
 {%     set device_product_name = device_abstract_config.get('system', {}).get('product_name', '') %}
 {%     set rib_name = 'bgp.rtarget.0' %}
 {%     set resolution_rib = 'inet.0' %}
-{%     set sys_config = device_abstract_config.get('system', None) %}
+{%     set sys_config = device_abstract_config.get('system', {}) %}
 {%     set sys_roles = sys_config.get('routing_bridging_roles', []) %}
+{%     set ns = namespace(no_rt_family=false) %}
+{%     if ('Route-Reflector' not in sys_roles) and ('DCI-Gateway' in sys_roles) %}
+{%         set ns.no_rt_family = true %}
+{%     endif %}
 {%     for bgp in device_abstract_config.get('features', {}).get('overlay-bgp',{}).get('bgp', []) %}
 {#         if feature in bgp.get('comment', '') #}
 {%             set route_distinguisher = bgp.get('ip_address') %}
@@ -28,9 +31,9 @@ set groups {{cfg_group}} routing-options resolution rib {{rib_name}} resolution-
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} authentication-key {{bgp_auth_key}}
 {%             endif %}
 {%             set import_policy_list = bgp.get('import_policy', []) %}
-{%             set ns = namespace(dci_bgp=false) %}
+{%             set ns_bgp = namespace(nobgp_rt_family=false) %}
 {%             if import_policy_list|length > 0 %}
-{%                 set ns.dci_bgp = true %}
+{%                 set ns_bgp.nobgp_rt_family = true %}
 {%             endif %}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} type {{bgp_group_type}}
 {%             set cluster_id = bgp.get('cluster_id') %}
@@ -43,7 +46,7 @@ set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} multipath
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} local-address {{route_distinguisher}}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} vpn-apply-export
 {%             for fam in families %}
-{%                 if fam == 'route-target' and ns.dci_bgp == false %}
+{%                 if fam == 'route-target' and ns.no_rt_family == false and ns_bgp.nobgp_rt_family == false %}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} family {{fam}}
 {%                 endif %}
 {%                 if fam == 'evpn' %}
@@ -95,7 +98,7 @@ set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} export {{pol_mpl
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} neighbor {{peer_addr}} peer-as {{peer_as}}
 {%                 set peer_fam = peer.get('families', []) %}
 {%                 for fam in peer_fam %}
-{%                     if fam == 'route-target' and ns.dci_bgp == false %}
+{%                     if fam == 'route-target' and ns.no_rt_family == false and ns_bgp.nobgp_rt_family == false %}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} neighbor {{peer_addr}} family {{fam}}
 {%                     endif %}
 {%                     if fam == 'evpn' %}
