@@ -5,7 +5,6 @@ from builtins import str
 import unittest
 import uuid
 
-import bottle
 from cfgm_common.tests.test_utils import FakeKazooClient
 from flexmock import flexmock
 from vnc_openstack import neutron_plugin_db as db
@@ -216,28 +215,3 @@ class TestDbInterface(unittest.TestCase):
                 '%s/%s' %
                 (dbi.security_group_lock_prefix, sg_uuid))
             dbi.security_group_delete(context, sg_uuid)
-
-    def test_floating_update_port_from_another_project(self):
-        dbi = MockDbInterface()
-        dbi._get_obj_tenant_id = lambda r, id: 'Another project'
-
-        dbi._vnc_lib = flexmock(
-            fq_name_to_id=lambda res, name: 'fip_pool_uuid',
-            floating_ip_read=lambda id: 'fip_obj',
-            virtual_machine_interface_read=lambda id, fq_name, fields: None,
-            logical_routers_list=lambda parent_id, detail: [
-                flexmock(uuid='router_uuid',
-                         get_virtual_machine_interface_refs=lambda: [
-                             {'uuid': 'router_port_uuid'}])])
-
-        flexmock(
-            uuid='id_perms_uuid',
-            get_created=lambda: 'create_time',
-            get_last_modified=lambda: 'last_modified_time',
-            get_description=lambda: 'description')
-
-        with self.assertRaises(bottle.HTTPError):
-            dbi._floatingip_neutron_to_vnc(
-                {'tenant': 'tenant', 'is_admin': False},
-                {'id': 1, 'port_id': 11},
-                db.UPDATE)
