@@ -666,11 +666,16 @@ class WFManager(object):
                             JobStatus.SUCCESS
 
                 if self.abort_flag:
-                    err_msg = "ABORTING NOW..."
-                    self._logger.info(err_msg)
-                    self.result_handler.update_job_status(
-                        JobStatus.FAILURE, err_msg)
-                    break
+                    if not cleanup_in_progress:
+                        cleanup_in_progress = True
+                        pb_idx = 0
+                        err_msg = "ABORTING NOW..."
+                        self._logger.info(err_msg)
+                        self.result_handler.update_job_status(
+                            JobStatus.FAILURE, err_msg)
+                    else:
+                        pb_idx += 1
+                    continue
 
                 # update the job input with marked playbook output json
                 pb_output = self.result_handler.playbook_output or {}
@@ -690,7 +695,12 @@ class WFManager(object):
             # set JobStatus to success but this does not indicate a
             # success in the workflow. Set JobStatus to failure again.
             if cleanup_completed:
-                err_msg = "Finished cleaning up after the error"
+                if self.abort_flag:
+                    # Disable alarm, we didn't timeout handling graceful abort
+                    err_msg = "Handled job abort gracefully"
+                    signal.alarm(0)
+                else:
+                    err_msg = "Finished cleaning up after the error"
                 self.result_handler.update_job_status(JobStatus.FAILURE,
                                                       err_msg)
                 cleanup_completed = False
@@ -731,8 +741,30 @@ class WFManager(object):
             if job_error_msg is not None:
                 sys.exit(job_error_msg)
 
+    def graceful_abort_timeout_handler(self, signalnum, frame):
+        err_msg = ("Timed out on trying to handle abort gracefully, "
+                   "exiting forcefully.")
+        self._logger.info(err_msg)
+        try:
+            self.job_mgr.job_handler.playbook_abort()
+            self.result_handler.update_job_status(JobStatus.FAILURE, err_msg)
+            self.result_handler.create_job_summary_log(
+                self.job_template.fq_name)
+            sys.exit()
+        except Exception:
+            self._logger.error("Failed to force abort")
+
     def job_mgr_abort_signal_handler(self, signalnum, frame):
-        if signalnum == signal.SIGABRT:
+        can_abort_gracefully = False
+
+        jt_playbooks = self.job_mgr.job_template.get_job_template_playbooks()
+        playbooks_info = jt_playbooks.playbook_info
+        for play_info in playbooks_info:
+            if play_info.recovery_playbook:
+                can_abort_gracefully = True
+                break
+
+        if signalnum == signal.SIGABRT and not can_abort_gracefully:
             # Force abort; kill all playbooks, then exit
             err_msg = "Job aborting..."
             self._logger.info(err_msg)
@@ -745,10 +777,15 @@ class WFManager(object):
                 sys.exit()
             except Exception:
                 self._logger.error("Failed to force abort")
-        elif signalnum == signal.SIGUSR1:
+        elif signalnum == signal.SIGUSR1 or can_abort_gracefully:
             # Graceful abort; Exit after current playbook
             self._logger.info("Job will abort upon playbook completion...")
             self.abort_flag = True
+
+            # Set a timeout in case we are unable to gracefully abort
+            # When we timeout, the handler tries forcefully aborting
+            signal.signal(signal.SIGALRM, self.graceful_abort_timeout_handler)
+            signal.alarm(300)
 
 
 def parse_args():
