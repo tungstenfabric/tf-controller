@@ -1776,6 +1776,87 @@ class TestPermissions(test_case.ApiServerTestCase):
         # confirm that only one PI is shared with tenant alice
         self.assertEquals(len(vpg_obj['physical-interfaces']), 1)
 
+    def test_api_vn_count(self):
+        """Get project VN count including or excluding shared VNs"""
+
+        def get_vn_count(project_uuid, shared, by_list_len=False):
+            count_flag = not by_list_len
+            q_params = "parent_id={}&shared={}&count={}".format(
+                project_uuid, shared, count_flag)
+            url = ('http://%s:%s/virtual-networks?%s'
+                        %(self._api_svr_app.extra_environ['HTTP_HOST'],
+                          self._api_svr_app.extra_environ['SERVER_PORT'],
+                          q_params))
+            headers = {'X-Auth-Token':self.bob.vnc_lib.get_auth_token()}
+            resp = requests.get(url, headers=headers)
+            self.assertEqual(resp.status_code, 200)
+            if count_flag:
+                count = json.loads(resp.text)['virtual-networks']['count']
+            else:
+                vns = json.loads(resp.text)['virtual-networks']
+                count = len(vns)
+            return count
+
+        logger.info('')
+        logger.info( '#### API VN COUNT (INCLUDING SHARED OR NOT) ########')
+
+        alice = self.alice
+        bob   = self.bob
+        admin = self.admin
+        self.vn_name = "alice-vn-%s" % self.id()
+
+        # allow permission to create virtual-network
+        for user in self.users:
+            logger.info( "%s: project %s to allow full access to role %s" % \
+                (user.name, user.project, user.role))
+            # note that collection API is set for create operation
+            user.proj_rg = vnc_aal_create(admin.vnc_lib, user.project_obj)
+            vnc_aal_add_rule(admin.vnc_lib, user.proj_rg,
+                rule_str = '* %s:CRUD' % user.role)
+
+        # cleanup - delete existing VN
+        for user in [self.bob, self.alice, self.admin]:
+            z = user.vnc_lib.resource_list('virtual-network')
+            for vn in z['virtual-networks']:
+                try:
+                    set_perms(vn, share = [])
+                    user.vnc_lib.virtual_network_update(vn)
+                except:
+                    pass
+                self.admin.vnc_lib.virtual_network_delete(
+                    fq_name = vn['fq_name'])
+
+        logger.info( 'bob: create VN in his project')
+        vn_bob = VirtualNetwork(self.vn_name, bob.project_obj)
+        self.bob.vnc_lib.virtual_network_create(vn_bob)
+
+        logger.info( 'alice: create VN in her project')
+        vn = VirtualNetwork(self.vn_name, self.alice.project_obj)
+        self.alice.vnc_lib.virtual_network_create(vn)
+        vn = vnc_read_obj(self.alice.vnc_lib,
+                          'virtual-network',
+                          name = vn.get_fq_name())
+
+        logger.info('Enable default share in virtual network for bob project')
+        set_perms(vn, share = [(bob.project_uuid, PERMS_R)])
+        alice.vnc_lib.virtual_network_update(vn)
+
+        # Get count of VNs owned by Bob
+        count = get_vn_count(bob.project_uuid, shared=False)
+        self.assertEqual(count, 1)
+
+        # Get count of VNs owned by and shared with Bob
+        count = get_vn_count(bob.project_uuid, shared=True)
+        self.assertEqual(count, 2)
+
+        # Get VN count owned by Bob by len of VN list returned
+        count = get_vn_count(bob.project_uuid, shared=False, by_list_len=True)
+        self.assertEqual(count, 1)
+
+        # Get VN count owned by and shared with Bob by len of VN list returned
+        count = get_vn_count(bob.project_uuid, shared=True, by_list_len=True)
+        self.assertEqual(count, 2)
+
     def tearDown(self):
         super(TestPermissions, self).tearDown()
     # end tearDown
