@@ -1,5 +1,11 @@
 # Assuming the diff is already in the db, process the commits
 
+- name: Make sure the manual directory for device is present
+  file:
+    path: ./manual_config/{{pr_host}}
+    state: directory
+    mode: '0755'
+
 - name: Call the vnc filter plugin to process the input and generate config
   set_fact:
     data_dict: "{{job_ctx |cli_sync(prouter_name, pr_uuid, devices_cli, pr_host)}}"
