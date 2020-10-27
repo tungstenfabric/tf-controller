@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea245aa9_a2796002",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/ansible_role_common.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 1174,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "DCI-Gateway is also migrated, this needs to be removed as well. as you are removing, can you take care of this removal as well?",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89b253f1_21d4c6cc",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/pnf/pnf_conf.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "Do we need this file?",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "360e93b8_8ddfb377",
+        "filename": "src/config/device-manager/device_manager/plugins/imports.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "I don\u0027t think we need this, pnf_conf, anymore as we migrated the code to feature based.",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7aeafb1a_7eef40a2",
+        "filename": "src/config/device-manager/test/test_dm_pnf_srvc_chaining.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 1360,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "this should be junos-es.",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e81e20b8_19ce66f4",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-es_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "Seems you merged the \"pim\" template as well to this. 1) You need to take care of the upgrade side, i.e removal of the existing pim config (which was there with different config group name). 2) Old references for the pim \u0026 service chain from the roles/templates directory needs to be removed - clean up.",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "759d9c8f_fbf8a183",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-qfx_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "Do we need these checks, as RI\u0027s are from the pnf-service-chaining feature?",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "320a8c77_51e5f5c4",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-qfx_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "same as above, do we need these checks?",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e8e0dbae_cb7ea586",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/group_vars/all.yml",
+        "patchSetId": 11
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-27T05:32:38Z",
+      "side": 1,
+      "message": "I assume we are fully migrating, why do we have these traces here?",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
