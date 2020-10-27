@@ -76,7 +76,9 @@ void BfdHandler::SendPacket(
     uint16_t eth_proto = is_v4 ? ETHERTYPE_IP : ETHERTYPE_IPV6;
     MacAddress mac = agent()->mac_learning_proto()->
                         GetMacIpLearningTable()->GetPairedMacAddress(
-                                vm_interface->vrf()->vrf_id(),
+                                vm_interface->vrf()?
+                                vm_interface->vrf()->vrf_id():
+                                VrfEntry::kInvalidIndex,
                                 remote_endpoint.address());
 
     if (mac == MacAddress()) {
