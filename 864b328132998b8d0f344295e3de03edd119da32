@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "20b417bb_ca82390a",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/fabric.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 778,
+      "author": {
+        "id": 858
+      },
+      "writtenOn": "2020-10-27T04:01:07Z",
+      "side": 1,
+      "message": "Shouldn\u0027t it be including min and max value.",
+      "revId": "864b328132998b8d0f344295e3de03edd119da32",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
