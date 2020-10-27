@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "0f9f7aa0_788fcda2",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/ansible_role_common.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 1174,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "ea245aa9_a2796002",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "89b253f1_21d4c6cc",
         "filename": "src/config/device-manager/device_manager/plugins/ansible/pnf/pnf_conf.py",
         "patchSetId": 11
@@ -33,6 +51,24 @@
       "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1cd7479f_10be11d6",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/pnf/pnf_conf.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "89b253f1_21d4c6cc",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "5c188072_06d75ecf",
+        "filename": "src/config/device-manager/device_manager/plugins/imports.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "360e93b8_8ddfb377",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7aeafb1a_7eef40a2",
         "filename": "src/config/device-manager/test/test_dm_pnf_srvc_chaining.py",
         "patchSetId": 11
@@ -67,6 +121,24 @@
       "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5d209fe1_6de286c1",
+        "filename": "src/config/device-manager/test/test_dm_pnf_srvc_chaining.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 1360,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "7aeafb1a_7eef40a2",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "e905d3ab_f63685da",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-es_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "Need some clarification about this. Will discuss with you.",
+      "parentUuid": "e81e20b8_19ce66f4",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "759d9c8f_fbf8a183",
         "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-qfx_overlay_service_chain.j2",
         "patchSetId": 11
@@ -101,6 +191,24 @@
       "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b05a17e7_d29ec1a1",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-qfx_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "759d9c8f_fbf8a183",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "8ee4caa1_28aab726",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-qfx_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "We do need to make sure it is a service type PI, but we don\u0027t need the check for LI\u0027s comment.",
+      "parentUuid": "320a8c77_51e5f5c4",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e8e0dbae_cb7ea586",
         "filename": "src/config/fabric-ansible/ansible-playbooks/group_vars/all.yml",
         "patchSetId": 11
@@ -135,6 +261,24 @@
       "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5e85abfd_55a8d2c1",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/group_vars/all.yml",
+        "patchSetId": 11
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-27T23:21:36Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "e8e0dbae_cb7ea586",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
