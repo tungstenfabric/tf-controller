@@ -12,7 +12,7 @@ from .ansible_role_common import AnsibleRoleCommon
 class OverlayConf(AnsibleRoleCommon):
     """Public class for Overlay config."""
 
-    _roles = ['leaf', 'spine', 'superspine']
+    _roles = ['leaf', 'pnf', 'spine', 'superspine']
 
     def __init__(self, logger, params={}):
         """Init routine for overlay config."""
@@ -35,7 +35,8 @@ class OverlayConf(AnsibleRoleCommon):
             return 0
         if is_delete:
             return self.send_conf(is_delete=True)
-        self.set_common_config()
+        if not self.physical_router.physical_router_role == "pnf":
+            self.set_common_config()
         return self.send_conf(feature_configs=feature_configs)
     # end push_conf
 

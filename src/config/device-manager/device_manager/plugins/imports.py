@@ -8,6 +8,7 @@
 #
 # flake8: noqa
 
+
 def import_plugins():
     from .juniper_conf import JuniperConf
     from .mx_conf import MxConf
@@ -22,7 +23,6 @@ def import_ansible_plugins():
     from .ansible_conf import AnsibleConf
     from .ansible_role_common import AnsibleRoleCommon
     from .overlay_conf import OverlayConf
-    from .pnf_conf import PnfConf
 # end import_ansible_plugins
 
 
@@ -38,4 +38,5 @@ def import_feature_plugins():
     from .infra_bms_access_feature import InfraBMSAccessFeature
     from .security_group_feature import SecurityGroupFeature
     from .dc_gateway_feature import DcGatewayFeature
+    from .pnf_service_chaining_feature import PNFSrvcChainingFeature
 # end import_feature_plugins
