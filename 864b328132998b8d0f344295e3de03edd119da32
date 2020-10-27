@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "4ef25c13_b6497518",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/fabric.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 515
+      },
+      "writtenOn": "2020-10-27T15:49:52Z",
+      "side": 1,
+      "message": "Update the comment here to include management subnet as well",
+      "revId": "864b328132998b8d0f344295e3de03edd119da32",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "20b417bb_ca82390a",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/fabric.py",
         "patchSetId": 3
