@@ -2060,15 +2060,19 @@ class VncDbClient(object):
             (ok, result, ret_marker) = self._object_db.object_list(
                      obj_type, parent_uuids=parent_uuids,
                      back_ref_uuids=back_ref_uuids, obj_uuids=obj_uuids,
-                     count=is_count, filters=filters,
+                     count=False, filters=filters,
                      paginate_start=paginate_start,
                      paginate_count=paginate_count)
 
-            if not ok or is_count:
+            if not ok:
                 return (ok, result, None)
 
             if include_shared:
                 result.extend(collect_shared(result)[0])
+
+            if is_count:
+                return (ok, len(result), None)
+
         elif not paginate_start.startswith('shared:'):
             # choose to finish non-shared items before shared ones
             # else, items can be missed since sorted order used across two
