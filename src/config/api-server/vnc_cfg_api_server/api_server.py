@@ -134,6 +134,8 @@ import netifaces
 from pysandesh.connection_info import ConnectionState
 from cfgm_common.uve.nodeinfo.ttypes import NodeStatusUVE, \
     NodeStatus
+from cfgm_common.uve.config_api_worker.ttypes import ConfigApiWorker, \
+    ConfigApiWorkerTrace
 
 from .sandesh.traces.ttypes import RestApiTrace
 from .vnc_bottle import get_bottle_server
@@ -2277,6 +2279,26 @@ class VncApiServer(object):
 
         # create amqp handle
         self._amqp_client = self.initialize_amqp_client()
+
+        # config api worker uve
+        worker_introspect_list = self._args.worker_introspect_port.split(" ")
+        worker_admin_list = self._args.worker_admin_port.split(" ")
+        protocol = "http"
+        if self._args.introspect_ssl_enable:
+            protocol = "https"
+        for index in range(len(worker_introspect_list)):
+            config_api_worker_data = ConfigApiWorker(
+                name="worker-%s" % (str(index)),
+                worker_id=str(index),
+                introspect_port=worker_introspect_list[index],
+                admin_port=worker_admin_list[index],
+                introspect_url="%s://%s:%s" % (protocol,
+                                               self._args.listen_ip_addr,
+                                               worker_introspect_list[index])
+            )
+            config_api_worker_uve = ConfigApiWorkerTrace(
+                data=config_api_worker_data, sandesh=self._sandesh)
+            config_api_worker_uve.send(sandesh=self._sandesh)
     # end __init__
 
     def _initialize_quota_counters(self):
