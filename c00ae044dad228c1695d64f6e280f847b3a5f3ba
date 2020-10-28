@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e563da5c_febe0dc5",
+        "filename": "src/config/api-server/vnc_cfg_api_server/vnc_db.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2059,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-28T22:01:08Z",
+      "side": 1,
+      "message": "Lets use a flat_count variable to decide whether to pass True/False to self._object_db.object_list.\n\nWe need to do this way, because there is some optimization logic in https://github.com/tungstenfabric/tf-controller/blob/master/src/config/common/cfgm_common/vnc_cassandra.py#L1037 for count only query.\n\nflat_count \u003d is_count\nif include_shared:\n    flat_count\u003dFalse",
+      "revId": "c00ae044dad228c1695d64f6e280f847b3a5f3ba",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "904ebe4f_cab58d5c",
+        "filename": "src/config/api-server/vnc_cfg_api_server/vnc_db.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2063,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-28T22:01:08Z",
+      "side": 1,
+      "message": "count\u003dflat_count",
+      "revId": "c00ae044dad228c1695d64f6e280f847b3a5f3ba",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fa9e9961_0c8ff074",
+        "filename": "src/config/api-server/vnc_cfg_api_server/vnc_db.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2067,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-28T22:01:08Z",
+      "side": 1,
+      "message": "if not ok or flat_count:\n    return (ok, result, None)",
+      "revId": "c00ae044dad228c1695d64f6e280f847b3a5f3ba",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
