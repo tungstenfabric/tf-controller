@@ -111,6 +111,8 @@ def parse_args(args_str):
         'enable_latency_stats_log': False,
         'enable_api_stats_log': False,
         'watch_keepalive_interval': 60,
+        'worker_introspect_ports': '',
+        'worker_admin_ports': '',
     }
     defaults.update(SandeshConfig.get_default_options(['DEFAULTS']))
     # keystone options
@@ -363,6 +365,10 @@ def parse_args(args_str):
     parser.add_argument(
         "--watch_keepalive_interval", type=int,
         help="Interval in seconds after watch api will send keepalive message")
+    parser.add_argument("--worker_introspect_ports",
+        help="List of introspect ports for uwsgi workers")
+    parser.add_argument("--worker_admin_ports",
+        help="List of admin ports for uwsgi workers")
     SandeshConfig.add_parser_arguments(parser)
     args_obj, remaining_argv = parser.parse_known_args(remaining_argv)
     args_obj.conf_file = args.conf_file
