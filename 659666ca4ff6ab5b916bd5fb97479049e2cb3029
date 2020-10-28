@@ -247,6 +247,24 @@
     },
     {
       "key": {
+        "uuid": "c307afa5_dbde0122",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-qfx_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-28T03:15:56Z",
+      "side": 1,
+      "message": "Do we get any other interfaces, other than service type, under the pnf-service-chaining feature?",
+      "parentUuid": "8ee4caa1_28aab726",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e8e0dbae_cb7ea586",
         "filename": "src/config/fabric-ansible/ansible-playbooks/group_vars/all.yml",
         "patchSetId": 11

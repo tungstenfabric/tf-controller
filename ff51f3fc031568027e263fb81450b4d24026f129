@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "87e07081_2ede4b34",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/overlay/overlay_conf.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-10-28T03:15:56Z",
+      "side": 1,
+      "message": "In the ansible role common, we are already checking for the non migrated overlay roles. Do we need this check?",
+      "revId": "ff51f3fc031568027e263fb81450b4d24026f129",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
