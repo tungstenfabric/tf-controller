@@ -16,7 +16,7 @@ from .test_dm_utils import FakeNetconfManager
 from .test_dm_utils import fake_netconf_connect
 from .test_dm_utils import fake_send_netconf
 from .test_dm_utils import fake_job_handler_push
-from device_manager import mx_conf, qfx_5k, qfx_10k, overlay_conf, pnf_conf
+from device_manager import mx_conf, qfx_5k, qfx_10k, overlay_conf
 
 class DMTestCase(test_common.TestCase):
     GSC = 'default-global-system-config'
@@ -52,8 +52,6 @@ class DMTestCase(test_common.TestCase):
         setattr(qfx_5k.Qfx5kConf, 'device_send', fake_send_netconf)
         setattr(qfx_10k.Qfx10kConf, 'device_send', fake_send_netconf)
         setattr(overlay_conf.OverlayConf, 'device_send',
-                fake_job_handler_push)
-        setattr(pnf_conf.PnfConf, 'device_send',
                 fake_job_handler_push)
         if hasattr(self, 'product'):
             FakeNetconfManager.set_model(self.product)
