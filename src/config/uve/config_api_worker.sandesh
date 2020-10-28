@@ -1,0 +1,23 @@
+//
+// config_api_worker.sandesh
+//
+// Config api workers
+//
+// Copyright (c) 2020 Juniper Networks, Inc. All rights reserved.
+//
+
+// This is the structure sent by an application to the Collector to represent
+// the config api workers currently running on this app instance.
+//
+
+struct ConfigApiWorker {
+    1: string             name (key="none")
+    2: string             worker_id
+    3: string             introspect_port
+    4: string             admin_port
+    5: string             introspect_url
+}
+
+uve sandesh ConfigApiWorkerTrace {
+    1: ConfigApiWorker    data
+}
