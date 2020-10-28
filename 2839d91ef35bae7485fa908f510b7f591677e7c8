@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "75490db1_7a46334e",
+        "filename": "src/config/api-server/vnc_cfg_api_server/vnc_db.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1379,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-28T22:05:26Z",
+      "side": 1,
+      "message": "can you remove the comment \"\"\"",
+      "parentUuid": "5449ee90_e00472e6",
+      "revId": "2839d91ef35bae7485fa908f510b7f591677e7c8",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "21282c1a_5ec09849",
         "filename": "src/config/api-server/vnc_cfg_api_server/vnc_db.py",
         "patchSetId": 5
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "You mean update in Cassandra? so call object_update?",
       "parentUuid": "21282c1a_5ec09849",
+      "revId": "2839d91ef35bae7485fa908f510b7f591677e7c8",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "005032fb_7e0ef6a6",
+        "filename": "src/config/api-server/vnc_cfg_api_server/vnc_db.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1555,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-10-28T22:05:26Z",
+      "side": 1,
+      "message": "yes, i wonder how the UT pass without the object_update",
+      "parentUuid": "76c16249_faff3f15",
       "revId": "2839d91ef35bae7485fa908f510b7f591677e7c8",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
