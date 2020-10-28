@@ -16,6 +16,24 @@
       "revId": "ff51f3fc031568027e263fb81450b4d24026f129",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a9ec8c7e_179f965b",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/overlay/overlay_conf.py",
+        "patchSetId": 12
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-28T04:04:50Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "87e07081_2ede4b34",
+      "revId": "ff51f3fc031568027e263fb81450b4d24026f129",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }

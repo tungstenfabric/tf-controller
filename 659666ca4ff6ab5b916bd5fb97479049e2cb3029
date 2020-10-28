@@ -265,6 +265,24 @@
     },
     {
       "key": {
+        "uuid": "8745e576_78cedab0",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/overlay_service_chain/juniper_junos-qfx_overlay_service_chain.j2",
+        "patchSetId": 11
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-10-28T04:04:50Z",
+      "side": 1,
+      "message": "there seems to be an interface of type irb too",
+      "parentUuid": "c307afa5_dbde0122",
+      "revId": "659666ca4ff6ab5b916bd5fb97479049e2cb3029",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e8e0dbae_cb7ea586",
         "filename": "src/config/fabric-ansible/ansible-playbooks/group_vars/all.yml",
         "patchSetId": 11
