@@ -47,9 +47,19 @@ class DeviceJobManager(object):
         self._amqp_client = amqp_client
         # create zk client for devicejobmanager with call_back
         self.client_reconnect_gl = None
-        self._zookeeper_client = ZookeeperClient("device-job-manager",
-                                                 args.zk_server_ip,
-                                                 args.host_ip)
+        if args.zookeeper_ssl_enable:
+            self._zookeeper_client = ZookeeperClient("device-job-manager",
+                                                     args.zk_server_ip,
+                                                     args.host_ip,
+                                                     args.zookeeper_ssl_enable,
+                                                     args.zookeeper_ssl_keyfile,
+                                                     args.zookeeper_ssl_certificate,
+                                                     args.zookeeper_ssl_ca_cert)
+
+        else:
+            self._zookeeper_client = ZookeeperClient("device-job-manager",
+                                                     args.zk_server_ip,
+                                                     args.host_ip)
         self._zookeeper_client.set_lost_cb(self.client_reconnect)
         self._db_conn = db_conn
         self._args = args
@@ -68,7 +78,11 @@ class DeviceJobManager(object):
             'fabric_ansible_conf_file': self._args.fabric_ansible_conf_file,
             'host_ip': self._args.host_ip,
             'zk_server_ip': self._args.zk_server_ip,
-            'cluster_id': self._args.cluster_id
+            'cluster_id': self._args.cluster_id,
+            'zookeeper_ssl_enable': self._args.zookeeper_ssl_enable,
+            'zookeeper_ssl_keyfile': self._args.zookeeper_ssl_keyfile,
+            'zookeeper_ssl_certificate': self._args.zookeeper_ssl_certificate,
+            'zookeeper_ssl_ca_cert': self._args.zookeeper_ssl_ca_cert
         }
         self._job_args = json.dumps(job_args)
 
