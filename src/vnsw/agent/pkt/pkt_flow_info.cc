@@ -1491,7 +1491,7 @@ void PktFlowInfo::EgressProcess(const PktInfo *pkt, PktControlInfo *in,
     }
     //Delay hash pick up till route is picked.
     if (NhDecode(agent, nh, pkt, this, in, out, true,
-         EcmpLoadBalance()) == false) {
+                out->rt_->GetActivePath()->ecmp_load_balance()) == false) {
         return;
     }
 
