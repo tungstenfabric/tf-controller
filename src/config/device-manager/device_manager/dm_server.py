@@ -261,7 +261,15 @@ def main(args_str=None):
                          % os.getpid())
         run_job_ztp_manager(dm_logger, args)
     else:
-        _zookeeper_client = ZookeeperClient(client_pfx + "device-manager",
+        if self._api_args.zookeeper_ssl_enable:
+            _zookeeper_client = ZookeeperClient(client_pfx + "device-manager",
+                                            args.zk_server_ip, args.host_ip,
+                                            self._api_args.zookeeper_ssl_enable,
+                                            self._api_args.zookeeper_ssl_keyfile,
+                                            self._api_args.zookeeper_ssl_certificate,
+                                            self._api_args.zookeeper_ssl_ca_cert)
+        else:
+            _zookeeper_client = ZookeeperClient(client_pfx + "device-manager",
                                             args.zk_server_ip, args.host_ip)
         pid = os.getpid()
         run_partial_dm(pid)
