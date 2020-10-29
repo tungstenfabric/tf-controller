@@ -257,8 +257,8 @@ class FilterModule(object):
         management_subnets = []
         for mgmt_subnet in mgmt_subnets:
             management_subnets.append(mgmt_subnet.get('cidr'))
-        fabric_subnets = job_input.get('fabric_subnets')
-        loopback_subnets = job_input.get('loopback_subnets')
+        fabric_subnets = job_input.get('fabric_subnets', [])
+        loopback_subnets = job_input.get('loopback_subnets', [])
         FilterModule._validate_subnets(
             management_subnets, "management"
         )
@@ -359,7 +359,7 @@ class FilterModule(object):
         _task_log(
             'Validating %s subnets cidr values and prefix length' % subnet_type
         )
-        for ip_subnet in ip_subnets:
+        for ip_subnet in ip_subnets or []:
             if int(ip_subnet.split('.')[0]) == 0 or \
                int(ip_subnet.split('/')[-1]) == 0:
                 raise ValueError(
