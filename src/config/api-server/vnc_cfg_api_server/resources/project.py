@@ -153,10 +153,6 @@ class ProjectServer(ResourceMixin, Project):
         return True, ""
 
     @classmethod
-    def pre_dbe_read(cls, id, fq_name, db_conn):
-        return cls._ensure_default_application_policy_set(id, fq_name)
-
-    @classmethod
     def dbe_update_notification(cls, obj_id, extra_dict=None):
         quota_counter = cls.server.quota_counter
         db_conn = cls.server._db_conn
