@@ -462,9 +462,10 @@ class LogicalRouterServer(ResourceMixin, LogicalRouter):
                 # internal VN.
                 if vxlan_id_in_db != obj_dict.get('vxlan_network_identifier'):
                     prop = vn_dict.get('virtual_network_properties', {})
-                    prop['vxlan_network_identifier'] =\
-                        obj_dict['vxlan_network_identifier']
-                    vn_obj.set_virtual_network_properties(prop)
+                    if obj_dict.get('vxlan_network_identifier'):
+                        prop['vxlan_network_identifier'] =\
+                            obj_dict['vxlan_network_identifier']
+                        vn_obj.set_virtual_network_properties(prop)
 
                 vn_int_dict = json.dumps(vn_obj, default=_obj_serializer_all)
                 status, obj = cls.server.internal_request_update(
