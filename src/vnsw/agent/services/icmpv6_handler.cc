@@ -171,8 +171,10 @@ bool Icmpv6Handler::RouterAdvertisement(Icmpv6Proto *proto) {
                 (vmi->vmi_type() == VmInterface::BAREMETAL) ?
                     AgentHdr::TRAP_TOR_CONTROL_PKT:AgentHdr::TX_SWITCH;
             uint32_t vlan_offset = 0;
-            if (vmi->tx_vlan_id() != VmInterface::kInvalidVlanId)
+            if (vmi->tx_vlan_id() != VmInterface::kInvalidVlanId &&
+                  !(agent()->tsn_enabled())) {
                 vlan_offset += 4;
+            }
             icmp_ = pkt_info_->transp.icmp6 =
                 (icmp6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header) +
                               vlan_offset + sizeof(ip6_hdr));
@@ -386,8 +388,14 @@ void Icmpv6Handler::SendNeighborSolicit(const Ip6Address &sip,
     pkt_info_->eth = (struct ether_header *)(pkt_info_->pkt);
     pkt_info_->ip6 = (ip6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header));
     uint32_t vlan_offset = 0;
+<<<<<<< HEAD   (529127 Merge "Add NULL check for VRF of the interface for BFD handl)
     if (vmi->tx_vlan_id() != VmInterface::kInvalidVlanId)
+=======
+    if (vmi && vmi->tx_vlan_id() != VmInterface::kInvalidVlanId &&
+          !(agent()->tsn_enabled())) {
+>>>>>>> CHANGE (182c4f Removing vlan tag from VXLAN encapsulation for CSN replies)
         vlan_offset += 4;
+    }
     icmp_ = pkt_info_->transp.icmp6 =
             (icmp6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header) +
                           vlan_offset + sizeof(ip6_hdr));
