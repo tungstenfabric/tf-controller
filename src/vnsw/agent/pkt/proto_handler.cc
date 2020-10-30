@@ -79,7 +79,8 @@ int ProtoHandler::EthHdr(char *buff, uint16_t len, const Interface *intrface,
                          const MacAddress &src, const MacAddress &dest,
                          const uint16_t proto) {
     uint16_t vlan_id = VmInterface::kInvalidVlanId;
-    if (intrface && intrface->type() == Interface::VM_INTERFACE) {
+    if (intrface && intrface->type() == Interface::VM_INTERFACE &&
+           !(agent_->tsn_enabled())) {
         vlan_id = static_cast<const VmInterface *>(intrface)->tx_vlan_id();
     }
 
