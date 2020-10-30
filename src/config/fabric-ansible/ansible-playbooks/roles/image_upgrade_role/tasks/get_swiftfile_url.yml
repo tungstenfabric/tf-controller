@@ -29,7 +29,7 @@
     op_err_message: "Unable to get image file url from Swift. {{swift_results.error_msg}}"
     results: |
       {
-        "prouter_uuid": "{{prouter_uuid}}",
+        "prouter_uuid": "{{pr_uuid}}",
         "image_uuid": "{{image_uuid}}",
         "msg": "Unable to get image file url from Swift."
       }
