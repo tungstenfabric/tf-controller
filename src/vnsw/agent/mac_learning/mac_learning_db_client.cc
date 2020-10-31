@@ -301,27 +301,25 @@ void MacLearningDBClient::EvpnRouteNotify(MacLearningVrfState *vrf_state,
         return;
     }
 
-    if (rt_state == NULL) {
-        rt_state  = new MacLearningRouteState();
-        route->SetState(partition->parent(), id, rt_state);
-        EvpnRouteEntry *entry = dynamic_cast<EvpnRouteEntry *>(route);
-        if (!entry) {
-            return;
-        }
-        if (!entry->IsType2()) {
-            return;
-        }
-        if (route->FindLocalVmPortPath()) {
-            return;
-        }
-        MacLearningEntryRequestPtr ptr(new MacLearningEntryRequest(
-                        MacLearningEntryRequest::REMOTE_MAC_IP,
-                        const_entry,
-                        0));
-        agent_->mac_learning_proto()->
-                GetMacIpLearningTable()->Enqueue(ptr);
-
+    rt_state  = new MacLearningRouteState();
+    route->SetState(partition->parent(), id, rt_state);
+    EvpnRouteEntry *entry = dynamic_cast<EvpnRouteEntry *>(route);
+    if (!entry) {
+        return;
     }
+    if (!entry->IsType2()) {
+        return;
+    }
+    if (route->FindLocalVmPortPath()) {
+        return;
+    }
+    MacLearningEntryRequestPtr ptr(new MacLearningEntryRequest(
+                    MacLearningEntryRequest::REMOTE_MAC_IP,
+                    const_entry,
+                    0));
+    agent_->mac_learning_proto()->
+            GetMacIpLearningTable()->Enqueue(ptr);
+
 }
 void MacLearningDBClient::MacLearningVrfState::Register(MacLearningDBClient *client,
                                                         VrfEntry *vrf) {
