@@ -277,18 +277,11 @@ void MacLearningDBClient::EvpnRouteNotify(MacLearningVrfState *vrf_state,
                                       Agent::RouteTableType type,
                                       DBTablePartBase *partition,
                                       DBEntryBase *e) {
-    DBTableBase::ListenerId id = vrf_state->evpn_listener_id_;
-    MacLearningRouteState *rt_state =
-        static_cast<MacLearningRouteState *>(e->GetState(partition->parent(),
-                    vrf_state->evpn_listener_id_));
     AgentRoute *route = static_cast<AgentRoute *>(e);
     const DBEntry *const_entry = static_cast<const DBEntry *>(e);
 
 
     if (route->IsDeleted()) {
-        if (vrf_state && rt_state) {
-            route->ClearState(route->get_table(), vrf_state->evpn_listener_id_);
-        }
         return;
     }
 
@@ -301,27 +294,23 @@ void MacLearningDBClient::EvpnRouteNotify(MacLearningVrfState *vrf_state,
         return;
     }
 
-    if (rt_state == NULL) {
-        rt_state  = new MacLearningRouteState();
-        route->SetState(partition->parent(), id, rt_state);
-        EvpnRouteEntry *entry = dynamic_cast<EvpnRouteEntry *>(route);
-        if (!entry) {
-            return;
-        }
-        if (!entry->IsType2()) {
-            return;
-        }
-        if (route->FindLocalVmPortPath()) {
-            return;
-        }
-        MacLearningEntryRequestPtr ptr(new MacLearningEntryRequest(
-                        MacLearningEntryRequest::REMOTE_MAC_IP,
-                        const_entry,
-                        0));
-        agent_->mac_learning_proto()->
-                GetMacIpLearningTable()->Enqueue(ptr);
-
+    EvpnRouteEntry *entry = dynamic_cast<EvpnRouteEntry *>(route);
+    if (!entry) {
+        return;
     }
+    if (!entry->IsType2()) {
+        return;
+    }
+    if (route->FindLocalVmPortPath()) {
+        return;
+    }
+    MacLearningEntryRequestPtr ptr(new MacLearningEntryRequest(
+                    MacLearningEntryRequest::REMOTE_MAC_IP,
+                    const_entry,
+                    0));
+    agent_->mac_learning_proto()->
+            GetMacIpLearningTable()->Enqueue(ptr);
+
 }
 void MacLearningDBClient::MacLearningVrfState::Register(MacLearningDBClient *client,
                                                         VrfEntry *vrf) {
