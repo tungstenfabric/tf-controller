@@ -43,7 +43,6 @@ class TestJobManager(test_case.JobTestCase):
     def tearDownClass(cls, *args, **kwargs):
         logger.removeHandler(cls.console_handler)
         super(TestJobManager, cls).tearDownClass(*args, **kwargs)
-
     # end tearDownClass
 
     # Test for a single playbook in the workflow template
@@ -113,24 +112,20 @@ class TestJobManager(test_case.JobTestCase):
             vendor='Juniper',
             device_family='MX',
             sequence_no=0)
-        play_info_2 = PlaybookInfoType(
-            playbook_uri='job_manager_test_recovery.yml',
-            vendor='Juniper',
-            device_family='QFX',
-            sequence_no=1,
-            recovery_playbook=True)
+        recovery_play_info = PlaybookInfoType(
+            playbook_uri='job_manager_test_recovery.yml')
 
-        playbooks_list = PlaybookInfoListType([play_info_1, play_info_2])
+        playbooks_list = PlaybookInfoListType([play_info_1])
+        recovery_playbooks_list = PlaybookInfoListType([recovery_play_info])
 
-        job_template = JobTemplate(job_template_type='workflow',
-                                   job_template_multi_device_job=False,
-                                   job_template_playbooks=playbooks_list,
-                                   name='Test_template_with_recovery')
+        job_template = JobTemplate(
+            job_template_type='workflow',
+            job_template_multi_device_job=False,
+            job_template_playbooks=playbooks_list,
+            job_template_recovery_playbooks=recovery_playbooks_list,
+            name='Test_template_with_recovery')
 
         job_template_uuid = self._vnc_lib.job_template_create(job_template)
-
-        # Mock creation of a process
-        self.mock_play_book_execution(rc=42)
 
         # Mock sandesh
         TestJobManagerUtils.mock_sandesh_check()
@@ -139,16 +134,27 @@ class TestJobManager(test_case.JobTestCase):
         job_input_json, log_utils = TestJobManagerUtils.get_min_details(
             job_template_uuid)
 
+        # Mock creation of a process that will succeed
+        self.mock_play_book_execution(rc=0)
         wm = WFManager(log_utils.get_config_logger(), self._vnc_lib,
                        job_input_json, log_utils, self.fake_zk_client)
         wm.start_job()
 
+        # Since our WF succeeded, we will have cleanup_mode false
+        self.assertEqual(wm.result_handler.job_result_status,
+                         JobStatus.SUCCESS)
+        self.assertFalse(wm.job_mgr.job_handler.cleanup_mode)
+
+        # Mock creation of a process that will fail
+        self.mock_play_book_execution(rc=42)
+        wm = WFManager(log_utils.get_config_logger(), self._vnc_lib,
+                       job_input_json, log_utils, self.fake_zk_client)
+        wm.start_job()
+
+        # Since our WF failed, we will have cleanup_mode true
         self.assertEqual(wm.result_handler.job_result_status,
                          JobStatus.FAILURE)
-
-        expected_job_result_message = "Finished cleaning up after the error"
-        self.assertTrue(wm.result_handler.job_result_message,
-                        expected_job_result_message)
+        self.assertTrue(wm.job_mgr.job_handler.cleanup_mode)
 
     # to test the case when only device vendor is passed in job_template_input
     def test_execute_job_with_vendor_only(self):
