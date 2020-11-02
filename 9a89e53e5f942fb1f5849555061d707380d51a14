@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b5d304a_24428351",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/discover_os_computes.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 475,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-02T14:55:23Z",
+      "side": 1,
+      "message": "Please add validation to see that tlv_entry is divided by 2.",
+      "revId": "9a89e53e5f942fb1f5849555061d707380d51a14",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "74709620_ae3ec987",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/discover_os_computes.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-02T14:55:23Z",
+      "side": 1,
+      "message": "Aren\u0027t you missing lower method as in extract_sriov_mappings?",
+      "range": {
+        "startLine": 489,
+        "startChar": 37,
+        "endLine": 489,
+        "endChar": 51
+      },
+      "revId": "9a89e53e5f942fb1f5849555061d707380d51a14",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "25c3d655_a64efac4",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/discover_os_computes.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 575,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-02T14:55:23Z",
+      "side": 1,
+      "message": "IMO this should be one line lower to match self._logger indendation",
+      "range": {
+        "startLine": 575,
+        "startChar": 21,
+        "endLine": 575,
+        "endChar": 22
+      },
+      "revId": "9a89e53e5f942fb1f5849555061d707380d51a14",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
