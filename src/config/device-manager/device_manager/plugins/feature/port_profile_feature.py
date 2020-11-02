@@ -48,7 +48,7 @@ class PortProfileFeature(FeatureBase):
 
     def _build_port_profile_interface_config(self):
         pr = self._physical_router
-
+        li_map = OrderedDict()
         for vpg_uuid in pr.virtual_port_groups or []:
             vpg_obj = VirtualPortGroupDM.get(vpg_uuid)
             if not vpg_obj:
@@ -73,6 +73,20 @@ class PortProfileFeature(FeatureBase):
                         if pi not in self.pi_list:
                             self.pi_list.add(pi)
                             pi.set_port_profile(pp_name)
+                            # If device family is MX and for SP style only
+                            # From the VPG page port-profile is allowed only at VPG level,below code will be applied
+                            # at per unit/VN level.
+                            if not self._is_enterprise_style(pr) and self._physical_router.device_family == 'junos':
+                                vn_li_map = self._get_vn_li_map('l2')
+                                for lis in vn_li_map.values():
+                                    for li in lis:
+                                        phy_int_name = li.get('pi_name')
+                                        if pi.name == phy_int_name:
+                                            li_name = li.get('li_name')
+                                            interface_unit = str(li.get('unit'))
+                                            li = self._add_or_lookup_li(li_map,li_name,interface_unit)
+                                            li.set_port_profile(pp_name)
+                                            pi.add_logical_interfaces(li)
 
                     # storm control feature is only supported with enterprise
                     # style configs. User can on-board PR with ERB role in a SP
