@@ -133,9 +133,8 @@ class L2GatewayFeature(FeatureBase):
                 # enterprise profile and erb gateway. Today we support
                 # only one untagged VN per VPG so if interface is untagged
                 # update only once.
-                if self._physical_router.device_family != 'junos' and\
-                    (self._is_enterprise_style(self._physical_router) or
-                     self._physical_router.is_erb_only() is True):
+                if (self._is_enterprise_style(self._physical_router) or
+                    (self._physical_router.is_erb_only() is True and self._physical_router.device_family != 'junos')):
                     intf = interface.pi_name + '.' + str(0)
                     li_intf = li_map.get(intf, None)
                     already_untagged = False
@@ -149,6 +148,7 @@ class L2GatewayFeature(FeatureBase):
                                          vn, is_tagged, vlan_tag))
                         unit.set_is_tagged(is_tagged)
                         unit.set_vlan_tag(vlan_tag)
+                        unit.add_vlan_id_list(vlan_tag)
                 else:
                     intf = interface.li_name
                     unit = self._add_or_lookup_li(li_map, intf,
@@ -241,9 +241,8 @@ class L2GatewayFeature(FeatureBase):
 
             add_li_to_li_map = True
 
-            if self._physical_router.device_family != 'junos' and \
-                    (self._is_enterprise_style(self._physical_router) or
-                     self._physical_router.is_erb_only() is True):
+            if  (self._is_enterprise_style(self._physical_router) or
+                     self._physical_router.is_erb_only() is True and self._physical_router.device_family != 'junos'):
                 if unit != 0:
                     add_li_to_li_map = False
 
