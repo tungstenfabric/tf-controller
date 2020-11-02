@@ -109,7 +109,7 @@ bool VxlanRoutingRouteWalker::RouteWalkNotify(DBTablePartBase *partition,
         return true;
     const VrfEntry *vrf = evpn_rt->vrf();
     if (evpn_rt->IsType5() && vrf->vn() &&
-        vrf->vn()->vxlan_routing_vn() && (evpn_rt->GetVmIpPlen() != 32))
+        vrf->vn()->vxlan_routing_vn() && (!mgr_->IsHostRoute(evpn_rt)))
         return true;
     if (!evpn_rt->IsType2() && !(vrf->vn()->vxlan_routing_vn()))
         return true;
@@ -418,6 +418,9 @@ void VxlanRoutingManager::BridgeVnNotify(const VnEntry *vn,
     //Handles deletion case
     if (withdraw) {
         if (routing_info_it != vrf_mapper_.lr_vrf_info_map_.end()) {
+            // Delete subnet route for vn on detach from lr
+            if (vn->GetVrf() != NULL && !(vn->GetVrf()->IsDeleted()))
+                DeleteSubnetRoute(vn->GetVrf());
             VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter br_it =
                 routing_info_it->second.bridge_vn_list_.find(vn);
             if (br_it != routing_info_it->second.bridge_vn_list_.end()) {
@@ -701,7 +704,7 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
     if ( uuid == boost::uuids::nil_uuid() )
         return true;
     // Only non /32 gets copied to bridge vrfs
-    if (evpn_rt->GetVmIpPlen() == 32)
+    if (IsHostRoute(evpn_rt))
         return true;
 
     if (withdraw && vn->GetVrf()) {
@@ -771,7 +774,7 @@ bool VxlanRoutingManager::EvpnType5RouteNotify(DBTablePartBase *partition,
     VrfEntry *vrf = evpn_rt->vrf();
     assert(evpn_rt->IsType5());
 
-    if (vrf->vn() && vrf->vn()->vxlan_routing_vn() && (evpn_rt->GetVmIpPlen() != 32)) {
+    if (vrf->vn() && vrf->vn()->vxlan_routing_vn() && (!IsHostRoute(evpn_rt))) {
         RouteNotifyInLrEvpnTable(partition, e, vrf->vn()->logical_router_uuid(), NULL, true, false);
     }
 
@@ -1015,16 +1018,16 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
             if (ipam_itr->IsV4()) {
                 (*it)->GetVrf()->GetInet4UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), (*it)->GetVrf()->GetName(),
-                ipam_itr->ip_prefix, ipam_itr->plen);
+                ipam_itr->GetSubnetAddress(), ipam_itr->plen, NULL);
             } else if (ipam_itr->IsV6()) {
                 (*it)->GetVrf()->GetInet6UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), (*it)->GetVrf()->GetName(),
-                ipam_itr->ip_prefix, ipam_itr->plen);
+                ipam_itr->GetV6SubnetAddress(), ipam_itr->plen, NULL);
             }
         }
         std::vector<VnIpam> vn_ipam = (*it)->GetVnIpam();
 
-        if (vn_ipam.size() == 0 || ipam == NULL) {
+        if (vn_ipam.size() == 0) {
             it++;
             continue;
         }
@@ -1034,11 +1037,11 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
             if (vn_ipam_itr->IsV4()) {
                 vrf->GetInet4UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), vrf->GetName(),
-                vn_ipam_itr->ip_prefix, vn_ipam_itr->plen);
+                vn_ipam_itr->GetSubnetAddress(), vn_ipam_itr->plen, NULL);
             } else if (vn_ipam_itr->IsV6()) {
                 vrf->GetInet6UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), vrf->GetName(),
-                vn_ipam_itr->ip_prefix, vn_ipam_itr->plen);
+                vn_ipam_itr->GetV6SubnetAddress(), vn_ipam_itr->plen, NULL);
             }
         }
         it++;
@@ -1186,6 +1189,15 @@ void VxlanRoutingManager::FillSandeshInfo(VxlanRoutingResp *resp) {
         it1++;
     }
     resp->set_vr_map(vr_map);
+}
+
+bool VxlanRoutingManager::IsHostRoute(const EvpnRouteEntry *evpn_rt) {
+
+    if( evpn_rt != NULL &&
+        (evpn_rt->GetVmIpPlen() == 32 || evpn_rt->GetVmIpPlen() == 128)) {
+        return true;
+    }
+    return false;
 }
 
 void VxlanRoutingReq::HandleRequest() const {
