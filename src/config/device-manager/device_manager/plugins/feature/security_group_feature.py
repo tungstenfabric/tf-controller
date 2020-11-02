@@ -77,9 +77,8 @@ class SecurityGroupFeature(FeatureBase):
                 # enterprise profile and erb gateway. Today we support
                 # only one untagged VN per VPG so if interface is untagged
                 # update only once.
-                if self._physical_router.device_family != 'junos' and\
-                    (self._is_enterprise_style() or
-                     self._physical_router.is_erb_only() is True):
+                if (self._is_enterprise_style() or
+                     self._physical_router.is_erb_only() is True and self._physical_router.device_family != 'junos'):
                     intf = interface.pi_name + '.' + str(0)
                     li_intf = li_map.get(intf, None)
                     already_untagged = False
