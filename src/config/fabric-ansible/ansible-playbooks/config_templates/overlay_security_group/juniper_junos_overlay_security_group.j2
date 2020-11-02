@@ -64,12 +64,20 @@ set groups {{cfg_group}} firewall family bridge filter {{filter_name}} term tden
 {%                set firewall_filters = li.get('firewall_filters', []) %}
 {%                if firewall_filters | length > 0 %}
 set groups {{cfg_group}} interfaces {{phy_int.name}} mtu 9192
-set groups {{cfg_group}} interfaces {{phy_int.name}} encapsulation extended-vlan-bridge
+{%                    if enterprise_style != True %}
+set groups {{cfg_group}} interfaces {{phy_int.name}} encapsulation flexible-ethernet-services
 set groups {{cfg_group}} interfaces {{phy_int.name}} flexible-vlan-tagging
+{%                    endif %}
 {%                endif %}
 {%                for firewall_filter in firewall_filters %}
+{%                   if enterprise_style == True %}
+set groups {{cfg_group}} interfaces {{phy_int.name}} unit 0 family bridge filter input-list {{firewall_filter}}
+{%                   else %}
 {%                   set unit = li.get('unit') %}
-set groups {{cfg_group}} interfaces {{phy_int.name}} unit {{unit}} family bridge filter input-list {{firewall_filter}}
+{%                   set vlan_tag = li.get('vlan_tag') %}
+set groups {{cfg_group}} interfaces {{phy_int.name}} unit {{unit}} family bridge filter input {{firewall_filter}}
+set groups {{cfg_group}} interfaces {{phy_int.name}} unit {{unit}} encapsulation vlan-bridge
+{%                   endif %}
 {%                endfor %}
 {%             endfor %}
 {%         endif %}
