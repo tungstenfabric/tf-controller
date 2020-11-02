@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "a5969469_91c6a024",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2307,
+      "author": {
+        "id": 979
+      },
+      "writtenOn": "2020-11-02T17:37:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "34a0cc67_f8eb14eb",
+      "revId": "f21b9f85873ee8f5a86ac82a0edd2bb668c5b1d9",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5073157f_c38780e2",
         "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
         "patchSetId": 7
@@ -33,6 +51,24 @@
       "revId": "f21b9f85873ee8f5a86ac82a0edd2bb668c5b1d9",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d424154f_c9c00006",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2448,
+      "author": {
+        "id": 979
+      },
+      "writtenOn": "2020-11-02T17:37:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5073157f_c38780e2",
+      "revId": "f21b9f85873ee8f5a86ac82a0edd2bb668c5b1d9",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
