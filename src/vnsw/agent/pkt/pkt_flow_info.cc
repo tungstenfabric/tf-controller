@@ -1489,9 +1489,19 @@ void PktFlowInfo::EgressProcess(const PktInfo *pkt, PktControlInfo *in,
     if (nh == NULL) {
         return;
     }
+    const CompositeNH *comp_nh = dynamic_cast<const CompositeNH *>(nh);
+    EcmpLoadBalance ecmp_load_balance;
+    if (comp_nh != NULL) {
+        UpdateRoute(&out->rt_, comp_nh->vrf(), pkt->ip_daddr, pkt->dmac,
+                    flow_dest_plen_map);
+        if (out->rt_ && out->rt_->GetActivePath()) {
+            ecmp_load_balance = out->rt_->GetActivePath()->ecmp_load_balance();
+        }
+    }
+
     //Delay hash pick up till route is picked.
     if (NhDecode(agent, nh, pkt, this, in, out, true,
-         EcmpLoadBalance()) == false) {
+         ecmp_load_balance) == false) {
         return;
     }
 
