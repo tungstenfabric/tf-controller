@@ -10,8 +10,11 @@ from __future__ import unicode_literals
 from builtins import object
 from future.utils import with_metaclass
 from past.builtins import basestring
+from collections import OrderedDict
+from six import StringIO
 from vnc_api.gen.resource_client import *
 
+from cfgm_common.utils import cgitb_hook
 from .exceptions import NoIdError
 from .utils import obj_type_to_vnc_class, compare_refs
 
@@ -46,6 +49,7 @@ class DBBase(object, with_metaclass(DBBaseMeta)):
     _logger = None
     _object_db = None
     _manager = None
+    _ignored_errors = OrderedDict()
 
     # objects in the database could be indexed by uuid or fq-name
     # set _indexed_by_name to True in the derived class to use fq-name as index
@@ -460,6 +464,18 @@ class DBBase(object, with_metaclass(DBBaseMeta)):
     @classmethod
     def get_meta(cls):
         return cls._meta_data
+
+    @classmethod
+    def add_ignored_error(cls, err_msg, formatted_tb=None):
+        if not formatted_tb:
+            string_buf = StringIO()
+            cgitb_hook(file=string_buf, format="text")
+            formatted_tb = string_buf.getvalue()
+        cls._ignored_errors[err_msg] = formatted_tb
+
+    @classmethod
+    def clear_ignored_errors(cls):
+        cls._ignored_errors = OrderedDict()
 
 # end class DBBase
 
