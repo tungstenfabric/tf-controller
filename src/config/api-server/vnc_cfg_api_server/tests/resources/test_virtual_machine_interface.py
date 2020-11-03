@@ -608,8 +608,10 @@ class TestVMIVirtualPortGroupRelation(test_case.ApiServerTestCase):
         vpg_refs = vmi_obj.get_virtual_port_group_refs()
         self.assertIsNone(vpg_refs)
 
+        self._api_server._db_conn._db_resync_done.clear()
         # Simulate api-server restart by DB reinit
         self._api_server._db_init_entries()
+        self._api_server._db_conn.wait_for_resync_done()
 
         # Validate, Make sure vmi--->vpg ref is created
         vmi_obj = self.api.virtual_machine_interface_read(id=vmi_uuid)
