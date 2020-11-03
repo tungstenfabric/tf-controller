@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "380f5b90_1639aee8",
+        "filename": "src/config/api-server/vnc_cfg_api_server/api_server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 2289,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-03T18:29:29Z",
+      "side": 1,
+      "message": "In case of k8s operator deployed cluster, worker_introspect_ports and worker_admin_ports will not be populated by entrypoint.sh.\n\nTo make this code compatible with all deployents uwsgi(ansible/juju etc)/bottle(k8s operator), why don\u0027t we treat self._args.http_server_port as self._args.http_server_port and self._args.admin_port as self._args.worker_admin_ports.",
+      "revId": "171db3fc12c8ee56ea355d40998f80370fc04342",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
