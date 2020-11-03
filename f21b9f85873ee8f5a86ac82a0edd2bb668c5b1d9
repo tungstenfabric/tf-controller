@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "d3b87639_84d5724e",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2294,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-03T21:15:01Z",
+      "side": 1,
+      "message": "After Aditi\u0027s change(https://github.com/tungstenfabric/tf-controller/commit/8e9d3edc0ae2829866c96060f2c7bdf8efa7afdd)\n\nto simulate dbe_resync, please use below three lines of code,\n\n# API server DB reinit\nself._api_server._db_conn._db_resync_done.clear()\nself._api_server._db_init_entries()\nself._api_server._db_conn.wait_for_resync_done()",
+      "revId": "f21b9f85873ee8f5a86ac82a0edd2bb668c5b1d9",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "34a0cc67_f8eb14eb",
         "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
         "patchSetId": 7
@@ -37,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "15e5067d_c8997d5f",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2307,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-03T21:15:01Z",
+      "side": 1,
+      "message": "_db_init_entries will update the vpg in DB(casssandra) at line 2294.\n\nSo to validate that the vpg_annotations are actually removed from the DB. We need to read the vgp from DB.\n\nAlso please check how the test passes, without this. Ideally  it should fail(looks like a bug in code or UT)",
+      "parentUuid": "a5969469_91c6a024",
+      "revId": "f21b9f85873ee8f5a86ac82a0edd2bb668c5b1d9",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5073157f_c38780e2",
         "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
         "patchSetId": 7
@@ -66,6 +101,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "5073157f_c38780e2",
+      "revId": "f21b9f85873ee8f5a86ac82a0edd2bb668c5b1d9",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d340838c_7f0edee5",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/resources/test_virtual_port_group.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 2448,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-03T21:15:01Z",
+      "side": 1,
+      "message": "Same as above.",
+      "parentUuid": "d424154f_c9c00006",
       "revId": "f21b9f85873ee8f5a86ac82a0edd2bb668c5b1d9",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": false
