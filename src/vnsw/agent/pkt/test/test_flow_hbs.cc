@@ -80,6 +80,7 @@ public:
         client->WaitForIdle();
         AddFirewallPolicyRuleLink("fpfr1", "fw1", "MatchAllTag", "1");
         AddPolicySetFirewallPolicyLink("link1", "aps1", "fw1", "1");
+        client->WaitForIdle();
     }
 
     virtual void TearDown() {
@@ -87,6 +88,7 @@ public:
         DeleteVmportEnv(input, 2, true);
         DeleteTags(src, 4);
         DeleteTags(dst, 3);
+        client->WaitForIdle();
 
         DelLink("virtual-machine-interface", "intf1", "tag", "App1");
         DelLink("virtual-machine-interface", "intf1", "tag", "Tier1");
@@ -109,18 +111,20 @@ public:
         client->WaitForIdle();
         DelPolicySetFirewallPolicyLink("link1", "aps1", "fw1");
         DelFirewallPolicyRuleLink("fpfr1", "fw1", "MatchAllTag");
-
+        client->WaitForIdle();
     }
 };
 
 //Verify HBS flag is not set in fwd and reverse flows if host based services
 //are not enabled
 TEST_F(HbsFlowTest, basic_10) {
+
     std::vector<std::string> match;
+    client->WaitForIdle();
 
     //Verfiy VM Ports are active
-    EXPECT_TRUE(VmPortActive(1));
-    EXPECT_TRUE(VmPortActive(2));
+    WAIT_FOR(2000, 1000, VmPortActive(1));
+    WAIT_FOR(2000, 1000, VmPortActive(2));
     const VmInterface *intf1 = static_cast<VmInterface *>(VmPortGet(1));
 
 
@@ -146,20 +150,21 @@ TEST_F(HbsFlowTest, basic_10) {
     FlowEntry *rfe = fe->reverse_flow_entry();
     EXPECT_FALSE(rfe->is_flags_set(FlowEntry::HbfFlow));
     EXPECT_EQ(rfe->GetHbsInterface(), FlowEntry::HBS_INTERFACE_INVALID);
+    client->WaitForIdle();
 }
 
 //Enable Host based services. Verify HBS Flag in the forward and reverse flow 
 //between two Vms on same compute
-
 TEST_F(HbsFlowTest, basic_11) {
 
     std::vector<std::string> match;
+    client->WaitForIdle();
     AddFirewall("MatchAllTag", 1, match, src, 3, dst, 3, "pass", "<>", "true");
     client->WaitForIdle();
 
     //Verfiy VM Ports are active
-    EXPECT_TRUE(VmPortActive(1));
-    EXPECT_TRUE(VmPortActive(2));
+    WAIT_FOR(2000, 1000, VmPortActive(1));
+    WAIT_FOR(2000, 1000, VmPortActive(2));
     const VmInterface *intf1 = static_cast<VmInterface *>(VmPortGet(1));
 
 
@@ -200,15 +205,16 @@ TEST_F(HbsFlowTest, basic_11) {
 
 //Enable Host based services. Verify HBS Flag in the forward and reverse flow
 //between VM and service VM
-
 TEST_F(HbsFlowTest, basic_12) {
+
     std::vector<std::string> match;
+    client->WaitForIdle();
     AddFirewall("MatchAllTag", 1, match, src, 3, dst, 3, "pass", "<>", "true");
     client->WaitForIdle();
 
     //Verfiy VM Ports are active
-    EXPECT_TRUE(VmPortActive(1));
-    EXPECT_TRUE(VmPortActive(2));
+    WAIT_FOR(2000, 1000, VmPortActive(1));
+    WAIT_FOR(2000, 1000, VmPortActive(2));
     VmInterface *intf1 = static_cast<VmInterface *>(VmPortGet(1));
     VmInterface *intf2 = static_cast<VmInterface *>(VmPortGet(2));
 
@@ -311,6 +317,7 @@ TEST_F(HbsFlowTest, basic_12) {
     rfe = fe->reverse_flow_entry();
     EXPECT_FALSE(rfe->is_flags_set(FlowEntry::HbfFlow));
     EXPECT_EQ(rfe->GetHbsInterface() , FlowEntry::HBS_INTERFACE_INVALID);
+    client->WaitForIdle();
 }
 
 int main(int argc, char **argv) {
