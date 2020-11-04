@@ -100,6 +100,14 @@ protected:
                     "instance_ip_1", 1);
         DelLrVmiPort("lr-vmi-vn2", 92, "2.2.2.99", "vrf2", "vn2",
                     "instance_ip_2", 2);
+        client->WaitForIdle();
+        // Verify subnet route is deleted on vn detach as lr vmi port is deleted
+        InetUnicastRouteEntry *subnet_rt_vn1 =
+            RouteGet("vrf2", Ip4Address::from_string("1.1.1.0"), 24);
+        EXPECT_TRUE(subnet_rt_vn1 == NULL);
+        InetUnicastRouteEntry *subnet_rt_vn2 =
+            RouteGet("vrf2", Ip4Address::from_string("2.2.2.0"), 24);
+            EXPECT_TRUE(subnet_rt_vn2 == NULL);
         DeleteBgpPeer(bgp_peer_);
         client->WaitForIdle(5);
         EXPECT_TRUE(VrfGet("vrf1") == NULL);
