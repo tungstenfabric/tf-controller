@@ -22,13 +22,14 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
         return True if lr_ref.get('attr') is not None else False
 
     @classmethod
-    def _validate_dci_source_lr(cls, dci):
+    def _validate_dci_source_lr(cls, dci, read_dci=None):
         """Validate and retrieve dci source lr and destination lrs.
 
         logical_router_refs must have single LR specified as source LR.
         At least one destination lr must exist in logical_router_refs
         : Args:
         : dci: data_Center_interconnect object of type intra_fabric
+        : read_dci: existing data_Center_interconnect object in db
         : return:
         : return error message, source lr uuid, and destination lr uuid list.
         : On success, error message is empty.
@@ -36,7 +37,10 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
         dst_lrs_uuid = []
         src_lr_uuid = None
         msg = ""
-        for lr_ref in dci.get('logical_router_refs') or []:
+        obj_lr_refs = dci.get('logical_router_refs')
+        if obj_lr_refs is None and read_dci is not None:
+            obj_lr_refs = read_dci.get('logical_router_refs')
+        for lr_ref in obj_lr_refs or []:
             lruuid = lr_ref.get('uuid')
             if cls._is_this_src_lr(lr_ref):
                 if src_lr_uuid is not None:
@@ -60,7 +64,8 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
         return msg, src_lr_uuid, dst_lrs_uuid
 
     @classmethod
-    def _validate_dci_destination_lrs(cls, dci, src_lr_uuid, dst_lrs_uuid):
+    def _validate_dci_destination_lrs(cls, dci, src_lr_uuid, dst_lrs_uuid,
+                                      read_dci=None):
         """Validate and retrieve dci destination lr and their prs.
 
         Validate destination_physical_router_list property has proper valid
@@ -70,12 +75,15 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
         : dci: data_Center_interconnect object of type intra_fabric
         : src_lr_uuid: source lr uuid from dci lr_refs
         : dst_lrs_uuid: list of destination lr uuids from dci lr_refs
+        : read_dci: existing data_Center_interconnect object in db
         : return:
         : return error message, and dictionary of destination lr to pr list.
         : On success, error message is empty.
         """
         lr_to_pr = {}
         dci_dpr_list = dci.get('destination_physical_router_list')
+        if dci_dpr_list is None and read_dci is not None:
+            dci_dpr_list = read_dci.get('destination_physical_router_list')
         dci_lr_list = []
         if dci_dpr_list:
             dci_lr_list = dci_dpr_list.get('logical_router_list') or []
@@ -114,7 +122,7 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
         return "", lr_to_pr
 
     @classmethod
-    def _validate_dci_rp_and_vn(cls, dci):
+    def _validate_dci_rp_and_vn(cls, dci, read_dci=None):
         """Validate routing policies or virtual network refs.
 
         Either virtual_network_refs or routing_policy_refs must have
@@ -122,14 +130,19 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
         all this virtual_networks exist in the source LR
         : Args:
         : dci: data_Center_interconnect object of type intra_fabric
-        : src_lr_uuid: source lr uuid from dci lr_refs
-        : dst_lrs_uuid: list of destination lr uuids from dci lr_refs
+        : read_dci: existing data_Center_interconnect object in db
         : return:
         : On error, return True, http error code and http error message
         : On success, returns True and error message is empty.
         """
-        dci_rps = dci.get('routing_policy_refs') or []
-        dci_vns = dci.get('virtual_network_refs') or []
+        if read_dci is not None:
+            dci_rps = dci.get('routing_policy_refs') or \
+                read_dci.get('routing_policy_refs') or []
+            dci_vns = dci.get('virtual_network_refs') or \
+                read_dci.get('virtual_network_refs') or []
+        else:
+            dci_rps = dci.get('routing_policy_refs') or []
+            dci_vns = dci.get('virtual_network_refs') or []
         if len(dci_rps) > 0 and len(dci_vns) > 0:
             return False, (
                 400, "Provide either routing_policy_refs or "
@@ -285,18 +298,19 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
 
         # for all intra_fabric type dci do following validation
         # validate dci lr_refs and get all lr uuid from lr_refs
-        msg, src_lr_uuid, dst_lrs_uuid = cls._validate_dci_source_lr(dci)
+        msg, src_lr_uuid, dst_lrs_uuid = cls._validate_dci_source_lr(dci,
+                                                                     read_dci)
         if len(msg) > 0:
             return False, (400, msg)
 
         # get all dst lr and their pr list into dictionary
-        msg, lr_to_pr = cls._validate_dci_destination_lrs(dci, src_lr_uuid,
-                                                          dst_lrs_uuid)
+        msg, lr_to_pr = cls._validate_dci_destination_lrs(
+            dci, src_lr_uuid, dst_lrs_uuid, read_dci)
         if len(msg) > 0:
             return False, (400, msg)
 
         # Validate routing policies or virtual_network refs.
-        ok, result = cls._validate_dci_rp_and_vn(dci)
+        ok, result = cls._validate_dci_rp_and_vn(dci, read_dci)
         if not ok:
             return False, result
 
@@ -462,7 +476,10 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
             db_conn, 'data_center_interconnect', id,
             obj_fields=['logical_router_refs',
                         'data_center_interconnect_type',
-                        'data_center_interconnect_mode'
+                        'data_center_interconnect_mode',
+                        'destination_physical_router_list',
+                        'routing_policy_refs',
+                        'virtual_network_refs'
                         ])
         if not ok:
             return ok, read_result
