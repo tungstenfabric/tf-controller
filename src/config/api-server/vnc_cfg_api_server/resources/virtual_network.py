@@ -142,43 +142,44 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
 
     @classmethod
     def _check_provider_details(cls, obj_dict, db_conn, create):
-
-        properties = obj_dict.get('provider_properties')
-        if not properties:
+        # we don't check anymore whether the VN is in use or not
+        # non-provider VN in-use/not-in-use can be updated to provider VN
+        # provider VN cannot be modified with provider_details
+        properties = obj_dict.get('provider_properties', None)
+        if properties is None:
             return (True, '')
 
-        if not create:
-            ok, result = cls.dbe_read(
-                db_conn,
-                'virtual_network',
-                obj_dict['uuid'],
-                obj_fields=['virtual_machine_interface_back_refs',
-                            'provider_properties'])
-            if not ok:
-                return ok, result
+        # VN create
+        if create:
+            if properties.get('segmentation_id', None) is None:
+                return (False, "Segmenation ID must be configured to create")
+            if properties.get('physical_network', None) is None:
+                return (False, "Physical Network must be configured to create")
+            return (True, '')
 
-            old_properties = result.get('provider_properties')
-            if 'virtual_machine_interface_back_refs' in result:
-                if old_properties and (old_properties != properties):
-                    msg = ("Provider values can not be changed"
-                           "when VMs are already using")
-                    return False, msg
-                if (not old_properties) and properties:
-                    segmentation_id = properties.get('segmentation_id', None)
-                    if segmentation_id is None:
-                        return (False,
-                                "Segmenation ID must be configured to update")
-                    physical_network = properties.get('physical_network', None)
-                    if physical_network is None:
-                        return (False,
-                                "Physical Network must be configured"
-                                "to update")
-
-            if old_properties:
-                segmentation_id = properties.get('segmentation_id', None)
-                if segmentation_id is None:
-                    properties['segmentation_id'] = old_properties.get(
-                        'segmentation_id')
+        # VN update
+        ok, vn = cls.dbe_read(
+            db_conn,
+            'virtual_network',
+            obj_dict['uuid'],
+            obj_fields=['virtual_machine_interface_back_refs',
+                        'provider_properties', 'is_provider_network'])
+        if not ok:
+            return (ok, vn)
+        if vn.get('is_provider_network', False):
+            old_properties = vn.get('provider_properties', {})
+            if properties.get('segmentation_id', None) is None:
+                properties['segmentation_id'] = \
+                    old_properties.get('segmentation_id')
+            if properties.get('physical_network', None) is None:
+                properties['physical_network'] = \
+                    old_properties.get('physical_network')
+            if old_properties != properties:
+                return (False,
+                        'Update provider_details property'
+                        'of provider VN (%s) '
+                        'is not allowed' % vn.get('uuid', ''))
+            return (True, '')
 
                 physical_network = properties.get('physical_network', None)
                 if physical_network is None:
