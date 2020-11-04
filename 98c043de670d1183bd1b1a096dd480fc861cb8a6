@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1cfe760f_8c219e2c",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "remove extra indendation",
+      "range": {
+        "startLine": 192,
+        "startChar": 18,
+        "endLine": 212,
+        "endChar": 20
+      },
+      "revId": "98c043de670d1183bd1b1a096dd480fc861cb8a6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}

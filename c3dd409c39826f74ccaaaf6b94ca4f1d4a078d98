@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2f83dc19_0a9d92dc",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "?",
+      "range": {
+        "startLine": 88,
+        "startChar": 25,
+        "endLine": 88,
+        "endChar": 32
+      },
+      "revId": "c3dd409c39826f74ccaaaf6b94ca4f1d4a078d98",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "722215fd_0ac486b2",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "It shouldn\u0027t be wrapped with list",
+      "range": {
+        "startLine": 192,
+        "startChar": 18,
+        "endLine": 212,
+        "endChar": 20
+      },
+      "revId": "c3dd409c39826f74ccaaaf6b94ca4f1d4a078d98",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}

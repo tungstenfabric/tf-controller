@@ -1,0 +1,101 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea1ce6a6_8514ecf7",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/discover_os_computes.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "Remove blank line",
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0f57adf0_a611c7b9",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "Remove blankline",
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a2c5dd7e_4fd2aa17",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "just `resources` is enough",
+      "range": {
+        "startLine": 280,
+        "startChar": 47,
+        "endLine": 280,
+        "endChar": 71
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fc667346_3529bf6c",
+        "filename": "src/config/fabric-ansible/test/test_discover_os_computes.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "Is this still required?",
+      "range": {
+        "startLine": 13,
+        "startChar": 0,
+        "endLine": 13,
+        "endChar": 58
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "65730377_8a3b41a5",
+        "filename": "src/config/fabric-ansible/test/test_discover_os_computes.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2020-11-04T18:30:43Z",
+      "side": 1,
+      "message": "IMO we shouldn\u0027t remove that. Does it not work after fixing imports?",
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
