@@ -16,6 +16,24 @@
       "revId": "171db3fc12c8ee56ea355d40998f80370fc04342",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "31ad2f2d_d26f3e23",
+        "filename": "src/config/api-server/vnc_cfg_api_server/api_server.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 2289,
+      "author": {
+        "id": 971
+      },
+      "writtenOn": "2020-11-04T15:41:20Z",
+      "side": 1,
+      "message": "In case user has specified 5 workers, if we take self._args.http_server_port as self._args.http_server_ports, then how we will be getting the values of all introspect ports, then it will only have 8084, right?",
+      "parentUuid": "380f5b90_1639aee8",
+      "revId": "171db3fc12c8ee56ea355d40998f80370fc04342",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
