@@ -789,7 +789,7 @@ class TestPolicy(STTestCase, VerifyPolicy):
         Verify:
             1. Check creating a non-provider VNs with
                non-provider VNs connected to it is not allowed
-            2. Check a non provider-VN can not be created
+            2. Check a non provider-VN can be created
                with is_provider_network property set to True
                if not provider_details provided
             3. Check is_provider_network property of a
@@ -799,7 +799,7 @@ class TestPolicy(STTestCase, VerifyPolicy):
             5. Check is_provider_network property of provider-VN
                can not be set as False
             6. Check is_provider_network property of non provider-VN
-               can  not be set as True if not provider_details provided
+               can be set as True
             7. Check is_provider_network property of non provider-VN
                can be set as False
             8. Check setting other parameters of a non provider-VN
