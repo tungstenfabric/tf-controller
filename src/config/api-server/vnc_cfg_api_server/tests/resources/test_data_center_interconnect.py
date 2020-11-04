@@ -163,8 +163,10 @@ class TestDataCenterInterconnect(test_case.ApiServerTestCase):
 
     def _validate_dci_lr_refs_error(self, dci, srclr, update=False):
         func_call = self._vnc_lib.data_center_interconnect_create
+        e_error = cfgm_common.exceptions.BadRequest
         if update is True:
             func_call = self._vnc_lib.data_center_interconnect_update
+            e_error = cfgm_common.exceptions.PermissionDenied
 
         # - LR Refs: provide no src ref
         for lrref in dci.logical_router_refs or []:
@@ -172,25 +174,26 @@ class TestDataCenterInterconnect(test_case.ApiServerTestCase):
                 lrref['attr'] = None
                 break
 
+        lr_refs = dci.logical_router_refs
+        dci.set_logical_router_list([])
         with ExpectedException(
                 cfgm_common.exceptions.BadRequest,
                 "No Source LR specified in logical_router_refs for "
                 "intra_fabric type data_center_interconnect."):
             func_call(dci)
-        if update is True:
-            return
 
         # - LR Refs: provide multiple src ref
+        dci.logical_router_refs = lr_refs
         for lrref in dci.logical_router_refs or []:
             lrref['attr'] = 'source'
         with ExpectedException(
-                cfgm_common.exceptions.BadRequest,
+                e_error,
                 "More than one Source LR not allowed for intra_fabric "
                 "type data_center_interconnect."):
             func_call(dci)
 
         # - LR Refs: provide single ref as src lr, no destination LR ref
-        lrrefs = dci.logical_router_refs
+        lr_refs = dci.logical_router_refs
         dci.set_logical_router(srclr)
         for lrref in dci.logical_router_refs or []:
             lrref['attr'] = 'source'
@@ -201,7 +204,7 @@ class TestDataCenterInterconnect(test_case.ApiServerTestCase):
             func_call(dci)
 
         # before returning update it with valid LR_refs
-        dci.logical_router_refs = lrrefs
+        dci.logical_router_refs = lr_refs
         for lrref in dci.logical_router_refs or []:
             if lrref['uuid'] == srclr.get_uuid():
                 lrref['attr'] = 'source'
