@@ -238,6 +238,7 @@ public:
     void HandleSubnetRoute(const VrfEntry *vrf, bool bridge_vrf=false);
     void FillSandeshInfo(VxlanRoutingResp *resp);
     void DeleteSubnetRoute(const VrfEntry *vrf,VnIpam *ipam = NULL);
+    bool IsHostRoute(const EvpnRouteEntry *rt);
     DBTable::ListenerId vn_listener_id() const {
         return vn_listener_id_;
     }
