@@ -49,7 +49,7 @@ system_alarm:
           err: "Test Failed!!"
           info: "Test succeeded!!"
 {% endif %}
-{% if advanced_parameters.Juniper.alarm.chassis_alarm_check == True %}
+{% if advanced_parameters.Juniper.alarm.chassis_alarm_check == True and not device_product | regex_search('5220') %}
 chassis_alarm:
   - command: show chassis alarm
   - item:
