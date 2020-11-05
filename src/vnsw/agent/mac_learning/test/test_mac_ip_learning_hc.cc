@@ -326,10 +326,10 @@ TEST_F(MacIpLearningHCTest, BfdTest3) {
     EXPECT_TRUE(entry->HcService()->name() == "HC-1");
     EXPECT_TRUE(entry->HcInstance() != NULL);
 
+    DelHealthCheckService("HC-1");
+    client->WaitForIdle();
     DelLink("virtual-network", "vn1",
             "service-health-check", "HC-1");
-    client->WaitForIdle();
-    DelHealthCheckService("HC-1");
     client->WaitForIdle();
 
     ip = IpAddress(Ip4Address::from_string("1.1.1.10", ec));
