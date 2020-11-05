@@ -88,6 +88,7 @@ public:
 private:
     void AddEvent(const DBEntry *entry, MacLearningDBState *state);
     void DeleteEvent(const DBEntry *entry, MacLearningDBState *state);
+    void DeleteNoOpEvent(const DBEntry *entry, MacLearningDBState *state);
     void ChangeEvent(const DBEntry *entry, MacLearningDBState *state);
     void ReleaseToken(const DBEntry *entry);
     void DeleteAllMac(const DBEntry *entry, MacLearningDBState *state);

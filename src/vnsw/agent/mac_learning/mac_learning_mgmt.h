@@ -81,7 +81,7 @@ public:
          return true;
      }
      void Change();
-     void Delete(bool set_delete);
+     void Delete(bool set_delete, bool notify_event = true);
      virtual bool TryDelete();
 
      void set_tree(MacLearningMgmtDBTree *tree) {
@@ -243,6 +243,7 @@ public:
         ADD_DBENTRY,
         CHANGE_DBENTRY,
         DELETE_DBENTRY,
+        DELETE_DBENTRY_NO_OP,
         DELETE_ALL_MAC,
         RELEASE_TOKEN,
         ADD_MAC_IP,
@@ -310,7 +311,7 @@ public:
     void DeleteMacLearningEntry(MacLearningMgmtRequestPtr ptr);
     void DeleteMacIpLearningEntry(MacLearningMgmtRequestPtr ptr);
     void AddDBEntry(MacLearningMgmtRequestPtr ptr);
-    void DeleteDBEntry(MacLearningMgmtRequestPtr ptr);
+    void DeleteDBEntry(MacLearningMgmtRequestPtr ptr, bool notify_event = true);
     void Enqueue(MacLearningMgmtRequestPtr &ptr);
     void DeleteAllEntry(MacLearningMgmtRequestPtr ptr);
 

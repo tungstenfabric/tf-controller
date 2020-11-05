@@ -164,7 +164,7 @@ void MacLearningDBClient::HealthCheckNotify(DBTablePartBase *part, DBEntryBase *
 
     if (hc_service->IsDeleted()) {
         if (state) {
-            DeleteEvent(hc_service, state);
+            DeleteNoOpEvent(hc_service, state);
         }
         return;
     }
@@ -481,7 +481,16 @@ void MacLearningDBClient::DeleteEvent(const DBEntry *entry,
                 state->gen_id_));
     agent_->mac_learning_module()->mac_learning_mgmt()->Enqueue(ptr);
 }
-
+// this  event does not trigger macip entry delete event, it marks
+// maclearningdbentry as deleted. this is needed for cases where
+// dependent entries are interested only add/update events.
+void MacLearningDBClient::DeleteNoOpEvent(const DBEntry *entry,
+                                      MacLearningDBState *state) {
+    MacLearningMgmtRequestPtr ptr(new MacLearningMgmtRequest(
+                MacLearningMgmtRequest::DELETE_DBENTRY_NO_OP, entry,
+                state->gen_id_));
+    agent_->mac_learning_module()->mac_learning_mgmt()->Enqueue(ptr);
+}
 void MacLearningDBClient::DeleteAllMac(const DBEntry *entry, MacLearningDBState *state) {
     MacLearningMgmtRequestPtr ptr(new MacLearningMgmtRequest(
                 MacLearningMgmtRequest::DELETE_ALL_MAC, entry,
