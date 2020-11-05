@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f4fee87c_c030370d",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/conf/predef_payloads.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 1779,
+      "author": {
+        "id": 504
+      },
+      "writtenOn": "2020-11-05T22:52:31Z",
+      "side": 1,
+      "message": "Why are we removing this role from 5k-lean? Was AR-Client added only for EVO platforms?",
+      "revId": "23a821bb0d2f9787ea31a6c6687959ceac46098d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
