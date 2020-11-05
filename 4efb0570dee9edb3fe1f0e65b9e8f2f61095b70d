@@ -36,6 +36,75 @@
     },
     {
       "key": {
+        "uuid": "4c98ffdc_bbbca70e",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 582
+      },
+      "writtenOn": "2020-11-05T16:33:00Z",
+      "side": 1,
+      "message": "Moving this one line below will fix the weird indentation",
+      "range": {
+        "startLine": 162,
+        "startChar": 16,
+        "endLine": 162,
+        "endChar": 30
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e333462b_46c4c4c3",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 582
+      },
+      "writtenOn": "2020-11-05T16:33:00Z",
+      "side": 1,
+      "message": "IMO, \u0027port_dict\u0027 was fine - \u0027p\u0027 is becomes more and more vague as you continue reading further down. Such one letter names are ok for short one-liners and comprehensions.",
+      "range": {
+        "startLine": 222,
+        "startChar": 12,
+        "endLine": 222,
+        "endChar": 13
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d3472c49_28a8d1d7",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 582
+      },
+      "writtenOn": "2020-11-05T16:33:00Z",
+      "side": 1,
+      "message": "None is default here, no need to specify it explicitly.",
+      "range": {
+        "startLine": 226,
+        "startChar": 33,
+        "endLine": 226,
+        "endChar": 37
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "a2c5dd7e_4fd2aa17",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
         "patchSetId": 10
@@ -52,6 +121,98 @@
         "startChar": 47,
         "endLine": 280,
         "endChar": 71
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "787b7640_9f457423",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 582
+      },
+      "writtenOn": "2020-11-05T16:33:00Z",
+      "side": 1,
+      "message": "See my comment on isinstance below.\n\nApart from that - will this error message be helpful to anyone? What does \"list of nested resources\" mean to the end user for example?\nI can see that we\u0027re only using this private method to unwrap responses from CC. I\u0027d assume that unless the API changes significantly, we don\u0027t expect anything other than a list to be passed here?",
+      "range": {
+        "startLine": 315,
+        "startChar": 0,
+        "endLine": 320,
+        "endChar": 13
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "86fdb6b6_35c5ed9f",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 582
+      },
+      "writtenOn": "2020-11-05T16:33:00Z",
+      "side": 1,
+      "message": "Ok, I see a lot of isinstance instances in this patch, so let me use this one as an example of what I think about it all. Although I appreciate the effort put into \"foolproofing\" the code, I really don\u0027t think this method (or any other, actually) will be used outside of the context of this particular Ansible job.\n\nI don\u0027t think we need this many checks since most responsibility for data validity lays in this module itself. If we really need to validate the input data, I think it should be done once in a separate place to make the code more readable.\n\nThis bothers me especially because we\u0027re not able to do anything about the parameters being invalid or any other errors for that matter. If the job breaks, it breaks (although, I\u0027d agree that adding some helpful logs might help).\n\nAnother thing to be aware of is that using isinstance is tricky. Here, does it have to be list? A set or a tuple would be handled perfectly fine (provided that anyone would actually pass a set or a tuple as an argument). Dict is another example - there are a lot of mapping types that act like a dict, but would not pass this isinstance test. Most of times, \u0027collections.Iterable\u0027 is a good replacement for \u0027list\u0027 and \u0027collections.Mapping\u0027 for \u0027dict\u0027 if you really need to use isinstance.\n\nI\u0027m not saying that none of that checks are needed, or perhaps I could\u0027ve chosen a better example, but what I\u0027m saying is, we\u0027re sacrificing readability in favor of ultra-defensive checks that I think are unnecessary (or could be performed somewhere else).",
+      "range": {
+        "startLine": 468,
+        "startChar": 8,
+        "endLine": 469,
+        "endChar": 18
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4659a947_e8a6b050",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 485,
+      "author": {
+        "id": 582
+      },
+      "writtenOn": "2020-11-05T16:33:00Z",
+      "side": 1,
+      "message": "tag_values \u003d set(tag_values) - this way, I don\u0027t think we need that comment",
+      "range": {
+        "startLine": 484,
+        "startChar": 0,
+        "endLine": 485,
+        "endChar": 52
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "89229a67_c48b2035",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 487,
+      "author": {
+        "id": 582
+      },
+      "writtenOn": "2020-11-05T16:33:00Z",
+      "side": 1,
+      "message": "I think, in the context of what\u0027s happening here, this name could be more meaningful.",
+      "range": {
+        "startLine": 487,
+        "startChar": 12,
+        "endLine": 487,
+        "endChar": 13
       },
       "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
