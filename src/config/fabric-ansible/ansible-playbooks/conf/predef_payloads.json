@@ -1817,7 +1817,7 @@
             "role_mappings": [
               {
                 "physical_role": "leaf",
-                "rb_roles": ["CRB-Access", "Route-Reflector", "AR-Client"]
+                "rb_roles": ["CRB-Access", "Route-Reflector"]
               },
               {
                 "physical_role": "spine",
@@ -1897,6 +1897,27 @@
               {
                 "physical_role": "spine",
                 "rb_roles": ["lean", "CRB-Gateway", "Route-Reflector", "PNF-Servicechain", "Collapsed-Spine"]
+              },
+              {
+                "physical_role": "superspine",
+                "rb_roles": ["lean", "Route-Reflector"]
+              }
+            ]
+          }
+        },
+        {
+          "fq_name": [
+            "default-global-system-config", "juniper-qfx5220"
+          ],
+          "name": "juniper-qfx5220",
+          "node_profile_vendor": "Juniper",
+          "node_profile_device_family": "junos-qfx",
+          "node_profile_hitless_upgrade": true,
+          "node_profile_roles": {
+            "role_mappings": [
+              {
+                "physical_role": "spine",
+                "rb_roles": ["lean", "Route-Reflector"]
               },
               {
                 "physical_role": "superspine",
@@ -2264,6 +2285,14 @@
         {
           "fq_name": [
             "default-global-system-config", "juniper-qfx5120", "basic"
+          ],
+          "name": "basic",
+          "parent_type": "node-profile",
+          "role_config_config": "{\"snmp\": {\"communities\": [{\"readonly\": true, \"name\": \"public\"}]}}"
+        },
+        {
+          "fq_name": [
+            "default-global-system-config", "juniper-qfx5220", "basic"
           ],
           "name": "basic",
           "parent_type": "node-profile",
@@ -3477,6 +3506,18 @@
     },
     {
       "from_type": "node-profile",
+      "from_fq_name": [ "default-global-system-config", "juniper-qfx5220" ],
+      "to_type": "hardware",
+      "to_fq_name": [ "juniper-qfx5220-32cd" ]
+    },
+    {
+      "from_type": "node-profile",
+      "from_fq_name": [ "default-global-system-config", "juniper-qfx5220" ],
+      "to_type": "hardware",
+      "to_fq_name": [ "juniper-qfx5220-128c" ]
+    },
+    {
+      "from_type": "node-profile",
       "from_fq_name": [ "default-global-system-config", "juniper-qfx5k-lean" ],
       "to_type": "hardware",
       "to_fq_name": [ "juniper-qfx5200-32c-32q" ]
@@ -3495,13 +3536,13 @@
     },
     {
       "from_type": "node-profile",
-      "from_fq_name": [ "default-global-system-config", "juniper-qfx5k-lean" ],
+      "from_fq_name": [ "default-global-system-config", "juniper-qfx5220" ],
       "to_type": "hardware",
       "to_fq_name": [ "juniper-qfx5220-32cd" ]
     },
     {
       "from_type": "node-profile",
-      "from_fq_name": [ "default-global-system-config", "juniper-qfx5k-lean" ],
+      "from_fq_name": [ "default-global-system-config", "juniper-qfx5220" ],
       "to_type": "hardware",
       "to_fq_name": [ "juniper-qfx5220-128c" ]
     },
@@ -3706,6 +3747,12 @@
     {
       "from_type": "node-profile",
       "from_fq_name": [ "default-global-system-config", "juniper-qfx5120" ],
+      "to_type": "job_template",
+      "to_fq_name": [ "default-global-system-config", "fabric_config_template" ]
+    },
+    {
+      "from_type": "node-profile",
+      "from_fq_name": [ "default-global-system-config", "juniper-qfx5220" ],
       "to_type": "job_template",
       "to_fq_name": [ "default-global-system-config", "fabric_config_template" ]
     },
