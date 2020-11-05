@@ -30,6 +30,7 @@
         pr_fqname: "{{item.value.device_fqname}}"
         pr_name: "{{item.value.device_fqname[-1]}}"
         prouter_name: "{{item.value.device_fqname[-1]}}"
+        pr_product: "{{item.value.device_product}}"
         pr_family: "{{item.value.device_family}}"
         pr_password: "{{item.value.device_password}}"
         pr_vendor: "{{item.value.device_vendor|lower}}"
