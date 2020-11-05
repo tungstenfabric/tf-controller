@@ -32,6 +32,7 @@
         pr_name: "{{item.value.device_fqname[-1]}}"
         prouter_name: "{{item.value.device_fqname[-1]}}"
         pr_family: "{{item.value.device_family}}"
+        pr_product: "{{item.value.device_product}}"
         pr_password: "{{item.value.device_password}}"
         pr_vendor: "{{item.value.device_vendor|lower}}"
       with_dict: "{{playbook_input.job_device_json}}"
