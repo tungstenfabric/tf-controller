@@ -1614,7 +1614,7 @@ private:
                   bool ecmp, bool is_local, bool proxy_arp,
                   const IpAddress &service_ip, const IpAddress &dependent_ip,
                   const CommunityList &communties, uint32_t label,
-                  const string &intf_route_type);
+                  const string &intf_route_type, bool is_learnt_route = false);
     void DeleteRoute(const std::string &vrf_name, const IpAddress &ip,
                      uint32_t plen);
 
