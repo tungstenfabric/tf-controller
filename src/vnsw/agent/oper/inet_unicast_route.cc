@@ -1208,7 +1208,8 @@ InetUnicastAgentRouteTable::AddLocalVmRouteReq(const Peer *peer,
                                                bool is_local,
                                                bool is_health_check_service,
                                                bool native_encap,
-                                               const std::string &intf_name)
+                                               const std::string &intf_name,
+                                               bool is_learnt_route)
 {
     VmInterfaceKey intf_key(AgentKey::ADD_DEL_CHANGE, intf_uuid, intf_name);
     LocalVmRoute *data = new LocalVmRoute(intf_key, label,
@@ -1270,7 +1271,8 @@ InetUnicastAgentRouteTable::AddLocalVmRoute(const Peer *peer,
                                             bool is_health_check_service,
                                             const std::string &intf_name,
                                             bool native_encap,
-                                            const std::string &intf_route_type)
+                                            const std::string &intf_route_type,
+                                            bool is_learnt_route)
 {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new InetUnicastRouteKey(peer, vm_vrf, addr, plen));
@@ -1284,7 +1286,8 @@ InetUnicastAgentRouteTable::AddLocalVmRoute(const Peer *peer,
                                     ecmp_load_balance, is_local,
                                     is_health_check_service,
                                     peer->sequence_number(), false, native_encap,
-                                    intf_route_type));
+                                    intf_route_type,
+                                    is_learnt_route));
     InetUnicastTableProcess(Agent::GetInstance(), vm_vrf, req);
 }
 

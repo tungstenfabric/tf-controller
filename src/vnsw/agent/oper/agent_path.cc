@@ -1065,6 +1065,7 @@ bool LocalVmRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
         path->set_native_vrf_id(native_vrf_id_);
         ret = true;
     }
+    path->SetDynamicLearntRouteFlag(is_learnt_route_);
 
     return ret;
 }
