@@ -2282,8 +2282,8 @@ class VncApiServer(object):
 
         # config api worker uve
         if not self._args.worker_introspect_ports:
-            self._args.worker_introspect_ports = self._args.http_server_port
-            self._args.worker_admin_ports = self._args.admin_port
+            self._args.worker_introspect_ports = str(self._args.http_server_port)
+            self._args.worker_admin_ports = str(self._args.admin_port)
         worker_introspect_list = self._args.worker_introspect_ports.split(" ")
         worker_admin_list = self._args.worker_admin_ports.split(" ")
         protocol = "http"
