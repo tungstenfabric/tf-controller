@@ -2277,6 +2277,32 @@ class VncApiServer(object):
 
         # create amqp handle
         self._amqp_client = self.initialize_amqp_client()
+<<<<<<< HEAD   (c810a9 Merge "[api-server] Fixed 'share' initialization" into R2011)
+=======
+
+        # config api worker uve
+        if not self._args.worker_introspect_ports:
+            self._args.worker_introspect_ports = str(self._args.http_server_port)
+            self._args.worker_admin_ports = str(self._args.admin_port)
+        worker_introspect_list = self._args.worker_introspect_ports.split(" ")
+        worker_admin_list = self._args.worker_admin_ports.split(" ")
+        protocol = "http"
+        if self._args.introspect_ssl_enable:
+            protocol = "https"
+        for index in range(len(worker_introspect_list)):
+            config_api_worker_data = ConfigApiWorker(
+                name="worker-%s" % (str(index)),
+                worker_id=str(index),
+                introspect_port=worker_introspect_list[index],
+                admin_port=worker_admin_list[index],
+                introspect_url="%s://%s:%s" % (protocol,
+                                               self._args.listen_ip_addr,
+                                               worker_introspect_list[index])
+            )
+            config_api_worker_uve = ConfigApiWorkerTrace(
+                data=config_api_worker_data, sandesh=self._sandesh)
+            config_api_worker_uve.send(sandesh=self._sandesh)
+>>>>>>> CHANGE (4b596d worker_admin_ports is always string)
     # end __init__
 
     def _initialize_quota_counters(self):
