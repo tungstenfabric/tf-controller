@@ -109,6 +109,10 @@ class VncPermissions(object):
         domain_name = env.get('HTTP_X_DOMAIN_NAME')
         project_id = env.get('HTTP_X_PROJECT_ID')
         project_name = env.get('HTTP_X_PROJECT_NAME')
+        
+        err_msg = ("Permission Denied for %s to %s operation in domain '%s' "
+                   "and project '%s'" %
+                   (roles, self.mode_str2[mode], domain_name, project_name))
 
         # retrieve object permissions if missing
         if not perms2:
@@ -132,7 +136,7 @@ class VncPermissions(object):
         if project_id == owner:
             mask |= 0o700
 
-        share_items = perms2.get('share', [])
+        share_items = perms2.get('share', []) or []
         shares = [item['tenant'] for item in share_items]
         for item in share_items:
             # item['tenant'] => [share-type, uuid]
@@ -165,9 +169,6 @@ class VncPermissions(object):
                    (user, self.mode_str2[mode], owner))
             self._server_mgr.config_log(msg, level=SandeshLevel.SYS_NOTICE)
 
-        err_msg = ("Permission Denied for %s to %s operation in domain '%s' "
-                   "and project '%s'" %
-                   (roles, self.mode_str2[mode], domain_name, project_name))
         if ok:
             return True, self.mode_str[granted]
         else:
