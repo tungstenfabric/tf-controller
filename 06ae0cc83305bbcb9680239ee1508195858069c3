@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b6a5ef7b_f321c8d3",
+        "filename": "src/config/api-server/vnc_cfg_api_server/vnc_perms.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-06T05:22:02Z",
+      "side": 1,
+      "message": "msg printed is different from exception message. could you make it consistent in the next patch?",
+      "revId": "06ae0cc83305bbcb9680239ee1508195858069c3",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
