@@ -1,0 +1,29 @@
+- name: Push Config Template
+  hosts: localhost
+  gather_facts: no
+  connection: local
+
+  pre_tasks:
+    - name: Include global variables
+      include_vars: group_vars/all.yml
+
+  roles:
+    - Juniper.junos
+    - push_config_template
+
+  tasks:
+    - set_fact:
+        output: {
+              "status": "Success",
+              "message": "Execution of config template for device: {{prouter_name}} {{device_uuid}} successful",
+              "results":
+                  {
+                    "prouter_uuid": "{{device_uuid}}",
+                    "msg": "CMD is excuted on device {{prouter_name}}"
+                  }
+          }
+
+    - name: Print the output.
+      debug:
+        var: output
+        verbosity: 1

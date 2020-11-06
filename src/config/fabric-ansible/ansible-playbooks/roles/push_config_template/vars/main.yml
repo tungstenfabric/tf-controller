@@ -1,0 +1,8 @@
+---
+prouter_name: "{{playbook_input.device_fqname[-1]}}"
+device_uuid: "{{playbook_input.device_id}}"
+device_vendor: "{{ playbook_input.vendor | lower }}"
+device_mgmt_ip: "{{playbook_input.device_management_ip}}"
+device_username: "{{playbook_input.device_username}}"
+device_password: "{{playbook_input.device_password}}"
+device_name: "{{playbook_input.device_fqname[-1]}}"
