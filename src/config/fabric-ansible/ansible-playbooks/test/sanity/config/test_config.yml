@@ -32,3 +32,6 @@ rma:
   device_list:
     - name: Leaf1
       serial_number: WS3718270049
+
+config_template:
+  fabric: fab01
