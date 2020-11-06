@@ -48,7 +48,7 @@ class VirtualPortGroupServer(ResourceMixin, VirtualPortGroup):
                 cls.db_conn.config_log(msg, level=SandeshLevel.SYS_DEBUG)
 
     @classmethod
-    def _alloc_ae_id(cls, prouter_name, vpg_name, vpg_uuid):
+    def _alloc_ae_id(cls, prouter_name, vpg_name, vpg_uuid, ae_num=None):
         # create vpg node at /id/ae-id-vpg/
         vpg_zk_path = os.path.join(
             cls.vnc_zk_client._vpg_ae_id_zk_path_prefix,
@@ -58,8 +58,12 @@ class VirtualPortGroupServer(ResourceMixin, VirtualPortGroup):
         if not cls.vnc_zk_client._zk_client.exists(vpg_zk_path):
             while True:
                 try:
-                    ae_id = cls.vnc_zk_client.alloc_ae_id(
-                        prouter_name, vpg_name)
+                    if ae_num is None:
+                        ae_id = cls.vnc_zk_client.alloc_ae_id(
+                            prouter_name, vpg_name)
+                    else:
+                        ae_id = cls.vnc_zk_client.alloc_ae_id(
+                            prouter_name, vpg_name, id=ae_num)
 
                     msg = "Reserving AE-ID(%s) for prouter(%s):vpg(%s) " % (
                         ae_id, prouter_name, vpg_name)
@@ -212,9 +216,18 @@ class VirtualPortGroupServer(ResourceMixin, VirtualPortGroup):
             attr_dict = None
             pi_pr = curr_pi_dict.get(pi_uuid)
             pi_ae = db_pr_dict.get(pi_pr)
+            ae_num = (curr_pr_dict.get(pi_pr) or {}).get("ae_num", None)
+            if (pi_ae and ae_num and
+               pi_ae.get('ae_num') != ae_num):
+                msg = ('AE-ID (%s) already allocated at PR (%s) for PI (%s) '
+                       'Failed allocating user-defined AE-ID (%s)' % (
+                           pi_ae.get('ae_num'), pi_pr, pi_uuid, ae_num))
+                cls.db_conn.config_log(msg, level=SandeshLevel.SYS_ERR)
+                return (False, (400, msg))
             if pi_ae is None:
                 # allocate
-                ok, result = cls._alloc_ae_id(pi_pr, vpg_name, vpg_uuid)
+                ok, result = cls._alloc_ae_id(
+                    pi_pr, vpg_name, vpg_uuid, ae_num)
                 if not ok:
                     return ok, result
                 attr_dict, _alloc_dict = result
@@ -530,7 +543,7 @@ class VirtualPortGroupServer(ResourceMixin, VirtualPortGroup):
                 db_obj_dict, fq_name[-1], obj_dict)
             if not ok:
                 return ok, res
-            if res[0] and kwargs.get('ref_update'):
+            if kwargs.get('ref_update'):
                 kwargs['ref_update']['data']['attr'] = res[0]
             ret_val = res[1]
         return True, ret_val

@@ -6953,3 +6953,498 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         pr_ae_ids = get_zk_ae_ids()
         self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
         self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+
+    # Test cases to verify CEM-20323 and CEM-19807
+    def test_add_user_defined_ae_num(self):
+        """
+        UT to validate user-defined ae-num=1.
+
+        Assign PI-1/PR-1, PI-2/PR-1 with ae-num=1 to VPG-1
+        Verify that allocated AE-ID=1
+        """
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        test_id = self.id()
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x) if i is not None]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        pi_per_pr = 2
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr2_pi_names = ['%s_pr2_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pr2_pi_objs = self._create_pi_objects(pr_objs[1], pr2_pi_names)
+        pi_objs.update(pr1_pi_objs)
+        pi_objs.update(pr2_pi_objs)
+
+        # create a VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for i in range(
+                     1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        def _attach_pi_to_lr(vpg_obj, pi_uuids):
+            # Attach PIs from PR1 to VPG-1
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            for pi_uuid in pi_uuids:
+                self.api.ref_update(
+                    "virtual-port-group",
+                    vpg_obj.uuid,
+                    "physical-interface",
+                    pi_uuid,
+                    None,
+                    "ADD",
+                    {"ae_num": 1})
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            pi_refs = vpg_obj.get_physical_interface_refs()
+            return vpg_obj, pi_refs
+
+        # Case 1
+        # Attach 2 PIs from PR1 to VPG-1
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_uuids = [pi_objs[pr1_pi_names[pi]].uuid for pi in range(2)]
+        vpg_obj, pi_refs = _attach_pi_to_lr(vpg_obj, pi_uuids)
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+        ae_id_sorted = process_ae_ids(ae_ids[vpg_name].values())
+        self.assertEqual(ae_id_sorted, [1] * 2)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(len(pr_ae_ids[pr_objs[1].name]), 0)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [1])
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[1].name]), [])
+
+    def test_add_user_defined_ae_num_as_none(self):
+        """
+        UT to validate user-defined ae-num=None.
+
+        Assign PI-1/PR-1, PI-2/PR-1 with ae-num=None to VPG-1
+        Verify that default AE-ID=0 is allocated
+        """
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        test_id = self.id()
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x) if i is not None]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        pi_per_pr = 2
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr2_pi_names = ['%s_pr2_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pr2_pi_objs = self._create_pi_objects(pr_objs[1], pr2_pi_names)
+        pi_objs.update(pr1_pi_objs)
+        pi_objs.update(pr2_pi_objs)
+
+        # create a VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for i in range(
+                     1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        def _attach_pi_to_lr(vpg_obj, pi_uuids):
+            # Attach PIs from PR1 to VPG-1
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            for pi_uuid in pi_uuids:
+                self.api.ref_update(
+                    "virtual-port-group",
+                    vpg_obj.uuid,
+                    "physical-interface",
+                    pi_uuid,
+                    None,
+                    "ADD",
+                    {"ae_num": None})
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            pi_refs = vpg_obj.get_physical_interface_refs()
+            return vpg_obj, pi_refs
+
+        # Case 1
+        # Attach 2 PIs from PR1 to VPG-1
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_uuids = [pi_objs[pr1_pi_names[pi]].uuid for pi in range(2)]
+        vpg_obj, pi_refs = _attach_pi_to_lr(vpg_obj, pi_uuids)
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+        ae_id_sorted = process_ae_ids(ae_ids[vpg_name].values())
+        self.assertEqual(ae_id_sorted, [0] * 2)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(len(pr_ae_ids[pr_objs[1].name]), 0)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[1].name]), [])
+
+    def test_add_user_defined_ae_num_with_existing_ae_num(self):
+        """
+        UT to validate conflicting case of use-defined ae-num.
+
+        Assign PI-1/PR-1, PI-2/PR-1 to VPG-1. AE-ID=0 is allocated in ZK
+        Assign PI-3/PR-1, PI-4/PR-1 to VPG-1 with user-defined ae-num=1
+        This will fail with a BadRequest error as ae-num=1 is invalid
+        """
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        test_id = self.id()
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x) if i is not None]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        pi_per_pr = 4
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr2_pi_names = ['%s_pr2_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pr2_pi_objs = self._create_pi_objects(pr_objs[1], pr2_pi_names)
+        pi_objs.update(pr1_pi_objs)
+        pi_objs.update(pr2_pi_objs)
+
+        # create a VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for i in range(
+                     1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        def _attach_pi_to_lr(vpg_obj, pi_uuids):
+            # Attach PIs from PR1 to VPG-1
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            for pi_uuid in pi_uuids:
+                self.api.ref_update(
+                    "virtual-port-group",
+                    vpg_obj.uuid,
+                    "physical-interface",
+                    pi_uuid,
+                    None,
+                    "ADD",
+                    {"ae_num": 1})
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            pi_refs = vpg_obj.get_physical_interface_refs()
+            return vpg_obj, pi_refs
+
+        # Case 1
+        # Attach 2 PIs from PR1 to VPG-1
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        for pi in range(2):
+            vpg_obj.add_physical_interface(pi_objs[pr1_pi_names[pi]])
+        self.api.virtual_port_group_update(vpg_obj)
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_refs = vpg_obj.get_physical_interface_refs()
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+
+        # Case 2
+        # Attach 2 PIs from PR1 to VPG-1 with user defined ae_num
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_uuids = [pi_objs[pr1_pi_names[pi]].uuid for pi in range(2, 4)]
+        with ExpectedException(BadRequest):
+            vpg_obj, pi_refs = _attach_pi_to_lr(vpg_obj, pi_uuids)
+
+    def test_add_user_defined_ae_num_with_one_pi(self):
+        """
+        UT to validate user-defined ae-num=0 for one PI.
+
+        Assign PI-1/PR-1 with user-defined ae-num=0 to VPG-1
+        No AE-ID is allocated in ZK
+        """
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        test_id = self.id()
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x) if i is not None]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        pi_per_pr = 1
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr2_pi_names = ['%s_pr2_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pr2_pi_objs = self._create_pi_objects(pr_objs[1], pr2_pi_names)
+        pi_objs.update(pr1_pi_objs)
+        pi_objs.update(pr2_pi_objs)
+
+        # create a VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for i in range(
+                     1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        def _attach_pi_to_lr(vpg_obj, pi_uuids):
+            # Attach PIs from PR1 to VPG-1
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            for pi_uuid in pi_uuids:
+                self.api.ref_update(
+                    "virtual-port-group",
+                    vpg_obj.uuid,
+                    "physical-interface",
+                    pi_uuid,
+                    None,
+                    "ADD",
+                    {"ae_num": 0})
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            pi_refs = vpg_obj.get_physical_interface_refs()
+            return vpg_obj, pi_refs
+
+        # Case 1
+        # Attach 1 PI from PR1 to VPG-1
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_uuids = [pi_objs[pr1_pi_names[pi]].uuid for pi in range(1)]
+        vpg_obj, pi_refs = _attach_pi_to_lr(vpg_obj, pi_uuids)
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 1)
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertIsNone(list(ae_ids[vpg_name].values())[0])
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 0)
+        self.assertEqual(len(pr_ae_ids[pr_objs[1].name]), 0)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [])
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[1].name]), [])
+
+    def test_add_user_defined_ae_num_with_existing_ae_num_positive_case(self):
+        """
+        UT to validate re-use of ae-num.
+
+        2 PIs with ae_num=0 is allocated already to PR-1
+        Two new PIs are attached to PR-1 with user defined ae_num=0
+        No new AE-ID is allocated in ZK. AE-ID=0 is re-used
+        """
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        test_id = self.id()
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x) if i is not None]
+
+        def get_zk_ae_ids(prs=None):
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'aggregated-ethernet')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            if not prs:
+                prs = [os.path.join(prefix, pr.name) for pr in pr_objs]
+            else:
+                if not isinstance(prs, list):
+                    prs = [prs]
+                prs = [os.path.join(prefix, pr) for pr in prs]
+            ae_ids = {}
+            for pr in prs:
+                pr_org = os.path.split(pr)[-1]
+                ae_ids[pr_org] = zk_client.get_children(pr)
+            return ae_ids
+
+        pi_per_pr = 4
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr2_pi_names = ['%s_pr2_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pr2_pi_objs = self._create_pi_objects(pr_objs[1], pr2_pi_names)
+        pi_objs.update(pr1_pi_objs)
+        pi_objs.update(pr2_pi_objs)
+
+        # create a VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for i in range(
+                     1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+
+        # record AE-IDs in ZK before creating any VPG
+        ae_ids = [x for x in get_zk_ae_ids().values() if x]
+        self.assertEqual(len(ae_ids), 0)
+
+        def _attach_pi_to_lr(vpg_obj, pi_uuids):
+            # Attach PIs from PR1 to VPG-1
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            for pi_uuid in pi_uuids:
+                self.api.ref_update(
+                    "virtual-port-group",
+                    vpg_obj.uuid,
+                    "physical-interface",
+                    pi_uuid,
+                    None,
+                    "ADD",
+                    {"ae_num": 0})
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+            pi_refs = vpg_obj.get_physical_interface_refs()
+            return vpg_obj, pi_refs
+
+        # Case 1
+        # Attach 2 PIs from PR1 to VPG-1
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        for pi in range(2):
+            vpg_obj.add_physical_interface(pi_objs[pr1_pi_names[pi]])
+        self.api.virtual_port_group_update(vpg_obj)
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_refs = vpg_obj.get_physical_interface_refs()
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+
+        # Case 2
+        # Attach 2 PIs from PR1 to VPG-1 with user defined ae_num
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_uuids = [pi_objs[pr1_pi_names[pi]].uuid for pi in range(2, 4)]
+        vpg_obj, pi_refs = _attach_pi_to_lr(vpg_obj, pi_uuids)
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 4)
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+        ae_id_sorted = process_ae_ids(ae_ids[vpg_name].values())
+        self.assertEqual(ae_id_sorted, [0] * 4)
+
+        # verification at Physical Routers
+        pr_ae_ids = get_zk_ae_ids()
+        self.assertEqual(len(pr_ae_ids[pr_objs[0].name]), 1)
+        self.assertEqual(len(pr_ae_ids[pr_objs[1].name]), 0)
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
+        self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[1].name]), [])
