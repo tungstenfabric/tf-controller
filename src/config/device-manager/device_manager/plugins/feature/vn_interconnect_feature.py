@@ -142,11 +142,6 @@ class VnInterconnectFeature(FeatureBase):
                 routing_instance_type='master',
                 virtual_network_is_internal=True, is_master=True)
 
-        if self._physical_router.is_erb_only():
-            vn_li_map = self._get_vn_li_map('l2')
-            vpg_vn_uuids = list(vn_li_map.keys())
-            vn_list = list(set(vn_list) & set(vpg_vn_uuids))
-
         for connected_vn_uuid in vn_list:
             connected_vn = VirtualNetworkDM.get(connected_vn_uuid)
             irb_name = 'irb.' + str(connected_vn.vn_network_id)
@@ -173,7 +168,15 @@ class VnInterconnectFeature(FeatureBase):
         vn_map, dhcp_servers = self._get_interconnect_vn_map()
         internal_vn_ris = []
         routing_policies = {}
+
+        vn_li_map = self._get_vn_li_map('l2')
+        vpg_vn_uuids = list(vn_li_map.keys())
         for internal_vn, vn_list in list(vn_map.items()):
+            if self._physical_router.is_erb_only():
+                vn_list = list(set(vn_list) & set(vpg_vn_uuids))
+                if len(vn_list) == 0:
+                    continue
+
             vn_obj = VirtualNetworkDM.get(internal_vn)
             ri_obj = self._get_primary_ri(vn_obj)
             if ri_obj is None:
