@@ -92,17 +92,19 @@ void MacLearningMgmtDBEntry::Change() {
     }
 }
 
-void MacLearningMgmtDBEntry::Delete(bool set_deleted) {
+void MacLearningMgmtDBEntry::Delete(bool set_deleted, bool notify_event) {
     if (set_deleted) {
         deleted_ = true;
     }
-    for (MacLearningEntryList::iterator iter = mac_entry_list_.begin();
-            iter != mac_entry_list_.end(); iter++) {
-        MacLearningMgmtNode *ptr = iter.operator->();
-        MacLearningEntryRequestPtr req_ptr(new MacLearningEntryRequest(
-                                           MacLearningEntryRequest::DELETE_MAC,
-                                           ptr->mac_learning_entry()));
-        ptr->mac_learning_entry()->EnqueueToTable(req_ptr);
+    if (notify_event) {
+        for (MacLearningEntryList::iterator iter = mac_entry_list_.begin();
+                iter != mac_entry_list_.end(); iter++) {
+            MacLearningMgmtNode *ptr = iter.operator->();
+            MacLearningEntryRequestPtr req_ptr(new MacLearningEntryRequest(
+                                            MacLearningEntryRequest::DELETE_MAC,
+                                            ptr->mac_learning_entry()));
+            ptr->mac_learning_entry()->EnqueueToTable(req_ptr);
+        }
     }
 }
 
@@ -284,10 +286,11 @@ void MacLearningMgmtManager::AddDBEntry(MacLearningMgmtRequestPtr ptr) {
     entry->Change();
 }
 
-void MacLearningMgmtManager::DeleteDBEntry(MacLearningMgmtRequestPtr ptr) {
+void MacLearningMgmtManager::DeleteDBEntry(MacLearningMgmtRequestPtr ptr,
+                                bool notify_event) {
     MacLearningMgmtDBEntry *entry = Find(ptr->db_entry());
     if (entry) {
-        entry->Delete(true);
+        entry->Delete(true, notify_event);
         entry->set_gen_id(ptr->gen_id());
         entry->tree()->TryDelete(entry);
     }
@@ -321,6 +324,9 @@ MacLearningMgmtManager::RequestHandler(MacLearningMgmtRequestPtr ptr) {
         DeleteDBEntry(ptr);
         break;
 
+    case MacLearningMgmtRequest::DELETE_DBENTRY_NO_OP:
+        DeleteDBEntry(ptr, false);
+        break;
     case MacLearningMgmtRequest::DELETE_ALL_MAC:
         DeleteAllEntry(ptr);
         break;
