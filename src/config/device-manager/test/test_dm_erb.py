@@ -82,6 +82,33 @@ class TestAnsibleDM(TestAnsibleCommonDM):
         self.assertEqual(len(vn_routing_interfaces), no_of_vmi)
 
     @retries(5, hook=retry_exc_handler)
+    def check_vrf_ri_config(self, pr1, pr2):
+        pr1.set_physical_router_product_name('qfx10002a')
+        self._vnc_lib.physical_router_update(pr1)
+
+        ac1 = FakeJobHandler.get_dev_job_input(pr1.name)
+        dac1 = ac1.get('device_abstract_config')
+
+        dac1_ris = dac1.get('features', {}).get('vn-interconnect', {}).get(
+            'routing_instances', [])
+
+        for ri in dac1_ris:
+            vrf_type = ri.get('routing_instance_type',None)
+            self.assertEqual(vrf_type,'vrf')
+            routing_interfaces = ri.get('routing_interfaces',[])
+            self.assertNotEqual(len(routing_interfaces),0)
+
+        pr2.set_physical_router_product_name('qfx10002b')
+        self._vnc_lib.physical_router_update(pr2)
+
+        ac2 = FakeJobHandler.get_dev_job_input(pr2.name)
+        dac2 = ac2.get('device_abstract_config')
+        dac2_ri = dac2.get('features', {}).get('vn-interconnect', {}).get(
+            'routing_instances', [])
+
+        self.assertEqual(len(dac2_ri),0)
+
+    @retries(5, hook=retry_exc_handler)
     def check_no_lr(self, no_of_vpgs, vlans):
         ac = FakeJobHandler.get_job_input()
         self.assertIsNotNone(ac)
@@ -485,6 +512,122 @@ class TestAnsibleDM(TestAnsibleCommonDM):
         self.delete_routers(None, pr)
         self.wait_for_routers_delete(None, pr.get_fq_name())
         self._vnc_lib.bgp_router_delete(fq_name=bgp_router.get_fq_name())
+
+        self._vnc_lib.virtual_network_delete(fq_name=vn1_obj.get_fq_name())
+        self._vnc_lib.virtual_network_delete(fq_name=vn2_obj.get_fq_name())
+
+        self._vnc_lib.role_config_delete(fq_name=rc.get_fq_name())
+        self._vnc_lib.node_profile_delete(fq_name=np.get_fq_name())
+        self._vnc_lib.fabric_delete(fq_name=fabric.get_fq_name())
+        self._vnc_lib.job_template_delete(fq_name=jt.get_fq_name())
+
+        self.delete_role_definitions()
+        self.delete_overlay_roles()
+        self.delete_physical_roles()
+        self.delete_features()
+        self.wait_for_features_delete()
+
+    def test_erb_config_push_multi_device_single_vpg(self):
+        #create 2 leaf devices with ERB-UCAST-GW roles.
+        #create 2 VNs and create a LR with 2 VN's and extend it to 2 leaf devices.
+        #create a single VPG for Leaf1 and attach VN1 with a vlan id.
+        #Test if the leaf1 has VRF and IRB config and Leaf2 2 shouldn't have any VRF and/or IRB config.
+        self.set_encapsulation_priorities(['VXLAN', 'MPLSoUDP'])
+        project = self._vnc_lib.project_read(fq_name=['default-domain',
+                                                      'default-project'])
+        project.set_vxlan_routing(True)
+        self._vnc_lib.project_update(project)
+
+        self.create_features(['overlay-bgp', 'l2-gateway',
+                              'l3-gateway', 'vn-interconnect'])
+        self.create_physical_roles(['leaf', 'spine'])
+        self.create_overlay_roles(['erb-ucast-gateway', 'crb-mcast-gateway'])
+        self.create_role_definitions([
+            AttrDict({
+                'name': 'erb@leaf',
+                'physical_role': 'leaf',
+                'overlay_role': 'erb-ucast-gateway',
+                'features': ['overlay-bgp', 'l2-gateway',
+                             'l3-gateway', 'vn-interconnect'],
+                'feature_configs': {'l3_gateway': {'use_gateway_ip': 'True'}}
+            })
+        ])
+
+        jt = self.create_job_template('job-template-1')
+        fabric = self.create_fabric('test-fabric')
+        np, rc = self.create_node_profile('node-profile-1',
+                                          device_family='junos-qfx',
+                                          role_mappings=[
+                                              AttrDict(
+                                                  {'physical_role': 'leaf',
+                                                   'rb_roles': ['erb-ucast-gateway']}
+                                              )],
+                                          job_template=jt)
+
+        vn1_obj = self.create_vn('1', '1.1.1.0')
+        vn2_obj = self.create_vn('2', '2.2.2.0')
+
+        bgp_router1, pr1 = self.create_router('leaf-1' + self.id(), '1.1.1.1',
+                                            product='qfx5110', family='junos-qfx',
+                                            role='leaf', rb_roles=['erb-ucast-gateway'],
+                                            physical_role=self.physical_roles['leaf'],
+                                            overlay_role=self.overlay_roles['erb-ucast-gateway'], fabric=fabric,
+                                            node_profile=np)
+        pr1.set_physical_router_loopback_ip('10.10.0.1')
+        self._vnc_lib.physical_router_update(pr1)
+
+        bgp_router2, pr2 = self.create_router('leaf-2' + self.id(), '1.1.1.2',
+                                            product='qfx5110', family='junos-qfx',
+                                            role='leaf', rb_roles=['erb-ucast-gateway'],
+                                            physical_role=self.physical_roles['leaf'],
+                                            overlay_role=self.overlay_roles['erb-ucast-gateway'], fabric=fabric,
+                                            node_profile=np)
+        pr2.set_physical_router_loopback_ip('10.10.0.2')
+        self._vnc_lib.physical_router_update(pr2)
+
+        #create VPG for port xe-0/0/1 and attach VN1 with vlan-id 101
+        vmi1, vm1, pi1 = self.attach_vmi('1', ['xe-0/0/1'], [pr1], vn1_obj, None, fabric, 101)
+
+        lr_fq_name = ['default-domain', 'default-project', 'lr-' + self.id()]
+        lr = LogicalRouter(fq_name=lr_fq_name, parent_type='project',
+                           logical_router_type='vxlan-routing',
+                           vxlan_network_identifier='3000')
+        lr.add_physical_router(pr1)
+        lr.add_physical_router(pr2)
+
+        fq_name = ['default-domain', 'default-project', 'vmi3-' + self.id()]
+        vmi3 = VirtualMachineInterface(fq_name=fq_name, parent_type='project')
+        vmi3.set_virtual_network(vn1_obj)
+        self._vnc_lib.virtual_machine_interface_create(vmi3)
+
+        fq_name = ['default-domain', 'default-project', 'vmi4-' + self.id()]
+        vmi4 = VirtualMachineInterface(fq_name=fq_name, parent_type='project')
+        vmi4.set_virtual_network(vn2_obj)
+        self._vnc_lib.virtual_machine_interface_create(vmi4)
+
+        lr.add_virtual_machine_interface(vmi3)
+        lr.add_virtual_machine_interface(vmi4)
+
+        lr_uuid = self._vnc_lib.logical_router_create(lr)
+        lr = self._vnc_lib.logical_router_read(id=lr_uuid)
+
+        self.check_vrf_ri_config(pr1,pr2)
+
+        self._vnc_lib.logical_router_delete(fq_name=lr.get_fq_name())
+
+        self._vnc_lib.virtual_machine_interface_delete(fq_name=vmi3.get_fq_name())
+        self._vnc_lib.virtual_machine_interface_delete(fq_name=vmi4.get_fq_name())
+
+        self._vnc_lib.virtual_machine_interface_delete(fq_name=vmi1.get_fq_name())
+        self._vnc_lib.virtual_machine_delete(fq_name=vm1.get_fq_name())
+        self._vnc_lib.physical_interface_delete(fq_name=pi1[0].get_fq_name())
+
+        self.delete_routers(None, pr1)
+        self.wait_for_routers_delete(None, pr1.get_fq_name())
+        self._vnc_lib.bgp_router_delete(fq_name=bgp_router1.get_fq_name())
+        self.delete_routers(None, pr2)
+        self.wait_for_routers_delete(None, pr2.get_fq_name())
+        self._vnc_lib.bgp_router_delete(fq_name=bgp_router2.get_fq_name())
 
         self._vnc_lib.virtual_network_delete(fq_name=vn1_obj.get_fq_name())
         self._vnc_lib.virtual_network_delete(fq_name=vn2_obj.get_fq_name())
