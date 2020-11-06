@@ -66,6 +66,8 @@ import time
 import requests
 import xml.etree.ElementTree as etree
 from functools import partial
+from jinja2schema import infer
+from jinja2schema import to_json_schema
 
 """
 Following is needed to silence warnings on every request when keystone
@@ -182,6 +184,8 @@ _ACTION_RESOURCES = [
      'method': 'POST', 'method_name': 'dump_cache'},
     {'uri': '/execute-job', 'link_name': 'execute-job',
      'method': 'POST', 'method_name': 'execute_job_http_post'},
+    {'uri': '/validate-template', 'link_name': 'validate-template',
+     'method': 'POST', 'method_name': 'validate_template_http_post'},
     {'uri': '/abort-job', 'link_name': 'abort-job',
      'method': 'POST', 'method_name': 'abort_job_http_post'},
     {'uri': '/amqp-publish', 'link_name': 'amqp-publish',
@@ -601,6 +605,48 @@ class VncApiServer(object):
             return {'job_execution_id': str(execution_id)}
         except cfgm_common.exceptions.HttpError as e:
             raise
+
+    def validate_template_http_post(self):
+        ''' Payload of validate_template
+            template_name (Mandatory)
+            template_content (Mandatory): In JSON or XML
+            device_family (Optional)
+            template_type: SET or XML
+
+            E.g. Payload:
+            {
+
+             "template_name": "<test>",
+             "template_content": "set groups re0 system host-name {{re0_hostname}}",
+             "device_family": "juniper-Qfx",
+             "template_type": "SET",
+            }
+
+            Output for validate template
+            template_vars: JSON of variables for the template
+            status: template validation status
+            E.g. Output:
+            {
+                "template_vars": {"type":"object","properties":
+                {"vlan_name":{"title":"vlan_name","anyOf":[{"type":"boolean"},
+                {"type":"null"},{"type":"number"},{"type":"string"}]}},
+                "required":["vlan_name"]},
+                "status": "SUCCESS"
+            }
+        '''
+        try:
+            self.config_log("Entered validate-template",
+                            level=SandeshLevel.SYS_INFO)
+            request_params = get_request().json
+            msg = "Job Input %s " % json.dumps(request_params)
+            self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
+
+            s = infer(request_params['template_content'])
+            raw_result = to_json_schema(s)
+
+            return {'template_vars': raw_result, 'status': 'SUCCESS'}
+        except cfgm_common.exceptions.HttpError as e:
+            raise e
 
     def publish_job_request(self, request_params, job_execution_id):
         try:
