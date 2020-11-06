@@ -16,6 +16,41 @@
       "revId": "23a821bb0d2f9787ea31a6c6687959ceac46098d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e180ecbe_21a857ee",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/conf/predef_payloads.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 1779,
+      "author": {
+        "id": 515
+      },
+      "writtenOn": "2020-11-06T14:35:25Z",
+      "side": 1,
+      "message": "5100/5200/5210 platform does not support AR-Client functionality as per JUNOS. and this node profile is used for those platforms. so cleaning this up as well in this review",
+      "parentUuid": "f4fee87c_c030370d",
+      "revId": "23a821bb0d2f9787ea31a6c6687959ceac46098d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bdcc5e5a_b3a09ad8",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/conf/predef_payloads.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 1783,
+      "author": {
+        "id": 515
+      },
+      "writtenOn": "2020-11-06T14:35:25Z",
+      "side": 1,
+      "message": "remove AR-Client for spine role as well",
+      "revId": "23a821bb0d2f9787ea31a6c6687959ceac46098d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
