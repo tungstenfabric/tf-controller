@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b3594e8d_c32050e1",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/conf/predef_payloads.json",
+        "patchSetId": 3
+      },
+      "lineNbr": 1824,
+      "author": {
+        "id": 515
+      },
+      "writtenOn": "2020-11-06T14:35:30Z",
+      "side": 1,
+      "message": "remove AR-Client from here",
+      "revId": "47167788e9ba37ba58058f69bdba1b41570a836e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
