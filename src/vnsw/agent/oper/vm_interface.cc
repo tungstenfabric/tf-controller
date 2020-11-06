@@ -1825,7 +1825,7 @@ bool VmInterface::LearntMacIp::AddL3(const Agent *agent,
     vmi->AddRoute(vrf_->GetName(), ip_, plen, vmi->vn()->GetName(), false,
                   false, false, false, vmi->vm_ip_service_addr(),
                   Ip4Address(0), CommunityList(), l3_label_,
-                  VmInterface::kInterface);
+                  VmInterface::kInterface, true);
     return true;
 }
 

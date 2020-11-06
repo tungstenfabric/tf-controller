@@ -420,6 +420,12 @@ public:
     void SetDependentTable(AgentRouteTable *table) {
         dependent_table_ = table;
     }
+    void SetDynamicLearntRouteFlag(bool is_learnt_route) {
+        is_learnt_route_ = is_learnt_route;
+    }
+    bool IsDynamicLearntRoute() {
+        return is_learnt_route_;
+    }
 
 private:
     PeerConstPtr peer_;
@@ -513,6 +519,7 @@ private:
     AgentRoute *parent_rt_;
     AgentPathEcmpComponentPtrList ecmp_member_list_;
     AgentRouteTable *dependent_table_;
+    bool is_learnt_route_;
     DISALLOW_COPY_AND_ASSIGN(AgentPath);
 };
 
@@ -629,7 +636,8 @@ public:
                  const EcmpLoadBalance &ecmp_load_balance, bool is_local,
                  bool is_health_check_service, uint64_t sequence_number,
                  bool etree_leaf, bool native_encap,
-                 const std::string &intf_route_type = ""):
+                 const std::string &intf_route_type = "",
+                 bool is_learnt_route = false):
         AgentRouteData(AgentRouteData::ADD_DEL_CHANGE, false, sequence_number),
         intf_(intf), mpls_label_(mpls_label),
         vxlan_id_(vxlan_id), force_policy_(force_policy),
@@ -642,7 +650,9 @@ public:
         ecmp_load_balance_(ecmp_load_balance), is_local_(is_local),
         is_health_check_service_(is_health_check_service),
         etree_leaf_(etree_leaf), native_encap_(native_encap),
-        intf_route_type_(intf_route_type), native_vrf_id_(VrfEntry::kInvalidIndex) {
+        intf_route_type_(intf_route_type),
+        native_vrf_id_(VrfEntry::kInvalidIndex),
+        is_learnt_route_(is_learnt_route) {
     }
     virtual ~LocalVmRoute() { }
     void DisableProxyArp() {proxy_arp_ = false;}
@@ -691,6 +701,7 @@ private:
     bool native_encap_;
     std::string intf_route_type_;
     uint32_t  native_vrf_id_;
+    bool is_learnt_route_;
     DISALLOW_COPY_AND_ASSIGN(LocalVmRoute);
 };
 
