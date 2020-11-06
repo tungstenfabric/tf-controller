@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c5823cf4_59684b1e",
+        "filename": "src/config/api-server/vnc_cfg_api_server/vnc_perms.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-06T23:23:03Z",
+      "side": 1,
+      "message": "Could you add original exception i.e owner not defined in perm2?",
+      "revId": "5f0ef678a24e401175d6455acc04fa4f40b4b421",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
