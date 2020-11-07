@@ -139,7 +139,7 @@ void VxlanRoutingVrfMapper::WalkEvpnTable(EvpnAgentRouteTable *table) {
         walk_ref = it->second;
     }
     table->WalkAgain(walk_ref);
-    //Every time walk is issued for bridge table revisit default routes
+    //Every time walk is issued for bridge table revisit subnet routes
     mgr_->HandleSubnetRoute(table->vrf_entry());
 }
 
@@ -527,7 +527,7 @@ void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
 /**
  * VrfNotify
  * This listener is used to identify bridge vrf and not routing vrfs.
- * If bridge vrf is associated to a routing vrf, then default routes are added
+ * If bridge vrf is associated to a routing vrf, then subnet routes are added
  * in bridge vrf's inet table to redirect all lookupis in routing vrf inet
  * table.
  * Other than that state is added in vrf which tracks the listener for routes in
@@ -707,7 +707,10 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
     if (IsHostRoute(evpn_rt))
         return true;
 
-    if (withdraw && vn->GetVrf()) {
+    if (withdraw) {
+       if ((vn== NULL) || (vn->GetVrf()==NULL)) {
+            return true;
+        }
         const VrfEntry *del_bridge_vrf = vn->GetVrf();
         InetUnicastAgentRouteTable *deleted_vn_inet_table =
                 del_bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
@@ -731,10 +734,12 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
     }
     while (it != update_bridge_vn_list.end()) {
         VrfEntry *bridge_vrf =  (*it)->GetVrf();
-        if ( bridge_vrf->GetName() == evpn_rt->vrf()->GetName()) {
-             continue;
-             it++;
+
+        if (bridge_vrf == NULL) {
+            it++;
+            continue;
         }
+
         InetUnicastAgentRouteTable *inet_table =
                 bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
         if (!(evpn_rt->IsDeleted())) {
@@ -1193,9 +1198,11 @@ void VxlanRoutingManager::FillSandeshInfo(VxlanRoutingResp *resp) {
 
 bool VxlanRoutingManager::IsHostRoute(const EvpnRouteEntry *evpn_rt) {
 
-    if( evpn_rt != NULL &&
-        (evpn_rt->GetVmIpPlen() == 32 || evpn_rt->GetVmIpPlen() == 128)) {
-        return true;
+    if( evpn_rt != NULL ) {
+        if (evpn_rt->ip_addr().is_v4() && evpn_rt->GetVmIpPlen() == 32)
+            return true;
+        if (evpn_rt->ip_addr().is_v6() && evpn_rt->GetVmIpPlen() == 128)
+            return true;
     }
     return false;
 }

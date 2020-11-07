@@ -39,8 +39,11 @@
  * addition to l3vrf inet table. It will be done with evpn routes l3 interface
  * nh.
  *
- * 5) In both red and blue vrf default route is also added to redirect all
+ * 5) In both red and blue vrf subnet route is also added to redirect all
  * unknown prefixes for routing to l3vrf.
+ *
+ * 6) For non /32 route updates in lr vrf from spine device, add/del routes in
+ * all bridge vrfs connected to the logical router.
  *
  * Same path is used to withdraw routes.
  *
