@@ -1375,6 +1375,58 @@ class VncDbClient(object):
                     if not ok:
                         return ok, res
 
+        # now try to add znodes for those LRs
+        # that has a fabric ref. We are skipping
+        # checking if the LR already belongs to
+        # another VN under the same fabric since this
+        # will be in-place cluster update.
+
+        vn_uuid_list = []
+
+        if lr_dict.get('fabric_refs'):
+            lr_fq_name_str = ':'.join(
+                lr_dict.get(
+                    'fq_name',
+                    self.uuid_to_fq_name(lr_dict['uuid'])))
+            rclass = self.get_resource_class('logical_router')
+            fab_uuid = lr_dict.get('fabric_refs')[-1].get('uuid')
+            vmi_refs = lr_dict.get('virtual_machine_interface_refs',
+                                   [])
+            vmi_uuid_list = [vmi['uuid'] for vmi in vmi_refs]
+            vmi_list = []
+            if vmi_uuid_list:
+                (ok, vmi_list) = self._object_db.object_read(
+                    'virtual_machine_interface',
+                    obj_uuids=vmi_uuid_list,
+                    field_names=['virtual_network_refs'])
+
+            for vmi in vmi_list:
+                vn_id_list = \
+                    [vn['uuid'] for vn in vmi.get(
+                        'virtual_network_refs', [])]
+                vn_uuid_list.extend(vn_id_list)
+
+            vn_uuid_list = list(set(vn_uuid_list))
+
+            for vn_uuid in vn_uuid_list:
+                validation_znode = rclass._format_lr_vn_znode(
+                    vn_uuid=vn_uuid, fabric_uuid=fab_uuid)
+
+                try:
+                    self._zk_db._zk_client.create_node(
+                        validation_znode, value=[lr_fq_name_str])
+                except ResourceExistsError:
+                    # If resource already exists, add to existing znode's
+                    # list values if not already present in the list
+                    exis_lr_fqname_list = \
+                        self._zk_db._zk_client.read_node(
+                            validation_znode)
+                    if lr_fq_name_str not in exis_lr_fqname_list:
+                        exis_lr_fqname_list.append(lr_fq_name_str)
+                        self._zk_db._zk_client.update_node(
+                            validation_znode, repr(
+                                exis_lr_fqname_list).encode('ascii'))
+
     def _remove_vpg_annotations(self, vpg_dict, vmi_uuid):
         if 'annotations' not in vpg_dict:
             return
