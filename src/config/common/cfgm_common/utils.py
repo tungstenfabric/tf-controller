@@ -45,6 +45,7 @@ _DEFAULT_ZK_LOCK_TIMEOUT = 120
 
 _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX = '/validation/fabric/serviceprovider'
 _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX = '/validation/fabric/enterprise'
+_DEFAULT_ZK_FABRIC_LR_PATH_PREFIX = '/validation/fabric/logicalrouter'
 
 def cgitb_hook(info=None, **kwargs):
     vnc_cgitb.Hook(**kwargs).handle(info or sys.exc_info())
