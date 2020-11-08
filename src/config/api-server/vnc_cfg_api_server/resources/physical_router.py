@@ -11,7 +11,7 @@ from vnc_cfg_api_server.resources._resource_base import ResourceMixin
 class PhysicalRouterServer(ResourceMixin, PhysicalRouter):
 
     @classmethod
-    def _encrypt_password(cls, obj_dict):
+    def _encrypt_password(cls, obj_dict, db_dict=None):
         # encrypt password before updating to DB
         if obj_dict.get('physical_router_user_credentials') and \
                 obj_dict.get('physical_router_user_credentials', {}).get(
@@ -19,7 +19,18 @@ class PhysicalRouterServer(ResourceMixin, PhysicalRouter):
             dict_password = obj_dict.get('physical_router_user_credentials',
                                          {}).get('password')
             encryption_type = obj_dict.get('physical_router_encryption_type',
-                                           'none')
+                                           None)
+            # if 'physical_router_encryption_type' is not found in dict,
+            # default for create case is encrypt password but for update check
+            # physical_router_encryption_type in db object and if not set or
+            # set to 'none' encrypt.
+            if not encryption_type:
+                if not db_dict:
+                    encryption_type = 'none'
+                else:
+                    encryption_type = db_dict.get(
+                        'physical_router_encryption_type',
+                        'none')
             # if pwd is not encrypted, do it now
             if encryption_type == 'none':
                 password = utils.encrypt_password(obj_dict['uuid'],
@@ -62,8 +73,15 @@ class PhysicalRouterServer(ResourceMixin, PhysicalRouter):
 
     @classmethod
     def pre_dbe_update(cls, id, fq_name, obj_dict, db_conn, **kwargs):
+        # read object from DB
+        pr_uuid = db_conn.fq_name_to_uuid('physical_router', fq_name)
+        obj_fields = ['physical_router_encryption_type']
+        (ok, pr_dict) = db_conn.dbe_read(obj_type='physical_router',
+                                         obj_id=pr_uuid,
+                                         obj_fields=obj_fields)
+
         # encrypt password before writing to DB
-        cls._encrypt_password(obj_dict)
+        cls._encrypt_password(obj_dict, pr_dict)
 
         ok, result = cls.validate_telemetry_back_refs(obj_dict)
         if not ok:
