@@ -455,7 +455,26 @@ class TestCrud(test_case.ApiServerTestCase):
         user_cred_read = phy_rout_obj.get_physical_router_user_credentials()
         self.assertIsNotNone(user_cred_read.password)
         self.assertEqual(user_cred_read.password, 'ngVv1S3pB+rM2SWMnm6XpQ==')
-       # end test_physical_router_credentials
+        # Verify update of physical router does not update password
+        # unless physical_router_encryption_type is set to 'none'
+        phy_rout_obj.set_physical_router_user_credentials(user_cred_read)
+        self._vnc_lib.physical_router_update(phy_rout_obj)
+        phy_rout_obj = self._vnc_lib.physical_router_read(id=phy_rout.uuid)
+        user_cred_read = phy_rout_obj.get_physical_router_user_credentials()
+        self.assertIsNotNone(user_cred_read.password)
+        self.assertEqual(user_cred_read.password, 'ngVv1S3pB+rM2SWMnm6XpQ==')
+
+        # Update the user password in Physical Router with
+        # physical_router_encryption_type set to 'none'
+        user_cred_create = UserCredentials(username="test_user", password="test_new_pswd")
+        phy_rout_obj.set_physical_router_user_credentials(user_cred_create)
+        phy_rout_obj.set_physical_router_encryption_type('none')
+        self._vnc_lib.physical_router_update(phy_rout_obj)
+        phy_rout_obj = self._vnc_lib.physical_router_read(id=phy_rout.uuid)
+        user_cred_read = phy_rout_obj.get_physical_router_user_credentials()
+        self.assertIsNotNone(user_cred_read.password)
+        self.assertNotEqual(user_cred_read.password, 'ngVv1S3pB+rM2SWMnm6XpQ==')
+        # end test_physical_router_credentials
 
     def test_physical_router_w_no_user_credentials(self):
         phy_rout_name = self.id() + '-phy-router-2'
