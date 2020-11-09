@@ -109,9 +109,6 @@ class VncKubernetes(vnc_common.VncCommon):
         if self.args.nested_mode == '1':
             DBBaseKM.set_nested(True)
 
-        # sync api server db in local cache
-        self._sync_km()
-
         # init rabbit connection
         rabbitmq_cfg = kube_args.rabbitmq_args(self.args)
         self.rabbit = VncAmqpHandle(
@@ -120,6 +117,9 @@ class VncKubernetes(vnc_common.VncCommon):
             self.args.cluster_id + '-' + self.args.cluster_name + '-kube_manager',
             rabbitmq_cfg, self.args.host_ip)
         self.rabbit.establish()
+        # sync api server db in local cache
+        self._sync_km()
+
         self.rabbit._db_resync_done.set()
 
         # Register label add and delete callbacks with label management entity.
