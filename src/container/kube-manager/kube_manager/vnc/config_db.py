@@ -801,7 +801,15 @@ class VirtualRouterKM(DBBaseKM):
 
     @classmethod
     def get_ip_addr_to_uuid(cls, ip_addr):
-        return cls._ip_addr_to_uuid.get(tuple(ip_addr))
+        a = tuple(ip_addr)
+        x = cls._ip_addr_to_uuid.get(a)
+        if x:
+            return x
+
+        for o in cls.list_obj():
+            cls.locate(o['uuid'], o)
+
+        return cls._ip_addr_to_uuid.get(a)
 
     @classmethod
     def sandesh_handle_db_list_request(cls, req):
