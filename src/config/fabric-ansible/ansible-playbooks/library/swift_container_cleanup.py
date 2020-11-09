@@ -15,7 +15,7 @@ import time
 
 from ansible.module_utils.fabric_utils import FabricAnsibleModule
 from future import standard_library
-standard_library.install_aliases()  # noqa
+standard_library.install_aliases()
 import requests
 import swiftclient
 import swiftclient.utils
@@ -55,7 +55,21 @@ options:
             - Tenant name.
         type: string
         required: false
-        default: 'admin'
+        default: 'admin'           
+    user_domain_name:
+        description:
+            - User domain name.
+        type: string
+        required: false
+        default: 'Default'
+        
+    project_domain_name:
+        description:
+            - Project domain name.
+        type: string
+        required: false
+        default: 'Default'
+        
     auth_version:
         description:
             - Keystone Auth version.
@@ -108,10 +122,10 @@ connection_lock = RLock()
 
 
 class FileSvcUtil(object):  # pragma: no cover
-    def __init__(self, authtoken, authurl, user, key, tenant_name,
-                 auth_version, container_name, filename, temp_url_key,
+    def __init__(self, authtoken, authurl, user, key, tenant_name,user_domain_name,
+                 project_domain_name, auth_version, container_name, filename, temp_url_key,
                  temp_url_key2, connection_retry_count, chosen_temp_url_key):
-        """Initialize FileSvcUtil."""
+        """Initializer."""
         self.requests = requests
         self.authurl = authurl
         self.preauthtoken = authtoken
@@ -126,6 +140,8 @@ class FileSvcUtil(object):  # pragma: no cover
         self.chosen_temp_url_key = chosen_temp_url_key
         self.conn_timeout_sec = 10
         self.tenant_name = tenant_name
+        self.user_domain_name = user_domain_name
+        self.project_domain_name = project_domain_name
         self.generateToken()
         self.updateAccount()
 
@@ -133,6 +149,7 @@ class FileSvcUtil(object):  # pragma: no cover
     def generateToken(self):
         retry_count = 0
         incr_sleep = 10
+        os_options = {'user_domain_name': self.user_domain_name, 'project_domain_name': self.project_domain_name}
         while retry_count <= self.connection_retry_count:
             try:
                 acquired = connection_lock.acquire()
@@ -140,6 +157,7 @@ class FileSvcUtil(object):  # pragma: no cover
                     authurl=self.authurl, user=self.user, key=self.key,
                     preauthtoken=self.preauthtoken,
                     tenant_name=self.tenant_name,
+                    os_options=os_options,
                     auth_version=self.auth_version,
                     timeout=self.conn_timeout_sec,
                     insecure=True)
@@ -222,6 +240,8 @@ def main():
             user=dict(required=True),
             key=dict(required=True),
             tenant_name=dict(required=False, default="admin"),
+            user_domain_name=dict(required=False, default="Default"),
+            project_domain_name=dict(required=False, default="Default"),
             auth_version=dict(required=False, default='3.0'),
             temp_url_key=dict(required=True),
             temp_url_key_2=dict(required=True),
@@ -237,6 +257,8 @@ def main():
     user = m_args['user']
     key = m_args['key']
     tenant_name = m_args['tenant_name']
+    user_domain_name = m_args['user_domain_name']
+    project_domain_name = m_args['project_domain_name']
     auth_version = m_args['auth_version']
     temp_url_key = m_args['temp_url_key']
     temp_url_key_2 = m_args['temp_url_key_2']
@@ -247,8 +269,8 @@ def main():
 
     error_msg = ''
     try:
-        fileutil = FileSvcUtil(authtoken, authurl, user, key, tenant_name,
-                               auth_version, container_name, filename,
+        fileutil = FileSvcUtil(authtoken, authurl, user, key, tenant_name,user_domain_name,
+                               project_domain_name, auth_version, container_name, filename,
                                temp_url_key, temp_url_key_2,
                                connection_retry_count, chosen_temp_url_key)
 
@@ -267,3 +289,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
