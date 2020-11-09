@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "448e7c99_ef51f9e2",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/discover_os_computes.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Lack of this blank line will cause flake8\u0027s I201 Missing newline between import groups.",
+      "parentUuid": "ea1ce6a6_8514ecf7",
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0f57adf0_a611c7b9",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
         "patchSetId": 10
@@ -33,6 +51,24 @@
       "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9b4ed446_91adfa1d",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0f57adf0_a611c7b9",
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -59,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "e2945cb9_d820603f",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4c98ffdc_bbbca70e",
+      "range": {
+        "startLine": 162,
+        "startChar": 16,
+        "endLine": 162,
+        "endChar": 30
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e333462b_46c4c4c3",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
         "patchSetId": 10
@@ -79,6 +139,30 @@
       "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8cef7664_6203cc79",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e333462b_46c4c4c3",
+      "range": {
+        "startLine": 222,
+        "startChar": 12,
+        "endLine": 222,
+        "endChar": 13
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -105,6 +189,30 @@
     },
     {
       "key": {
+        "uuid": "c3144248_7a263478",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 226,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d3472c49_28a8d1d7",
+      "range": {
+        "startLine": 226,
+        "startChar": 33,
+        "endLine": 226,
+        "endChar": 37
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a2c5dd7e_4fd2aa17",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
         "patchSetId": 10
@@ -125,6 +233,30 @@
       "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f8dcb651_17365e73",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a2c5dd7e_4fd2aa17",
+      "range": {
+        "startLine": 280,
+        "startChar": 47,
+        "endLine": 280,
+        "endChar": 71
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -151,6 +283,30 @@
     },
     {
       "key": {
+        "uuid": "36dcd1db_ea4d12e2",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "787b7640_9f457423",
+      "range": {
+        "startLine": 315,
+        "startChar": 0,
+        "endLine": 320,
+        "endChar": 13
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "86fdb6b6_35c5ed9f",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
         "patchSetId": 10
@@ -171,6 +327,30 @@
       "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1553fc4e_2db689ce",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "86fdb6b6_35c5ed9f",
+      "range": {
+        "startLine": 468,
+        "startChar": 8,
+        "endLine": 469,
+        "endChar": 18
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -197,6 +377,30 @@
     },
     {
       "key": {
+        "uuid": "b4842b83_e069a6a3",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 485,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4659a947_e8a6b050",
+      "range": {
+        "startLine": 484,
+        "startChar": 0,
+        "endLine": 485,
+        "endChar": 52
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "89229a67_c48b2035",
         "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
         "patchSetId": 10
@@ -217,6 +421,30 @@
       "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a4d954c1_30f2d6c8",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/filter_plugins/import_server.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 487,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "89229a67_c48b2035",
+      "range": {
+        "startLine": 487,
+        "startChar": 12,
+        "endLine": 487,
+        "endChar": 13
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -243,6 +471,30 @@
     },
     {
       "key": {
+        "uuid": "00cb964e_b5a62e28",
+        "filename": "src/config/fabric-ansible/test/test_discover_os_computes.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "No, it\u0027ll be removed",
+      "parentUuid": "fc667346_3529bf6c",
+      "range": {
+        "startLine": 13,
+        "startChar": 0,
+        "endLine": 13,
+        "endChar": 58
+      },
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "65730377_8a3b41a5",
         "filename": "src/config/fabric-ansible/test/test_discover_os_computes.py",
         "patchSetId": 10
@@ -257,6 +509,24 @@
       "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f6f800b9_cba49b6a",
+        "filename": "src/config/fabric-ansible/test/test_discover_os_computes.py",
+        "patchSetId": 10
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1023
+      },
+      "writtenOn": "2020-11-09T13:48:55Z",
+      "side": 1,
+      "message": "We have to remove that in order to test import_nodes methods located in import_server.",
+      "parentUuid": "65730377_8a3b41a5",
+      "revId": "4efb0570dee9edb3fe1f0e65b9e8f2f61095b70d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
