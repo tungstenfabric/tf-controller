@@ -48,11 +48,14 @@ set groups {{cfg_group}} interfaces {{name}} unit {{unit}} family inet mtu {{li.
 {%         set vlan_name = vlan.get('name') %}
 {%         set ns = namespace(tagged_vlan_id='', untagged_vlan_id='') %}
 {%         set vni = vlan.get('vxlan_id') %}
+{%         set descr = vlan.get('description', '') %}
 {%         set intfs = vlan.get('interfaces',[]) %}
 {%         for ri in device_abstract_config.features.get('l2-gateway').get('routing_instance', []) %}
 {%         endfor %}
 set groups {{cfg_group}} bridge-domains {{vlan_name}} description "{{vlan.get('description')}}"
+{%         if descr.startswith("Routed ") == False %}
 set groups {{cfg_group}} bridge-domains {{vlan_name}} vxlan vni {{vni}}
+{%         endif %}
 {%         for each in intfs %}
 {%             set int_name = each.get('name', '') %}
 {%             for phy_intf in device_abstract_config.features.get('l2-gateway').get('physical_interfaces', []) %}

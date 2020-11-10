@@ -2798,6 +2798,22 @@ class VirtualNetworkDM(DBBaseDM):
                 lr_obj.virtual_network = self.uuid
     # end set_logical_router
 
+    def is_routed_vn_and_used_in_masterlr(self):
+        if self.virtual_network_category != 'routed':
+            return False
+        # for overlay routed VN check if it used in any master LR through
+        # VMI_back_refs
+        for vmi_uuid in self.virtual_machine_interfaces:
+            vmi = VirtualMachineInterfaceDM.get(vmi_uuid)
+            if vmi is None or vmi.is_device_owner_bms() is True:
+                continue
+            if vmi.logical_router:
+                lr_obj = LogicalRouterDM.get(vmi.logical_router)
+                if lr_obj and lr_obj.is_master is True:
+                    return True
+        return False
+    # end is_routed_vn_and_used_in_masterlr
+
     # set_ipv6_ll_data
     # store ipv6 link local internal VN uuid in database for later use. As
     # this VN is internally created by DM there is no way to get reference.

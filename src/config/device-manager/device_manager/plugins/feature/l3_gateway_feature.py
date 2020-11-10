@@ -7,7 +7,9 @@
 from builtins import str
 from collections import OrderedDict
 
-from abstract_device_api.abstract_device_xsd import *
+from abstract_device_api.abstract_device_xsd import (
+    Feature, RoutingInstance, Vlan
+)
 
 from .db import LogicalRouterDM, VirtualMachineInterfaceDM, VirtualNetworkDM
 from .dm_utils import DMUtils
@@ -39,6 +41,7 @@ class L3GatewayFeature(FeatureBase):
         gevent.idle()
         network_id = vn.vn_network_id
         vxlan_id = vn.get_vxlan_vni()
+        desc = DMUtils.vn_comment(vn)
         is_master_vn = False
         lr = None
         if vn.logical_router is None:
@@ -55,7 +58,8 @@ class L3GatewayFeature(FeatureBase):
             export_targets=export_targets, import_targets=import_targets,
             virtual_network_id=str(network_id), vxlan_id=str(vxlan_id),
             is_public_network=vn.router_external, routing_instance_type='vrf',
-            is_master=is_master_vn)
+            is_master=is_master_vn,
+            comment=desc)
 
         for prefix in vn.get_prefixes(self._physical_router.uuid):
             ri.add_prefixes(self._get_subnet_for_cidr(prefix))
@@ -76,7 +80,6 @@ class L3GatewayFeature(FeatureBase):
                 irb.set_comment("PR External IRB")
 
         vlan = Vlan(name=DMUtils.make_bridge_name(vxlan_id), vxlan_id=vxlan_id)
-        desc = "Virtual Network - %s" % vn.name
         vlan.set_description(desc)
         feature_config.add_vlans(vlan)
         if irb:

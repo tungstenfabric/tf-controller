@@ -39,6 +39,7 @@ class L2GatewayFeature(FeatureBase):
         highest_encapsulation = encapsulation_priorities[0]
         network_id = vn.vn_network_id
         vxlan_id = vn.get_vxlan_vni()
+        desc = DMUtils.vn_comment(vn)
         is_master_vn = False
         if vn.logical_router is None:
             # try updating logical router incase of DM restart
@@ -54,7 +55,8 @@ class L2GatewayFeature(FeatureBase):
             name=ri_name, virtual_network_mode='l2',
             export_targets=export_targets, import_targets=import_targets,
             virtual_network_id=str(network_id), vxlan_id=str(vxlan_id),
-            is_public_network=vn.router_external, is_master=is_master_vn)
+            is_public_network=vn.router_external, is_master=is_master_vn,
+            comment=desc)
 
         ri.set_virtual_network_id(str(network_id))
         ri.set_vxlan_id(str(vxlan_id))
@@ -66,7 +68,6 @@ class L2GatewayFeature(FeatureBase):
             vlan = Vlan(name=DMUtils.make_bridge_name(vxlan_id),
                         vxlan_id=vxlan_id)
             vlan.set_comment(DMUtils.vn_bd_comment(vn, 'VXLAN'))
-            desc = "Virtual Network - %s" % vn.name
             vlan.set_description(desc)
             feature_config.add_vlans(vlan)
             for interface in interfaces:
