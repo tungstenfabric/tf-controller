@@ -42,6 +42,7 @@ set groups {{cfg_group}} interfaces {{name}} unit 0 description "{{li.get('port_
 {%     for vlan in device_abstract_config.get('features', {}).get('l2-gateway',{}).get('vlans', []) %}
 {%         set vlan_name = vlan.get('name') %}
 {%         set vni = vlan.get('vxlan_id') %}
+{%         set descr = vlan.get('description', '') %}
 {%         set intfs = vlan.get('interfaces',[]) %}
 set groups {{cfg_group}} vlans {{vlan_name}} description "{{vlan.get('description')}}"
 {%         for each in intfs %}
@@ -51,7 +52,9 @@ set groups {{cfg_group}} vlans {{vlan_name}} description "{{vlan.get('descriptio
 {%                     set ifd_name = int_name.split('.')[0] %}
 {%                     if ifd_name == phy_intf.name %}
 set groups {{cfg_group}} interfaces {{ifd_name}} unit 0 family ethernet-switching vlan members {{vlan_name}}
+{%                         if descr.startswith("Routed Master LR") == False %}
 set groups {{cfg_group}} vlans {{vlan_name}} vxlan vni {{vni}}
+{%                         endif %}
 {%                         set vlan_id = vlan.get('vlan_id') %}
 set groups {{cfg_group}} vlans {{vlan_name}} vlan-id {{vlan_id}}
 {%                     endif %}

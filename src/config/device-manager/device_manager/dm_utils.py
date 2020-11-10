@@ -402,6 +402,15 @@ class DMUtils(object):
                 vn.fq_name[-1], vn.uuid, encap)
 
     @staticmethod
+    def vn_comment(vn):
+        if vn and vn.is_routed_vn_and_used_in_masterlr() is True:
+            return "Routed Master LR, Virtual Network - %s, UUID: %s" % (
+                vn.fq_name[-1], vn.uuid)
+        else:
+            return "Virtual Network - %s, UUID: %s" % (
+                vn.fq_name[-1], vn.uuid)
+
+    @staticmethod
     def vn_evpn_comment(vn, encap):
         return "/* Virtual Network: %s, UUID: %s, Encapsulation: %s */" % (
             vn.fq_name[-1], vn.uuid, encap)
