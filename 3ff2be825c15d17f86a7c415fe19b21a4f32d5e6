@@ -34,6 +34,24 @@
       "revId": "3ff2be825c15d17f86a7c415fe19b21a4f32d5e6",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "abbdfed9_b34a5e26",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/underlay_ip_clos/juniper_underlay_ip_clos.j2",
+        "patchSetId": 7
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 801
+      },
+      "writtenOn": "2020-11-10T05:36:09Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "4da894ac_800140a5",
+      "revId": "3ff2be825c15d17f86a7c415fe19b21a4f32d5e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
