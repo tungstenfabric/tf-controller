@@ -114,6 +114,7 @@ set groups {{cfg_group}} routing-options route-distinguisher-id {{loopback_ip}}
 {%         endif %}
 {%     endif %}
 
+{%     set sys_roles = device_abstract_config.get('system', {}).get('routing_bridging_roles', []) %}
 {%     for bgp in device_abstract_config.get('features', {}).get('underlay-ip-clos',{}).get('bgp', []) %}
 set groups {{cfg_group}} protocols bgp log-updown
 set groups {{cfg_group}} protocols bgp graceful-restart
@@ -137,6 +138,26 @@ set groups {{cfg_group}} policy-options policy-statement PFE-LB then load-balanc
 set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_EXP term loopback from protocol direct
 set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_EXP term loopback from protocol bgp
 set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_EXP term loopback then accept
+{# This is a hack to advertise vrouter IP in underlay ebgp. Refererence: CEM-20163 #}
+{%         if ('ERB-UCAST-Gateway' in sys_roles) %}
+{%             set li_ns = namespace(irb_found=false) %}
+{%             for phy_int in device_abstract_config.get('features', {}).get('l3-gateway',{}).get('physical_interfaces', []) %}
+{%                 if phy_int.get('interface_type') != 'irb' %}
+{%                     continue %}
+{%                 endif %}
+{%                 for li in phy_int.get('logical_interfaces', []) %}
+{%                     if 'PR External IRB' in li.get('comment', '') %}
+{%                         set name = li.get('name') %}
+{%                         set li_ns.irb_found = true %}
+set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_EXP term HostRoute from interface {{name}}
+{%                     endif %}
+{%                 endfor %}
+{%             endfor %}
+{%             if li_ns.irb_found == true %}
+set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_EXP term HostRoute from route-filter 0.0.0.0/0 prefix-length-range /32-/32
+set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_EXP term HostRoute then accept
+{%             endif %}
+{%         endif %}
 set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_EXP term default then reject
 set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_IMP term loopback from protocol bgp
 set groups {{cfg_group}} policy-options policy-statement IPCLOS_BGP_IMP term loopback from protocol direct
