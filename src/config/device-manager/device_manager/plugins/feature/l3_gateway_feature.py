@@ -40,6 +40,7 @@ class L3GatewayFeature(FeatureBase):
         network_id = vn.vn_network_id
         vxlan_id = vn.get_vxlan_vni()
         is_master_vn = False
+        lr = None
         if vn.logical_router is None:
             # try updating logical router incase of DM restart
             vn.set_logical_router(vn.fq_name[-1])
@@ -68,6 +69,11 @@ class L3GatewayFeature(FeatureBase):
                 irb.set_is_virtual_router(True)
             for (irb_ip, gateway) in irb_ips:
                 self._add_ip_address(irb, irb_ip, gateway=gateway)
+            # This is a hack to advertise vrouter IP in underlay ebgp
+            # Required in ERB-UCAST-GW when a VN is directly extended to a PR
+            # Refererence: CEM-20163
+            if erb_pr_role and not lr:
+                irb.set_comment("PR External IRB")
 
         vlan = Vlan(name=DMUtils.make_bridge_name(vxlan_id), vxlan_id=vxlan_id)
         desc = "Virtual Network - %s" % vn.name
