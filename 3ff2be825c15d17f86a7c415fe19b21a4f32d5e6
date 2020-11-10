@@ -16,6 +16,24 @@
       "revId": "3ff2be825c15d17f86a7c415fe19b21a4f32d5e6",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "4da894ac_800140a5",
+        "filename": "src/config/fabric-ansible/ansible-playbooks/config_templates/underlay_ip_clos/juniper_underlay_ip_clos.j2",
+        "patchSetId": 7
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-11-10T04:59:06Z",
+      "side": 1,
+      "message": "\u003e Could you please check if physical_interface type is \"irb\" and then proceed to avoid unnecessary checks for logical interfaces ? Abstract config physical interface has interface_type as field.\n\nSeems as per the bug or check, you are adding the comment only for the ERB-UCAST-GW role. Can you add that check also?",
+      "parentUuid": "5a09bfde_3eff092a",
+      "revId": "3ff2be825c15d17f86a7c415fe19b21a4f32d5e6",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
