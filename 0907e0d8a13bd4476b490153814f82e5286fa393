@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7eec2188_7c8122a4",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 40
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-10T18:09:31Z",
+      "side": 1,
+      "message": "Key \u0027hostname\u0027 to \u0027host_id\u0027",
+      "revId": "0907e0d8a13bd4476b490153814f82e5286fa393",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b4753006_4fab4141",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 40
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-10T18:09:31Z",
+      "side": 1,
+      "message": "\"virtual_router_sriov_physical_networks\" was not in the data",
+      "revId": "0907e0d8a13bd4476b490153814f82e5286fa393",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
