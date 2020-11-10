@@ -948,7 +948,7 @@ class DBInterface(object):
 
     def _virtual_network_list(self, parent_id=None, obj_uuids=None,
                               fields=None, detail=False, count=False,
-                              filters=None):
+                              filters=None, shared=True):
         return self._vnc_lib.virtual_networks_list(
             parent_id=parent_id,
             obj_uuids=obj_uuids,
@@ -956,7 +956,7 @@ class DBInterface(object):
             detail=detail,
             count=count,
             filters=filters,
-            shared=True)
+            shared=shared)
     # end _virtual_network_list
 
     def _virtual_machine_interface_read(self, port_id=None, fq_name=None,
@@ -1099,7 +1099,8 @@ class DBInterface(object):
                                                  count=True, filters=filters)
         else:
             ret_val = self._virtual_network_list(parent_id=project_id,
-                                                 detail=True, filters=filters)
+                                                 detail=True, filters=filters,
+                                                 shared=False)
 
         return ret_val
     # end _network_list_project
