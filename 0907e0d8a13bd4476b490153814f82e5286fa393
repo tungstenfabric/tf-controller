@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ea9f9ab0_fc8cc01b",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 40
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-12T23:55:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7eec2188_7c8122a4",
+      "revId": "0907e0d8a13bd4476b490153814f82e5286fa393",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b4753006_4fab4141",
         "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
         "patchSetId": 40
@@ -33,6 +51,24 @@
       "revId": "0907e0d8a13bd4476b490153814f82e5286fa393",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "21dbbe93_305d4224",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 40
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-12T23:55:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b4753006_4fab4141",
+      "revId": "0907e0d8a13bd4476b490153814f82e5286fa393",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }

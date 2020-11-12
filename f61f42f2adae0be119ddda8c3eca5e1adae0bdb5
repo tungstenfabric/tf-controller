@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "781d33ff_665a038e",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-12T23:55:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f0509dd7_55c3e212",
+      "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0ac41021_407d14b0",
         "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
         "patchSetId": 2
@@ -54,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "a7ca02c7_b4f14eeb",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-12T23:55:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0ac41021_407d14b0",
+      "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b1df0201_855cc857",
         "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
         "patchSetId": 2
@@ -68,6 +104,24 @@
       "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "82c29b66_5f2a36bf",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-12T23:55:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b1df0201_855cc857",
+      "revId": "f61f42f2adae0be119ddda8c3eca5e1adae0bdb5",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
