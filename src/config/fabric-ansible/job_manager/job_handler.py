@@ -33,7 +33,7 @@ class JobHandler(object):
                  api_server_host, job_log_utils, sandesh_args, fabric_fq_name,
                  playbook_timeout, playbook_seq, vnc_api_init_params,
                  zk_client, job_description,
-                 transaction_id, transaction_descr):
+                 transaction_id, transaction_descr, cleanup_mode=False):
         """Initialize JobHandler and save all required information."""
         self.is_multi_device_playbook = False
         self._logger = logger
@@ -60,6 +60,7 @@ class JobHandler(object):
         self._job_progress = None
         self.current_percentage = None
         self._pb_pids = []
+        self.cleanup_mode = cleanup_mode
     # end __init__
 
     def get_pr_uve_name_from_device_name(self, playbook_info):
@@ -229,7 +230,11 @@ class JobHandler(object):
                 'job_transaction_id': self._transaction_id,
                 'job_transaction_descr': self._transaction_descr
             }
-            playbooks = self._job_template.get_job_template_playbooks()
+            if not self.cleanup_mode:
+                playbooks = self._job_template.get_job_template_playbooks()
+            else:
+                playbooks = (
+                    self._job_template.get_job_template_recovery_playbooks())
 
             if device_id:
                 if not self._device_json:
@@ -568,10 +573,19 @@ class JobHandler(object):
                                        PLAYBOOK_EXIT_WITH_ERROR,
                                        playbook_uri=playbook_info['uri'])
 
+            # Try to extract an error message from the playbook output
+            # Do not show it if we haven't found one
+            extra_error_info = ""
             if playbook_output:
-                msg = "%s\n Error Message from playbook: %s" % (
-                    msg, playbook_output.get('message', "")
-                )
+                if playbook_output.get('message', ""):
+                    extra_error_info = playbook_output.get('message', "")
+                elif playbook_output.get('results', ""):
+                    extra_error_info = playbook_output.get('results').get(
+                        'jl_message', "")
+                if extra_error_info:
+                    msg = "%s\n Error Message from playbook: %s" % (
+                        msg, extra_error_info)
+
             raise JobException(msg, self._execution_id)
 
         return playbook_output
