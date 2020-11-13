@@ -271,6 +271,16 @@ TEST_F(PktTest, tx_vlan_1) {
     EXPECT_TRUE(*(data_p + 6) == htons(ETHERTYPE_VLAN));
     EXPECT_TRUE(*(data_p + 8) == htons(ETHERTYPE_ARP));
 
+    // agent should not send vlan hdr to TSN
+    agent_->set_tsn_enabled(true);
+    len = handler_->EthHdr(buff, ARP_TX_BUFF_LEN, intf,
+                         MacAddress::BroadcastMac(), MacAddress::BroadcastMac(),
+                         ETHERTYPE_ARP);
+    EXPECT_TRUE(len == 14);
+    EXPECT_TRUE(pkt_info.eth->ether_type == htons(ETHERTYPE_ARP));
+    EXPECT_TRUE(*(data_p + 6) == htons(ETHERTYPE_ARP));
+    agent_->set_tsn_enabled(false);
+
     DBRequest req1(DBRequest::DB_ENTRY_DELETE);
     req1.key.reset(new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, MakeUuid(2),
                                      "vm-itf-2"));
