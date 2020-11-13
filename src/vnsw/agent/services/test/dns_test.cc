@@ -31,7 +31,7 @@
 using boost::asio::ip::udp;
 
 #define DNS_CLIENT_PORT 9999
-#define MAX_WAIT_COUNT 5000
+#define MAX_WAIT_COUNT 50000
 #define BUF_SIZE 8192
 char src_mac[ETHER_ADDR_LEN] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
 char dest_mac[ETHER_ADDR_LEN] = { 0x00, 0x11, 0x12, 0x13, 0x14, 0x15 };
@@ -88,7 +88,7 @@ std::string auth_data[MAX_ITEMS] = {"8.8.8.254",
 #define CHECK_CONDITION(condition)                                       \
             count = 0;                                                   \
             do {                                                         \
-                usleep(1000);                                            \
+                usleep(100);                                             \
                 client->WaitForIdle();                                   \
                 stats = Agent::GetInstance()->GetDnsProto()->GetStats(); \
                 if (++count == MAX_WAIT_COUNT)                           \
@@ -172,7 +172,7 @@ public:
         while (GetItfCount() != expect_count) {
             if (++count == MAX_WAIT_COUNT)
                 assert(0);
-            usleep(1000);
+            usleep(100);
         }
     }
 
@@ -473,31 +473,30 @@ TEST_F(DnsTest, VirtualDnsReqTest) {
     client->WaitForIdle();
     CHECK_CONDITION(stats.fail < 1);
     CHECK_STATS(stats, 1, 0, 0, 0, 1, 0);
-    Agent::GetInstance()->GetDnsProto()->set_timeout(30);
+    Agent::GetInstance()->GetDnsProto()->set_timeout(2000);
     Agent::GetInstance()->GetDnsProto()->set_max_retries(1);
     Agent::GetInstance()->GetDnsProto()->ClearStats();
 
     AddVDNS("vdns1", vdns_attr);
     client->WaitForIdle();
-
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     // retransmit the same req a couple of times
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 2);
     client->WaitForIdle();
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    g_xid++;
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 3);
     client->WaitForIdle();
+    g_xid++;
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items);
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 3, 1, 2, 0, 0, 0);
 
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 5, a_items);
     g_xid++;
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 4);
     client->WaitForIdle();
     SendDnsResp(5, a_items, 5, auth_items, 5, add_items);
     CHECK_CONDITION(stats.resolved < 2);
@@ -505,7 +504,7 @@ TEST_F(DnsTest, VirtualDnsReqTest) {
 
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 5, ptr_items);
     g_xid++;
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 5);
     client->WaitForIdle();
     SendDnsResp(5, ptr_items, 5, auth_items, 5, add_items);
     CHECK_CONDITION(stats.resolved < 3);
@@ -513,7 +512,7 @@ TEST_F(DnsTest, VirtualDnsReqTest) {
 
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 3, a_items);
     g_xid++;
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 6);
     client->WaitForIdle();
     SendDnsResp(5, cname_items, 0, NULL, 0, NULL);
     CHECK_CONDITION(stats.resolved < 4);
@@ -524,7 +523,7 @@ TEST_F(DnsTest, VirtualDnsReqTest) {
     flags.op = 1;
     flags.cd = 1;
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items, flags);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 7);
     client->WaitForIdle();
     CHECK_CONDITION(stats.unsupported < 1);
     CHECK_STATS(stats, 7, 4, 2, 1, 0, 0);
@@ -532,7 +531,7 @@ TEST_F(DnsTest, VirtualDnsReqTest) {
     // Failure response
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 3, a_items);
     g_xid++;
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 8);
     client->WaitForIdle();
     SendDnsResp(2, a_items, 2, auth_items, 2, add_items, true);
     CHECK_CONDITION(stats.fail < 1);
@@ -569,7 +568,7 @@ TEST_F(DnsTest, VirtualDnsReqTest) {
     //send MX requests
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 4, mx_items);
     g_xid++;
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 12);
     client->WaitForIdle();
     SendDnsResp(4, mx_items, 0, NULL, 0, NULL);
     CHECK_CONDITION(stats.resolved < 7);
@@ -628,11 +627,9 @@ TEST_F(DnsTest, VirtualDnsIpamUpdateReqTest) {
     DnsProto::DnsStats stats;
     int count = 0;
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     g_xid++;
-    usleep(1000);
-    client->WaitForIdle();
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items);
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 1, 1, 0, 0, 0, 0);
@@ -687,11 +684,9 @@ TEST_F(DnsTest, VirtualDnsVdnsFirstReqTest) {
     DnsProto::DnsStats stats;
     int count = 0;
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     g_xid++;
-    usleep(1000);
-    client->WaitForIdle();
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items);
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 1, 1, 0, 0, 0, 0);
@@ -746,11 +741,9 @@ TEST_F(DnsTest, VirtualDnsVdnsFirstReorderTest) {
     DnsProto::DnsStats stats;
     int count = 0;
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     g_xid++;
-    usleep(1000);
-    client->WaitForIdle();
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items);
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 1, 1, 0, 0, 0, 0);
@@ -805,11 +798,9 @@ TEST_F(DnsTest, VirtualDnsIpamFirstTest) {
     DnsProto::DnsStats stats;
     int count = 0;
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     g_xid++;
-    usleep(1000);
-    client->WaitForIdle();
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items);
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 1, 1, 0, 0, 0, 0);
@@ -864,11 +855,9 @@ TEST_F(DnsTest, VirtualDnsIpamFirstReorderTest) {
     DnsProto::DnsStats stats;
     int count = 0;
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, a_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     g_xid++;
-    usleep(1000);
-    client->WaitForIdle();
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items);
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 1, 1, 0, 0, 0, 0);
@@ -953,7 +942,6 @@ TEST_F(DnsTest, VirtualDnsLinkLocalReqTest) {
 
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 4, query_items_2);
     g_xid++;
-    usleep(1000);
     client->WaitForIdle();
     CHECK_CONDITION(stats.requests < 1);
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items);
@@ -968,7 +956,7 @@ TEST_F(DnsTest, VirtualDnsLinkLocalReqTest) {
     ptr_query_items[3].name     = "30.1.254.169.in-addr.arpa";
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 4, ptr_query_items);
     g_xid++;
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     SendDnsResp(1, ptr_items, 1, auth_items, 1, add_items);
     CHECK_CONDITION(stats.resolved < 1);
@@ -1085,14 +1073,12 @@ TEST_F(DnsTest, DefaultDnsReqTest) {
     DnsItem query_items[MAX_ITEMS] = a_items;
     query_items[0].name     = "www.google.com";
 
-    SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, query_items);
-    usleep(1000);
-    client->WaitForIdle();
-    DnsProto::DnsStats stats;
     int count = 0;
-    usleep(1000);
+    DnsProto::DnsStats stats;
+    SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, query_items);
+    CHECK_CONDITION(stats.requests < 1);
+    client->WaitForIdle();
     SendDnsResp(1, query_items, 1, auth_items, 1, add_items);
-    usleep(1000);
     client->WaitForIdle();
     CHECK_CONDITION(stats.resolved < 1);
     EXPECT_EQ(1U, stats.requests);
@@ -1102,10 +1088,9 @@ TEST_F(DnsTest, DefaultDnsReqTest) {
     // Failure response
     query_items[0].name     = "test.non-existent.domain";
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 1, query_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     SendDnsResp(1, query_items, 1, auth_items, 1, add_items, true);
-    usleep(1000);
     client->WaitForIdle();
     CHECK_CONDITION(stats.fail < 1);
     CHECK_STATS(stats, 1, 0, 0, 0, 1, 0);
@@ -1170,9 +1155,9 @@ TEST_F(DnsTest, DefaultDnsLinklocalReqTest) {
     int count = 0;
     DnsProto::DnsStats stats;
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 4, query_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
-    usleep(1000);
+    //usleep(1000);
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 1, 1, 0, 0, 0, 0);
     Agent::GetInstance()->GetDnsProto()->ClearStats();
@@ -1184,11 +1169,11 @@ TEST_F(DnsTest, DefaultDnsLinklocalReqTest) {
     query_items_2[3].name     = "test_service4";
 
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 4, query_items_2);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     count = 0;
     SendDnsResp(1, a_items, 1, auth_items, 1, add_items, false);
-    usleep(1000);
+    //usleep(1000);
     client->WaitForIdle();
     CHECK_CONDITION(stats.resolved < 1);
     CHECK_STATS(stats, 1, 1, 0, 0, 0, 0);
@@ -1199,7 +1184,7 @@ TEST_F(DnsTest, DefaultDnsLinklocalReqTest) {
     ptr_query_items[1].name     = "20.1.254.169.in-addr.arpa";
     ptr_query_items[2].name     = "30.1.254.169.in-addr.arpa";
     SendDnsReq(DNS_OPCODE_QUERY, GetItfId(0), 3, ptr_query_items);
-    usleep(1000);
+    CHECK_CONDITION(stats.requests < 1);
     client->WaitForIdle();
     CHECK_CONDITION(stats.resolved < 1);
     EXPECT_EQ(1U, stats.requests);
