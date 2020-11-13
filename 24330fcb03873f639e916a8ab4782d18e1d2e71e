@@ -1,0 +1,191 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5eb03fb7_fce9032b",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "better return None and check like\nif hostname:",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "9a1882b7_a9f2d51b",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "pythonic way is to return None instead of \"null\"",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a6a5829f_9d85225a",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "pythonic way is to return None instead of \"null\"",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fd196127_741a4ffc",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "if you think self.virtual_machine_interface_bindings.get(\u0027host_id\u0027) can be empty string \"\", then \nreturn self.virtual_machine_interface_bindings.get(\u0027host_id\u0027) or None",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b51ab87b_ab27b526",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "better return (None, None)",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e19d3c11_9e54fa4c",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "better return (None, None)",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "2f589218_e9124820",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "physnet \u003d virtual_network_st.provider_properties.get_physical_network() or None\nif physnet:",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "349892fc_4e0ed977",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "AFAIK, uuid will always be returned. correct?",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "bd406eac_b71c49e2",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "better set port_name as None in if physnet not retrieved\nport_name \u003d virtual_router_sriov_physical_networks.get(physnet) or None",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e0327543_a53b00b8",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "check for None and return None, None",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "28af34b7_d713664e",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 53
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2020-11-13T23:33:30Z",
+      "side": 1,
+      "message": "can any of the gets return None in any fail case?",
+      "revId": "24330fcb03873f639e916a8ab4782d18e1d2e71e",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
