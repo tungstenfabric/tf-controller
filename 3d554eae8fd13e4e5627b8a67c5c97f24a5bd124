@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "265ebfec_92bc0e39",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 51
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-13T01:32:02Z",
+      "side": 1,
+      "message": "__internal_sriov_vpg...",
+      "revId": "3d554eae8fd13e4e5627b8a67c5c97f24a5bd124",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d8cc1899_607a9987",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_machine_interface.py",
+        "patchSetId": 51
+      },
+      "lineNbr": 279,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-13T01:32:02Z",
+      "side": 1,
+      "message": "vpg.add_annotation(kvp)",
+      "revId": "3d554eae8fd13e4e5627b8a67c5c97f24a5bd124",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6ca2404b_6af1539a",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_port_group.py",
+        "patchSetId": 51
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-13T01:32:02Z",
+      "side": 1,
+      "message": "2000 vpgs, try limit the vpgs to check",
+      "revId": "3d554eae8fd13e4e5627b8a67c5c97f24a5bd124",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "121c4dad_74e07e12",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_port_group.py",
+        "patchSetId": 51
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-13T01:32:02Z",
+      "side": 1,
+      "message": "filter by annotation of vpg",
+      "revId": "3d554eae8fd13e4e5627b8a67c5c97f24a5bd124",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3046d477_264734c1",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_port_group.py",
+        "patchSetId": 51
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 850
+      },
+      "writtenOn": "2020-11-13T01:32:02Z",
+      "side": 1,
+      "message": "delete fabric_vmi if it dose not have any vpg back refs",
+      "revId": "3d554eae8fd13e4e5627b8a67c5c97f24a5bd124",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
