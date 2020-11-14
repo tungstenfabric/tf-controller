@@ -86,10 +86,6 @@
 
     - block:
         - block:
-            - name: Run health check
-              include_role:
-                name: maintenance_mode_validation
-
             - name: Push config to multihomed peers
               include_role:
                 name: maintenance_mode_config_push_peers
