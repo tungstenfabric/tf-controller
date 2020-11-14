@@ -393,7 +393,7 @@ class DcGatewayFeature(FeatureBase):
                     ae_id = vpg_obj.pi_ae_map.get(pi_uuid)
                     if ae_id is not None and vlan_tag is not None:
                         ae_name = "ae" + str(ae_id) + "." + str(vlan_tag)
-                        vn_dict.setdefault(vn_id, []).append(
+                        vn_dict.setdefault(vn.uuid, []).append(
                             JunosInterface(ae_name, 'l2', vlan_tag,
                                            port_vlan_tag=port_vlan_tag,
                                            vpg_obj=vpg_obj))
@@ -402,7 +402,7 @@ class DcGatewayFeature(FeatureBase):
                         pi_obj = PhysicalInterfaceDM.get(pi_uuid)
                         if pi_obj:
                             li_name = pi_obj.name + "." + str(vlan_tag)
-                            vn_dict.setdefault(vn_id, []).append(
+                            vn_dict.setdefault(vn.uuid, []).append(
                                 JunosInterface(li_name, 'l2', vlan_tag,
                                                port_vlan_tag=port_vlan_tag,
                                                vpg_obj=vpg_obj))
