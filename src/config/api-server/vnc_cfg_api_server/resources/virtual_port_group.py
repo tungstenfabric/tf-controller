@@ -668,6 +668,15 @@ class VirtualPortGroupServer(ResourceMixin, VirtualPortGroup):
             vpg_id_fqname = cls.vnc_zk_client.get_vpg_from_id(vpg_id)
             cls.vnc_zk_client.free_vpg_id(vpg_id, vpg_id_fqname)
 
+        # Cleanup VPG ZK Path after VPG delete
+        zk_vpg_path = os.path.join(
+            cls.vnc_zk_client._vpg_ae_id_zk_path_prefix, 'vpg:%s' % id)
+        zk_children = cls.vnc_zk_client._zk_client.get_children(zk_vpg_path)
+        if len(zk_children) == 0:
+            msg = ("Deleting VPG ZK Path (%s). "
+                   "No children found under the path" % (zk_vpg_path))
+            cls.db_conn.config_log(msg, level=SandeshLevel.SYS_DEBUG)
+            cls.vnc_zk_client._zk_client.delete_node(zk_vpg_path)
         return True, ''
 
     @classmethod
