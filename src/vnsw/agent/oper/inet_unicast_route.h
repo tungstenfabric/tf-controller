@@ -229,7 +229,8 @@ public:
                             bool is_local,
                             bool is_health_check_service,
                             bool native_encap,
-                            const std::string &intf_name = "");
+                            const std::string &intf_name = "",
+                            bool is_learnt_route = false);
     static void AddLocalVmRoute(const Peer *peer, const string &vm_vrf,
                 const IpAddress &addr, uint8_t plen,
                 const boost::uuids::uuid &intf_uuid,
@@ -245,7 +246,8 @@ public:
                 bool is_local, bool is_health_check_service,
                 const std::string &intf_name,
                 bool native_encap,
-                const std::string &intf_route_type = VmInterface::kInterface);
+                const std::string &intf_route_type = VmInterface::kInterface,
+                bool is_learnt_route = false);
     void ResyncRoute(const Peer *peer, const string &vrf,
                      const IpAddress &addr, uint8_t plen);
     static void AddRemoteVmRouteReq(const Peer *peer, const string &vm_vrf,
