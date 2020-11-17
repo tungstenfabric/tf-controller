@@ -7489,3 +7489,77 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.assertEqual(len(pr_ae_ids[pr_objs[1].name]), 0)
         self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[0].name]), [0])
         self.assertEqual(process_ae_ids(pr_ae_ids[pr_objs[1].name]), [])
+
+    # UT to validate CEM-19925
+    def test_vpg_delete_path_with_two_prs(self):
+        """
+        UT to validate VPG ZK path deletion.
+
+        Assign PI-1/PR-1 and PI-1/PR-2 to VPG-1
+        Verify that len(zk_children) in the zk path is 2
+        Delete VPG-1
+        Verify ZK path gets deleted; no child present in zk_vpg_path
+        """
+        proj_obj, fabric_obj, pr_objs = self._create_prerequisites(
+            create_second_pr=True)
+        test_id = self.id()
+
+        def process_ae_ids(x):
+            return [int(i) for i in sorted(x)]
+
+        pi_per_pr = 1
+        pi_objs = {}
+        pr1_pi_names = ['%s_pr1_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr2_pi_names = ['%s_pr2_pi%d' % (test_id, i) for
+                        i in range(1, pi_per_pr + 1)]
+        pr1_pi_objs = self._create_pi_objects(pr_objs[0], pr1_pi_names)
+        pr2_pi_objs = self._create_pi_objects(pr_objs[1], pr2_pi_names)
+        pi_objs.update(pr1_pi_objs)
+        pi_objs.update(pr2_pi_objs)
+
+        # create a VPG
+        vpg_count = 1
+        vpg_names = ['vpg_%s_%s' % (test_id, i) for i in range(
+                     1, vpg_count + 1)]
+        vpg_objs = self._create_vpgs(fabric_obj, vpg_names)
+
+        def get_zk_path():
+            prefix = os.path.join(
+                self.__class__.__name__,
+                'id', 'ae-id-vpg')
+            zk_client = self._api_server._db_conn._zk_db._zk_client._zk_client
+            zk_vpg_path = os.path.join(prefix, 'vpg:%s' % vpg_obj.uuid)
+            zk_children = zk_client.get_children(zk_vpg_path)
+            return zk_children
+
+        # Case 1
+        # Attach PI-1/PR-1 and PI-1/PR-2 to VPG-1
+        ae_ids = {}
+        vpg_name = vpg_names[0]
+        vpg_obj = vpg_objs[vpg_name]
+        for pi in range(1):
+            vpg_obj.add_physical_interface(pi_objs[pr1_pi_names[pi]])
+        for pi in range(1):
+            vpg_obj.add_physical_interface(pi_objs[pr2_pi_names[pi]])
+        self.api.virtual_port_group_update(vpg_obj)
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        pi_refs = vpg_obj.get_physical_interface_refs()
+        ae_ids[vpg_name] = {ref['href'].split('/')[-1]: ref['attr'].ae_num
+                            for ref in pi_refs}
+        # verify PI-refs are correct
+        self.assertEqual(len(pi_refs), 2)
+        # verify all AE-IDs allocated per prouter are unique
+        self.assertEqual(len(set(ae_ids[vpg_name].keys())), len(pi_refs))
+        self.assertEqual(len(set(ae_ids[vpg_name].values())), 1)
+
+        # Check if this VPG path has two children
+        children = get_zk_path()
+        self.assertEqual(len(children), 2)
+
+        # Now delete VPG-1
+        self.api.virtual_port_group_delete(id=vpg_obj.uuid)
+
+        # No child should be found under the zk_vpg_path
+        children = get_zk_path()
+        self.assertEqual((children), [])
