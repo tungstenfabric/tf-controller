@@ -50,7 +50,8 @@ RouteKSyncEntry::RouteKSyncEntry(RouteKSyncObject* obj,
     wait_for_traffic_(entry->wait_for_traffic_),
     local_vm_peer_route_(entry->local_vm_peer_route_),
     flood_(entry->flood_), ethernet_tag_(entry->ethernet_tag_),
-    layer2_control_word_(entry->layer2_control_word_) {
+    layer2_control_word_(entry->layer2_control_word_),
+    is_learnt_route_(entry->is_learnt_route_) {
 }
 
 RouteKSyncEntry::RouteKSyncEntry(RouteKSyncObject* obj, const AgentRoute *rt) :
@@ -58,7 +59,8 @@ RouteKSyncEntry::RouteKSyncEntry(RouteKSyncObject* obj, const AgentRoute *rt) :
     vrf_id_(rt->vrf_id()), mac_(), nh_(NULL), label_(0), proxy_arp_(false),
     flood_dhcp_(false), tunnel_type_(TunnelType::DefaultType()),
     wait_for_traffic_(false), local_vm_peer_route_(false),
-    flood_(false), ethernet_tag_(0), layer2_control_word_(false) {
+    flood_(false), ethernet_tag_(0), layer2_control_word_(false),
+    is_learnt_route_(false) {
     boost::system::error_code ec;
     rt_type_ = rt->GetTableType();
     switch (rt_type_) {
@@ -68,6 +70,11 @@ RouteKSyncEntry::RouteKSyncEntry(RouteKSyncObject* obj, const AgentRoute *rt) :
           addr_ = uc_rt->addr();
           src_addr_ = IpAddress::from_string("0.0.0.0", ec).to_v4();
           prefix_len_ = uc_rt->plen();
+          AgentPath *local_vm_path = uc_rt->FindLocalVmPortPath();
+          if (local_vm_path && local_vm_path->IsDynamicLearntRoute()) {
+              is_learnt_route_ = true;
+          }
+
           break;
     }
     case Agent::INET6_UNICAST: {
@@ -621,6 +628,11 @@ int RouteKSyncEntry::Encode(sandesh_op::type op, uint8_t replace_plen,
         if (flood_) {
             flags |= VR_RT_ARP_FLOOD_FLAG;
         }
+       
+        if (is_learnt_route_) {
+            flags |= VR_RT_MAC_IP_LEARNT_FLAG;
+        }
+
     }
 
     if (layer2_control_word_) {
@@ -629,7 +641,6 @@ int RouteKSyncEntry::Encode(sandesh_op::type op, uint8_t replace_plen,
 
     encoder.set_rtr_label_flags(flags);
     encoder.set_rtr_label(label);
-
     if (nexthop != NULL) {
         encoder.set_rtr_nh_id(nexthop->nh_id());
     } else {
@@ -720,6 +731,7 @@ uint8_t RouteKSyncEntry::CopyReplacementData(NHKSyncEntry *nexthop,
         if (rt_type_ != Agent::BRIDGE) {
             mac_ = MacAddress::ZeroMac();
         }
+        is_learnt_route_ = false;
     } else {
         label_ = new_rt->label();
         new_plen = new_rt->prefix_len();
@@ -727,6 +739,7 @@ uint8_t RouteKSyncEntry::CopyReplacementData(NHKSyncEntry *nexthop,
         flood_ = new_rt->flood();
         wait_for_traffic_ = new_rt->wait_for_traffic();
         mac_ = new_rt->mac();
+        is_learnt_route_ = new_rt->IsLearntRoute();
     }
     return new_plen;
 }

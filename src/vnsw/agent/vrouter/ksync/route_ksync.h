@@ -56,6 +56,7 @@ public:
     bool BuildArpFlags(const DBEntry *rt, const AgentPath *path,
                        const MacAddress &mac);
     uint8_t CopyReplacementData(NHKSyncEntry *nexthop, RouteKSyncEntry *new_rt);
+    bool IsLearntRoute() { return is_learnt_route_;}
 private:
     int Encode(sandesh_op::type op, uint8_t replace_plen,
                char *buf, int buf_len);
@@ -87,6 +88,8 @@ private:
     bool flood_;
     uint32_t ethernet_tag_;
     bool layer2_control_word_;
+    bool is_learnt_route_; // this does not need to be copied for replacement
+                            // data
     //////////////////////////////////////////////////////////////////
     // NOTE: Please update CopyReplacmenetData when any new field is added
     // here
