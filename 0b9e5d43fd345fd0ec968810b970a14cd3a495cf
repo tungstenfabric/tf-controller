@@ -107,6 +107,40 @@
     },
     {
       "key": {
+        "uuid": "82776d40_111a4f4a",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_port_group.py",
+        "patchSetId": 61
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-18T20:15:53Z",
+      "side": 1,
+      "message": "Can we enhance list_vnc_obj to support filters.\n\nWe can set virtual_port_group_user_created to False for internal vpgs and filter it while listing and then filter further based in annotations.\n\nWe can also try/enhance api-server to support filter based on m:annotaions:\u003ckey\u003e",
+      "revId": "0b9e5d43fd345fd0ec968810b970a14cd3a495cf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d7215883_0e676668",
+        "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_port_group.py",
+        "patchSetId": 61
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-18T20:15:53Z",
+      "side": 1,
+      "message": "Identify the need for evaluate in VGP reinit (a. to populate VN_ST’s vpg_set, b. fabric vmi’s delete), try to avoid evaluate in next enhancemnt.",
+      "revId": "0b9e5d43fd345fd0ec968810b970a14cd3a495cf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "e6e734da_dc020c17",
         "filename": "src/config/schema-transformer/schema_transformer/resources/virtual_port_group.py",
         "patchSetId": 61
@@ -241,6 +275,24 @@
       "side": 1,
       "message": "Yes, I changed how changes over VMI would trigger evaluation of VPG. Now it is VMI -\u003e VN -\u003e VPG. VN does nothing related with VPG, it just past the signal to VPG.",
       "parentUuid": "47211a2b_f9aa3dbc",
+      "revId": "0b9e5d43fd345fd0ec968810b970a14cd3a495cf",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f78ebfa4_1005316f",
+        "filename": "src/config/schema-transformer/schema_transformer/to_bgp.py",
+        "patchSetId": 61
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-18T20:15:53Z",
+      "side": 1,
+      "message": "There is no direct relation between VN and VPG.\n\nSo, Why cant we evaluate VMI(vm’s)--\u003eVN--\u003eVMI(fabric(can have annotations to identify it))--\u003eVPG(one or many) instead of VMI(vm’s)--\u003e VN --\u003e VPG. So that we can avoid 1.a and no need to maintain the self.virtual_port_groups \u003d set() in VN ST",
+      "parentUuid": "de2bfe25_b0a34dbb",
       "revId": "0b9e5d43fd345fd0ec968810b970a14cd3a495cf",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": false
