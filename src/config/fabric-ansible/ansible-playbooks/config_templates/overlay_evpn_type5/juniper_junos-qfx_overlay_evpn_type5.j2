@@ -195,7 +195,11 @@ set groups {{cfg_group}} routing-instances {{name}} interface {{int_name}}
 set groups {{cfg_group}} routing-instances {{name}} routing-options multipath
 set groups {{cfg_group}} routing-instances {{name}} routing-options rib {{name}}.inet6.0 multipath
 set groups {{cfg_group}} routing-instances {{name}} routing-options static route {{dummy_ip}}/32 discard
+{%             set sys_config = device_abstract_config.get('system') %}
+{%             set sys_roles = sys_config.get('routing_bridging_roles', []) %}
+{%             if 'ERB-UCAST-Gateway' not in sys_roles %}
 set groups {{cfg_group}} protocols evpn default-gateway no-gateway-community
+{%             endif %}
 set groups {{cfg_group}} routing-instances {{name}} protocols evpn ip-prefix-routes advertise direct-nexthop
 set groups {{cfg_group}} routing-instances {{name}} protocols evpn ip-prefix-routes encapsulation vxlan
 set groups {{cfg_group}} routing-instances {{name}} protocols evpn ip-prefix-routes vni {{vxlan_id}}
@@ -647,7 +651,7 @@ set groups {{cfg_group}} routing-instances {{name}} interface {{int_name}}
 set groups {{cfg_group}} routing-instances {{name}} routing-options multipath
 set groups {{cfg_group}} routing-instances {{name}} routing-options rib {{name}}.inet6.0 multipath
 set groups {{cfg_group}} routing-instances {{name}} routing-options static route {{dummy_ip}}/32 discard
-{%             if (vxlan_id != '') %}
+{%             if (vxlan_id != '') and 'ERB-UCAST-Gateway' not in sys_roles %}
 set groups {{cfg_group}} protocols evpn default-gateway no-gateway-community
 set groups {{cfg_group}} routing-instances {{name}} protocols evpn ip-prefix-routes advertise direct-nexthop
 set groups {{cfg_group}} routing-instances {{name}} protocols evpn ip-prefix-routes encapsulation vxlan
