@@ -10,6 +10,7 @@
     upgrade_mode: "{{playbook_input.input.upgrade_mode}}"
     pr_name: "{{playbook_input.device_fqname[-1]}}"
     pr_uuid: "{{playbook_input.device_id}}"
+    pr_product: "{{playbook_input.product_name}}"
     image_upgrade_list: "{{playbook_input.input.image_devices}}"
     upgrade_plan: "{{playbook_input.input.upgrade_plan}}"
     current_index: 0
