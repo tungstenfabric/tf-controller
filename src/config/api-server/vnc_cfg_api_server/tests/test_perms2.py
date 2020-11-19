@@ -1850,12 +1850,27 @@ class TestPermissions(test_case.ApiServerTestCase):
         self.assertEqual(count, 2)
 
         # Get VN count owned by Bob by len of VN list returned
+
         count = get_vn_count(bob.project_uuid, shared=False, by_list_len=True)
         self.assertEqual(count, 1)
-
         # Get VN count owned by and shared with Bob by len of VN list returned
         count = get_vn_count(bob.project_uuid, shared=True, by_list_len=True)
         self.assertEqual(count, 2)
+
+    def test_list_virtual_network_non_admin_role_bug20393(self):
+        import pdb; pdb.set_trace()
+        logger.info( 'Alice: network list')
+        
+        net_obj = self.alice.vnc_lib.virtual_network_read(id=vn1.get_uuid())
+        net_obj_filters={'display_name': net_obj.display_name+'_dummy'}
+        net_list = self.alice.vnc_lib.virtual_networks_list(shared=True, filters=net_obj_filters)
+
+        expected = set([self.vn_name])
+        received = set([])
+        if net_list['virtual-networks']:
+            received = set([item['fq_name'][-1] for item in net_list['virtual-networks']])
+
+        self.assertEquals(expected, received)
 
     def tearDown(self):
         super(TestPermissions, self).tearDown()
