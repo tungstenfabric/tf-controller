@@ -1235,7 +1235,7 @@ class DBInterface(object):
 
     def _network_list_filter(self, shared=None, router_external=None):
         filters = {}
-        if shared is not None:
+        if shared:
             filters['is_shared'] = shared
         if router_external is not None:
             filters['router_external'] = router_external
