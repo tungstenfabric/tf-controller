@@ -1234,14 +1234,19 @@ class DBInterface(object):
         return project_obj.get_floating_ip_pool_refs()
     # end _fip_pool_refs_project
 
-    def _network_list_filter(self, shared=None, router_external=None):
+    def _network_list_filter(self, project_id=None, shared=None,
+                             router_external=None):
         filters = {}
-        if shared is not None:
+        if shared:
             filters['is_shared'] = shared
         if router_external is not None:
             filters['router_external'] = router_external
 
-        net_list = self._network_list_project(project_id=None, filters=filters)
+        net_list = self._network_list_project(project_id, filters=filters)
+        if shared is False or shared is None:
+            for net_obj in net_list:
+                if net_obj.is_shared:
+                    net_list.remove(net_obj)
         return net_list
     # end _network_list_filter
 
@@ -3614,20 +3619,17 @@ class DBInterface(object):
                     router_external=True))
             # if filters['shared'] is False get all the VNs in tenant_id
             # and prune the return list with shared = False or  shared = None
-            elif (filters and 'shared' in filters and
-                  filters['shared'] is True or 'router:external' in filters):
+            elif filters:
                 shared = None
                 router_external = None
+                project_id = None
                 if 'router:external' in filters:
                     router_external = filters['router:external'][0]
-                if 'shared' in filters and filters['shared'] is True:
+                if 'shared' in filters:
                     shared = filters['shared'][0]
-                elif 'shared' in filters and filters['shared'] is False:
-                    project_uuid = str(uuid.UUID(context['tenant']))
-                    all_net_objs.extend(
-                        self._network_list_project(project_uuid))
+                project_id = str(uuid.UUID(context['tenant']))
                 all_net_objs.extend(self._network_list_filter(
-                    shared, router_external))
+                    project_id, shared, router_external))
             else:
                 project_uuid = str(uuid.UUID(context['tenant']))
                 if not filters:
