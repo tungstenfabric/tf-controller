@@ -1234,6 +1234,47 @@ class TestPermissions(test_case.ApiServerTestCase):
         test_vn_list = [vn for vn in z['virtual-networks'] if vn['fq_name'][-1] == vn_name]
         self.assertEquals(len(test_vn_list), 1)
 
+    def test_shared_network_in_non_admin_member(self):
+        """
+        UT for CEM-20393
+        """
+        self.vn_name = "alice-vn-1"
+        vn1_obj = VirtualNetwork(self.vn_name, self.alice.project_obj)
+        vn1_obj.set_is_shared(True)
+        self.alice.vnc_lib.virtual_network_create(vn1_obj)
+
+        self.vn_name = "alice-vn-2"
+        vn2_obj = VirtualNetwork(self.vn_name, self.alice.project_obj)
+        vn2_obj.set_is_shared(False)
+        self.alice.vnc_lib.virtual_network_create(vn2_obj)
+
+        # filter for list of shared='True'. should return 1
+        shared_net_list = self.alice.vnc_lib.resource_list(
+            'virtual-network', detail=True,
+            filters={'is_shared': [True]})
+
+        self.assertEqual(len(shared_net_list), 1)
+        vn_ids = []
+        vn_ids.append(shared_net_list[0]._uuid)
+        self.assertIn(vn1_obj.uuid, vn_ids[0])
+
+        # filter for list of 'is_shared'=False or None. should return 1
+        not_shared_net_list = self.alice.vnc_lib.resource_list(
+            'virtual-network', detail=True,
+            filters={'is_shared': [False]})
+
+        # shared = False should return all the networks that belongs to
+        # the tenant which will have either is_shared = False or None
+        self.assertEqual(len(not_shared_net_list), 1)
+        vn_ids = []
+        vn_ids.append(not_shared_net_list[0]._uuid)
+        self.assertIn(vn2_obj.uuid, vn_ids[0])
+
+        # cleanup
+        self.alice.vnc_lib.virtual_network_delete(id=vn1_obj.uuid)
+        self.alice.vnc_lib.virtual_network_delete(id=vn2_obj.uuid)
+        # end test_shared_network_in_non_admin_member
+
     def test_shared_network(self):
         alice = self.alice
         bob   = self.bob
