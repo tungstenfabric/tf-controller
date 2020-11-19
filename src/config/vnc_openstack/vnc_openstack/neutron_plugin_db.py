@@ -948,7 +948,7 @@ class DBInterface(object):
 
     def _virtual_network_list(self, parent_id=None, obj_uuids=None,
                               fields=None, detail=False, count=False,
-                              filters=None):
+                              filters=None, shared=True):
         return self._vnc_lib.virtual_networks_list(
             parent_id=parent_id,
             obj_uuids=obj_uuids,
@@ -956,7 +956,7 @@ class DBInterface(object):
             detail=detail,
             count=count,
             filters=filters,
-            shared=True)
+            shared=shared)
     # end _virtual_network_list
 
     def _virtual_machine_interface_read(self, port_id=None, fq_name=None,
@@ -1099,7 +1099,8 @@ class DBInterface(object):
                                                  count=True, filters=filters)
         else:
             ret_val = self._virtual_network_list(parent_id=project_id,
-                                                 detail=True, filters=filters)
+                                                 detail=True, filters=filters,
+                                                 shared=False)
 
         return ret_val
     # end _network_list_project
@@ -1235,12 +1236,16 @@ class DBInterface(object):
 
     def _network_list_filter(self, shared=None, router_external=None):
         filters = {}
-        if shared is not None:
+        if shared:
             filters['is_shared'] = shared
         if router_external is not None:
             filters['router_external'] = router_external
 
         net_list = self._network_list_project(project_id=None, filters=filters)
+        if shared is False or shared is None:
+            for net_obj in net_list:
+                if net_obj.is_shared and net_obj['is_shared'] is True:
+                    net_list.remove(net_obj)
         return net_list
     # end _network_list_filter
 
@@ -3614,12 +3619,12 @@ class DBInterface(object):
             # if filters['shared'] is False get all the VNs in tenant_id
             # and prune the return list with shared = False or  shared = None
             elif (filters and 'shared' in filters and
-                  filters['shared'] is True or 'router:external' in filters):
+                  filters['shared'][0] is True or 'router:external' in filters):
                 shared = None
                 router_external = None
                 if 'router:external' in filters:
                     router_external = filters['router:external'][0]
-                if 'shared' in filters and filters['shared'] is True:
+                if 'shared' in filters and filters['shared'][0] is True:
                     shared = filters['shared'][0]
                 elif 'shared' in filters and filters['shared'] is False:
                     project_uuid = str(uuid.UUID(context['tenant']))

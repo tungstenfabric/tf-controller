@@ -1234,6 +1234,53 @@ class TestPermissions(test_case.ApiServerTestCase):
         test_vn_list = [vn for vn in z['virtual-networks'] if vn['fq_name'][-1] == vn_name]
         self.assertEquals(len(test_vn_list), 1)
 
+    def test_shared_network_in_non_admin_bug20393(self):
+        self.vn_name = "alice-vn-%s" % self.id()
+        vn1_obj = VirtualNetwork(self.vn_name, self.alice.project_obj)
+        self.alice.vnc_lib.virtual_network_create(vn1_obj)
+ 
+        # filter for list of shared='False' or 'None'. should return 1
+        vn1_shared_not_set_list = self.alice.vnc_lib.resource_list(
+            'virtual-network',
+            filters={'shared': [False]})
+ 
+        # shared = False should return all the networks that belongs to
+        # the tenant which will have either 'is_shared'=False or None
+        self.assertEqual(len(vn1_shared_not_set_list), 1)
+        vn_ids = []
+        vn_ids.append(vn1_shared_not_set_list['virtual-networks'][0]['uuid'])
+        self.assertIn(vn1_obj.uuid, vn_ids)
+
+        vn1_obj.set_is_shared(False)
+        # filter for list of 'is_shared'=False or None. should return empty list
+        vn1_no_shared_list = self.alice.vnc_lib.resource_list(
+            'virtual-network',
+            filters={'shared': [False]})
+ 
+        # shared = False should return all the networks that belongs to
+        # the tenant which will have either is_shared = False or None
+        self.assertEqual(len(vn1_no_shared_list), 1)
+        vn_ids = []
+        vn_ids.append(vn1_no_shared_list['virtual-networks'][0]['uuid'])
+        self.assertIn(vn1_obj.uuid, vn_ids)
+ 
+        vn1_obj.set_is_shared(True)
+        # filter for list of 'is_shared'=True. should return empty list
+        vn1_shared_list = self.alice.vnc_lib.resource_list(
+            'virtual-network',
+            filters={'shared': [True]})
+ 
+        # shared = True should return all the networks that belongs to
+        # the tenant which will have either is_shared = True
+        self.assertEqual(len(vn1_shared_list), 1)
+        vn_ids = []
+        vn_ids.append(vn1_shared_list['virtual-networks'][0]['uuid'])
+        self.assertIn(vn1_obj.uuid, vn_ids)
+
+        # cleanup
+        self._vnc_lib.virtual_network_delete(id=vn1_obj.uuid)
+        # end test_shared_network_in_non_admin_bug20393
+
     def test_shared_network(self):
         alice = self.alice
         bob   = self.bob
