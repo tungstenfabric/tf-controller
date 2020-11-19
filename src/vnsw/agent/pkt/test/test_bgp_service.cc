@@ -103,6 +103,24 @@ public:
         client->WaitForIdle();
     }
 
+    void DelBgpaasControlNodeZoneLink(const std::string &link_name,
+                                      const std::string &bgpaas_name,
+                                      const std::string &cnz_name) {
+        DelLink("bgpaas-control-node-zone",
+                link_name.c_str(),
+                "bgp-as-a-service",
+                bgpaas_name.c_str(),
+                "bgpaas-control-node-zone");
+        DelLink("bgpaas-control-node-zone",
+                link_name.c_str(),
+                "control-node-zone",
+                cnz_name.c_str(),
+                "bgpaas-control-node-zone");
+        DelNode("bgpaas-control-node-zone",
+                link_name.c_str());
+            client->WaitForIdle();
+    }
+
     virtual void SetUp() {
         agent_ = Agent::GetInstance();
         flow_proto_ = agent_->pkt()->get_flow_proto();
@@ -544,7 +562,7 @@ TEST_F(BgpServiceTest, Test_9) {
     EXPECT_TRUE(rfe->key().dst_addr == Ip4Address::from_string("10.1.1.1"));
     EXPECT_TRUE(rfe->key().src_port == 5000);
 
-    DelNode("bgpaas-control-node-zone", "link1");
+    DelBgpaasControlNodeZoneLink("link1", bgpaas[6], "cnz-a");
     DelLink("bgp-router", bgp_router_1.c_str(), "control-node-zone", "cnz-a");
     DeleteControlNodeZone("cnz-a");
     DeleteBgpRouterConfig("127.0.0.10", 0, "ip-fabric");
@@ -596,7 +614,7 @@ TEST_F(BgpServiceTest, Test_10) {
                 rfe->key().src_port == 5001 ||
                 rfe->key().src_port == 5002);
 
-    DelNode("bgpaas-control-node-zone", "link1");
+    DelBgpaasControlNodeZoneLink("link1", bgpaas[6], "cnz-a");
     DelLink("bgp-router", bgp_router_1.c_str(), "control-node-zone", "cnz-a");
     DelLink("bgp-router", bgp_router_2.c_str(), "control-node-zone", "cnz-a");
     DelLink("bgp-router", bgp_router_3.c_str(), "control-node-zone", "cnz-a");
@@ -643,7 +661,7 @@ TEST_F(BgpServiceTest, Test_11) {
     EXPECT_FALSE(rfe->key().dst_addr == Ip4Address::from_string("10.1.1.1"));
     EXPECT_FALSE(rfe->key().src_port == 5000);
 
-    DelNode("bgpaas-control-node-zone", "link1");
+    DelBgpaasControlNodeZoneLink("link1", bgpaas[6], "cnz-b");
     DelLink("bgp-router", bgp_router_1.c_str(), "control-node-zone", "cnz-a");
     DeleteControlNodeZone("cnz-b");
     DeleteControlNodeZone("cnz-a");
@@ -683,7 +701,7 @@ TEST_F(BgpServiceTest, Test_12) {
     EXPECT_TRUE(rfe->key().dst_addr == Ip4Address::from_string("10.1.1.1"));
     EXPECT_TRUE(rfe->key().src_port == 5000);
 
-    DelNode("bgpaas-control-node-zone", "link1");
+    DelBgpaasControlNodeZoneLink("link1", bgpaas[6], "cnz-a");
     DelLink("bgp-router", bgp_router_1.c_str(), "control-node-zone", "cnz-a");
     DeleteControlNodeZone("cnz-a");
     DeleteBgpRouterConfig("127.0.0.10", 0, "ip-fabric");
@@ -709,7 +727,7 @@ TEST_F(BgpServiceTest, Test_13) {
     client->WaitForIdle();
     AddAap("vnet7", 7,
         Ip4Address::from_string("70.70.70.70"), "00:00:07:07:07:07");
-
+    client->WaitForIdle();
     TxTcpPacket(VmInterfaceGet(7)->id(), "70.70.70.70", "7.7.7.7", 10000, 179,
                 false);
     client->WaitForIdle();
@@ -739,8 +757,8 @@ TEST_F(BgpServiceTest, Test_13) {
     EXPECT_TRUE(rfe->key().src_port == 5000);
 
     //Change "Primary" and "Secondary" ControlNodeZone
-    DelNode("bgpaas-control-node-zone", "link1");
-    DelNode("bgpaas-control-node-zone", "link2");
+    DelBgpaasControlNodeZoneLink("link1", bgpaas[6], "cnz-a");
+    DelBgpaasControlNodeZoneLink("link2", bgpaas[6], "cnz-b");
     DelLink("bgp-router", bgp_router_1.c_str(), "control-node-zone", "cnz-a");
     DelLink("bgp-router", bgp_router_2.c_str(), "control-node-zone", "cnz-b");
     DelLink("bgp-router", bgp_router_3.c_str(), "control-node-zone", "cnz-c");
@@ -750,6 +768,7 @@ TEST_F(BgpServiceTest, Test_13) {
     DeleteBgpRouterConfig("127.0.0.10", 0, "ip-fabric");
     DeleteBgpRouterConfig("127.0.0.11", 0, "ip-fabric");
     DeleteBgpRouterConfig("127.0.0.12", 0, "ip-fabric");
+    client->WaitForIdle();
     bgp_router_1 = AddBgpRouterConfig("127.0.0.13", 0, 5000,
         1, "ip-fabric", "control-node");
     bgp_router_2 = AddBgpRouterConfig("127.0.0.14", 0, 5000,
@@ -797,8 +816,8 @@ TEST_F(BgpServiceTest, Test_13) {
     EXPECT_TRUE(rfe->key().dst_addr == Ip4Address::from_string("10.1.1.1"));
     EXPECT_TRUE(rfe->key().src_port == 5000);
 
-    DelNode("bgpaas-control-node-zone", "link1");
-    DelNode("bgpaas-control-node-zone", "link2");
+    DelBgpaasControlNodeZoneLink("link1", bgpaas[6], "cnz-c");
+    DelBgpaasControlNodeZoneLink("link2", bgpaas[6], "cnz-a");
     DelLink("bgp-router", bgp_router_1.c_str(), "control-node-zone", "cnz-a");
     DelLink("bgp-router", bgp_router_2.c_str(), "control-node-zone", "cnz-b");
     DelLink("bgp-router", bgp_router_3.c_str(), "control-node-zone", "cnz-c");
