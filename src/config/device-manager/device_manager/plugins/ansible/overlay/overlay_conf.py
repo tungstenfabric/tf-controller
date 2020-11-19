@@ -6,10 +6,10 @@
 
 from abstract_device_api.abstract_device_xsd import *
 
-from .ansible_role_common import AnsibleRoleCommon
+from .ansible_conf import AnsibleConf
 
 
-class OverlayConf(AnsibleRoleCommon):
+class OverlayConf(AnsibleConf):
     """Public class for Overlay config."""
 
     _roles = ['leaf', 'pnf', 'spine', 'superspine']
@@ -35,7 +35,6 @@ class OverlayConf(AnsibleRoleCommon):
             return 0
         if is_delete:
             return self.send_conf(is_delete=True)
-        self.set_common_config()
         return self.send_conf(feature_configs=feature_configs)
     # end push_conf
 

@@ -21,7 +21,6 @@ def import_plugins():
 
 def import_ansible_plugins():
     from .ansible_conf import AnsibleConf
-    from .ansible_role_common import AnsibleRoleCommon
     from .overlay_conf import OverlayConf
 # end import_ansible_plugins
 
