@@ -1234,7 +1234,8 @@ class DBInterface(object):
         return project_obj.get_floating_ip_pool_refs()
     # end _fip_pool_refs_project
 
-    def _network_list_filter(self, shared=None, router_external=None):
+    def _network_list_filter(self, project_id=None, shared=None,
+                             router_external=None):
         filters = {}
         if shared is not None:
             filters['is_shared'] = shared
