@@ -1850,9 +1850,9 @@ class TestPermissions(test_case.ApiServerTestCase):
         self.assertEqual(count, 2)
 
         # Get VN count owned by Bob by len of VN list returned
+
         count = get_vn_count(bob.project_uuid, shared=False, by_list_len=True)
         self.assertEqual(count, 1)
-
         # Get VN count owned by and shared with Bob by len of VN list returned
         count = get_vn_count(bob.project_uuid, shared=True, by_list_len=True)
         self.assertEqual(count, 2)
