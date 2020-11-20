@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "23f9d25e_25b3cf26",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/logical_router.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 979
+      },
+      "writtenOn": "2020-11-20T21:20:08Z",
+      "side": 1,
+      "message": "return True, None",
+      "revId": "b0416950abfbcf0cf1f4ef421417e0f16dd341f8",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6dc728db_581c87a9",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/logical_router.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 979
+      },
+      "writtenOn": "2020-11-20T21:20:08Z",
+      "side": 1,
+      "message": "return all three parameters on every \u0027return\u0027 statement",
+      "revId": "b0416950abfbcf0cf1f4ef421417e0f16dd341f8",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "b78a0a11_d13b0d8d",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/logical_router.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 979
+      },
+      "writtenOn": "2020-11-20T21:20:08Z",
+      "side": 1,
+      "message": "same as above",
+      "revId": "b0416950abfbcf0cf1f4ef421417e0f16dd341f8",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "09f95d11_27f0b10c",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/logical_router.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 979
+      },
+      "writtenOn": "2020-11-20T21:20:08Z",
+      "side": 1,
+      "message": "same as above",
+      "revId": "b0416950abfbcf0cf1f4ef421417e0f16dd341f8",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "266ec9d6_0d6b4576",
+        "filename": "src/config/api-server/vnc_cfg_api_server/resources/logical_router.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 979
+      },
+      "writtenOn": "2020-11-20T21:20:08Z",
+      "side": 1,
+      "message": "same as above",
+      "revId": "b0416950abfbcf0cf1f4ef421417e0f16dd341f8",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
