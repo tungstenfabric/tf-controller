@@ -1036,6 +1036,21 @@ class AnsibleRoleCommon(AnsibleConf):
                             lr_uuid = DMUtils.extract_lr_uuid_from_internal_vn_name(vrf_name_l3)
                             lr = LogicalRouterDM.get(lr_uuid)
                             if lr and not lr.is_master:
+                                # For MX router, we need to include the tenant
+                                # VN RTs as well
+                                if self.physical_router.device_family == 'junos':
+                                    lr_vns = lr.get_connected_networks(
+                                        include_internal=False, pr_uuid=
+                                        self.physical_router.uuid)
+                                    for lr_vn in lr_vns:
+                                        lr_vn_obj = VirtualNetworkDM.get(lr_vn)
+                                        ex_rt, im_rt = \
+                                            lr_vn_obj.get_route_targets()
+                                        if ex_rt:
+                                            ri_conf['export_targets'] |= ex_rt
+                                        if im_rt:
+                                            ri_conf['import_targets'] |= im_rt
+
                                 ri_conf['vni'] = vn_obj.get_vxlan_vni(is_internal_vn = is_internal_vn)
                                 ri_conf['router_external'] = lr.logical_router_gateway_external
                                 dci = lr.get_interfabric_dci()

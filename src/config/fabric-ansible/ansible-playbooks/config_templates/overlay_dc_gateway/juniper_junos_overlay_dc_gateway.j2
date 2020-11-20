@@ -67,8 +67,8 @@ set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} routing-options au
 set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} term t1 from community {{community_target}}
 set groups {{cfg_group}} policy-options community {{community_target}} members {{import_target | rtfilter}}
 {%             endfor %}
-set policy-options policy-statement {{nat_ingress_import}} term t1 then accept
-set policy-options policy-statement {{nat_ingress_import}} then reject
+set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} term t1 then accept
+set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} then reject
 set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_export}} term t1 then reject
 set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} service-domain inside
 {%         endfor %}{# /* For loop RI ingress_interfaces */ #}
@@ -89,6 +89,11 @@ set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} service-domain
 {%             if nat_rules_name == None %}
 {%                 set nat_rules_name = 'sv-'+contrail_l3_ri %}
 {%             endif %}
+{%             set address_pool = nat_rules.get('address_pool') %}
+{%             if address_pool != None %} {# /* Start of address_pool */ #}
+set groups {{cfg_group}} services nat pool {{address_pool.name}} address {{address_pool.address}}
+set groups {{cfg_group}} services nat pool {{address_pool.name}} port automatic random-allocation
+{%             endif %} {# /* End of address_pool */ #}
 {%             set rules = nat_rules.get('rules', []) %}
 {%             for rule in rules %}
 set groups {{cfg_group}} services service-set {{nat_rules_name}} nat-rules {{rule.get('name')}}
@@ -97,20 +102,26 @@ set groups {{cfg_group}} services nat rule {{rule.get('name')}} match-direction 
 {%                 set source_prefixes = rule.get('source_prefixes', []) %}
 {%                 for index in range(source_addrs|length) %}
 {%                     set source_addr = source_addrs[index] %}
-{%                     set source_prefix = source_prefixes[index] %}
 {%                     set term_name = 'term_'+source_addr.get('prefix', '').replace('.','_') %}
 {%                     set cidr = source_addr.get('prefix') + '/' + source_addr.get('prefix_len')|string %}
 set groups {{cfg_group}} services nat rule {{rule.name}} term {{term_name}} from source-address {{cidr}}
-{%                     set cidr = source_prefix.get('prefix') + '/' + source_prefix.get('prefix_len')|string %}
 {%                     set ns.fip_accept_term = true %}
 {%                     if ':' in cidr %}
 {%                         set ns.ipv6 = true %}
 {%                     else %}
 {%                         set ns.ipv4 = true %}
 {%                     endif %}
+{%                     if source_prefixes|length > 0 %}
+{%                         set source_prefix = source_prefixes[index] %}
+{%                         set cidr = source_prefix.get('prefix') + '/' + source_prefix.get('prefix_len')|string %}
 set groups {{cfg_group}} services nat rule {{rule.get('name')}} term {{term_name}} then translated source-prefix {{cidr}}
 set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term bms_term from destination-address {{cidr}}
+{%                     endif %}
 set groups {{cfg_group}} services nat rule {{rule.get('name')}} term {{term_name}} then translated translation-type {{rule.get('translation_type')}}
+{%                     set source_pool = rule.get('source_pool', '') %}
+{%                     if source_pool != '' %}
+set groups {{cfg_group}} services nat rule {{rule.name}} term {{term_name}} then translated source-pool {{source_pool}}
+{%                     endif %}
 {%                 endfor %}{# /* For loop nat_rule rules.source_addresses */ #}
 {%                 set dst_addrs = rule.get('destination_addresses', []) %}
 {%                 set dst_prefixes = rule.get('destination_prefixes', []) %}
