@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2926b702_b502e50f",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/ansible_role_common.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-11-20T09:36:04Z",
+      "side": 0,
+      "message": "DC-GW is not properly migrated, if you remove this file it will cause failure to DC-GW functionality.",
+      "revId": "ad1a197675563161505d2df2dbb2fec6918e79fa",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
