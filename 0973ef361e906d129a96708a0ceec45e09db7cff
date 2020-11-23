@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1de8afcc_3fa40627",
+        "filename": "src/vnsw/agent/oper/vxlan_routing_manager.cc",
+        "patchSetId": 2
+      },
+      "lineNbr": 1023,
+      "author": {
+        "id": 473
+      },
+      "writtenOn": "2020-11-23T05:32:36Z",
+      "side": 1,
+      "message": "Delete function below is called to remove the route path. if vrf becomes NULL, how do we ensure the delete of the below route path? does the route path deletion or route deletion get handled as part of the vrf entry deletion?",
+      "revId": "0973ef361e906d129a96708a0ceec45e09db7cff",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
