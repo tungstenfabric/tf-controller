@@ -16,6 +16,24 @@
       "revId": "ad1a197675563161505d2df2dbb2fec6918e79fa",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "04c6e173_01612890",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/ansible_role_common.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 856
+      },
+      "writtenOn": "2020-11-23T19:42:24Z",
+      "side": 0,
+      "message": "\u003e DC-GW is not properly migrated, if you remove this file it will cause failure to DC-GW functionality.\nPradeep, What is missing in DC-GW migration ? All related APIs are migrated in dc_gateway_feature.py, Is there anything missing ? If yes, can you please list here. All jinja filers removed usage of roles already, so if its missing, then functionality will be broken, as ansible role generated abstract config is not used any more in jinja config pushed to device.\n\n@Pranav,\nIMO, Deleting this file permanently should be postpone until systest validates completely all features with all use cases. So Do not delete this file with this commit, you already have removed references of this file all places, so this file should not be executed at all. Also to be safe side add return at return at start of function set_common_config in this file, so it won\u0027t execute at all.",
+      "parentUuid": "2926b702_b502e50f",
+      "revId": "ad1a197675563161505d2df2dbb2fec6918e79fa",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
