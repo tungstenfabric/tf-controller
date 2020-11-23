@@ -619,7 +619,9 @@ void VxlanRoutingManager::VmiNotify(DBTablePartBase *partition,
     //Now get VN state and add/delete VMI there
     vn_state = dynamic_cast<VxlanRoutingVnState *>
         (vn->GetAgentDBEntryState(vn_listener_id_));
-    vn_state->AddVmi(vn, vmi);
+    if (vn_state) {
+        vn_state->AddVmi(vn, vmi);
+    }
 }
 
 void VxlanRoutingManager::UpdateEvpnType5Route(Agent *agent,
