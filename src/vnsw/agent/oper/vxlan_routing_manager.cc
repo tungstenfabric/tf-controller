@@ -987,7 +987,7 @@ void VxlanRoutingManager::HandleSubnetRoute(const VrfEntry *vrf, bool bridge_vrf
 
 void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
 
-    if (!vrf->vn())
+    if (vrf == NULL || vrf->vn() == NULL)
         return;
 
     std::vector<VnIpam> bridge_vn_ipam;
@@ -1022,11 +1022,11 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
         for (std::vector<VnIpam>::iterator ipam_itr = bridge_vn_ipam.begin();
             ipam_itr < bridge_vn_ipam.end(); ipam_itr++) {
 
-            if (ipam_itr->IsV4()) {
+            if (ipam_itr->IsV4() && (*it)->GetVrf()) {
                 (*it)->GetVrf()->GetInet4UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), (*it)->GetVrf()->GetName(),
                 ipam_itr->GetSubnetAddress(), ipam_itr->plen, NULL);
-            } else if (ipam_itr->IsV6()) {
+            } else if (ipam_itr->IsV6() && (*it)->GetVrf()) {
                 (*it)->GetVrf()->GetInet6UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), (*it)->GetVrf()->GetName(),
                 ipam_itr->GetV6SubnetAddress(), ipam_itr->plen, NULL);
@@ -1041,11 +1041,11 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
         for (std::vector<VnIpam>::iterator vn_ipam_itr = vn_ipam.begin();
             vn_ipam_itr < vn_ipam.end(); vn_ipam_itr++) {
 
-            if (vn_ipam_itr->IsV4()) {
+            if (vn_ipam_itr->IsV4() && vrf) {
                 vrf->GetInet4UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), vrf->GetName(),
                 vn_ipam_itr->GetSubnetAddress(), vn_ipam_itr->plen, NULL);
-            } else if (vn_ipam_itr->IsV6()) {
+            } else if (vn_ipam_itr->IsV6() && vrf) {
                 vrf->GetInet6UnicastRouteTable()->
                 Delete(agent_->evpn_routing_peer(), vrf->GetName(),
                 vn_ipam_itr->GetV6SubnetAddress(), vn_ipam_itr->plen, NULL);
