@@ -1122,6 +1122,7 @@ class TestPolicy(STTestCase, VerifyPolicy):
         test_common.reinit_schema_transformer()
         ResourceBaseST._vnc_lib.access_control_list_update = old_acl_update
 
+    @retries(8, 1)
     def test_acl_hash_entries(self):
         vn1_name = self.id() + 'vn1'
         vn2_name = self.id() + 'vn2'
