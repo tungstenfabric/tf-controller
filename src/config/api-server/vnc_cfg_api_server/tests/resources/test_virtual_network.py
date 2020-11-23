@@ -356,19 +356,104 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
             .get_vxlan_network_identifier()
         self.assertEqual(vn_network_id, vxlan_id)
 
-    def test_update_in_use_vn_to_provider_vn(self):
+    def test_create_provider_vn(self):
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
-        self.api.virtual_network_create(vn)
+        vn.set_is_provider_network(True)
+        vn.set_provider_properties(
+            ProviderDetails(
+                params_dict={"segmentation_id": 100,
+                             "physical_network": "physnet1"}))
+        vn_uuid = self.api.virtual_network_create(vn)
+
+        is_provider_network = (self
+                               .api.virtual_network_read(id=vn_uuid)
+                               .get_is_provider_network())
+        self.assertTrue(is_provider_network)
+    # end test_create_provider_vn
+
+    def test_create_provider_vn_without_provider_details(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn.set_is_provider_network(True)
+        vn_uuid = self.api.virtual_network_create(vn)
+
+        is_provider_network = (self
+                               .api.virtual_network_read(id=vn_uuid)
+                               .get_is_provider_network())
+        self.assertTrue(is_provider_network)
+    # end test_create_provider_vn_without_provider_details
+
+    def test_update_not_in_use_non_provider_vn_to_provider(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn_uuid = self.api.virtual_network_create(vn)
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertFalse(is_provider_network)
+
+        vn.set_is_provider_network(True)
+        vn.set_provider_properties(
+            ProviderDetails(
+                params_dict={"segmentation_id": 100,
+                             "physical_network": "physnet1"}))
+        self.api.virtual_network_update(vn)
+
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertTrue(is_provider_network)
+
+        updated_provider_properties = vn.get_provider_properties()
+        segmentation_id = updated_provider_properties.get_segmentation_id()
+        physical_network = updated_provider_properties.get_physical_network()
+
+        self.assertEqual((100, "physnet1"),
+                         (segmentation_id, physical_network))
+    # end test_update_non_provider_vn_to_provider
+
+    def test_update_non_provider_vn_to_provider_without_provider_details(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn_uuid = self.api.virtual_network_create(vn)
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertFalse(is_provider_network)
+
+        vn.set_is_provider_network(True)
+        self.api.virtual_network_update(vn)
+
+        vn = self.api.virtual_network_read(id=vn_uuid)
+        is_provider_network = vn.get_is_provider_network()
+        self.assertTrue(is_provider_network)
+    # end test_update_non_provider_vn_to_provider_without_provider_details
+
+    def test_update_in_use_vn_to_provider_vn(self):
+        project = Project('%s-project' % self.id())
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
+
+        vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"segmentation_id": 100,
@@ -383,20 +468,23 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
 
         self.assertEqual((100, "physnet1"),
                          (segmentation_id, physical_network))
+    # end test_update_in_use_vn_to_provider_vn
 
     def test_update_in_use_vn_to_provider_vn_without_physnet_label(self):
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
-        self.api.virtual_network_create(vn)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"segmentation_id": 100}))
@@ -408,20 +496,23 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
                                        .get_provider_properties())
 
         self.assertEqual(None, updated_provider_properties)
+    # end test_update_in_use_vn_to_provider_vn_without_physnet_label
 
     def test_update_in_use_vn_to_provider_vn_without_segmentation(self):
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
-        self.api.virtual_network_create(vn)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"physical_network": "physnet1"}))
@@ -433,23 +524,26 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
                                        .get_provider_properties())
 
         self.assertEqual(None, updated_provider_properties)
+    # end test_update_in_use_vn_to_provider_vn_without_segmentation
 
     def test_update_in_use_provider_vn(self):
         project = Project('%s-project' % self.id())
-        self.api.project_create(project)
+        project_uuid = self.api.project_create(project)
+        project = self.api.project_read(id=project_uuid)
 
         vn = VirtualNetwork('%s-vn' % self.id(), parent_obj=project)
+        vn.set_is_provider_network(True)
         vn.set_provider_properties(
             ProviderDetails(
                 params_dict={"segmentation_id": 100,
                              "physical_network": "physnet1"}))
-        self.api.virtual_network_create(vn)
+        vn_uuid = self.api.virtual_network_create(vn)
 
         vmi = VirtualMachineInterface('%s-vmi' % self.id(), parent_obj=project)
         vmi.set_virtual_network(vn)
         self.api.virtual_machine_interface_create(vmi)
 
-        vn = self.api.virtual_network_read(id=vn.uuid)
+        vn = self.api.virtual_network_read(id=vn_uuid)
 
         vn.set_provider_properties(
             ProviderDetails(
@@ -466,3 +560,4 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
 
         self.assertEqual((100, "physnet1"),
                          (segmentation_id, physical_network))
+    # end test_update_in_use_provider_vn
