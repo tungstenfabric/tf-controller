@@ -388,6 +388,7 @@ TEST_F(NdpEntryTest, Matrix) {
         for (Transitions::iterator j = matrix[i].begin(); j != matrix[i].end();
                             j++) {
             GetToState(i);
+            client->WaitForIdle();
             j->first();
             RunToState(j->second);
         }

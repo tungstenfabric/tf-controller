@@ -95,8 +95,8 @@ bool DynamicPeer::DeleteOnZeroRefcount() const {
     return true;
 }
 
-const Ip4Address *Peer::NexthopIp(Agent *agent, const AgentPath *path) const {
-    return agent->router_ip_ptr();
+const IpAddress Peer::NexthopIp(Agent *agent, const AgentPath *path) const {
+    return agent->router_id();
 }
 
 BgpPeer::BgpPeer(AgentXmppChannel *channel, const Ip4Address &server_ip,

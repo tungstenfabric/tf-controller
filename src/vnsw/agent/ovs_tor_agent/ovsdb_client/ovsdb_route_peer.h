@@ -16,7 +16,7 @@ class OvsPeer : public DynamicPeer {
     virtual ~OvsPeer();
 
     bool Compare(const Peer *rhs) const;
-    const Ip4Address *NexthopIp(Agent *agent, const AgentPath *path) const;
+    const IpAddress NexthopIp(Agent *agent, const AgentPath *path) const;
     bool AddOvsRoute(const VrfEntry *vrf, uint32_t vxlan_id,
                      const std::string &dest_vn, const MacAddress &mac,
                      Ip4Address &tor_ip);

@@ -58,7 +58,8 @@ private:
     void SolicitedMulticastIpAndMac(const Ip6Address &dip, uint8_t *ip,
                                     MacAddress &mac);
     uint16_t FillNeighborSolicit(uint8_t *buf, const Ip6Address &target,
-                                 uint8_t *sip, uint8_t *dip);
+                                 uint8_t *sip, uint8_t *dip,
+                                 MacAddress smac);
     void Ipv6Lower24BitsExtract(uint8_t *dst, uint8_t *src);
     void Ipv6AddressBitwiseOr(uint8_t *dst, uint8_t *src);
     bool IsDefaultGatewayConfigured(uint32_t ifindex, const Ip6Address &addr);

@@ -54,8 +54,9 @@ void OverlayTraceRoute::SendRequest()
     const AgentPath *path = rt->GetActivePath();
     const TunnelNH *nh = static_cast<const TunnelNH *>(path->nexthop());
 
-    tunneldst = *nh->GetDip();
-    tunnelsrc = *nh->GetSip();
+    // TODO for IPv6
+    tunneldst = nh->GetDip()->to_v4();
+    tunnelsrc = nh->GetSip()->to_v4();
     len_ = OverlayPing::kOverlayUdpHdrLength + data_len;
     boost::shared_ptr<PktInfo> pkt_info(new PktInfo(agent, len_,
                                                         PktHandler::DIAG, 0));

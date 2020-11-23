@@ -155,12 +155,24 @@ void ContrailInitCommon::ProcessComputeAddress(AgentParam *param) {
         VmInterfaceKey vmi_key(AgentKey::ADD_DEL_CHANGE,
                                boost::uuids::nil_uuid(),
                                param->vhost_name());
+        IpAddress address = *it;
+        uint8_t plen = 0;
+
+        it++;
+
+        if (address.is_v4()) {
+            plen = 32;
+        } else if (address.is_v6()) {
+            plen = 128;
+        } else {
+            continue;
+        }
+
         rt_table->AddVHostRecvRouteReq(agent()->local_peer(),
                                        agent()->fabric_vrf_name(),
-                                       vmi_key, *it, 32,
+                                       vmi_key, address, plen,
                                        agent()->fabric_vn_name(), false,
                                        true);
-        it++;
     }
 
     // If compute_node_address are specified, it will mean user wants
@@ -207,6 +219,12 @@ void ContrailInitCommon::CreateInterfaces() {
     agent()->set_vhost_prefix(agent_param()->vhost_prefix());
     agent()->set_vhost_prefix_len(agent_param()->vhost_plen());
     agent()->set_vhost_default_gateway(agent_param()->vhost_gw());
+
+    agent()->set_router_id6(agent_param()->vhost_addr6());
+    agent()->set_vhost_prefix6(agent_param()->vhost_prefix6());
+    agent()->set_vhost_prefix_len6(agent_param()->vhost_plen6());
+    agent()->set_vhost_default_gateway6(agent_param()->vhost_gw6());
+
     if (agent_param()->crypt_port() != "") {
         type = ComputeEncapType(agent_param()->crypt_port_encap_type());
         PhysicalInterface::Create(table, agent_param()->crypt_port(),
@@ -242,14 +260,23 @@ void ContrailInitCommon::CreateInterfaces() {
     // VRF creation, but vhost is not present when fabric-vrf is created.
     // So, add it now
     BridgeAgentRouteTable *l2_table = agent()->fabric_l2_unicast_table();
-    const InetInterface *vhost = static_cast<const InetInterface *>
-        (agent()->vhost_interface());
+    MacAddress vhost_mac;
+    // TODO -> esnagendra : anything else to be done; anywhere else
+    if (agent()->tsn_enabled()) {
+        const InetInterface *inet_interface = static_cast<const InetInterface *>
+            (agent()->vhost_interface());
+        vhost_mac = inet_interface->xconnect()->mac();
+    } else {
+        const VmInterface *vm_interface = static_cast<const VmInterface *>
+            (agent()->vhost_interface());
+        vhost_mac = vm_interface->vm_mac();
+    }
     l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
                                     agent()->fabric_vrf_name(), 0,
-                                    vhost->xconnect()->mac(), "");
+                                    vhost_mac, "");
     l2_table->AddBridgeReceiveRoute(agent()->local_vm_peer(),
                                     agent()->fabric_policy_vrf_name(), 0,
-                                    vhost->xconnect()->mac(), "");
+                                    vhost_mac, "");
     // Add vhost labelled inet route
     InetUnicastAgentRouteTable *inet_mpls_table =
         static_cast<InetUnicastAgentRouteTable *>

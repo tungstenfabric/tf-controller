@@ -1187,7 +1187,8 @@ TEST_F(CfgTest, Basic_1) {
     InetInterface::CreateReq(Agent::GetInstance()->interface_table(),
                              "vhost10", InetInterface::VHOST,
                              Agent::GetInstance()->fabric_vrf_name(),
-                             Ip4Address(0), 0, Ip4Address(0), eth_intf, "",
+                             Ip4Address(0), 0, Ip4Address(0),
+                             Ip6Address(), 0, Ip6Address(), eth_intf, "",
                              Interface::TRANSPORT_ETHERNET);
 
     client->WaitForIdle();

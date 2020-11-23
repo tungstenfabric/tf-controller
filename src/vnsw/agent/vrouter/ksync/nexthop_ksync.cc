@@ -1005,8 +1005,18 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
 
         case NextHop::TUNNEL : {
             encoder.set_nhr_type(NH_TUNNEL);
-            encoder.set_nhr_tun_sip(htonl(sip_.to_v4().to_ulong()));
-            encoder.set_nhr_tun_dip(htonl(dip_.to_v4().to_ulong()));
+            if (sip_.is_v4() && dip_.is_v4()) {
+                encoder.set_nhr_tun_sip(htonl(sip_.to_v4().to_ulong()));
+                encoder.set_nhr_tun_dip(htonl(dip_.to_v4().to_ulong()));
+            } else if (sip_.is_v6() && dip_.is_v6()) {
+                encoder.set_nhr_family(AF_INET6);
+                Ip6Address::bytes_type bytes = sip_.to_v6().to_bytes();
+                std::vector<int8_t> nhr_src(bytes.begin(), bytes.end());
+                encoder.set_nhr_tun_sip6(nhr_src);
+                bytes = dip_.to_v6().to_bytes();
+                std::vector<int8_t> nhr_dst(bytes.begin(), bytes.end());
+                encoder.set_nhr_tun_dip6(nhr_dst);
+            }
             encoder.set_nhr_encap_family(ETHERTYPE_ARP);
 
             if (if_ksync) {
@@ -1025,6 +1035,11 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 flags |= NH_FLAG_TUNNEL_UDP_MPLS;
             } else if (tunnel_type_.GetType() == TunnelType::MPLS_GRE) {
                 flags |= NH_FLAG_TUNNEL_GRE;
+            } else if (tunnel_type_.GetType() == TunnelType::MPLS_IP) {
+                flags |= NH_FLAG_TUNNEL_MPLS_IP;
+            } else if (tunnel_type_.GetType() == TunnelType::NATIVE_MPLS) {
+                encoder.set_nhr_family(AF_MPLS);
+                flags |= NH_FLAG_TUNNEL_MPLS;
             } else if (tunnel_type_.GetType() == TunnelType::NATIVE) {
                 //Ideally we should have created a new type of
                 //indirect nexthop to handle NATIVE encap

@@ -462,7 +462,7 @@ void VmInterface::AddRoute(const std::string &vrf_name, const IpAddress &addr,
     InterfaceTable *table = static_cast<InterfaceTable *>(get_table());
     bool native_encap = false;
     VrfEntry *vrf = table->FindVrfRef(vrf_name);
-    if (addr.is_v4() &&
+    if ((addr.is_v4() || addr.is_v6()) &&
         vrf && vrf->forwarding_vrf() == table->agent()->fabric_vrf()) {
         native_encap = true;
     }
@@ -618,10 +618,18 @@ IpAddress VmInterface::GetServiceIp(const IpAddress &vm_ip) const {
     }
 
     const VnIpam *ipam = NULL;
-    if (subnet_.is_unspecified()) {
-        ipam = vn_->GetIpam(vm_ip);
-    } else {
-        ipam = vn_->GetIpam(subnet_);
+    if (vm_ip.is_v4()) {
+        if (subnet_.is_unspecified()) {
+            ipam = vn_->GetIpam(vm_ip);
+        } else {
+            ipam = vn_->GetIpam(subnet_);
+        }
+    } else if (vm_ip.is_v6()) {
+        if (subnet6_.is_unspecified()) {
+            ipam = vn_->GetIpam(vm_ip);
+        } else {
+            ipam = vn_->GetIpam(subnet6_);
+        }
     }
 
     if (ipam) {

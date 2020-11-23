@@ -119,13 +119,18 @@ void OvsPeer::DeleteOvsPeerMulticastRoute(const VrfEntry *vrf,
     table->DeleteOvsPeerMulticastRoute(this, vxlan_id, tor_ip);
 }
 
-const Ip4Address *OvsPeer::NexthopIp(Agent *agent,
+const IpAddress OvsPeer::NexthopIp(Agent *agent,
                                      const AgentPath *path) const {
     const TunnelNH *nh = dynamic_cast<const TunnelNH *>(path->
                                                         ComputeNextHop(agent));
     if (nh == NULL)
-        return agent->router_ip_ptr();
-    return nh->GetDip();
+        return agent->router_id();
+
+    // TODO - what to do here?
+    if (nh->GetDip()->is_v6()) {
+        assert(0);
+    }
+    return nh->GetDip()->to_v4();
 }
 
 OvsPeerManager::OvsPeerManager(Agent *agent) : gen_id_(0), agent_(agent) {

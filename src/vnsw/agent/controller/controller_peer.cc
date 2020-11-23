@@ -2444,7 +2444,7 @@ bool AgentXmppChannel::ControllerSendV4V6UnicastRouteCommon(AgentRoute *route,
 bool AgentXmppChannel::BuildTorMulticastMessage(EnetItemType &item,
                                                 stringstream &node_id,
                                                 AgentRoute *route,
-                                                const Ip4Address *nh_ip,
+                                                const IpAddress nh_ip,
                                                 const std::string &vn,
                                                 const SecurityGroupList *sg_list,
                                                 const TagList *tag_list,
@@ -2539,7 +2539,7 @@ bool AgentXmppChannel::BuildTorMulticastMessage(EnetItemType &item,
 bool AgentXmppChannel::BuildEvpnMulticastMessage(EnetItemType &item,
                                                  stringstream &node_id,
                                                  AgentRoute *route,
-                                                 const Ip4Address *nh_ip,
+                                                 const IpAddress nh_ip,
                                                  const std::string &vn,
                                                  const SecurityGroupList *sg_list,
                                                  const TagList *tag_list,
@@ -2604,7 +2604,7 @@ bool AgentXmppChannel::BuildEvpnMulticastMessage(EnetItemType &item,
 
     autogen::EnetNextHopType nh;
     nh.af = Address::INET;
-    nh.address = nh_ip->to_string();
+    nh.address = nh_ip.to_string();
     nh.label = label;
 
     TunnelType::Type tunnel_type = TunnelType::ComputeType(tunnel_bmap);
@@ -2655,7 +2655,7 @@ bool AgentXmppChannel::BuildEvpnMulticastMessage(EnetItemType &item,
 bool AgentXmppChannel::BuildEvpnUnicastMessage(EnetItemType &item,
                                                stringstream &node_id,
                                                AgentRoute *route,
-                                               const Ip4Address *nh_ip,
+                                               const IpAddress nh_ip,
                                                const std::string &vn,
                                                const SecurityGroupList *sg_list,
                                                const TagList *tag_list,
@@ -2696,7 +2696,7 @@ bool AgentXmppChannel::BuildEvpnUnicastMessage(EnetItemType &item,
 
     autogen::EnetNextHopType nh;
     nh.af = Address::INET;
-    nh.address = nh_ip->to_string();
+    nh.address = nh_ip.to_string();
     nh.label = label;
     if (evpn_route->mac().IsZero()) {
         nh.mac = agent_->vhost_interface()->mac().ToString();
@@ -2813,7 +2813,7 @@ bool AgentXmppChannel::BuildAndSendEvpnDom(EnetItemType &item,
 }
 
 bool AgentXmppChannel::ControllerSendEvpnRouteCommon(AgentRoute *route,
-                                                     const Ip4Address *nh_ip,
+                                                     const IpAddress nh_ip,
                                                      std::string vn,
                                                      const SecurityGroupList *sg_list,
                                                      const TagList *tag_list,
@@ -3084,7 +3084,7 @@ bool AgentXmppChannel::ControllerSendMvpnRouteCommon(AgentRoute *route,
 
 bool AgentXmppChannel::ControllerSendEvpnRouteAdd(AgentXmppChannel *peer,
                                                   AgentRoute *route,
-                                                  const Ip4Address *nh_ip,
+                                                  const IpAddress nh_ip,
                                                   std::string vn,
                                                   uint32_t label,
                                                   uint32_t tunnel_bmap,
@@ -3128,7 +3128,7 @@ bool AgentXmppChannel::ControllerSendEvpnRouteDelete(AgentXmppChannel *peer,
                      route->ToString(), false, label);
     Ip4Address nh_ip = Ip4Address(0);
     return (peer->ControllerSendEvpnRouteCommon(route,
-                                                &nh_ip,
+                                                nh_ip,
                                                 vn,
                                                 NULL,
                                                 NULL,
@@ -3143,7 +3143,7 @@ bool AgentXmppChannel::ControllerSendEvpnRouteDelete(AgentXmppChannel *peer,
 
 bool AgentXmppChannel::ControllerSendRouteAdd(AgentXmppChannel *peer,
                                      AgentRoute *route,
-                                     const Ip4Address *nexthop_ip,
+                                     const IpAddress nexthop_ip,
                                      const VnListType &vn_list,
                                      uint32_t label,
                                      TunnelType::TypeBmap bmap,
@@ -3221,7 +3221,7 @@ bool AgentXmppChannel::ControllerSendRouteDelete(AgentXmppChannel *peer,
         std::string vn;
         if (vn_list.size())
             vn = *vn_list.begin();
-        ret = peer->ControllerSendEvpnRouteCommon(route, &nh_ip,
+        ret = peer->ControllerSendEvpnRouteCommon(route, nh_ip,
                                                   vn, NULL, NULL, NULL,
                                                   label, bmap, "", "",
                                                   path_preference, false);

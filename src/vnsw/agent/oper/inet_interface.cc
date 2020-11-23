@@ -74,6 +74,8 @@ Interface *InetInterfaceKey::AllocEntry(const InterfaceTable *table,
     InetInterface *intf = new InetInterface(name_, vhost_data->sub_type_, vrf,
                                             vhost_data->ip_addr_,
                                             vhost_data->plen_, vhost_data->gw_,
+                                            vhost_data->ip_addr6_,
+                                            vhost_data->plen6_, vhost_data->gw6_,
                                             xconnect, vhost_data->vn_name_);
     return intf;
 }
@@ -86,11 +88,14 @@ InetInterfaceData::InetInterfaceData(InetInterface::SubType sub_type,
                                      const std::string &vrf_name,
                                      const Ip4Address &addr, int plen,
                                      const Ip4Address &gw,
+                                     const Ip6Address &addr6, int plen6,
+                                     const Ip6Address &gw6,
                                      const std::string &xconnect,
                                      const std::string vn_name,
                                      Interface::Transport transport) :
     InterfaceData(NULL, NULL, transport), sub_type_(sub_type), ip_addr_(addr),
-    plen_(plen), gw_(gw), xconnect_(xconnect), vn_name_(vn_name) {
+    plen_(plen), gw_(gw), ip_addr6_(addr6), plen6_(plen6), gw6_(gw6),
+    xconnect_(xconnect), vn_name_(vn_name) {
     InetInit(vrf_name);
 }
 
@@ -346,21 +351,27 @@ void InetInterface::DeActivateHostInterface() {
 /////////////////////////////////////////////////////////////////////////////
 InetInterface::InetInterface(const std::string &name) :
     Interface(Interface::INET, nil_uuid(), name, NULL, true, nil_uuid()),
-    sub_type_(VHOST), ip_addr_(0), plen_(0), gw_(0), xconnect_(NULL),
-    vn_name_("") {
+    sub_type_(VHOST), ip_addr_(0), plen_(0), gw_(0),
+    ip_addr6_(), plen6_(0), gw6_(),
+    xconnect_(NULL), vn_name_("") {
     ipv4_active_ = false;
     l2_active_ = false;
 }
 
 InetInterface::InetInterface(const std::string &name, SubType sub_type,
                              VrfEntry *vrf, const Ip4Address &ip_addr, int plen,
-                             const Ip4Address &gw, Interface *xconnect,
+                             const Ip4Address &gw,
+                             const Ip6Address &ip_addr6, int plen6,
+                             const Ip6Address &gw6, Interface *xconnect,
                              const std::string &vn_name) :
     Interface(Interface::INET, nil_uuid(), name, vrf, true, nil_uuid()),
     sub_type_(sub_type),
     ip_addr_(ip_addr),
     plen_(plen),
     gw_(gw),
+    ip_addr6_(ip_addr6),
+    plen6_(plen6),
+    gw6_(gw6),
     xconnect_(xconnect),
     vn_name_(vn_name) {
     ipv4_active_ = false;
@@ -483,14 +494,18 @@ void InetInterface::CreateReq(InterfaceTable *table, const std::string &ifname,
                               SubType sub_type, const std::string &vrf_name,
                               const Ip4Address &addr, int plen,
                               const Ip4Address &gw,
+                              const Ip6Address &addr6, int plen6,
+                              const Ip6Address &gw6,
                               const std::string &xconnect,
                               const std::string &vn_name,
                               Interface::Transport transport) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new InetInterfaceKey(ifname));
     req.data.reset(new InetInterfaceData(sub_type, vrf_name, Ip4Address(addr),
-                                         plen, Ip4Address(gw), xconnect,
-                                         vn_name, transport));
+                                         plen, Ip4Address(gw),
+                                         Ip6Address(addr6), plen6,
+                                         Ip6Address(gw6),
+                                         xconnect, vn_name, transport));
     table->Enqueue(&req);
 }
 
@@ -499,13 +514,17 @@ void InetInterface::Create(InterfaceTable *table, const std::string &ifname,
                            SubType sub_type, const std::string &vrf_name,
                            const Ip4Address &addr, int plen,
                            const Ip4Address &gw,
+                           const Ip6Address &addr6, int plen6,
+                           const Ip6Address &gw6,
                            const std::string &xconnect,
                            const std::string &vn_name,
                            Interface::Transport transport) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new InetInterfaceKey(ifname));
     req.data.reset(new InetInterfaceData(sub_type, vrf_name, Ip4Address(addr),
-                                         plen, Ip4Address(gw), xconnect,
+                                         plen, Ip4Address(gw),
+                                         Ip6Address(addr6), plen6,
+                                         Ip6Address(gw6), xconnect,
                                          vn_name, transport));
     table->Process(req);
 }

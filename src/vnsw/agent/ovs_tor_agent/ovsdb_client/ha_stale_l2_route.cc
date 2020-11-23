@@ -145,8 +145,8 @@ bool HaStaleL2RouteEntry::Sync(DBEntry *db_entry) {
     if (path != NULL) {
         TunnelNH *tnh = dynamic_cast<TunnelNH *>(path->nexthop());
         if (tnh) {
-            sip_ = *tnh->GetSip();
-            dip_ = *tnh->GetDip();
+            sip_ = tnh->GetSip()->to_v4();
+            dip_ = tnh->GetDip()->to_v4();
         }
     }
     is_multicast_ = entry->is_multicast();

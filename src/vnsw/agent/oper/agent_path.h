@@ -257,7 +257,7 @@ public:
     const std::string &vrf_name() const {return vrf_name_;}
     bool force_policy() const {return force_policy_;}
     const bool unresolved() const {return unresolved_;}
-    const Ip4Address& tunnel_dest() const {return tunnel_dest_;}
+    const IpAddress& tunnel_dest() const {return tunnel_dest_;}
     bool is_subnet_discard() const {return is_subnet_discard_;}
     const IpAddress subnet_service_ip() const { return subnet_service_ip_;}
 
@@ -282,7 +282,7 @@ public:
     void clear_sg_list() { sg_list_.clear(); }
     void clear_tag_list() { tag_list_.clear(); }
     void clear_communities() { communities_.clear(); }
-    void set_tunnel_dest(const Ip4Address &tunnel_dest) {
+    void set_tunnel_dest(const IpAddress &tunnel_dest) {
         tunnel_dest_ = tunnel_dest;
     }
     void set_is_subnet_discard(bool discard) {
@@ -328,7 +328,7 @@ public:
                             const AgentPath *local_path);
     bool ChangeCompositeNH(Agent *agent, CompositeNHKey *nh);
     // Get nexthop-ip address to be used for path
-    const Ip4Address *NexthopIp(Agent *agent) const;
+    const IpAddress NexthopIp(Agent *agent) const;
 
     MacAddress arp_mac() const {return arp_mac_;}
     void set_arp_mac(const MacAddress &mac) {
@@ -457,7 +457,7 @@ private:
     CommunityList communities_;
 
     // tunnel destination address
-    Ip4Address tunnel_dest_;
+    IpAddress tunnel_dest_;
     // tunnel_bmap_ sent by control-node
     TunnelType::TypeBmap tunnel_bmap_;
     // tunnel-type computed for the path

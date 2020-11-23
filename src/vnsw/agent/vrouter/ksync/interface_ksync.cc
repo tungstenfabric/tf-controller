@@ -944,6 +944,10 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             flags |= VIF_FLAG_VHOST_PHYS;
         }
 
+        // TODO : Check for agent mode cRPD to enable
+        // multicast on the physical interface.
+        // flags |= VIF_FLAG_ALL_MULTICAST_ENABLE;
+
         if (subtype_ == PhysicalInterface::VMWARE ||
             ksync_obj_->ksync()->agent()->server_gateway_mode() ||
             ksync_obj_->ksync()->agent()->pbb_gateway_mode()) {

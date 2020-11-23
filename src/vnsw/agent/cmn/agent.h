@@ -417,6 +417,7 @@ public:
         INET4_MPLS,
         ROUTE_TABLE_MAX
     };
+
     static const uint8_t ROUTE_TABLE_START = (Agent::INVALID + 1);
 
     typedef void (*FlowStatsReqHandler)(Agent *agent,
@@ -645,24 +646,42 @@ public:
         prefix_ = addr;
     }
 
+    Ip6Address vhost_prefix6() const {return prefix6_;}
+    void set_vhost_prefix6(const Ip6Address &addr) {
+        prefix6_ = addr;
+    }
+
     uint32_t vhost_prefix_len() const {return prefix_len_;}
     void set_vhost_prefix_len(uint32_t plen) {prefix_len_ = plen;}
+
+    uint32_t vhost_prefix_len6() const {return prefix_len6_;}
+    void set_vhost_prefix_len6(uint32_t plen6) {prefix_len6_ = plen6;}
 
     Ip4Address vhost_default_gateway() const {return gateway_id_;}
     void set_vhost_default_gateway(const Ip4Address &addr) {
         gateway_id_ = addr;
     }
 
+    Ip6Address vhost_default_gateway6() const {return gateway_id6_;}
+    void set_vhost_default_gateway6(const Ip6Address &addr6) {
+        gateway_id6_ = addr6;
+    }
+
     Ip4Address router_id() const {return router_id_;  }
-    IpAddress router_id6() const {return router_id6_;}
     const Ip4Address *router_ip_ptr() const {
         return &router_id_;
     }
     void set_router_id(const Ip4Address &addr) {
         router_id_ = addr;
-        router_id6_ = Ip6Address::v4_mapped(addr);
         set_router_id_configured(true);
     }
+
+    Ip6Address router_id6() const {return router_id6_;}
+    void set_router_id6(const Ip6Address &addr6) {
+        router_id6_ = addr6;
+        set_router_id_configured(true);
+    }
+
     bool router_id_configured() { return router_id_configured_; }
     void set_router_id_configured(bool value) {
         router_id_configured_ = value;
@@ -671,6 +690,11 @@ public:
     Ip4Address compute_node_ip() const {return compute_node_ip_;}
     void set_compute_node_ip(const Ip4Address &addr) {
         compute_node_ip_ = addr;
+    }
+
+    Ip6Address compute_node_ip6() const {return compute_node_ip6_;}
+    void set_compute_node_ip6(const Ip6Address &addr6) {
+        compute_node_ip6_ = addr6;
     }
 
     void set_dns_list(std::vector<std::string> &dns_list) {
@@ -1472,17 +1496,23 @@ private:
     // Interface Mirror config table
     IntfMirrorCfgTable *intf_mirror_cfg_table_;
 
-    IpAddress router_id6_;
+    // IpAddress router_id6_;
     Ip4Address router_id_;
     Ip4Address prefix_;
     uint32_t prefix_len_;
     Ip4Address gateway_id_;
+
+    Ip6Address router_id6_;
+    Ip6Address prefix6_;
+    uint32_t prefix_len6_;
+    Ip6Address gateway_id6_;
 
     // IP address on the compute node used by agent to run services such
     // as metadata service. This is different than router_id when vhost0
     // is un-numbered interface in host-os
     // The compute_node_ip_ is used only in adding Flow NAT rules.
     Ip4Address compute_node_ip_;
+    Ip6Address compute_node_ip6_;
     std::string xs_cfg_addr_;
     int8_t xs_idx_;
     std::string xs_addr_[MAX_XMPP_SERVERS];

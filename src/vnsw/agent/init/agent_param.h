@@ -154,7 +154,8 @@ public:
 
     struct PortInfo {
         PortInfo() :
-            name_(""), vrf_(""), addr_(0), prefix_(0), plen_(0), gw_(0) {}
+            name_(""), vrf_(""), addr_(0), prefix_(0), plen_(0), gw_(0),
+            addr6_(), prefix6_(), plen6_(0), gw6_() {}
         ~PortInfo() { };
 
         std::string name_;
@@ -163,6 +164,11 @@ public:
         Ip4Address prefix_;
         int plen_;
         Ip4Address gw_;
+
+        Ip6Address addr6_;
+        Ip6Address prefix6_;
+        int plen6_;
+        Ip6Address gw6_;
     };
 
     std::map<std::string, uint32_t> trace_buff_size_map;
@@ -188,6 +194,14 @@ public:
     const Ip4Address &vhost_prefix() const { return vhost_.prefix_; }
     const int vhost_plen() const { return vhost_.plen_; }
     const Ip4Address &vhost_gw() const { return vhost_.gw_; }
+
+    const Ip6Address &vhost_addr6() const { return vhost_.addr6_; }
+    void set_vhost_addr(const Ip6Address &ip6) {
+        vhost_.addr6_ = ip6;
+    }
+    const Ip6Address &vhost_prefix6() const { return vhost_.prefix6_; }
+    const int vhost_plen6() const { return vhost_.plen6_; }
+    const Ip6Address &vhost_gw6() const { return vhost_.gw6_; }
 
     const std::string &xen_ll_name() const { return xen_ll_.name_; }
     const void set_xen_ll_name(const std::string &name) {
@@ -587,6 +601,7 @@ protected:
         return false;
     }
     bool GetIpAddress(const std::string &str, Ip4Address *addr);
+    bool GetIp6Address(const std::string &str, Ip6Address *addr);
     bool ParseIp(const std::string &key, Ip4Address *server);
     bool ParseServerList(const std::string &key, Ip4Address *s1, Ip4Address *s2);
     bool ParseAddress(const std::string &addr_string,
@@ -595,6 +610,8 @@ protected:
                          uint16_t *port1, Ip4Address *server2, uint16_t *port2);
     void ParseIpArgument(const boost::program_options::variables_map &var_map,
                          Ip4Address &server, const std::string &key);
+    void ParseIp6Argument(const boost::program_options::variables_map &var_map,
+                         Ip6Address &server, const std::string &key);
     bool ParseServerListArguments
     (const boost::program_options::variables_map &var_map, Ip4Address &server1,
      Ip4Address &server2, const std::string &key);

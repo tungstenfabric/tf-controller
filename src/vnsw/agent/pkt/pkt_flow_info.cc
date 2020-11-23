@@ -1404,12 +1404,14 @@ void PktFlowInfo::IngressProcess(const PktInfo *pkt, PktControlInfo *in,
 
         if (nh && nh->GetType() == NextHop::TUNNEL) {
             const TunnelNH* tunnel_nh = static_cast<const TunnelNH *>(nh);
-            const Ip4Address *ip = tunnel_nh->GetDip();
+            const IpAddress *ip = tunnel_nh->GetDip();
             if (ip) {
-                peer_vrouter = ip->to_string();
+                peer_vrouter = ip->is_v4() ? ip->to_v4().to_string() :
+                                                ip->to_v6().to_string();
                 tunnel_type = tunnel_nh->GetTunnelType();
             }
         } else {
+            // TODO ??? what to do ?
             peer_vrouter = agent->router_id().to_string();
         }
     }

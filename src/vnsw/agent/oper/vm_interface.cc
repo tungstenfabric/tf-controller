@@ -68,6 +68,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     vrf_table_label_state_(new VrfTableLabelState()),
     metadata_ip_state_(new MetaDataIpState()),
     resolve_route_state_(new ResolveRouteState()),
+    resolve_route6_state_(new ResolveRoute6State()),
     interface_route_state_(new VmiRouteState()),
     sg_list_(), tag_list_(), floating_ip_list_(), alias_ip_list_(), service_vlan_list_(),
     static_route_list_(), allowed_address_pair_list_(),
@@ -76,7 +77,8 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     device_type_(VmInterface::DEVICE_TYPE_INVALID),
     vmi_type_(VmInterface::VMI_TYPE_INVALID),
     hbs_intf_type_(VmInterface::HBS_INTF_INVALID),
-    configurer_(0), subnet_(0), subnet_plen_(0), ethernet_tag_(0),
+    configurer_(0), subnet_(0), subnet_plen_(0),
+    subnet6_(), subnet_plen6_(0), ethernet_tag_(0),
     logical_interface_(nil_uuid()), nova_ip_addr_(0), nova_ip6_addr_(),
     dhcp_addr_(0), metadata_ip_map_(), hc_instance_set_(),
     ecmp_load_balance_(), service_health_check_ip_(), is_vn_qos_config_(false),
@@ -123,6 +125,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     vrf_table_label_state_(new VrfTableLabelState()),
     metadata_ip_state_(new MetaDataIpState()),
     resolve_route_state_(new ResolveRouteState()),
+    resolve_route6_state_(new ResolveRoute6State()),
     interface_route_state_(new VmiRouteState()),
     sg_list_(), tag_list_(),
     floating_ip_list_(), alias_ip_list_(), service_vlan_list_(),
@@ -130,8 +133,9 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     instance_ipv4_list_(true), instance_ipv6_list_(false), fat_flow_list_(),
     vrf_assign_rule_list_(), device_type_(device_type),
     vmi_type_(vmi_type), hbs_intf_type_(VmInterface::HBS_INTF_INVALID),
-    configurer_(0), subnet_(0),
-    subnet_plen_(0), ethernet_tag_(0), logical_interface_(nil_uuid()),
+    configurer_(0), subnet_(0), subnet_plen_(0),
+    subnet6_(), subnet_plen6_(0),
+    ethernet_tag_(0), logical_interface_(nil_uuid()),
     nova_ip_addr_(0), nova_ip6_addr_(), dhcp_addr_(0), metadata_ip_map_(),
     hc_instance_set_(), service_health_check_ip_(), is_vn_qos_config_(false),
     learning_enabled_(false), etree_leaf_(false), layer2_control_word_(false),
@@ -424,6 +428,8 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active,
     alias_ip_list_.UpdateList(agent, this, l2_force_op, l3_force_op);
 
     UpdateState(resolve_route_state_.get(), l2_force_op, l3_force_op);
+
+    UpdateState(resolve_route6_state_.get(), l2_force_op, l3_force_op);
 
     static_route_list_.UpdateList(agent, this, l2_force_op, l3_force_op);
 
@@ -1306,6 +1312,117 @@ bool ResolveRouteState::AddL2(const Agent *agent, VmInterface *vmi) const {
         (vrf_->GetRouteTable(Agent::BRIDGE));
     table->AddBridgeReceiveRoute(vmi->peer(), vrf_->GetName(), 0,
                                  vmi->GetVifMac(agent), vmi->vn()->GetName());
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// ResolveRoute6 Attribute Routines
+////////////////////////////////////////////////////////////////////////////
+ResolveRoute6State::ResolveRoute6State() :
+    VmInterfaceState(), vrf_(NULL), subnet6_(), plen6_(0) {
+}
+
+ResolveRoute6State::~ResolveRoute6State() {
+}
+
+void ResolveRoute6State::Copy(const Agent *agent, const VmInterface *vmi) const {
+    vrf_ = vmi->forwarding_vrf();
+    subnet6_ = vmi->subnet6();
+    plen6_ = vmi->subnet_plen6();
+}
+
+VmInterfaceState::Op ResolveRoute6State::GetOpL3(const Agent *agent,
+                                                const VmInterface *vmi) const {
+    if (vmi->ipv6_active() == false)
+        return VmInterfaceState::DEL;
+
+    if (vrf_ != vmi->forwarding_vrf() || subnet6_ != vmi->subnet6() ||
+        plen6_ != vmi->subnet_plen6())
+        return VmInterfaceState::DEL_ADD;
+
+    return VmInterfaceState::ADD;
+}
+
+bool ResolveRoute6State::DeleteL3(const Agent *agent, VmInterface *vmi) const {
+    if (vrf_ == NULL)
+        return false;
+
+    vmi->DeleteRoute(vrf_->GetName(), subnet6_, plen6_);
+    return true;
+}
+
+bool ResolveRoute6State::AddL3(const Agent *agent, VmInterface *vmi) const {
+    if (vrf_ == NULL || subnet6_.is_unspecified())
+        return false;
+
+    if (vmi->vmi_type() != VmInterface::VHOST) {
+        if (vmi->vn() == NULL) {
+            return false;
+        }
+    }
+
+    SecurityGroupList sg_id_list;
+    vmi->CopySgIdList(&sg_id_list);
+
+    TagList tag_id_list;
+    vmi->CopyTagIdList(&tag_id_list);
+
+    std::string vn_name;
+    if (vmi->vn() != NULL) {
+        vn_name = vmi->vn()->GetName();
+    }
+
+    bool policy = vmi->policy_enabled();
+    if (vmi->vmi_type() == VmInterface::VHOST) {
+        policy = false;
+    }
+
+    VmInterfaceKey key(AgentKey::ADD_DEL_CHANGE, vmi->GetUuid(), vmi->name());
+    InetUnicastAgentRouteTable::AddResolveRoute6
+        (vmi->peer(), vrf_->GetName(),
+         Address::GetIp6SubnetAddress(subnet6_, plen6_), plen6_, key,
+         vrf_->table_label(), policy, vn_name,
+         sg_id_list, tag_id_list);
+    return true;
+}
+
+// If the interface is Gateway we need to add a receive route,
+// such the packet gets routed. Bridging on gateway
+// interface is not supported
+VmInterfaceState::Op ResolveRoute6State::GetOpL2(const Agent *agent,
+                                                const VmInterface *vmi) const {
+    if ((vmi->vmi_type() != VmInterface::GATEWAY &&
+         vmi->vmi_type() != VmInterface::REMOTE_VM))
+        return VmInterfaceState::DEL;
+
+    if (vmi->bridging() == false)
+        return VmInterfaceState::DEL;
+
+    if (vrf_ != vmi->forwarding_vrf())
+        return VmInterfaceState::DEL_ADD;
+
+    return VmInterfaceState::ADD;
+}
+
+bool ResolveRoute6State::DeleteL2(const Agent *agent, VmInterface *vmi) const {
+    if (vrf_ == NULL)
+        return false;
+
+    BridgeAgentRouteTable::Delete(vmi->peer(), vrf_->GetName(),
+                                  vmi->GetVifMac(agent), 0);
+
+    return true;
+}
+
+bool ResolveRoute6State::AddL2(const Agent *agent, VmInterface *vmi) const {
+    if (vrf_ == NULL || vmi->vn() == NULL)
+        return false;
+
+    BridgeAgentRouteTable *table = static_cast<BridgeAgentRouteTable *>
+        (vrf_->GetRouteTable(Agent::BRIDGE));
+    table->AddBridgeReceiveRoute(vmi->peer(), vrf_->GetName(), 0,
+                                 vmi->GetVifMac(agent), vmi->vn()->GetName());
+
     return true;
 }
 
@@ -2422,6 +2539,30 @@ bool VmInterface::StaticRoute::AddL3(const Agent *agent,
         InetUnicastAgentRouteTable::AddGatewayRoute
             (peer, vrf_->GetName(), addr_.to_v4(), plen_,
              gw_.to_v4(), vn_list, vmi->vrf_->table_label(),
+             sg_id_list, tag_id_list, communities_, native_encap);
+    } else if (gw_.is_v6() && addr_.is_v6() && gw_.to_v6() != Ip6Address()) {
+        SecurityGroupList sg_id_list;
+        vmi->CopySgIdList(&sg_id_list);
+
+        TagList tag_id_list;
+        vmi->CopyTagIdList(&tag_id_list);
+
+        VnListType vn_list;
+        if (vmi->vn()) {
+            vn_list.insert(vn_name);
+        }
+
+        bool native_encap = false;
+        const Peer *peer = vmi->peer_.get();
+        if (vrf_->GetName() == agent->fabric_vrf_name()) {
+            vn_list.insert(agent->fabric_vn_name());
+            native_encap = true;
+            peer = agent->local_peer();
+        }
+
+        InetUnicastAgentRouteTable::AddGatewayRoute6
+            (peer, vrf_->GetName(), addr_.to_v6(), plen_,
+             gw_.to_v6(), vn_list, vmi->vrf_->table_label(),
              sg_id_list, tag_id_list, communities_, native_encap);
     } else {
         IpAddress dependent_ip;

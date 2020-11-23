@@ -27,6 +27,7 @@ public:
     InetInterface(const std::string &name);
     InetInterface(const std::string &name, SubType sub_type, VrfEntry *vrf,
                   const Ip4Address &ip_addr, int plen, const Ip4Address &gw,
+                  const Ip6Address &ip_addr6, int plen6, const Ip6Address &gw6,
                   Interface *xconnect, const std::string &vn_name);
     virtual ~InetInterface() { }
 
@@ -57,13 +58,18 @@ public:
     static void Create(InterfaceTable *table, const std::string &ifname,
                        SubType sub_type, const std::string &vrf_name,
                        const Ip4Address &addr, int plen,
-                       const Ip4Address &gw, const std::string &xconnect,
+                       const Ip4Address &gw,
+                       const Ip6Address &addr6, int plen6,
+                       const Ip6Address &gw6,
+                       const std::string &xconnect,
                        const std::string &vn_name,
                        Interface::Transport transport);
     static void CreateReq(InterfaceTable *table, const std::string &ifname,
                           SubType sub_type, const std::string &vrf_name,
                           const Ip4Address &addr, int plen,
-                          const Ip4Address &gw, const std::string &xconnect,
+                          const Ip4Address &gw,
+                          const Ip6Address &addr6, int plen6,
+                          const Ip6Address &gw6, const std::string &xconnect,
                           const std::string &vn_name,
                           Interface::Transport transport);
     static void Delete(InterfaceTable *table, const std::string &ifname);
@@ -73,6 +79,9 @@ private:
     Ip4Address ip_addr_;
     int plen_;
     Ip4Address gw_;
+    Ip6Address ip_addr6_;
+    int plen6_;
+    Ip6Address gw6_;
     InterfaceRef xconnect_;   // Physical interface for VHOST
     std::string vn_name_;
     DISALLOW_COPY_AND_ASSIGN(InetInterface);
@@ -92,6 +101,7 @@ struct InetInterfaceData : public InterfaceData {
     InetInterfaceData(InetInterface::SubType sub_type,
                       const std::string &vrf_name, const Ip4Address &addr,
                       int plen, const Ip4Address &gw,
+                      const Ip6Address &addr6, int plen6, const Ip6Address &gw6,
                       const std::string &xconnect, const std::string vn_name,
                       Interface::Transport transport);
     virtual ~InetInterfaceData() { }
@@ -100,6 +110,9 @@ struct InetInterfaceData : public InterfaceData {
     Ip4Address ip_addr_;
     int plen_;
     Ip4Address gw_;
+    Ip6Address ip_addr6_;
+    int plen6_;
+    Ip6Address gw6_;
     std::string xconnect_;
     std::string vn_name_;
 };

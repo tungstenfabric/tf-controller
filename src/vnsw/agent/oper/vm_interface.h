@@ -306,6 +306,25 @@ struct ResolveRouteState : public VmInterfaceState {
     mutable uint8_t plen_;
 };
 
+struct ResolveRoute6State : public VmInterfaceState {
+    ResolveRoute6State();
+    virtual ~ResolveRoute6State();
+
+    VmInterfaceState::Op GetOpL2(const Agent *agent,
+                                 const VmInterface *vmi) const;
+    bool DeleteL2(const Agent *agent, VmInterface *vmi) const;
+    bool AddL2(const Agent *agent, VmInterface *vmi) const;
+    VmInterfaceState::Op GetOpL3(const Agent *agent,
+                                 const VmInterface *vmi) const;
+    bool DeleteL3(const Agent *agent, VmInterface *vmi) const;
+    bool AddL3(const Agent *agent, VmInterface *vmi) const;
+    void Copy(const Agent *agent, const VmInterface *vmi) const;
+
+    mutable const VrfEntry *vrf_;
+    mutable Ip6Address subnet6_;
+    mutable uint8_t plen6_;
+};
+
 struct VmiRouteState : public VmInterfaceState {
     VmiRouteState();
     virtual ~VmiRouteState();
@@ -1349,6 +1368,8 @@ public:
 
     const Ip4Address& subnet() const { return subnet_;}
     const uint8_t subnet_plen() const { return subnet_plen_;}
+    const Ip6Address& subnet6() const { return subnet6_;}
+    const uint8_t subnet_plen6() const { return subnet_plen6_;}
     const MacAddress& GetVifMac(const Agent*) const;
     const boost::uuids::uuid &logical_interface() const {
         return logical_interface_;
@@ -1582,6 +1603,7 @@ private:
     friend struct VmInterfaceHealthCheckData;
     friend struct VmInterfaceNewFlowDropData;
     friend struct ResolveRouteState;
+    friend struct ResolveRoute6State;
     friend struct VmiRouteState;
     friend struct VmInterfaceLearntMacIpData;
 
@@ -1722,6 +1744,7 @@ private:
     std::auto_ptr<VrfTableLabelState> vrf_table_label_state_;
     std::auto_ptr<MetaDataIpState> metadata_ip_state_;
     std::auto_ptr<ResolveRouteState> resolve_route_state_;
+    std::auto_ptr<ResolveRoute6State> resolve_route6_state_;
     std::auto_ptr<VmiRouteState> interface_route_state_;
 
     // Lists
@@ -1749,6 +1772,8 @@ private:
     uint8_t configurer_;
     Ip4Address subnet_;
     uint8_t subnet_plen_;
+    Ip6Address subnet6_;
+    uint8_t subnet_plen6_;
     int ethernet_tag_;
     // Logical interface uuid to which the interface belongs
     boost::uuids::uuid logical_interface_;
@@ -1953,6 +1978,8 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     boost::uuids::uuid parent_vmi_;
     Ip4Address subnet_;
     uint8_t subnet_plen_;
+    Ip6Address subnet6_;
+    uint8_t subnet_plen6_;
     uint16_t rx_vlan_id_;
     uint16_t tx_vlan_id_;
     boost::uuids::uuid logical_interface_;

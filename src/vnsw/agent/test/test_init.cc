@@ -99,7 +99,9 @@ TestClient *TestInit(const char *init_file, bool ksync_init, bool pkt_init,
         InetInterface::CreateReq(agent->interface_table(),
                                  "vhost0", InetInterface::VHOST,
                                  agent->fabric_vrf_name(),
-                                 Ip4Address(0), 0, Ip4Address(0), param->eth_port(), "",
+                                 Ip4Address(0), 0, Ip4Address(0),
+                                 Ip6Address(), 0, Ip6Address(),
+                                 param->eth_port(), "",
                                  Interface::TRANSPORT_ETHERNET);
         boost::system::error_code ec;
         agent->set_router_id

@@ -8,9 +8,14 @@
 #include <oper/route_leak.h>
 
 void RouteLeakState::AddIndirectRoute(const AgentRoute *route) {
-    InetUnicastAgentRouteTable *table = dest_vrf_->GetInet4UnicastRouteTable();
     const InetUnicastRouteEntry *uc_rt =
         static_cast<const InetUnicastRouteEntry *>(route);
+    InetUnicastAgentRouteTable *table = NULL;
+    if (uc_rt->GetTableType() == Agent::INET4_UNICAST) {
+        table = dest_vrf_->GetInet4UnicastRouteTable();
+    } else if (uc_rt->GetTableType() == Agent::INET6_UNICAST) {
+        table = dest_vrf_->GetInet6UnicastRouteTable();
+    }
     const AgentPath *active_path = uc_rt->GetActivePath();
     const TunnelNH *nh = dynamic_cast<const TunnelNH *>(active_path->nexthop());
 
@@ -18,9 +23,9 @@ void RouteLeakState::AddIndirectRoute(const AgentRoute *route) {
         return;
     }
 
-    Ip4Address gw_ip = *(nh->GetDip());
+    IpAddress gw_ip = *(nh->GetDip());
 
-    if (gw_ip == uc_rt->addr().to_v4() &&
+    if (gw_ip.is_v4() && (gw_ip.to_v4() == uc_rt->addr().to_v4()) &&
         InetUnicastAgentRouteTable::FindResolveRoute(dest_vrf_->GetName(),
                                                      uc_rt->addr().to_v4())) {
         bool resolved = false;
@@ -39,24 +44,61 @@ void RouteLeakState::AddIndirectRoute(const AgentRoute *route) {
              resolved, active_path->dest_vn_list(),
              active_path->sg_list(), active_path->tag_list());
         return;
+    } else if (gw_ip.is_v6() && (gw_ip.to_v6() == uc_rt->addr().to_v6()) &&
+        InetUnicastAgentRouteTable::FindResolveRoute(dest_vrf_->GetName(),
+                                                     uc_rt->addr().to_v6())) {
+        bool resolved = false;
+        MacAddress mac;
+        const Interface *itf = agent_->vhost_interface();
+        NdpNHKey nh_key(dest_vrf_->GetName(), uc_rt->addr().to_v6(), false);
+        NdpNH *ndp_nh = static_cast<NdpNH *>(agent_->nexthop_table()->
+                                             FindActiveEntry(&nh_key));
+        if (ndp_nh) {
+            resolved = ndp_nh->GetResolveState();
+            mac = ndp_nh->GetMac();
+            itf = ndp_nh->GetInterface();
+        }
+        InetUnicastAgentRouteTable::CheckAndAddNdpRoute
+            (dest_vrf_->GetName(), uc_rt->addr().to_v6(), mac, itf,
+             resolved, active_path->dest_vn_list(),
+             active_path->sg_list(), active_path->tag_list());
+        return;
     }
 
     const Peer *peer = agent_->local_peer();
     peer_list_.insert(peer);
 
-    if (gw_ip == uc_rt->addr().to_v4()) {
-        gw_ip = agent_->vhost_default_gateway();
-    }
+    if (gw_ip.is_v4()) {
+        if (gw_ip.to_v4() == uc_rt->addr().to_v4()) {
+            gw_ip = agent_->vhost_default_gateway();
+        }
 
-    table->AddGatewayRoute(peer, dest_vrf_->GetName(),
+        table->AddGatewayRoute(peer, dest_vrf_->GetName(),
                            uc_rt->addr().to_v4(),
                            uc_rt->plen(),
-                           gw_ip,
+                           gw_ip.to_v4(),
                            active_path->dest_vn_list(),
                            MplsTable::kInvalidExportLabel,
                            active_path->sg_list(),
                            active_path->tag_list(),
                            active_path->communities(), true);
+    } else if (gw_ip.is_v6()) {
+        if (gw_ip.to_v6() == uc_rt->addr().to_v6()) {
+            gw_ip = agent_->vhost_default_gateway6();
+        }
+
+        table->AddGatewayRoute6(peer, dest_vrf_->GetName(),
+                           uc_rt->addr().to_v6(),
+                           uc_rt->plen(),
+                           gw_ip.to_v6(),
+                           active_path->dest_vn_list(),
+                           MplsTable::kInvalidExportLabel,
+                           active_path->sg_list(),
+                           active_path->tag_list(),
+                           active_path->communities(), true);
+    } else {
+        assert(0);
+    }
 }
 
 void RouteLeakState::AddInterfaceRoute(const AgentRoute *route,
@@ -75,7 +117,8 @@ void RouteLeakState::AddInterfaceRoute(const AgentRoute *route,
     }
 
     if (uc_rt->IsHostRoute() &&
-        uc_rt->addr() == agent_->router_id()) {
+        ((uc_rt->addr() == agent_->router_id()) ||
+         (uc_rt->addr() == agent_->router_id6()))) {
         //Dont overwrite vhost IP in default VRF
         if (intf_nh->GetInterface() != agent_->vhost_interface()) {
             return;
@@ -84,9 +127,14 @@ void RouteLeakState::AddInterfaceRoute(const AgentRoute *route,
 
     if (intf_nh->GetInterface()->type() == Interface::PACKET) {
         peer_list_.insert(agent_->local_peer());
-        InetUnicastAgentRouteTable *table =
-            static_cast<InetUnicastAgentRouteTable *>
-            (dest_vrf_->GetInet4UnicastRouteTable());
+        InetUnicastAgentRouteTable *table = NULL;
+        if (route->GetTableType() == Agent::INET4_UNICAST) {
+            table = static_cast<InetUnicastAgentRouteTable *>
+                            (dest_vrf_->GetInet4UnicastRouteTable());
+        } else if (route->GetTableType() == Agent::INET6_UNICAST) {
+            table = static_cast<InetUnicastAgentRouteTable *>
+                            (dest_vrf_->GetInet6UnicastRouteTable());
+        }
 
         table->AddHostRoute(dest_vrf_->GetName(), uc_rt->addr(), uc_rt->plen(),
                             "", true);
@@ -98,6 +146,14 @@ void RouteLeakState::AddInterfaceRoute(const AgentRoute *route,
             static_cast<const VmInterface *>(intf_nh->GetInterface());
         if (vm_intf->vmi_type() == VmInterface::VHOST) {
             if (uc_rt->addr() == agent_->router_id()) {
+                if (uc_rt->FindLocalVmPortPath() == NULL) {
+                    peer_list_.insert(agent_->local_peer());
+                } else {
+                    peer_list_.insert(agent_->fabric_rt_export_peer());
+                }
+                AddReceiveRoute(route);
+                return;
+            } else if (uc_rt->addr() == agent_->router_id6()) {
                 if (uc_rt->FindLocalVmPortPath() == NULL) {
                     peer_list_.insert(agent_->local_peer());
                 } else {
@@ -127,10 +183,14 @@ void RouteLeakState::AddInterfaceRoute(const AgentRoute *route,
     VmInterfaceKey intf_key(AgentKey::ADD_DEL_CHANGE, intf_nh->GetIfUuid(),
             intf_nh->GetInterface()->name());
     LocalVmRoute *local_vm_route = NULL;
+    uint8_t flags = InterfaceNHFlags::INET4;
+    if (uc_rt->addr().is_v6()) {
+        flags = InterfaceNHFlags::INET6;
+    }
     local_vm_route =
         new LocalVmRoute(intf_key, MplsTable::kInvalidExportLabel,
                          VxLanTable::kInvalidvxlan_id, false,
-                         active_path->dest_vn_list(), InterfaceNHFlags::INET4,
+                         active_path->dest_vn_list(), flags,
                          SecurityGroupList(),
                          TagList(),
                          CommunityList(),
@@ -145,8 +205,14 @@ void RouteLeakState::AddInterfaceRoute(const AgentRoute *route,
                                           uc_rt->addr(), uc_rt->plen()));
     req.data.reset(local_vm_route);
 
-    AgentRouteTable *table =
-        agent_->vrf_table()->GetInet4UnicastRouteTable(dest_vrf_->GetName());
+    AgentRouteTable *table = NULL;
+    if (uc_rt->addr().is_v4()) {
+        table = agent_->vrf_table()->GetInet4UnicastRouteTable(dest_vrf_->GetName());
+    } else if (uc_rt->addr().is_v6()) {
+        table = agent_->vrf_table()->GetInet6UnicastRouteTable(dest_vrf_->GetName());
+    } else {
+        assert(0);
+    }
     if (table) {
         table->Process(req);
     }
@@ -180,9 +246,16 @@ void RouteLeakState::AddReceiveRoute(const AgentRoute *route) {
     const VmInterface *vm_intf =
         static_cast<const VmInterface *>(rch_nh->GetInterface());
 
-    InetUnicastAgentRouteTable *table =
-        static_cast<InetUnicastAgentRouteTable *>(
-                dest_vrf_->GetInet4UnicastRouteTable());
+    InetUnicastAgentRouteTable *table = NULL;
+    if (route->GetTableType() == Agent::INET4_UNICAST) {
+        table = static_cast<InetUnicastAgentRouteTable *>(
+                    dest_vrf_->GetInet4UnicastRouteTable());
+    } else if (route->GetTableType() == Agent::INET6_UNICAST) {
+        table = static_cast<InetUnicastAgentRouteTable *>(
+                    dest_vrf_->GetInet6UnicastRouteTable());
+    } else {
+        assert(0);
+    }
 
     VmInterfaceKey vmi_key(AgentKey::ADD_DEL_CHANGE, vm_intf->GetUuid(),
                            vm_intf->name());
@@ -195,15 +268,24 @@ void RouteLeakState::AddReceiveRoute(const AgentRoute *route) {
 }
 
 bool RouteLeakState::CanAdd(const InetUnicastRouteEntry *rt) {
-    //Never replace resolve route and default route
-    InetUnicastAgentRouteTable *table =
-        agent_->fabric_vrf()->GetInet4UnicastRouteTable();
+    InetUnicastAgentRouteTable *table = NULL;
+    if (rt->GetTableType() == Agent::INET4_UNICAST) {
+        table = agent_->fabric_vrf()->GetInet4UnicastRouteTable();
+    } else if (rt->GetTableType() == Agent::INET6_UNICAST) {
+        table = agent_->fabric_vrf()->GetInet6UnicastRouteTable();
+    }
 
-    if (rt->addr() == Ip4Address(0) && rt->plen() == 0) {
+    //Never replace resolve route and default route
+
+    if (rt->addr().is_v4() && (rt->addr() == Ip4Address(0)) && (rt->plen() == 0)) {
         return false;
     }
 
-    InetUnicastRouteEntry *rsl_rt = table->FindResolveRoute(rt->addr().to_v4());
+    if (rt->addr().is_v6() && (rt->addr() == Ip6Address()) && (rt->plen() == 0)) {
+        return false;
+    }
+
+    InetUnicastRouteEntry *rsl_rt = table->FindResolveRoute(rt->addr());
     if (rsl_rt && rt->addr() == rsl_rt->addr() &&
         rt->plen() == rsl_rt->plen()) {
         //Dont overwrite resolve route
@@ -211,7 +293,8 @@ bool RouteLeakState::CanAdd(const InetUnicastRouteEntry *rt) {
     }
 
     if (rt->IsHostRoute() &&
-        rt->addr() == agent_->vhost_default_gateway()) {
+        ((rt->addr().is_v4() && (rt->addr() == agent_->vhost_default_gateway())) ||
+         (rt->addr().is_v6() && (rt->addr() == agent_->vhost_default_gateway6())))) {
         return false;
     }
 
@@ -270,8 +353,12 @@ void RouteLeakState::AddRoute(const AgentRoute *route) {
     DeleteRoute(route, old_peer_list);
 
     if (sync) {
-        InetUnicastAgentRouteTable *table =
-            dest_vrf_->GetInet4UnicastRouteTable();
+        InetUnicastAgentRouteTable *table = NULL;
+        if (uc_rt && (uc_rt->GetTableType() == Agent::INET4_UNICAST)) {
+            table = dest_vrf_->GetInet4UnicastRouteTable();
+        } else if (uc_rt && (uc_rt->GetTableType() == Agent::INET6_UNICAST)) {
+            table = dest_vrf_->GetInet6UnicastRouteTable();
+        }
         table->ResyncRoute(agent_->fabric_rt_export_peer(),
                            dest_vrf_->GetName(), uc_rt->addr(), uc_rt->plen());
     }
@@ -287,10 +374,13 @@ void RouteLeakState::DeleteRoute(const AgentRoute *route,
     for(; it != peer_list.end(); it++) {
         const InetUnicastRouteEntry *uc_rt =
             static_cast<const InetUnicastRouteEntry *>(route);
-        dest_vrf_->GetInet4UnicastRouteTable()->Delete(*it,
-                                                       dest_vrf_->GetName(),
-                                                       uc_rt->addr(),
-                                                       uc_rt->plen());
+        InetUnicastAgentRouteTable *table = NULL;
+        if (uc_rt && (uc_rt->GetTableType() == Agent::INET4_UNICAST)) {
+            table = dest_vrf_->GetInet4UnicastRouteTable();
+        } else if (uc_rt && (uc_rt->GetTableType() == Agent::INET4_UNICAST)) {
+            table = dest_vrf_->GetInet6UnicastRouteTable();
+        }
+        table->Delete(*it,dest_vrf_->GetName(), uc_rt->addr(), uc_rt->plen());
     }
 }
 
@@ -299,21 +389,38 @@ RouteLeakVrfState::RouteLeakVrfState(VrfEntry *source_vrf,
     source_vrf_(source_vrf), dest_vrf_(dest_vrf), deleted_(false) {
 
     AgentRouteTable *table = source_vrf->GetInet4UnicastRouteTable();
-    route_listener_id_ =  table->Register(boost::bind(&RouteLeakVrfState::Notify,
+    route_listener_id_ = table->Register(boost::bind(&RouteLeakVrfState::Notify,
+                                                      this, _1, _2));
+
+    table = source_vrf->GetInet6UnicastRouteTable();
+    route_listener_id6_ = table->Register(boost::bind(&RouteLeakVrfState::Notify,
                                                       this, _1, _2));
 
     //Walker would be used to address change of dest VRF table
     //Everytime dest vrf change all the route from old dest VRF
     //would be deleted and added to new dest VRF if any
     //If VRF is deleted upon walk done state would be deleted.
+
+    // Intialize "table" again
+    table = source_vrf->GetInet4UnicastRouteTable();
     walk_ref_ = table->AllocWalker(
                     boost::bind(&RouteLeakVrfState::WalkCallBack, this, _1, _2),
                     boost::bind(&RouteLeakVrfState::WalkDoneInternal, this, _2));
     table->WalkTable(walk_ref_);
+
+    // Intialize "table" again
+    table = source_vrf->GetInet6UnicastRouteTable();
+    walk_ref_ip6_ = table->AllocWalker(
+                    boost::bind(&RouteLeakVrfState::WalkCallBack, this, _1, _2),
+                    boost::bind(&RouteLeakVrfState::WalkDoneInternal, this, _2));
+    table->WalkTable(walk_ref_ip6_);
 }
 
 RouteLeakVrfState::~RouteLeakVrfState() {
+    source_vrf_->GetInet6UnicastRouteTable()->ReleaseWalker(walk_ref_ip6_);
     source_vrf_->GetInet4UnicastRouteTable()->ReleaseWalker(walk_ref_);
+
+    source_vrf_->GetInet6UnicastRouteTable()->Unregister(route_listener_id6_);
     source_vrf_->GetInet4UnicastRouteTable()->Unregister(route_listener_id_);
 }
 
@@ -339,30 +446,56 @@ void RouteLeakVrfState::AddDefaultRoute() {
                            table->agent()->vhost_default_gateway(), vn_list,
                            MplsTable::kInvalidLabel, SecurityGroupList(),
                            TagList(), CommunityList(), true);
+
+    if (!table->agent()->router_id6().is_unspecified()) {
+        table = source_vrf_->GetInet6UnicastRouteTable();
+        table->AddGatewayRoute6(table->agent()->local_peer(),
+                           source_vrf_->GetName(), Ip6Address(), 0,
+                           table->agent()->vhost_default_gateway6(), vn_list,
+                           MplsTable::kInvalidLabel, SecurityGroupList(),
+                           TagList(), CommunityList(), true);
+    }
 }
 
 void RouteLeakVrfState::DeleteDefaultRoute() {
     InetUnicastAgentRouteTable *table = source_vrf_->GetInet4UnicastRouteTable();
     table->Delete(table->agent()->local_peer(), source_vrf_->GetName(),
                   Ip4Address(0), 0);
+
+    if (!table->agent()->router_id6().is_unspecified()) {
+        table = source_vrf_->GetInet6UnicastRouteTable();
+        table->Delete(table->agent()->local_peer(), source_vrf_->GetName(),
+                  Ip6Address(), 0);
+    }
 }
 
 void RouteLeakVrfState::Delete() {
     deleted_ = true;
+    source_vrf_->GetInet6UnicastRouteTable()->WalkAgain(walk_ref_ip6_);
     source_vrf_->GetInet4UnicastRouteTable()->WalkAgain(walk_ref_);
     DeleteDefaultRoute();
 }
 
 bool RouteLeakVrfState::Notify(DBTablePartBase *partition, DBEntryBase *entry) {
     AgentRoute *route = static_cast<AgentRoute *>(entry);
+    InetUnicastRouteEntry *uc_route = dynamic_cast<InetUnicastRouteEntry *>(entry);
+    DBTableBase::ListenerId listener_id_;
+    if (uc_route && (uc_route->GetTableType() == Agent::INET4_UNICAST)) {
+        listener_id_ = route_listener_id_;
+    } else if (uc_route && (uc_route->GetTableType() == Agent::INET6_UNICAST)) {
+        listener_id_ = route_listener_id6_;
+    } else {
+        assert(0);
+    }
+
     RouteLeakState *state =
         static_cast<RouteLeakState *>(entry->GetState(partition->parent(),
-                                                      route_listener_id_));
+                                                      listener_id_));
 
     if (route->IsDeleted() || deleted_) {
         if (state) {
             //Delete the route
-            entry->ClearState(partition->parent(), route_listener_id_);
+            entry->ClearState(partition->parent(), listener_id_);
             state->DeleteRoute(route, state->peer_list());
             delete state;
         }
@@ -370,9 +503,14 @@ bool RouteLeakVrfState::Notify(DBTablePartBase *partition, DBEntryBase *entry) {
     }
 
     if (state == NULL && dest_vrf_) {
-        state = new RouteLeakState(dest_vrf_->GetInet4UnicastRouteTable()->agent(),
+        if (uc_route && (uc_route->GetTableType() == Agent::INET4_UNICAST)) {
+            state = new RouteLeakState(dest_vrf_->GetInet4UnicastRouteTable()->agent(),
                                    NULL);
-        route->SetState(partition->parent(), route_listener_id_, state);
+        } else if (uc_route && (uc_route->GetTableType() == Agent::INET6_UNICAST)) {
+            state = new RouteLeakState(dest_vrf_->GetInet6UnicastRouteTable()->agent(),
+                                   NULL);
+        }
+        route->SetState(partition->parent(), listener_id_, state);
     }
 
     if (state == NULL) {
@@ -398,6 +536,7 @@ void RouteLeakVrfState::SetDestVrf(VrfEntry *vrf) {
     if (dest_vrf_ != vrf) {
         dest_vrf_ = vrf;
         source_vrf_->GetInet4UnicastRouteTable()->WalkAgain(walk_ref_);
+        source_vrf_->GetInet6UnicastRouteTable()->WalkAgain(walk_ref_ip6_);
     }
 
     if (vrf == NULL) {
@@ -481,13 +620,20 @@ void RouteLeakManager::VrfWalkDone(DBTableBase *part) {
 
 void RouteLeakManager::StartRouteWalk(VrfEntry *vrf, RouteLeakVrfState *state) {
     InetUnicastAgentRouteTable *table = vrf->GetInet4UnicastRouteTable();
-    if (!table) {
-        return;
+    if (table) {
+        DBTable::DBTableWalkRef rt_table_walk_ref = table->AllocWalker(
+            boost::bind(&RouteLeakVrfState::Notify, state, _1, _2),
+            boost::bind(&RouteLeakManager::RouteWalkDone, this, _2));
+        table->WalkAgain(rt_table_walk_ref);
     }
-    DBTable::DBTableWalkRef rt_table_walk_ref = table->AllocWalker(
-        boost::bind(&RouteLeakVrfState::Notify, state, _1, _2),
-        boost::bind(&RouteLeakManager::RouteWalkDone, this, _2));
-    table->WalkAgain(rt_table_walk_ref);
+
+    table = vrf->GetInet6UnicastRouteTable();
+    if (table) {
+        DBTable::DBTableWalkRef rt_table_walk_ref = table->AllocWalker(
+            boost::bind(&RouteLeakVrfState::Notify, state, _1, _2),
+            boost::bind(&RouteLeakManager::RouteWalkDone, this, _2));
+        table->WalkAgain(rt_table_walk_ref);
+    }
 }
 
 void RouteLeakManager::RouteWalkDone(DBTableBase *part) {

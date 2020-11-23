@@ -1100,7 +1100,8 @@ TEST_F(RemoteEcmpTest, EcmpReEval_3) {
 TEST_F(RemoteEcmpTest, DISABLE_VgwFlag) {
     InetInterface::CreateReq(agent_->interface_table(), "vgw1",
                             InetInterface::SIMPLE_GATEWAY, "vrf2",
-                            Ip4Address(0), 0, Ip4Address(0), Agent::NullString(),
+                            Ip4Address(0), 0, Ip4Address(0),
+                            Ip6Address(), 0, Ip6Address(), Agent::NullString(),
                             "", Interface::TRANSPORT_ETHERNET);
     client->WaitForIdle();
 

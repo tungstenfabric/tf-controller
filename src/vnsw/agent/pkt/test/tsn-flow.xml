@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml verson="1.0"?>
 <test_suite name="flow-agent-tsn-mode">
 <test name="ingress-flow-1" verbose="0">
    <!-- TSN does not support flows. So, flow request in TSN mode should be

@@ -87,6 +87,7 @@ VmInterfaceConfigData::VmInterfaceConfigData(Agent *agent, IFMapNode *node) :
     device_type_(VmInterface::DEVICE_TYPE_INVALID),
     vmi_type_(VmInterface::VMI_TYPE_INVALID),
     physical_interface_(""), parent_vmi_(), subnet_(0), subnet_plen_(0),
+    subnet6_(), subnet_plen6_(0),
     rx_vlan_id_(VmInterface::kInvalidVlanId),
     tx_vlan_id_(VmInterface::kInvalidVlanId),
     logical_interface_(nil_uuid()), ecmp_load_balance_(),
@@ -205,6 +206,13 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
                                     false, false, false, Ip4Address(0)));
     }
 
+    if (agent->router_id6() != Ip6Address()) {
+        ip6_addr_ = agent->router_id6();
+        instance_ipv6_list_.list_.insert(
+            VmInterface::InstanceIp(agent->router_id6(), 128, false, true,
+                                    false, false, false, Ip6Address()));
+    }
+
     boost::system::error_code ec;
     IpAddress mc_addr =
         Ip4Address::from_string(IPV4_MULTICAST_BASE_ADDRESS, ec);
@@ -221,6 +229,9 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
         //Add resolve route
         subnet_ = agent->router_id();
         subnet_plen_ = agent->vhost_prefix_len();
+
+        subnet6_ = agent->router_id6();
+        subnet_plen6_ = agent->vhost_prefix_len6();
     }
 
     physical_interface_ = agent->fabric_interface_name();
@@ -236,6 +247,13 @@ void VmInterfaceConfigData::CopyVhostData(const Agent *agent) {
             VmInterface::StaticRoute(Ip4Address(0), 0,
                                      agent->params()->vhost_gw(),
                                      CommunityList()));
+
+    if (!agent->params()->vhost_gw6().is_unspecified()) {
+        static_route_list_.list_.insert(
+            VmInterface::StaticRoute(Ip6Address(), 0,
+                                     agent->params()->vhost_gw6(),
+                                     CommunityList()));
+    }
 }
 
 
@@ -563,6 +581,11 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
     if (subnet_ != data->subnet_ || subnet_plen_ != data->subnet_plen_) {
         subnet_ = data->subnet_;
         subnet_plen_ = data->subnet_plen_;
+    }
+
+    if (subnet6_ != data->subnet6_ || subnet_plen6_ != data->subnet_plen6_) {
+        subnet6_ = data->subnet6_;
+        subnet_plen6_ = data->subnet_plen6_;
     }
 
     if (learning_enabled_ != data->learning_enabled_) {

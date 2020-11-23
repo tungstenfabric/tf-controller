@@ -15,6 +15,11 @@
 #include <oper/vrf.h>
 #include <oper/ecmp_load_balance.h>
 
+
+#ifndef AF_MPLS
+#define AF_MPLS 28
+#endif /* AF_MPLS */
+
 class NextHopKey;
 class MplsLabel;
 
@@ -242,7 +247,10 @@ public:
         MPLS_UDP,
         VXLAN,
         NATIVE,
-        MPLS_OVER_MPLS
+        MPLS_OVER_MPLS,
+        MPLS_IP,
+        NATIVE_MPLS,
+        SR_MPLS,
     };
     // Bitmap of supported tunnel types
     typedef uint32_t TypeBmap;
@@ -257,7 +265,7 @@ public:
         return type_ < rhs.type_;
     }
 
-   std::string ToString() const {
+    std::string ToString() const {
        switch (type_) {
        case MPLS_GRE:
            return "MPLSoGRE";
@@ -269,6 +277,10 @@ public:
            return "Native";
        case MPLS_OVER_MPLS:
            return "MPLSoMPLS";
+       case MPLS_IP:
+           return "MPLSoIP";
+       case NATIVE_MPLS:
+           return "MPLS";
        default:
            break;
        }
@@ -295,6 +307,14 @@ public:
 
         if (type & (1 << MPLS_OVER_MPLS)) {
             tunnel_type << "MPLSoMPLS";
+        }
+
+        if (type & (1 << MPLS_IP)) {
+            tunnel_type << "MPLSoIP";
+        }
+
+        if (type & (1 << NATIVE_MPLS)) {
+            tunnel_type << "MPLS";
         }
 
         return tunnel_type.str();
@@ -324,6 +344,8 @@ public:
     static TypeBmap UDPType() {return (1 << MPLS_UDP);}
     static TypeBmap NativeType() {return (1 << NATIVE);}
     static TypeBmap MPLSType() {return (1 << MPLS_OVER_MPLS);}
+    static TypeBmap MplsIpType() {return (1 << MPLS_IP);}
+    static TypeBmap NativeMplsType() {return (1 << NATIVE_MPLS);}
     static bool EncapPrioritySync(const std::vector<std::string> &cfg_list);
     static void DeletePriorityList();
 
@@ -354,7 +376,7 @@ public:
         COMPOSITE,
         VLAN,
         PBB,
-        NDP
+        NDP,
     };
 
     NextHop(Type type, bool policy) :
@@ -944,8 +966,8 @@ private:
 class TunnelNHKey : public NextHopKey {
 public:
     TunnelNHKey(const string &vrf_name,
-                const Ip4Address &sip,
-                const Ip4Address &dip,
+                const IpAddress &sip,
+                const IpAddress &dip,
                 bool policy,
                 TunnelType type,
                 const MacAddress &rewrite_dmac = MacAddress()) :
@@ -984,14 +1006,14 @@ public:
     void set_tunnel_type(TunnelType tunnel_type) {
         tunnel_type_ = tunnel_type;
     }
-    const Ip4Address dip() const {
+    const IpAddress dip() const {
         return dip_;
     }
 protected:
     friend class TunnelNH;
     VrfKey vrf_key_;
-    Ip4Address sip_;
-    Ip4Address dip_;
+    IpAddress sip_;
+    IpAddress dip_;
     TunnelType tunnel_type_;
     MacAddress rewrite_dmac_;
 private:
@@ -1013,8 +1035,8 @@ private:
 class LabelledTunnelNHKey : public TunnelNHKey {
 public:
     LabelledTunnelNHKey(const string &vrf_name,
-                const Ip4Address &sip,
-                const Ip4Address &dip,
+                const IpAddress &sip,
+                const IpAddress &dip,
                 bool policy,
                 TunnelType type,
                 const MacAddress &rewrite_dmac = MacAddress(),
@@ -1643,8 +1665,8 @@ public:
         label_(label), nh_key_(new VlanNHKey(intf_uuid, tag)) {
     }
 
-    ComponentNHKey(int label, const string &vrf_name, const Ip4Address &sip,
-            const Ip4Address &dip, bool policy, TunnelType::TypeBmap bmap) :
+    ComponentNHKey(int label, const string &vrf_name, const IpAddress &sip,
+            const IpAddress &dip, bool policy, TunnelType::TypeBmap bmap) :
         label_(label), nh_key_(new TunnelNHKey(vrf_name, sip, dip, policy,
                                                TunnelType::ComputeType(bmap))) {
     }

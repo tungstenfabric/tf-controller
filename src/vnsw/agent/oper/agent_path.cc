@@ -52,7 +52,7 @@ AgentPath::AgentPath(const Peer *peer, AgentRoute *rt):
     Path(), peer_(peer), nh_(NULL), label_(MplsTable::kInvalidLabel),
     vxlan_id_(VxLanTable::kInvalidvxlan_id), dest_vn_list_(),
     origin_vn_(""), sync_(false), force_policy_(false), sg_list_(),
-    tunnel_dest_(0), tunnel_bmap_(TunnelType::AllType()),
+    tunnel_dest_(), tunnel_bmap_(TunnelType::AllType()),
     tunnel_type_(TunnelType::ComputeType(TunnelType::AllType())),
     vrf_name_(""), gw_ip_(), unresolved_(true),
     is_subnet_discard_(false), dependant_rt_(rt), path_preference_(),
@@ -265,9 +265,10 @@ bool AgentPath::UpdateTunnelType(Agent *agent, const AgentRoute *sync_route) {
             nh_req.data.reset(new TunnelNHData());
             agent->nexthop_table()->Process(nh_req);
 
+            IpAddress tunnel_dest = IpAddress(tunnel_dest_);
             LabelledTunnelNHKey nh_key(agent->fabric_vrf_name(),
                         *(label_tunnel_nh->GetSip()),
-                        tunnel_dest_, false, tunnel_type_,
+                        tunnel_dest, false, tunnel_type_,
                         label_tunnel_nh->rewrite_dmac(),
                         label_tunnel_nh->GetTransportLabel());
             NextHop *nh = static_cast<NextHop *>
@@ -474,6 +475,10 @@ bool AgentPath::Sync(AgentRoute *sync_route) {
         if (CopyArpData()) {
             ret = true;
         }
+    } else if (nh_ && nh_->GetType() == NextHop::NDP) {
+        if (CopyNdpData()) {
+            ret = true;
+        }
     }
 
     if (vrf_name_ == Agent::NullString()) {
@@ -501,9 +506,17 @@ bool AgentPath::Sync(AgentRoute *sync_route) {
             agent->fabric_vrf_name() == vrf_name_) {
             unresolved = false;
             assert(gw_ip_.is_v4());
-            table->AddArpReq(vrf_name_, gw_ip_.to_v4(), vrf_name_,
+            if (gw_ip_.is_v4()) {
+                table->AddArpReq(vrf_name_, gw_ip_.to_v4(), vrf_name_,
                              agent->vhost_interface(), false,
                              dest_vn_list_, sg_list_, tag_list_);
+            } else if (gw_ip_.is_v6()) {
+                table->AddNdpReq(vrf_name_, gw_ip_.to_v6(), vrf_name_,
+                             agent->vhost_interface(), false,
+                             dest_vn_list_, sg_list_, tag_list_);
+            } else {
+                assert(0);
+            }
         } else {
             unresolved = true;
         }
@@ -515,10 +528,18 @@ bool AgentPath::Sync(AgentRoute *sync_route) {
             nexthop_vrf = nh->get_interface()->vrf()->forwarding_vrf()->GetName();
         }
 
-        assert(gw_ip_.is_v4());
-        table->AddArpReq(vrf_name_, gw_ip_.to_v4(), nexthop_vrf,
+        // assert(gw_ip_.is_v4());
+        if (gw_ip_.is_v4()) {
+            table->AddArpReq(vrf_name_, gw_ip_.to_v4(), nexthop_vrf,
                          nh->get_interface(), nh->PolicyEnabled(), dest_vn_list_,
                          sg_list_, tag_list_);
+        } else if (gw_ip_.is_v6()) {
+            table->AddNdpReq(vrf_name_, gw_ip_.to_v6(), nexthop_vrf,
+                         nh->get_interface(), nh->PolicyEnabled(), dest_vn_list_,
+                         sg_list_, tag_list_);
+        } else {
+            assert(0);
+        }
         unresolved = true;
     } else {
         unresolved = false;
@@ -1533,6 +1554,7 @@ void UnresolvedNH::HandleRequest() const {
     std::string empty("");
     AgentRouteTable *rt_table = static_cast<AgentRouteTable *>
         (vrf->GetInet4UnicastRouteTable());
+    // TODO - esnagendra : something for IPv6?
     NhListResp *resp = new NhListResp();
 
     //TODO - Convert inet4ucroutetable to agentroutetable
@@ -1928,9 +1950,9 @@ bool AgentPath::ChangeCompositeNH(Agent *agent,
     return false;
 }
 
-const Ip4Address *AgentPath::NexthopIp(Agent *agent) const {
+const IpAddress AgentPath::NexthopIp(Agent *agent) const {
     if (peer_ == NULL) {
-        return agent->router_ip_ptr();
+        return agent->router_id();
     }
 
     return peer_->NexthopIp(agent, this);

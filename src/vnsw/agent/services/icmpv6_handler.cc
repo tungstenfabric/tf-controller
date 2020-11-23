@@ -56,6 +56,12 @@ bool Icmpv6Handler::Run() {
 
 bool Icmpv6Handler::HandlePacket() {
     Icmpv6Proto *icmpv6_proto = agent()->icmpv6_proto();
+    VrfEntry *vrf = agent()->vrf_table()->FindVrfFromId(pkt_info_->vrf);
+    if (vrf == NULL) {
+        icmpv6_proto->IncrementStatsDrop();
+        ICMPV6_TRACE(Trace, "Received ICMP from invalid vrf");
+        return true;
+    }
     Interface *itf =
         agent()->interface_table()->FindInterface(GetInterfaceIndex());
     if (itf == NULL) {
@@ -63,13 +69,8 @@ bool Icmpv6Handler::HandlePacket() {
         ICMPV6_TRACE(Trace, "Received ICMP from invalid interface");
         return true;
     }
-    if (itf->type() != Interface::VM_INTERFACE) {
-        icmpv6_proto->IncrementStatsDrop();
-        ICMPV6_TRACE(Trace, "Received ICMP from non-vm interface");
-        return true;
-    }
-    VmInterface *vm_itf = static_cast<VmInterface *>(itf);
-    if (!vm_itf->layer3_forwarding() || !vm_itf->ipv6_active()) {
+    VmInterface *vm_itf = dynamic_cast<VmInterface *>(itf);
+    if (vm_itf && (!vm_itf->layer3_forwarding() || !vm_itf->ipv6_active())) {
         icmpv6_proto->IncrementStatsDrop();
         ICMPV6_TRACE(Trace, "Received ICMP with l3 disabled / ipv6 inactive");
         return true;
@@ -128,7 +129,7 @@ bool Icmpv6Handler::HandlePacket() {
             }
             if (CheckPacket()) {
                 Ip6Address::bytes_type bytes;
-                for (int i = 0; i < 16; i++) {
+                for (int i = 0; i < IPV6_ADDR_SIZE_BYTES; i++) {
                     bytes[i] = icmp->nd_na_target.s6_addr[i];
                 }
                 Ip6Address addr(bytes);
@@ -147,8 +148,8 @@ bool Icmpv6Handler::HandlePacket() {
                 //Enqueue a request to trigger state machine
                 agent()->oper_db()->route_preference_module()->
                     EnqueueTrafficSeen(addr, 128, itf->id(),
-                                       itf->vrf()->vrf_id(), mac);
-                NdpKey key(addr, itf->vrf());
+                                       vrf->vrf_id(), mac);
+                NdpKey key(addr, vrf);
                 NdpEntry *entry = icmpv6_proto->FindNdpEntry(key);
                 if (entry) {
                     entry->EnqueueNaIn(icmp, mac);
@@ -162,7 +163,7 @@ bool Icmpv6Handler::HandlePacket() {
             icmpv6_proto->IncrementStatsNeighborSolicited(vm_itf);
             if (CheckPacket()) {
                 Ip6Address::bytes_type bytes;
-                for (int i = 0; i < 16; i++) {
+                for (int i = 0; i < IPV6_ADDR_SIZE_BYTES; i++) {
                     bytes[i] = pkt_info_->ip6->ip6_src.s6_addr[i];
                 }
                 Ip6Address addr(bytes);
@@ -232,7 +233,8 @@ bool Icmpv6Handler::HandleMessage() {
             IpAddress ip = agent()->router_id6();
             if (vrf_id != VrfEntry::kInvalidIndex) {
                 if (ip.is_v6()) {
-                    SendNeighborSolicit(ip.to_v6(), ipc->key.ip, vmi, vrf_id);
+                    entry->EnqueuePktOut();
+                    // SendNeighborSolicit(ip.to_v6(), ipc->key.ip, vmi, vrf_id);
                     VmInterface *vmif = const_cast<VmInterface *>(vmi);
                     icmp_proto->IncrementStatsNeighborSolicited(vmif);
                 }
@@ -397,7 +399,8 @@ uint16_t Icmpv6Handler::FillRouterAdvertisement(uint8_t *buf, uint32_t ifindex,
     prefix_info->nd_opt_pi_valid_time = htonl(0xFFFFFFFF);
     prefix_info->nd_opt_pi_preferred_time = htonl(0xFFFFFFFF);
     prefix_info->nd_opt_pi_reserved2 = 0;
-    memcpy(prefix_info->nd_opt_pi_prefix.s6_addr, prefix.to_bytes().data(), 16);
+    memcpy(prefix_info->nd_opt_pi_prefix.s6_addr, prefix.to_bytes().data(),
+                            IPV6_ADDR_SIZE_BYTES);
 
     offset += sizeof(nd_opt_prefix_info);
     icmp->nd_ra_cksum = Icmpv6Csum(src, dest, (icmp6_hdr *)icmp, offset);
@@ -441,7 +444,14 @@ void Icmpv6Handler::SendIcmpv6Response(uint32_t ifindex, uint32_t vrfindex,
     uint16_t buff_len = pkt_info_->packet_buffer()->data_len();
     boost::scoped_array<char> icmpv6_payload(new char[icmp_len_]);
     memcpy(icmpv6_payload.get(),icmp_,icmp_len_);
-    uint16_t eth_len = EthHdr(buff, buff_len, ifindex, agent()->vrrp_mac(),
+    Interface *intf = agent()->interface_table()->FindInterface(ifindex);
+    if (intf == NULL) {
+        return;
+    }
+
+    MacAddress smac;
+    smac = intf->mac();
+    uint16_t eth_len = EthHdr(buff, buff_len, ifindex, smac,
                               dest_mac, ETHERTYPE_IPV6);
 
     pkt_info_->ip6 = (struct ip6_hdr *)(buff + eth_len);
@@ -451,6 +461,7 @@ void Icmpv6Handler::SendIcmpv6Response(uint32_t ifindex, uint32_t vrfindex,
     uint16_t command =
         (pkt_info_->agent_hdr.cmd == AgentHdr::TRAP_TOR_CONTROL_PKT) ?
         (uint16_t)AgentHdr::TX_ROUTE : AgentHdr::TX_SWITCH;
+
     Send(ifindex, vrfindex, command, PktHandler::ICMPV6);
 }
 
@@ -460,13 +471,15 @@ bool Icmpv6Handler::IsIPv6AddrUnspecifiedBytes(const uint8_t *ip) {
 
 uint16_t Icmpv6Handler::FillNeighborSolicit(uint8_t *buf,
                                             const Ip6Address &target,
-                                            uint8_t *sip, uint8_t *dip) {
+                                            uint8_t *sip, uint8_t *dip,
+                                            MacAddress smac) {
     nd_neighbor_solicit *icmp = (nd_neighbor_solicit *)buf;
     icmp->nd_ns_type = ND_NEIGHBOR_SOLICIT;
     icmp->nd_ns_code = 0;
     icmp->nd_ns_cksum = 0;
     icmp->nd_ns_reserved = 0;
-    memcpy(icmp->nd_ns_target.s6_addr, target.to_bytes().data(), 16);
+    memcpy(icmp->nd_ns_target.s6_addr, target.to_bytes().data(),
+                            IPV6_ADDR_SIZE_BYTES);
     uint16_t offset = sizeof(nd_neighbor_solicit);
 
     if (!IsIPv6AddrUnspecifiedBytes(sip)) {
@@ -476,7 +489,7 @@ uint16_t Icmpv6Handler::FillNeighborSolicit(uint8_t *buf,
         src_linklayer_addr->nd_opt_len = 1;
         //XXX instead of ETHER_ADDR_LEN, actual buffer size should be given
         //to preven buffer overrun.
-        agent()->vrrp_mac().ToArray(buf + offset + 2, ETHER_ADDR_LEN);
+        smac.ToArray(buf + offset + 2, ETHER_ADDR_LEN);
         offset += sizeof(nd_opt_hdr) + ETHER_ADDR_LEN;
     }
 
@@ -494,7 +507,8 @@ uint16_t Icmpv6Handler::FillNeighborAdvertisement(uint8_t *buf,
     icmp->nd_na_code = 0;
     icmp->nd_na_cksum = 0;
     icmp->nd_na_flags_reserved = 0;
-    memcpy(icmp->nd_na_target.s6_addr, target.to_bytes().data(), 16);
+    memcpy(icmp->nd_na_target.s6_addr, target.to_bytes().data(),
+                            IPV6_ADDR_SIZE_BYTES);
     if (solicited)
         icmp->nd_na_flags_reserved |= ND_NA_FLAG_SOLICITED;
     uint16_t offset = sizeof(nd_neighbor_advert);
@@ -513,13 +527,13 @@ uint16_t Icmpv6Handler::FillNeighborAdvertisement(uint8_t *buf,
 }
 
 void Icmpv6Handler::Ipv6Lower24BitsExtract(uint8_t *dst, uint8_t *src) {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < IPV6_ADDR_SIZE_BYTES; i++) {
         dst[i] &= src[i];
     }
 }
 
 void Icmpv6Handler::Ipv6AddressBitwiseOr(uint8_t *dst, uint8_t *src) {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < IPV6_ADDR_SIZE_BYTES; i++) {
         dst[i] |= src[i];
     }
 }
@@ -531,11 +545,13 @@ void Icmpv6Handler::SolicitedMulticastIpAndMac(const Ip6Address &dip,
      * the prefix FF02:0:0:0:0:1:FF00::/104 */
 
     /* Copy the higher order 104 bits of solicited node multicast IP */
-    memcpy(ip, kSolicitedNodeIpPrefix.to_bytes().data(), 16);
+    memcpy(ip, kSolicitedNodeIpPrefix.to_bytes().data(), IPV6_ADDR_SIZE_BYTES);
 
-    uint8_t ip_bytes[16], suffix_mask_bytes[16];
-    memcpy(ip_bytes, dip.to_bytes().data(), 16);
-    memcpy(suffix_mask_bytes, kSolicitedNodeIpSuffixMask.to_bytes().data(), 16);
+    uint8_t ip_bytes[IPV6_ADDR_SIZE_BYTES];
+    uint8_t suffix_mask_bytes[IPV6_ADDR_SIZE_BYTES];
+    memcpy(ip_bytes, dip.to_bytes().data(), IPV6_ADDR_SIZE_BYTES);
+    memcpy(suffix_mask_bytes, kSolicitedNodeIpSuffixMask.to_bytes().data(),
+                            IPV6_ADDR_SIZE_BYTES);
     /* Extract lower order 24 bits of Destination IP */
     Ipv6Lower24BitsExtract(ip_bytes, suffix_mask_bytes);
 
@@ -571,7 +587,7 @@ void Icmpv6Handler::SendNeighborAdvert(const Ip6Address &sip,
     icmp_ = pkt_info_->transp.icmp6 =
             (icmp6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header) +
                           sizeof(ip6_hdr));
-    uint8_t dip[16], source_ip[16];
+    uint8_t dip[IPV6_ADDR_SIZE_BYTES], source_ip[IPV6_ADDR_SIZE_BYTES];
     memcpy(source_ip, sip.to_bytes().data(), sizeof(source_ip));
     boost::system::error_code ec;
     Ip6Address ip = Ip6Address::from_string(IPV6_ALL_NODES_ADDRESS, ec);
@@ -586,6 +602,7 @@ void Icmpv6Handler::SendNeighborSolicit(const Ip6Address &sip,
                                         const Ip6Address &tip,
                                         const VmInterface *vmi,
                                         uint32_t vrf, bool send_unicast) {
+
     if (pkt_info_->packet_buffer() == NULL) {
         pkt_info_->AllocPacketBuffer(agent(), PktHandler::ICMPV6, ICMP_PKT_SIZE,
                                      0);
@@ -601,16 +618,26 @@ void Icmpv6Handler::SendNeighborSolicit(const Ip6Address &sip,
     icmp_ = pkt_info_->transp.icmp6 =
             (icmp6_hdr *)(pkt_info_->pkt + sizeof(struct ether_header) +
                           vlan_offset + sizeof(ip6_hdr));
-    uint8_t solicited_mcast_ip[16], source_ip_bytes[16];
+    uint8_t solicited_mcast_ip[IPV6_ADDR_SIZE_BYTES], source_ip_bytes[IPV6_ADDR_SIZE_BYTES];
     MacAddress dmac;
     memcpy(source_ip_bytes, sip.to_bytes().data(), sizeof(source_ip_bytes));
     if (send_unicast)
-        memcpy(solicited_mcast_ip, tip.to_bytes().data(), sizeof(tip));
+        memcpy(solicited_mcast_ip, tip.to_bytes().data(), IPV6_ADDR_SIZE_BYTES);
     else
         SolicitedMulticastIpAndMac(tip, solicited_mcast_ip, dmac);
+
+    MacAddress mac;
+    mac = vmi->GetVifMac(agent());
     uint16_t len = FillNeighborSolicit((uint8_t *)icmp_, tip, source_ip_bytes,
-                                       solicited_mcast_ip);
-    SendIcmpv6Response(vmi?vmi->id():0, vrf, source_ip_bytes,
+                                       solicited_mcast_ip, mac);
+
+    uint32_t ifindex = 0;
+    if (vmi->vmi_type() == VmInterface::VHOST && vmi->parent()) {
+        ifindex = vmi->parent()->id();
+    } else {
+        ifindex = vmi->id();
+    }
+    SendIcmpv6Response(ifindex, vrf, source_ip_bytes,
                        solicited_mcast_ip, dmac, len);
 }
 

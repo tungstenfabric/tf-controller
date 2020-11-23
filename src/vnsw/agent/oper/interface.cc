@@ -412,6 +412,9 @@ void InterfaceTable::CreateVhost() {
                               params->vhost_addr(),
                               params->vhost_plen(),
                               params->vhost_gw(),
+                              params->vhost_addr6(),
+                              params->vhost_plen6(),
+                              params->vhost_gw6(),
                               params->eth_port(),
                               agent()->fabric_vn_name(), transport);
     } else {
@@ -438,6 +441,9 @@ void InterfaceTable::CreateVhostReq() {
                                  agent()->router_id(),
                                  agent()->vhost_prefix_len(),
                                  agent()->vhost_default_gateway(),
+                                 agent()->router_id6(),
+                                 agent()->vhost_prefix_len6(),
+                                 agent()->vhost_default_gateway6(),
                                  Agent::NullString(), agent_->fabric_vrf_name(),
                                  transport);
     } else {

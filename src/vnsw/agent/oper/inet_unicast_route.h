@@ -102,11 +102,13 @@ public:
                   addr_bytes = key->addr().to_v4().to_bytes();
                   char res = static_cast<char>(addr_bytes[i]);
                   return res;
-              } else {
+              } else if (key->addr().is_v6()) {
                   Ip6Address::bytes_type addr_bytes;
                   addr_bytes = key->addr().to_v6().to_bytes();
                   volatile char res = static_cast<char>(addr_bytes[i]);
                   return res;
+              } else {
+                  assert(0);
               }
           }
     };
@@ -271,9 +273,13 @@ public:
                                const TagList &tag_list,
                                const PathPreference &path_preference);
     InetUnicastRouteEntry *FindResolveRoute(const Ip4Address &ip);
+    InetUnicastRouteEntry *FindResolveRoute(const IpAddress &ip);
     static InetUnicastRouteEntry *FindResolveRoute(const string &vrf_name,
                                                    const Ip4Address &ip);
+    static InetUnicastRouteEntry *FindResolveRoute(const string &vrf_name,
+                                                   const Ip6Address &ip);
     static bool ShouldAddArp(const Ip4Address &ip);
+    static bool ShouldAddNdp(const Ip6Address &ip);
     static void CheckAndAddArpReq(const string &vrf_name, const Ip4Address &ip,
                                   const Interface *intf,
                                   const VnListType &vn_list,
@@ -281,6 +287,14 @@ public:
                                   const TagList &tag);
     static void CheckAndAddArpRoute(const string &route_vrf_name,
                                     const Ip4Address &ip,
+                                    const MacAddress &mac,
+                                    const Interface *intf,
+                                    bool resolved,
+                                    const VnListType &vn_list,
+                                    const SecurityGroupList &sg,
+                                    const TagList &tag);
+    static void CheckAndAddNdpRoute(const string &route_vrf_name,
+                                    const Ip6Address &ip,
                                     const MacAddress &mac,
                                     const Interface *intf,
                                     bool resolved,
@@ -307,6 +321,13 @@ public:
                          const VnListType &dest_vn_list,
                          const SecurityGroupList &sg_list,
                          const TagList &tag_list);
+    static void AddNdpReq(const string &route_vrf_name,
+                         const Ip6Address &ip,
+                         const string &nexthop_vrf_name,
+                         const Interface *intf, bool policy,
+                         const VnListType &vn_list,
+                         const SecurityGroupList &sg_list,
+                         const TagList &tag_list);
     static void NdpRoute(DBRequest::DBOperation op,
                          const string &route_vrf_name,
                          const IpAddress &ip,
@@ -321,6 +342,14 @@ public:
                          const TagList &tag_list);
     static void AddResolveRoute(const Peer *peer,
                                 const string &vrf_name, const Ip4Address &ip,
+                                const uint8_t plen,
+                                const InterfaceKey &intf_key,
+                                const uint32_t label, bool policy,
+                                const std::string &vn_name,
+                                const SecurityGroupList &sg_list,
+                                const TagList &tag_list);
+    static void AddResolveRoute6(const Peer *peer,
+                                const string &vrf_name, const Ip6Address &ip,
                                 const uint8_t plen,
                                 const InterfaceKey &intf_key,
                                 const uint32_t label, bool policy,
@@ -366,6 +395,15 @@ public:
                                 const string &vrf_name,
                                 const Ip4Address &dst_addr,uint8_t plen,
                                 const Ip4Address &gw_ip,
+                                const VnListType &vn_name, uint32_t label,
+                                const SecurityGroupList &sg_list,
+                                const TagList &tag_list,
+                                const CommunityList &communities,
+                                bool native_encap);
+    static void AddGatewayRoute6(const Peer *peer,
+                                const string &vrf_name,
+                                const Ip6Address &dst_addr, uint8_t plen,
+                                const Ip6Address &gw_ip,
                                 const VnListType &vn_name, uint32_t label,
                                 const SecurityGroupList &sg_list,
                                 const TagList &tag_list,

@@ -13,7 +13,7 @@
 
 class TunnelNH : public NextHop {
 public:
-    TunnelNH(VrfEntry *vrf, const Ip4Address &sip, const Ip4Address &dip,
+    TunnelNH(VrfEntry *vrf, const IpAddress &sip, const IpAddress &dip,
              bool policy, TunnelType type, const MacAddress &rewrite_dmac);
     virtual ~TunnelNH();
 
@@ -33,8 +33,8 @@ public:
 
     const uint32_t vrf_id() const;
     const VrfEntry *GetVrf() const {return vrf_.get();};
-    const Ip4Address *GetSip() const {return &sip_;};
-    const Ip4Address *GetDip() const {return &dip_;};
+    const IpAddress *GetSip() const {return &sip_;};
+    const IpAddress *GetDip() const {return &dip_;};
     const AgentRoute *GetRt() const {return arp_rt_.get();};
     const MacAddress *GetDmac() const {return &dmac_;}
     const MacAddress &rewrite_dmac() const {return rewrite_dmac_;}
@@ -58,8 +58,8 @@ public:
     virtual bool NeedMplsLabel() { return false; }
 protected:
     VrfEntryRef vrf_;
-    Ip4Address sip_;
-    Ip4Address dip_;
+    IpAddress sip_;
+    IpAddress dip_;
     TunnelType tunnel_type_;
     DependencyRef<NextHop, AgentRoute> arp_rt_;
     InterfaceConstRef interface_;
@@ -74,8 +74,8 @@ private:
 
 class LabelledTunnelNH : public TunnelNH {
 public:
-    LabelledTunnelNH(VrfEntry *vrf, const Ip4Address &sip,
-            const Ip4Address &dip, bool policy, TunnelType type,
+    LabelledTunnelNH(VrfEntry *vrf, const IpAddress &sip,
+            const IpAddress &dip, bool policy, TunnelType type,
             const MacAddress &rewrite_dmac, uint32_t label);
     virtual ~LabelledTunnelNH();
 
@@ -106,6 +106,7 @@ private:
     TunnelType::Type transport_tunnel_type_;
     DISALLOW_COPY_AND_ASSIGN(LabelledTunnelNH);
 };
+
 /////////////////////////////////////////////////////////////////////////////
 // Mirror NH definition
 /////////////////////////////////////////////////////////////////////////////

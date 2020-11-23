@@ -56,7 +56,7 @@ private:
 class ControllerVmRoute : public ControllerPeerPath {
 public:
     ControllerVmRoute(const BgpPeer *peer, const string &vrf_name,
-                  const Ip4Address &addr, uint32_t label,
+                  const IpAddress &addr, uint32_t label,
                   const VnListType &dest_vn_list, int bmap,
                   const SecurityGroupList &sg_list,
                   const TagList &tag_list,
@@ -101,10 +101,25 @@ public:
                                             bool ecmp_suppressed,
                                             const EcmpLoadBalance &ecmp_load_balance,
                                             bool etree_leaf);
+    static ControllerVmRoute *MakeControllerVmRoute(
+                                            const Agent *agent,
+                                            const BgpPeer *bgp_peer,
+                                            const string &vrf_name,
+                                            const IpAddress &tunnel_dest,
+                                            TunnelType::TypeBmap bmap,
+                                            uint32_t label,
+                                            const MacAddress rewrite_dmac,
+                                            const VnListType &dest_vn_list,
+                                            const SecurityGroupList &sg_list,
+                                            const TagList &tag_list,
+                                            const PathPreference &path_preference,
+                                            bool ecmp_suppressed,
+                                            const EcmpLoadBalance &ecmp_load_balance,
+                                            bool etree_leaf);
 
 private:
     string server_vrf_;
-    Ip4Address tunnel_dest_;
+    IpAddress tunnel_dest_;
     TunnelType::TypeBmap tunnel_bmap_;
     uint32_t label_;
     VnListType dest_vn_list_;
@@ -124,7 +139,7 @@ private:
 class ControllerMplsRoute : public ControllerPeerPath {
 public:
     ControllerMplsRoute(const BgpPeer *peer, const string &vrf_name,
-                  const Ip4Address &addr, uint32_t label,
+                  const IpAddress &addr, uint32_t label,
                   const VnListType &dest_vn_list, int bmap,
                   const SecurityGroupList &sg_list,
                   const TagList &tag_list,
@@ -168,7 +183,7 @@ public:
 
 private:
     string server_vrf_;
-    Ip4Address tunnel_dest_;
+    IpAddress tunnel_dest_;
     TunnelType::TypeBmap tunnel_bmap_;
     uint32_t label_;
     VnListType dest_vn_list_;

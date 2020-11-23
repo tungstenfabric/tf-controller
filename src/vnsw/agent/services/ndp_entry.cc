@@ -231,7 +231,8 @@ struct Incomplete : sc::state<Incomplete, NdpEntry> {
     sc::result react(const EvSolNaIn &event) {
         NdpEntry *state_machine = &context<NdpEntry>();
         if (state_machine->mac() != event.mac_) {
-            state_machine->mac() = event.mac_;
+            state_machine->set_mac(event.mac_);
+            state_machine->AddNdpRoute(true);
         }
         return transit<Reachable>();
     }
@@ -239,7 +240,8 @@ struct Incomplete : sc::state<Incomplete, NdpEntry> {
     // move to stale
     sc::result react(const EvUnsolNaIn &event) {
         NdpEntry *state_machine = &context<NdpEntry>();
-        state_machine->mac() = event.mac_;
+        state_machine->set_mac(event.mac_);
+        state_machine->AddNdpRoute(true);
         return transit<Stale>();
     }
 
@@ -921,13 +923,11 @@ void NdpEntry::SendNeighborAdvert(bool solicited) {
             }
         }
     } else {
-        if (agent->router_id6().is_v6()) {
-            handler_->SendNeighborAdvert(agent->router_id6().to_v6(), key_.ip,
+        handler_->SendNeighborAdvert(agent->router_id6(), key_.ip,
                  agent->icmpv6_proto()->ip_fabric_interface_mac(),
                  MacAddress(),
                  agent->icmpv6_proto()->ip_fabric_interface_index(),
                  key_.vrf->vrf_id(), solicited);
-        }
     }
 }
 

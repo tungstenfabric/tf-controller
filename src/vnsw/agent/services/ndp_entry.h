@@ -125,8 +125,8 @@ public:
     void HandleNsRequest(nd_neighbor_solicit *ns, MacAddress mac);
     void SendNeighborSolicit(bool send_unicast=false);
     void SendNeighborAdvert(bool solicited);
-private:
     void AddNdpRoute(bool resolved);
+private:
     bool IsDerived();
 
     WorkQueue<EventContainer> work_queue_;

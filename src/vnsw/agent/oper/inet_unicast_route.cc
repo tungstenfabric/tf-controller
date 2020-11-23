@@ -104,6 +104,28 @@ InetUnicastAgentRouteTable::FindResolveRoute(const Ip4Address &ip) {
 }
 
 InetUnicastRouteEntry *
+InetUnicastAgentRouteTable::FindResolveRoute(const IpAddress &ip) {
+    uint8_t plen = 0;
+    if (GetTableType() == Agent::INET4_UNICAST) {
+        plen = 32;
+    } else if (GetTableType() == Agent::INET6_UNICAST) {
+        plen = 128;
+    }
+    InetUnicastRouteEntry *rt = NULL;
+    do {
+        InetUnicastRouteEntry key(NULL, ip, plen, false);
+        rt = tree_.LPMFind(&key);
+        if (rt) {
+            const NextHop *nh = rt->GetActiveNextHop();
+            if (nh && nh->GetType() == NextHop::RESOLVE)
+                return rt;
+        }
+    } while (rt && --plen);
+
+    return NULL;
+}
+
+InetUnicastRouteEntry *
 InetUnicastAgentRouteTable::FindResolveRoute(const string &vrf_name,
                                              const Ip4Address &ip) {
     VrfEntry *vrf =
@@ -112,6 +134,18 @@ InetUnicastAgentRouteTable::FindResolveRoute(const string &vrf_name,
               static_cast<InetUnicastAgentRouteTable *>
               (vrf->GetInet4UnicastRouteTable());
     return rt_table->FindResolveRoute(ip);
+}
+
+InetUnicastRouteEntry *
+InetUnicastAgentRouteTable::FindResolveRoute(const string &vrf_name,
+                                             const Ip6Address &ip) {
+    VrfEntry *vrf =
+        Agent::GetInstance()->vrf_table()->FindVrfFromName(vrf_name);
+    InetUnicastAgentRouteTable *rt_table =
+              static_cast<InetUnicastAgentRouteTable *>
+              (vrf->GetInet6UnicastRouteTable());
+    IpAddress ip_addr = IpAddress(ip);
+    return rt_table->FindResolveRoute(ip_addr);
 }
 
 static void Inet4UnicastTableEnqueue(Agent *agent, DBRequest *req) {
@@ -695,10 +729,17 @@ bool Inet4UnicastGatewayRoute::AddChangePathExtended(Agent *agent, AgentPath *pa
         if (nh->get_interface()->vrf()->forwarding_vrf()) {
             nexthop_vrf = nh->get_interface()->vrf()->forwarding_vrf()->GetName();
         }
-        InetUnicastAgentRouteTable::AddArpReq(vrf_name_, gw_ip_.to_v4(),
+        if (gw_ip_.is_v4()) {
+            InetUnicastAgentRouteTable::AddArpReq(vrf_name_, gw_ip_.to_v4(),
                                               nexthop_vrf,
                                               nh->get_interface(), nh->PolicyEnabled(),
                                               vn_list_, sg_list_, tag_list_);
+        } else if (gw_ip_.is_v6()) {
+            InetUnicastAgentRouteTable::AddNdpReq(vrf_name_, gw_ip_.to_v6(),
+                                              nexthop_vrf,
+                                              nh->get_interface(), nh->PolicyEnabled(),
+                                              vn_list_, sg_list_, tag_list_);
+        }
     } else {
         path->set_unresolved(false);
     }
@@ -1402,6 +1443,33 @@ InetUnicastAgentRouteTable::ArpRoute(DBRequest::DBOperation op,
 }
 
 void
+InetUnicastAgentRouteTable::AddNdpReq(const string &route_vrf_name,
+                                      const Ip6Address &ip,
+                                      const string &nexthop_vrf_name,
+                                      const Interface *intf, bool policy,
+                                      const VnListType &vn_list,
+                                      const SecurityGroupList &sg_list,
+                                      const TagList &tag_list) {
+    Agent *agent = Agent::GetInstance();
+    NdpNHKey key(route_vrf_name, ip, policy);
+    NextHop *nh =
+        static_cast<NextHop *>(agent->nexthop_table()->FindActiveEntry(&key));
+    if (!nh) {
+        DBRequest  nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+        nh_req.key.reset(new NdpNHKey(route_vrf_name, ip, policy));
+        nh_req.data.reset(new NdpNHData(
+                    static_cast<InterfaceKey *>(intf->GetDBRequestKey().release())));
+        agent->nexthop_table()->Enqueue(&nh_req);
+    }
+    DBRequest  rt_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    rt_req.key.reset(new InetUnicastRouteKey(agent->local_peer(),
+                                              route_vrf_name, ip, 128));
+    rt_req.data.reset(new InetUnicastNdpRoute(nexthop_vrf_name, ip, policy,
+                                               vn_list, sg_list, tag_list));
+    Inet6UnicastTableEnqueue(agent, route_vrf_name, &rt_req);
+}
+
+void
 InetUnicastAgentRouteTable::NdpRoute(DBRequest::DBOperation op,
                                      const string &route_vrf_name,
                                      const IpAddress &ip,
@@ -1482,6 +1550,18 @@ bool InetUnicastAgentRouteTable::ShouldAddArp(const Ip4Address &ip) {
     return true;
 }
 
+bool InetUnicastAgentRouteTable::ShouldAddNdp(const Ip6Address &ip) {
+    if (ip == Agent::GetInstance()->router_id6() ||
+        !IsIp6SubnetMember(ip, Agent::GetInstance()->router_id6(),
+                           Agent::GetInstance()->vhost_prefix_len6())) {
+        // TODO: add Arp request for GW
+        // Currently, default GW Arp is added during init
+        return false;
+    }
+
+    return true;
+}
+
 void
 InetUnicastAgentRouteTable::CheckAndAddArpRoute(const string &route_vrf_name,
                                                 const Ip4Address &ip,
@@ -1500,6 +1580,26 @@ InetUnicastAgentRouteTable::CheckAndAddArpRoute(const string &route_vrf_name,
     }
     ArpRoute(DBRequest::DB_ENTRY_ADD_CHANGE, route_vrf_name, ip, mac,
              nexthop_vrf, *intf, resolved, 32, false, vn_list, sg, tag);
+}
+
+void
+InetUnicastAgentRouteTable::CheckAndAddNdpRoute(const string &route_vrf_name,
+                                                const Ip6Address &ip,
+                                                const MacAddress &mac,
+                                                const Interface *intf,
+                                                bool resolved,
+                                                const VnListType &vn_list,
+                                                const SecurityGroupList &sg,
+                                                const TagList &tag) {
+    if (!ShouldAddNdp(ip)) {
+        return;
+    }
+    std::string nexthop_vrf = intf->vrf()->GetName();
+    if (intf->vrf()->forwarding_vrf()) {
+        nexthop_vrf = intf->vrf()->forwarding_vrf()->GetName();
+    }
+    NdpRoute(DBRequest::DB_ENTRY_ADD_CHANGE, route_vrf_name, ip, mac,
+             nexthop_vrf, *intf, resolved, 128, false, vn_list, sg, tag);
 }
 
 void
@@ -1541,8 +1641,30 @@ void InetUnicastAgentRouteTable::AddResolveRoute(const Peer *peer,
     Inet4UnicastTableEnqueue(agent, &req);
 }
 
+void InetUnicastAgentRouteTable::AddResolveRoute6(const Peer *peer,
+                                                 const string &vrf_name,
+                                                 const Ip6Address &ip,
+                                                 const uint8_t plen,
+                                                 const InterfaceKey &intf,
+                                                 const uint32_t label,
+                                                 bool policy,
+                                                 const std::string &vn_name,
+                                                 const SecurityGroupList
+                                                 &sg_list,
+                                                 const TagList
+                                                 &tag_list) {
+    Agent *agent = Agent::GetInstance();
+    ResolveNH::CreateReq(&intf, policy);
+    DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    req.key.reset(new InetUnicastRouteKey(peer, vrf_name, ip,
+                                          plen));
+    req.data.reset(new ResolveRoute(&intf, policy, label, vn_name, sg_list, tag_list));
+    Inet6UnicastTableEnqueue(agent, vrf_name, &req);
+}
+
 // Create Route for a interface NH.
 // Used to create interface-nh pointing routes to vhost interfaces
+// TODO Check this.
 void InetUnicastAgentRouteTable::AddInetInterfaceRouteReq(const Peer *peer,
                                                           const string &vm_vrf,
                                                           const Ip4Address &addr,
@@ -1721,6 +1843,44 @@ void InetUnicastAgentRouteTable::AddGatewayRoute(const Peer *peer,
     Inet4UnicastTableProcess(Agent::GetInstance(), vrf_name, req);
 }
 
+static void AddGatewayRoute6Internal(const Peer *peer,
+                                    DBRequest *req, const string &vrf_name,
+                                    const Ip6Address &dst_addr, uint8_t plen,
+                                    const Ip6Address &gw_ip,
+                                    const VnListType &vn_name, uint32_t label,
+                                    const SecurityGroupList &sg_list,
+                                    const TagList &tag_list,
+                                    const CommunityList &communities,
+                                    bool native_encap) {
+    req->oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+    req->key.reset(new InetUnicastRouteKey(peer,
+                                           vrf_name, dst_addr, plen));
+    req->data.reset(new Inet4UnicastGatewayRoute(gw_ip, vrf_name,
+                                                 vn_name, label, sg_list,
+                                                 tag_list, communities,
+                                                 native_encap));
+}
+
+void InetUnicastAgentRouteTable::AddGatewayRoute6(const Peer *peer,
+                                                 const string &vrf_name,
+                                                 const Ip6Address &dst_addr,
+                                                 uint8_t plen,
+                                                 const Ip6Address &gw_ip,
+                                                 const VnListType &vn_name,
+                                                 uint32_t label,
+                                                 const SecurityGroupList
+                                                 &sg_list,
+                                                 const TagList
+                                                 &tag_list,
+                                                 const CommunityList
+                                                 &communities,
+                                                 bool native_encap) {
+    DBRequest req;
+    AddGatewayRoute6Internal(peer, &req, vrf_name, dst_addr, plen, gw_ip, vn_name,
+                            label, sg_list, tag_list, communities, native_encap);
+    Inet6UnicastTableProcess(Agent::GetInstance(), vrf_name, req);
+}
+
 void
 InetUnicastAgentRouteTable::AddGatewayRouteReq(const Peer *peer,
                                                const string &vrf_name,
@@ -1785,6 +1945,7 @@ InetUnicastAgentRouteTable::AddIpamSubnetRoute(const string &vrf_name,
 void
 InetUnicastAgentRouteTable::AddVrouterSubnetRoute(const IpAddress &dst_addr,
                                                   uint8_t plen) {
+    // TODO - esnagendra, anything?
     /* Only IPv4 is supported */
     if (!dst_addr.is_v4()) {
         return;

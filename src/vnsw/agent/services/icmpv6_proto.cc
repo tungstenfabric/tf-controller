@@ -289,6 +289,9 @@ void Icmpv6VrfState::RouteUpdate(DBTablePartBase *part, DBEntryBase *entry) {
 
 void Icmpv6VrfState::EvpnRouteUpdate(DBTablePartBase *part, DBEntryBase *entry) {
     EvpnRouteEntry *route = static_cast<EvpnRouteEntry *>(entry);
+    if (!route->ip_addr().is_v6()) {
+        return;
+    }
 
     Icmpv6RouteState *state = static_cast<Icmpv6RouteState *>
         (entry->GetState(part->parent(), evpn_route_table_listener_id_));

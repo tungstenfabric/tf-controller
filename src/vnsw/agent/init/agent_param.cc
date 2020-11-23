@@ -53,6 +53,16 @@ bool AgentParam::GetIpAddress(const string &str, Ip4Address *addr) {
     return true;
 }
 
+bool AgentParam::GetIp6Address(const string &str, Ip6Address *addr) {
+    boost::system::error_code ec;
+    Ip6Address tmp = Ip6Address::from_string(str, ec);
+    if (ec.value() != 0) {
+        return false;
+    }
+    *addr = tmp;
+    return true;
+}
+
 bool AgentParam::ParseIp(const string &key, Ip4Address *server) {
     optional<string> opt_str;
     if (opt_str = tree_.get_optional<string>(key)) {
@@ -157,6 +167,18 @@ void AgentParam::ParseIpArgument
     if (var_map.count(key)) {
         Ip4Address addr;
         if (GetIpAddress(var_map[key].as<string>(), &addr)) {
+            server = addr;
+        }
+    }
+}
+
+void AgentParam::ParseIp6Argument
+    (const boost::program_options::variables_map &var_map, Ip6Address &server,
+     const string &key) {
+
+    if (var_map.count(key)) {
+        Ip6Address addr;
+        if (GetIp6Address(var_map[key].as<string>(), &addr)) {
             server = addr;
         }
     }
@@ -447,6 +469,15 @@ void AgentParam::ParseVirtualHostArguments
         }
     }
     ParseIpArgument(var_map, vhost_.gw_, "VIRTUAL-HOST-INTERFACE.gateway");
+
+    if (GetOptValue<string>(var_map, ip, "VIRTUAL-HOST-INTERFACE.ip6")) {
+        ec = Inet6PrefixParse(ip, &vhost_.addr6_, &vhost_.plen6_);
+        if (ec != 0) {
+            cout << "Error parsing vhost ip6 argument from <" << ip << ">\n";
+        }
+    }
+    ParseIp6Argument(var_map, vhost_.gw6_, "VIRTUAL-HOST-INTERFACE.gateway6");
+
     GetOptValue<string>(var_map, eth_port_,
                         "VIRTUAL-HOST-INTERFACE.physical_interface");
 
@@ -1338,6 +1369,8 @@ void AgentParam::InitVhostAndXenLLPrefix() {
     uint32_t mask = vhost_.plen_ ? (0xFFFFFFFF << (32 - vhost_.plen_)) : 0;
     vhost_.prefix_ = Ip4Address(vhost_.addr_.to_ulong() & mask);
 
+    vhost_.prefix6_ = Address::GetIp6SubnetAddress(vhost_.addr6_, vhost_.plen6_);
+
     mask = xen_ll_.plen_ ? (0xFFFFFFFF << (32 - xen_ll_.plen_)) : 0;
     xen_ll_.prefix_ = Ip4Address(xen_ll_.addr_.to_ulong() & mask);
 }
@@ -1437,6 +1470,11 @@ void AgentParam::LogConfig() const {
     LOG(DEBUG, "vhost IP Address            : " << vhost_.addr_.to_string()
         << "/" << vhost_.plen_);
     LOG(DEBUG, "vhost gateway               : " << vhost_.gw_.to_string());
+
+    LOG(DEBUG, "vhost IPv6 Address          : " << vhost_.addr6_.to_string()
+        << "/" << vhost_.plen6_);
+    LOG(DEBUG, "vhost IPv6 gateway          : " << vhost_.gw6_.to_string());
+
     LOG(DEBUG, "Ethernet port               : " << eth_port_);
     LOG(DEBUG, "Loopback IP                 : " << loopback_ip_.to_string());
 
@@ -2185,8 +2223,12 @@ AgentParam::AgentParam(bool enable_flow_options,
              "Name of virtual host interface")
             ("VIRTUAL-HOST-INTERFACE.ip", opt::value<string>(),
              "IP address and prefix in ip/prefix_len format")
+            ("VIRTUAL-HOST-INTERFACE.ip6", opt::value<string>(),
+             "IPv6 address and prefix in ip/prefix_len format")
             ("VIRTUAL-HOST-INTERFACE.gateway", opt::value<string>(),
              "Gateway IP address for virtual host")
+            ("VIRTUAL-HOST-INTERFACE.gateway6", opt::value<string>(),
+             "Gateway IPv6 address for virtual host")
             ("VIRTUAL-HOST-INTERFACE.physical_interface", opt::value<string>(),
              "Physical interface name to which virtual host interface maps to")
             ("VIRTUAL-HOST-INTERFACE.compute_node_address",

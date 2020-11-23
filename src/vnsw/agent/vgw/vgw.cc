@@ -136,7 +136,8 @@ void VirtualGateway::CreateInterface(const std::string &interface_name,
                                      Interface::Transport transport) {
     InetInterface::Create(agent_->interface_table(), interface_name,
                           InetInterface::SIMPLE_GATEWAY, vrf_name,
-                          Ip4Address(0), 0, Ip4Address(0), Agent::NullString(),
+                          Ip4Address(0), 0, Ip4Address(0),
+                          Ip6Address(), 0, Ip6Address(), Agent::NullString(),
                           "", transport);
 }
 
