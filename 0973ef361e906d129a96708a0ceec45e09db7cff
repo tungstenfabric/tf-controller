@@ -34,6 +34,24 @@
       "revId": "0973ef361e906d129a96708a0ceec45e09db7cff",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1a711b4c_b8ce9323",
+        "filename": "src/vnsw/agent/oper/vxlan_routing_manager.cc",
+        "patchSetId": 2
+      },
+      "lineNbr": 1023,
+      "author": {
+        "id": 77
+      },
+      "writtenOn": "2020-11-23T07:47:34Z",
+      "side": 1,
+      "message": "\u003e subnet route for a subnet of a virtual network is deleted when vrf for vn is deleted hence route path deletion gets handled as part of vrf entry deletion .\n\u003e subnet route is also deleted  when subnet for vn is deleted , if delete from this trigger gets processed after vrf gets deleted , crash can happen as vrf can be  already deleted .",
+      "parentUuid": "8a2ab024_db25c986",
+      "revId": "0973ef361e906d129a96708a0ceec45e09db7cff",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
