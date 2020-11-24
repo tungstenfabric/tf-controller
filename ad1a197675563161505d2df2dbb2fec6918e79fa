@@ -34,6 +34,24 @@
       "revId": "ad1a197675563161505d2df2dbb2fec6918e79fa",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "22ac1fb4_93a776d1",
+        "filename": "src/config/device-manager/device_manager/plugins/ansible/ansible_role_common.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 843
+      },
+      "writtenOn": "2020-11-24T07:16:50Z",
+      "side": 0,
+      "message": "@Parag Here are the things which needs to be taken care\n1) overlay_networking template removed from roles and moved to config_templates directory.\n2) Still the DC-GW entries present in the all.yaml (i.e still its using the LAG, MH from the roles directory).\n3) l2-gateway feature needs to be added for DC-GW this is required to support Unmanaged PNF service chain.",
+      "parentUuid": "04c6e173_01612890",
+      "revId": "ad1a197675563161505d2df2dbb2fec6918e79fa",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
