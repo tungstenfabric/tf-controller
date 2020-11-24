@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b97a4773_f8f1753b",
+        "filename": "src/config/vnc_openstack/vnc_openstack/neutron_plugin_db.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1243,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-11-24T03:53:19Z",
+      "side": 1,
+      "message": "When --no-share is passed, don\u0027t we need to filter net_list and return only the networks that contain is_shared not set or set to False.",
+      "revId": "672f34bcd6fef3467b810ce456cbf3c8cd8f9968",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
