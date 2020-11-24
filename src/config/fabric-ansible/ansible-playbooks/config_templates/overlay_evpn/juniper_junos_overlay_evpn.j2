@@ -76,7 +76,7 @@ set groups {{cfg_group}} routing-instances {{ri_name}} vrf-export {{vrf_export}}
 {%                        set l2_ifs = vlan.get('interfaces', []) %}
 set groups {{cfg_group}} routing-instances {{ri_name}} bridge-domains {{vlan_name}} vlan-id {{vlan_id}}
 set groups {{cfg_group}} routing-instances {{ri_name}} bridge-domains {{vlan_name}} description "{{vlan.description}}"
-{%                        if ('CRB-MCAST-Gateway' in sys_roles) %}
+{%                        if ('CRB-MCAST-Gateway' in sys_roles or 'ERB-UCAST-Gateway' in sys_roles) %}
 set groups {{cfg_group}} routing-instances {{ri_name}} bridge-domains {{vlan_name}} protocols igmp-snooping proxy
 {%                        endif %}
 {%                        if descr.startswith("Routed Master LR") == False %}
