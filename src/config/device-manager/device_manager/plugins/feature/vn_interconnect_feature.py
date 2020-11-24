@@ -101,6 +101,21 @@ class VnInterconnectFeature(FeatureBase):
         export_targets, import_targets = self._get_export_import_targets(
             vn, ri_obj)
 
+        # Check and add the VN RTs if its an MX router
+        if lr_obj:
+            if lr_obj.logical_router_gateway_external is True:
+                if self._physical_router.device_family == 'junos':
+                    lr_vns = lr_obj.get_connected_networks(
+                        include_internal=False, pr_uuid=
+                        self._physical_router.uuid)
+                    for lr_vn in lr_vns:
+                        lr_vn_obj = VirtualNetworkDM.get(lr_vn)
+                        ex_rt, im_rt = lr_vn_obj.get_route_targets()
+                        if ex_rt:
+                            export_targets |= ex_rt
+                        if im_rt:
+                            import_targets |= im_rt
+
         # get lr_object
         if lr_obj:
             dci = lr_obj.get_interfabric_dci()
