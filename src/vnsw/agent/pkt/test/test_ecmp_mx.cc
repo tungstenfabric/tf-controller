@@ -115,6 +115,7 @@ public:
 //rpf nexthop
 TEST_F(EcmpTest, EcmpTest_1) {
     AddRemoteEcmpRoute("vrf1", "0.0.0.0", 0, "vn1", 4);
+    client->WaitForIdle();
 
     TxIpPacket(VmPortGetId(1), "1.1.1.1", "2.1.1.1", 1);
     client->WaitForIdle();
@@ -145,6 +146,7 @@ TEST_F(EcmpTest, EcmpTest_1) {
 //    Reverse flow rpf next is Composite NH
 TEST_F(EcmpTest, EcmpTest_2) {
     AddRemoteEcmpRoute("vrf1", "0.0.0.0", 0, "vn1", 4);
+    client->WaitForIdle();
 
     TxIpMplsPacket(eth_intf_id, MX_2, router_id, vm1_label,
                    "8.8.8.8", "1.1.1.1", 1, 10);
@@ -176,6 +178,7 @@ TEST_F(EcmpTest, EcmpTest_2) {
 //Verify that index are set fine
 TEST_F(EcmpTest, EcmpTest_3) {
     AddRemoteEcmpRoute("vrf1", "0.0.0.0", 0, "vn1", 4);
+    client->WaitForIdle();
 
     TxIpMplsPacket(eth_intf_id, MX_3, router_id, vm1_label,
                    "8.8.8.8", "1.1.1.1", 1, 10);
@@ -207,6 +210,7 @@ TEST_F(EcmpTest, EcmpTest_3) {
 //verify that component index gets update
 TEST_F(EcmpTest, EcmpTest_4) {
     AddRemoteEcmpRoute("vrf1", "0.0.0.0", 0, "vn1", 4);
+    client->WaitForIdle();
 
     TxIpMplsPacket(eth_intf_id, MX_0, router_id, vm1_label,
                    "8.8.8.8", "1.1.1.1", 1, 10);
@@ -416,6 +420,7 @@ TEST_F(EcmpTest, EcmpTest_8) {
     client->WaitForIdle();
 
     AddRemoteEcmpRoute("vrf1", "1.1.1.100", 32, "vn1", 4);
+    client->WaitForIdle();
     TxIpMplsPacket(eth_intf_id, MX_0, router_id, vm1_label,
                    "1.1.1.100", "1.1.1.1", 1, 10);
     client->WaitForIdle();
@@ -571,6 +576,7 @@ TEST_F(EcmpTest, FabricVmi) {
 
     DeleteVmportEnv(input1, 2, true);
     client->WaitForIdle();
+    WAIT_FOR(1000, 1000, (get_flow_proto()->FlowCount() == 0));
 }
 
 int main(int argc, char *argv[]) {
