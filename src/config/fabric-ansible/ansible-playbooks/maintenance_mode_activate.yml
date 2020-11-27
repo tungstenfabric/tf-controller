@@ -29,6 +29,7 @@
         pr_user: "{{item.value.device_username}}"
         pr_host: "{{item.value.device_management_ip}}"
         pr_fqname: "{{item.value.device_fqname}}"
+        device_name: "{{item.value.device_fqname[-1]}}"
         pr_name: "{{item.value.device_fqname[-1]}}"
         prouter_name: "{{item.value.device_fqname[-1]}}"
         pr_family: "{{item.value.device_family}}"
