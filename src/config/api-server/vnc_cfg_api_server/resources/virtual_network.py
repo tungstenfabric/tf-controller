@@ -138,24 +138,11 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
 
     @classmethod
     def _check_provider_details(cls, obj_dict, db_conn, create):
+        # we don't check anymore whether the VN is in use or not
+        # non-provider VN in-use/not-in-use can be updated to provider VN
+        # provider VN cannot be modified with provider_details
         properties = obj_dict.get('provider_properties', None)
         if properties is None:
-            return (True, '')
-
-        is_provider_network = obj_dict.get('is_provider_network', False)
-        # VN is created/updated to a non-provider VN
-        # the check for setting
-        # is_provider_network from False to True is done by
-        # _check_is_provider_network_property function
-        # so here only check the not allowed case where
-        # non-provider VN having provider_properties
-        if not is_provider_network:
-            if properties:
-                return (False,
-                        'VN (%s) cannot have '
-                        'is_provider_network to False '
-                        'while provider_properties '
-                        'is not empty' % obj_dict.get('uuid', ''))
             return (True, '')
 
         # VN create
@@ -172,7 +159,7 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
             'virtual_network',
             obj_dict['uuid'],
             obj_fields=['virtual_machine_interface_back_refs',
-                        'provider_properties'])
+                        'provider_properties', 'is_provider_network'])
         if not ok:
             return (ok, vn)
         if vn.get('is_provider_network', False):
