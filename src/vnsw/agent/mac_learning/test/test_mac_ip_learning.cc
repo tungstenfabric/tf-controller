@@ -288,6 +288,7 @@ TEST_F(MacIpLearningTest, Test7) {
     EXPECT_TRUE(RouteGet("vrf1", sip.to_v4(), 32) == NULL);
     EXPECT_TRUE(intf->learnt_mac_ip_list().list_.size()  == 0);
 }
+
 int main(int argc, char *argv[]) {
     GETUSERARGS();
     client = TestInit(init_file, ksync_init);
