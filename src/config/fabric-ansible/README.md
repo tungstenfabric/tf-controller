@@ -1,5 +1,6 @@
 # Contrail Fabric Ansible
 
+
 ## What is Contrail Fabric?
 
 Contrail Fabric is a software component providing a way to onboard, configure,
