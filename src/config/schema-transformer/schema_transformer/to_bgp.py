@@ -71,6 +71,7 @@ from .resources.service_instance import ServiceInstanceST
 from .resources.virtual_machine import VirtualMachineST
 from .resources.virtual_machine_interface import VirtualMachineInterfaceST
 from .resources.virtual_network import VirtualNetworkST
+from .resources.virtual_port_group import VirtualPortGroupST
 from .st_amqp import STAmqpHandle
 
 monkey.patch_all()
@@ -90,8 +91,8 @@ class SchemaTransformer(object):
             'self': ['virtual_network'],
         },
         'virtual_machine_interface': {
-            'self': ['virtual_machine', 'port_tuple', 'virtual_network',
-                     'bgp_as_a_service'],
+            'self': ['virtual_machine', 'port_tuple',
+                     'virtual_network', 'bgp_as_a_service'],
             'virtual_network': ['virtual_machine', 'port_tuple',
                                 'bgp_as_a_service'],
             'logical_router': ['virtual_network'],
@@ -108,7 +109,7 @@ class SchemaTransformer(object):
             'virtual_network': [],
             'routing_instance': ['network_policy'],
             'network_policy': [],
-            'virtual_machine_interface': [],
+            'virtual_machine_interface': ['virtual_port_group'],
             'route_table': [],
             'bgpvpn': [],
             'routing_policy': [],
@@ -117,6 +118,10 @@ class SchemaTransformer(object):
             'self': ['service_instance'],
             'virtual_machine_interface': ['service_instance'],
             'service_instance': ['virtual_machine_interface']
+        },
+        'virtual_port_group': {
+            'self': [],
+            'virtual_network': []
         },
         'port_tuple': {
             'self': ['service_instance'],
@@ -415,6 +420,9 @@ class SchemaTransformer(object):
         NetworkPolicyST.reinit()
         gevent.sleep(0.001)
         VirtualMachineInterfaceST.reinit(zk_timeout=self._args.zk_timeout)
+
+        gevent.sleep(0.001)
+        VirtualPortGroupST.reinit()
 
         gevent.sleep(0.001)
         InstanceIpST.reinit()
