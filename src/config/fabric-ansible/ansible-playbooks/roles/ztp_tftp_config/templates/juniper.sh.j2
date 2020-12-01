@@ -1,6 +1,6 @@
 #!/bin/sh
 serial_number=$(echo "show system information | display xml" | cli | grep serial-number | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
-family=$(echo "show system information | display xml" | cli | grep hardware-model | awk -F">" '{print $2}' | awk -F"<" '{print $1}'| cut -c1-2)
+family=$(echo "show system information | display xml" | cli | grep hardware-model | awk -F">" '{print $2}' | awk -F"<" '{print $1}'| awk '{print substr ($0, 0, 2)}')
 
 # Below function generates the initial configuration
 generate_basic_config()
