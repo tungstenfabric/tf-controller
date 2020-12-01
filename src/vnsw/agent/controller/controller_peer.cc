@@ -1105,7 +1105,8 @@ void AgentXmppChannel::AddFabricVrfRoute(const Ip4Address &prefix_addr,
         return;
     }
 
-    Ip4Address nh = addr;
+    AddressList nh;
+    nh.push_back(addr);
 
     if (table->FindResolveRoute(addr) == NULL) {
         nh = agent_->vhost_default_gateway();

@@ -518,14 +518,16 @@ void Agent::CopyConfig(AgentParam *params) {
     InitializeFilteredParams();
 
     vhost_interface_name_ = params_->vhost_name();
-    ip_fabric_intf_name_ = params_->eth_port();
+    ip_fabric_intf_name_ = params_->eth_port_list()[0].c_str(); /* PKC: Using first element for now */
+    ip_fabric_intf_name_list_ = params_->eth_port_list();
+    ip_fabric_intf_addr_list_ = params_->eth_port_addr_list();
     crypt_intf_name_ = params_->crypt_port();
     host_name_ = params_->host_name();
     agent_name_ = params_->host_name();
     prog_name_ = params_->program_name();
     introspect_port_ = params_->http_server_port();
     prefix_len_ = params_->vhost_plen();
-    gateway_id_ = params_->vhost_gw();
+    gateway_list_ = params_->gateway_list();
     router_id_ = params_->vhost_addr();
     loopback_ip_ = params_->loopback_ip();
     if (params_->loopback_ip() != Ip4Address(0)) {
@@ -764,7 +766,7 @@ Agent::Agent() :
     physical_device_table_(NULL), physical_device_vn_table_(NULL),
     config_manager_(), mirror_cfg_table_(NULL),
     intf_mirror_cfg_table_(NULL), router_id6_(Ip4Address(0)), router_id_(0), prefix_len_(0),
-    gateway_id_(0), compute_node_ip_(0), xs_cfg_addr_(""), xs_idx_(0),
+    gateway_list_(0), compute_node_ip_(0), xs_cfg_addr_(""), xs_idx_(0),
     xs_addr_(), xs_port_(),
     xs_stime_(), xs_auth_enable_(false), xs_dns_idx_(0), dns_addr_(),
     dns_port_(), dns_auth_enable_(false),
@@ -802,7 +804,7 @@ Agent::Agent() :
     task_monitor_timeout_msec_(kDefaultTaskMonitorTimeout),
     vr_limit_high_watermark_(kDefaultHighWatermark),
     vr_limit_low_watermark_(kDefaultLowWatermark),
-    loopback_ip_(), is_l3mh_(false) {
+    loopback_ip_(), is_l3mh_(false), ip_fabric_intf_name_list_() {
 
     assert(singleton_ == NULL);
     singleton_ = this;

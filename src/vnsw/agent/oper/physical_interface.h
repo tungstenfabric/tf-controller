@@ -80,7 +80,7 @@ public:
     static void DeleteReq(InterfaceTable *table, const std::string &ifname);
     static void Delete(InterfaceTable *table, const std::string &ifname);
     bool OnChange(PhysicalInterfaceData *data);
-    virtual void ObtainOsSpecificParams(const std::string &name);
+    virtual void ObtainOsSpecificParams(const std::string &name, Agent *agent);
     friend struct PhysicalInterfaceKey;
     friend struct PhysicalInterfaceOsOperStateData;
     friend class TestVnswIf;
