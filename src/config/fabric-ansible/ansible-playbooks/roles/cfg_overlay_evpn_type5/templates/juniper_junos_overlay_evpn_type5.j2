@@ -519,7 +519,11 @@ set groups {{cfg_group}} policy-options community {{tcommunity}} members {{tcom_
 {%                                         for tcom_value in tverb.get('community', []) %}
 {%                                             set cname = rp_name + '-' + tname + '-C' + verb + loop.index|string %}
 set groups {{cfg_group}} policy-options community {{cname}} members {{tcom_value | rtfilter}}
+{%                                             if verb == 'remove' %}
+set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then community delete {{cname}}
+{%                                             else %}
 set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then community {{verb}} {{cname}}
+{%                                             endif %}
 {%                                         endfor %}
 {%                                     endif %}
 {%                                 endfor %}
@@ -532,7 +536,11 @@ set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tnam
 {%                                         for tcom_value in tverb.get('community', []) %}
 {%                                             set cname = rp_name + '-' + tname + '-EXTC' + verb + loop.index|string %}
 set groups {{cfg_group}} policy-options community {{cname}} members {{tcom_value | rtfilter}}
+{%                                             if verb == 'remove' %}
+set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then community delete {{cname}}
+{%                                             else %}
 set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then community {{verb}} {{cname}}
+{%                                             endif %}
 {%                                         endfor %}
 {%                                     endif %}
 {%                                 endfor %}
