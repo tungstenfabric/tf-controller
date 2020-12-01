@@ -380,9 +380,8 @@ TEST_F(TestVrfAssignAclFlow, VrfAssignAcl8) {
     int nh_id = VmPortGet(1)->flow_key_nh()->id();
     FlowEntry *fe = FlowGet(1, "1.1.1.1", "2.1.1.1", IPPROTO_TCP,
                             10, 20, nh_id);
-    if (fe != NULL) {
+    if (fe != NULL && fe->acl_assigned_vrf_index() != VrfEntry::kInvalidIndex) {
         EXPECT_TRUE(fe->acl_assigned_vrf() == "default-project:vn3:vn3");
-        EXPECT_TRUE(fe->is_flags_set(FlowEntry::ShortFlow) == true);
     }
     DeleteRoute("default-project:vn1:vn1", "2.1.1.1", 32, bgp_peer_);
     client->WaitForIdle();
@@ -421,6 +420,7 @@ TEST_F(TestVrfAssignAclFlow, VrfAssignAcl9) {
 
 //Modify ACL and check if new flow is set with proper action
 TEST_F(TestVrfAssignAclFlow, VrfAssignAcl10) {
+    client->agent()->flow_stats_manager()->set_delete_short_flow(false);
     AddAddressVrfAssignAcl("intf1", 1, "1.1.1.0", "2.1.1.0", 6, 1, 65535,
                            1, 65535, "default-project:vn2:vn2", "true");
 
@@ -448,6 +448,8 @@ TEST_F(TestVrfAssignAclFlow, VrfAssignAcl10) {
         }
     };
     CreateFlow(flow2, 1);
+    client->WaitForIdle();
+    client->agent()->flow_stats_manager()->set_delete_short_flow(true);
 }
 //Add an VRF translate ACL to send all ssh traffic to "2.1.1.1"
 //via default-project:vn2 and also add mirror ACL for VN1
@@ -500,6 +502,7 @@ TEST_F(TestVrfAssignAclFlow, VrfAssignAclWithMirror1) {
     client->WaitForIdle();
 }
 TEST_F(TestVrfAssignAclFlow, VrfAssignAclWithMirror2) {
+    client->agent()->flow_stats_manager()->set_delete_short_flow(false);
     AddAddressVrfAssignAcl("intf1", 1, "1.1.1.0", "2.1.1.0", 6, 1, 65535,
                            1, 65535, "default-project:vn2:vn2", "true");
 
@@ -539,7 +542,6 @@ TEST_F(TestVrfAssignAclFlow, VrfAssignAclWithMirror2) {
     client->WaitForIdle();
     FlowEntry *entry = FlowGet(VmPortGet(1)->flow_key_nh()->id(),  "1.1.1.1",
                                "2.1.1.1", IPPROTO_TCP, 10, 20);
-    EXPECT_TRUE(entry != NULL);
     if (entry != NULL) {
         WAIT_FOR(1000, 1000, (entry->IsOnUnresolvedList() == false));
     }
@@ -551,6 +553,7 @@ TEST_F(TestVrfAssignAclFlow, VrfAssignAclWithMirror2) {
         DelVn(stream.str().c_str());
     }
     client->WaitForIdle();
+    client->agent()->flow_stats_manager()->set_delete_short_flow(true);
 }
 
 TEST_F(TestVrfAssignAclFlow, Vmi_Proxy_Arp_1) {
