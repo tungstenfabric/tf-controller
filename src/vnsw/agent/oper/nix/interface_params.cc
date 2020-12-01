@@ -7,7 +7,7 @@
 #include <oper/physical_interface.h>
 #include <oper/packet_interface.h>
 
-void Interface::ObtainOsSpecificParams(const std::string &name) {
+void Interface::ObtainOsSpecificParams(const std::string &name, Agent *agent) {
     os_params_.os_oper_state_ = false;
 
     struct ifreq ifr;
@@ -37,6 +37,10 @@ void Interface::ObtainOsSpecificParams(const std::string &name) {
     close(fd);
 #if defined(__linux__)
     os_params_.mac_ = ifr.ifr_hwaddr;
+    /* FIXME: Hack till priovisioing code changes for vhost0 */
+    if (agent->is_l3mh() && name.compare("vhost0") == 0) {
+        os_params_.mac_ = MacAddress::FromString("00:00:5e:00:01:00");
+    }
 #elif defined(__FreeBSD__)
     os_params_.mac_ = ifr.ifr_addr;
 #endif
@@ -46,14 +50,14 @@ void Interface::ObtainOsSpecificParams(const std::string &name) {
         os_params_.os_index_ = idx;
 }
 
-void VmInterface::ObtainOsSpecificParams(const std::string &name) {
-    Interface::ObtainOsSpecificParams(name);
+void VmInterface::ObtainOsSpecificParams(const std::string &name, Agent *agent) {
+    Interface::ObtainOsSpecificParams(name, agent);
 }
 
-void PhysicalInterface::ObtainOsSpecificParams(const std::string &name) {
-    Interface::ObtainOsSpecificParams(name);
+void PhysicalInterface::ObtainOsSpecificParams(const std::string &name, Agent *agent) {
+    Interface::ObtainOsSpecificParams(name, agent);
 }
 
-void PacketInterface::ObtainOsSpecificParams(const std::string &name) {
-    Interface::ObtainOsSpecificParams(name);
+void PacketInterface::ObtainOsSpecificParams(const std::string &name, Agent *agent) {
+    Interface::ObtainOsSpecificParams(name, agent);
 }
