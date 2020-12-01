@@ -777,6 +777,18 @@ public:
     virtual NextHopKey *Clone() const {
         return new ArpNHKey(vrf_key_.name_, dip_, policy_);
     }
+    virtual bool NextHopKeyIsLess(const NextHopKey &rhs) const {
+        const ArpNHKey &key = static_cast<const ArpNHKey &>(rhs);
+        if (vrf_key_.IsEqual(key.vrf_key_) == false) {
+            return vrf_key_.IsLess(key.vrf_key_);
+        }
+
+        if (dip_ != key.dip_) {
+            return dip_ < key.dip_;
+        }
+
+        return false;
+    }
 private:
     friend class ArpNH;
     VrfKey vrf_key_;
