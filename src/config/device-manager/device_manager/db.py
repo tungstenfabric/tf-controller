@@ -574,6 +574,7 @@ class PhysicalRouterDM(DBBaseDM):
         self.update(obj_dict)
         self.set_conf_sent_state(False)
         self.config_repush_interval = PushConfigState.get_repush_interval()
+        self.config_repush_count = 0
         self.nc_handler_gl = vnc_greenlets.VncGreenlet("VNC Device Manager",
                                                        self.nc_handler)
     # end __init__
@@ -1028,13 +1029,15 @@ class PhysicalRouterDM(DBBaseDM):
     def block_and_set_config_state(self, timeout):
         try:
             if self.nc_q.get(True, timeout) is not None:
-                self.set_config_state()
+                self.set_config_state(reset_retry_count=False)
         except queue.Empty:
             self.set_config_state()
     # end block_and_set_config_state
 
-    def set_config_state(self):
+    def set_config_state(self, reset_retry_count=True):
         try:
+            if reset_retry_count:
+                self.config_repush_count = 0
             self.nc_q.put_nowait(1)
         except queue.Full:
             pass
@@ -1328,14 +1331,17 @@ class PhysicalRouterDM(DBBaseDM):
                 return False
             # user must have unset the vnc managed property
             self.config_manager.push_conf(is_delete=True)
-            if self.config_manager.retry():
+            if self.config_manager.retry() and self.config_repush_count < \
+                    PushConfigState.get_max_repush_retries():
                 # failed commit: set repush interval upto max value
                 self.config_repush_interval = min(
                     [2 * self.config_repush_interval,
                      PushConfigState.get_repush_max_interval()])
+                self.config_repush_count += 1
                 self.block_and_set_config_state(self.config_repush_interval)
                 return True
             # succesful commit: reset repush interval
+            self.config_repush_count = 0
             self.config_repush_interval = PushConfigState.get_repush_interval()
             self.set_conf_sent_state(False)
             self.uve_send()
@@ -1460,14 +1466,17 @@ class PhysicalRouterDM(DBBaseDM):
             return
         self.set_conf_sent_state(True)
         self.uve_send()
-        if self.config_manager.retry():
+        if self.config_manager.retry() and self.config_repush_count < \
+                PushConfigState.get_max_repush_retries():
             # failed commit: set repush interval upto max value
             self.config_repush_interval = min(
                 [2 * self.config_repush_interval,
                  PushConfigState.get_repush_max_interval()])
+            self.config_repush_count += 1
             self.block_and_set_config_state(self.config_repush_interval)
         else:
             # successful commit: reset repush interval to base
+            self.config_repush_count = 0
             self.config_repush_interval = PushConfigState.get_repush_interval()
             if PushConfigState.get_push_delay_enable():
                 # sleep, delay=compute max delay between two successive commits

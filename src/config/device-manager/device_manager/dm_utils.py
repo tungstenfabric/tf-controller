@@ -23,6 +23,7 @@ class PushConfigState(object):
     PUSH_DELAY_PER_KB = 0.01
     PUSH_DELAY_MAX = 100
     PUSH_DELAY_ENABLE = True
+    REPUSH_MAX_RETRIES = 10
 
     @classmethod
     def set_push_mode(cls, value):
@@ -62,6 +63,11 @@ class PushConfigState(object):
     # end set_push_delay_enable
 
     @classmethod
+    def set_max_repush_retries(cls, value):
+        cls.REPUSH_MAX_RETRIES = value
+    # end set_max_repush_retries
+
+    @classmethod
     def get_repush_interval(cls):
         return cls.REPUSH_INTERVAL
     # end set_repush_interval
@@ -86,6 +92,10 @@ class PushConfigState(object):
         return cls.PUSH_DELAY_ENABLE
     # end get_push_delay_enable
 
+    @classmethod
+    def get_max_repush_retries(cls):
+        return cls.REPUSH_MAX_RETRIES
+    # end get_max_repush_retries
 # end PushConfigState
 
 
