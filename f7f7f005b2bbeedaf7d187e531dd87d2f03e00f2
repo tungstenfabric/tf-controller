@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a8855d0_5c9449fe",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/test_perms2.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 1237,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-12-01T16:03:32Z",
+      "side": 1,
+      "message": "No need to add bug id in the testname .\ninstead you can add a doc string for the test with link to the jira ticket",
+      "revId": "f7f7f005b2bbeedaf7d187e531dd87d2f03e00f2",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "631982d1_28e6f0ad",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/test_perms2.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 1240,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-12-01T16:03:32Z",
+      "side": 1,
+      "message": "why dont we create three vns? instead of changing the shared field for the same network.\n\nvn1 -\u003e shared: true\nvn2 -\u003e shared: false\nvn3 -\u003e shared not set\n\nwith filters\u003d{\u0027shared\u0027: [True]}, expected list of VN is [vn1]\nwith filters\u003d{\u0027shared\u0027: [False]}, expected list of VN is [vn1, vn2, vn3]",
+      "revId": "f7f7f005b2bbeedaf7d187e531dd87d2f03e00f2",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ef1cf3a2_88208dd6",
+        "filename": "src/config/api-server/vnc_cfg_api_server/tests/test_perms2.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 1241,
+      "author": {
+        "id": 56
+      },
+      "writtenOn": "2020-12-01T16:03:32Z",
+      "side": 1,
+      "message": "please remove empty spaces",
+      "revId": "f7f7f005b2bbeedaf7d187e531dd87d2f03e00f2",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
