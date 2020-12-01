@@ -5308,7 +5308,7 @@ class RoutingPolicyDM(DBBaseDM):
                 o_set = o_community.get('set', None)
                 o_adds = o_add.get('community', []) if o_add else []
                 o_rms = o_remove.get('community', []) if o_remove else []
-                o_sets = o_set.get('community', []) if o_add else []
+                o_sets = o_set.get('community', []) if o_set else []
                 u_community = AbstractDevXsd.ActionCommunityType(
                     add=AbstractDevXsd.CommunityListType(community=o_adds),
                     remove=AbstractDevXsd.CommunityListType(community=o_rms),
@@ -5319,7 +5319,7 @@ class RoutingPolicyDM(DBBaseDM):
                 o_set = o_ecommunity.get('set', None)
                 o_adds = o_add.get('community', []) if o_add else []
                 o_rms = o_remove.get('community', []) if o_remove else []
-                o_sets = o_set.get('community', []) if o_add else []
+                o_sets = o_set.get('community', []) if o_set else []
                 u_extcommunity = AbstractDevXsd.ActionExtCommunityType(
                     add=AbstractDevXsd.ExtCommunityListType(community=o_adds),
                     remove=AbstractDevXsd.ExtCommunityListType(
