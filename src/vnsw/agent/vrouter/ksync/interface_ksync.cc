@@ -93,7 +93,8 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     vhostuser_mode_(entry->vhostuser_mode_),
     igmp_enable_(entry->igmp_enable_),
     mac_ip_learning_enable_(false),
-    os_guid_(entry->os_guid_) {
+    os_guid_(entry->os_guid_),
+    xconnect_list_(entry->xconnect_list_) {
 }
 
 InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
@@ -143,7 +144,8 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     pbb_cmac_vrf_(VrfEntry::kInvalidIndex), pbb_mac_(), etree_leaf_(false),
     pbb_interface_(false), vhostuser_mode_(VmInterface::vHostUserClient),
     igmp_enable_(false), mac_ip_learning_enable_(false),
-    os_guid_(intf->os_guid()) {
+    os_guid_(intf->os_guid()),
+    xconnect_list_() {
 
     if (intf->flow_key_nh()) {
         flow_key_nh_id_ = intf->flow_key_nh()->id();
@@ -165,11 +167,13 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
         vmi_device_type_ = vmitf->device_type();
         vmi_type_ = vmitf->vmi_type();
         if (vmi_type_ == VmInterface::VHOST) {
-            InterfaceKSyncEntry tmp(ksync_obj_, vmitf->parent());
-            xconnect_ = ksync_obj_->GetReference(&tmp);
+            for (size_t i = 0; i <vmitf->parent_list().size(); i++) {
+                InterfaceKSyncEntry tmp(ksync_obj_, vmitf->parent_list()[i]);
+                xconnect_list_.push_back(ksync_obj_->GetReference(&tmp));
+            }
             parent_ = NULL;
             InterfaceKSyncEntry *xconnect = static_cast<InterfaceKSyncEntry *>
-                (xconnect_.get());
+                (xconnect_list_[0].get());
             encap_type_ = xconnect->encap_type();
             no_arp_ = xconnect->no_arp();
         }
@@ -435,7 +439,7 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
         InetInterface *inet_interface = static_cast<InetInterface *>(intf);
         if (sub_type_ == InetInterface::VHOST) {
             KSyncEntryPtr xconnect = NULL;
-            if (inet_interface->xconnect()) {
+            if (!inet_interface->xconnect()) {
                 InterfaceKSyncEntry tmp(ksync_obj_, inet_interface->xconnect());
                 xconnect = ksync_obj_->GetReference(&tmp);
             }
@@ -761,11 +765,13 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
 
         if (vmi_type_ == VmInterface::VHOST) {
             encoder.set_vifr_type(VIF_TYPE_HOST);
-            if (xconnect_.get()) {
-                InterfaceKSyncEntry *xconnect =
-                    static_cast<InterfaceKSyncEntry *>(xconnect_.get());
-                cross_connect_idx_list.push_back(xconnect->os_index_);
-                encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
+            encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
+            if (xconnect_list_.empty() == false) {
+                for (size_t i = 0; i < xconnect_list_.size(); i++) {
+                    InterfaceKSyncEntry *xconnect =
+                        static_cast<InterfaceKSyncEntry *>(xconnect_list_[i].get());
+                    cross_connect_idx_list.push_back(xconnect->os_index_);
+                }
             } else {
                 cross_connect_idx_list.push_back(Interface::kInvalidIndex);
             }
@@ -978,11 +984,11 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             break;
         case InetInterface::VHOST:
             encoder.set_vifr_type(VIF_TYPE_HOST);
+            encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             if (xconnect_.get()) {
                 InterfaceKSyncEntry *xconnect =
                    static_cast<InterfaceKSyncEntry *>(xconnect_.get());
                 cross_connect_idx_list.push_back(xconnect->os_index_);
-                encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             } else {
                 cross_connect_idx_list.push_back(Interface::kInvalidIndex);
             }
