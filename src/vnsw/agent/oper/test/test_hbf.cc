@@ -547,6 +547,13 @@ TEST_F(HbfTest, basic_1) {
         {"hbf-l", 3, "3.3.3.3", "00:00:00:01:01:03", 3, 3}
     };
 
+
+    // test to check Hbf is not enabled on vhost by default
+    const VmInterface *vm_intf =
+              static_cast<const VmInterface *>(VhostGet("vhost0"));
+    EXPECT_TRUE(vm_intf->vmi_type() == VmInterface::VHOST);
+    EXPECT_TRUE(vm_intf->hbs_intf_type() == VmInterface::HBS_INTF_INVALID);
+
     // Save initial vrouter vrf count
     TestVrfKState::Init();
     client->WaitForIdle();
