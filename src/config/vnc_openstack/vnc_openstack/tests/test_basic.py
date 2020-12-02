@@ -186,6 +186,34 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self.assertIn('fq_name', net_dict)
     # end test_extra_fields_on_network
 
+    def test_extra_fields_on_shared_network(self):
+        test_obj = self._create_test_object()
+        context = {'operation': 'READ',
+                   'user_id': '',
+                   'roles': ''}
+        data = {'fields': None,
+                'shared': True,
+                'id': test_obj.uuid}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/network', body)
+        net_dict = json.loads(resp.text)
+        self.assertIn('fq_name', net_dict)
+    # end test_extra_fields_on_shared_network
+
+    def test_extra_fields_on_external_network(self):
+        test_obj = self._create_test_object()
+        context = {'operation': 'READ',
+                   'user_id': '',
+                   'roles': ''}
+        data = {'fields': None,
+                'filters': {'router:external': True},
+                'id': test_obj.uuid}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/network', body)
+        net_dict = json.loads(resp.text)
+        self.assertIn('fq_name', net_dict)
+    # end test_extra_fields_on_external_network
+
     def test_port_bindings(self):
         vn_obj = vnc_api.VirtualNetwork(self.id())
         vn_obj.add_network_ipam(vnc_api.NetworkIpam(),
