@@ -476,7 +476,9 @@ set groups {{cfg_group}} policy-options community {{fcommunity}} members {{fcom_
 set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} from family {{ffamily}}
 {%                         endif %}
 {%                         for fas_pathv in fas_path_list %}
-set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} from as-path {{fas_pathv}}
+{%                             set fas_path_name = rp_name + '-' + tname + '-as-path-regex-' + loop.index|string %}
+set groups {{cfg_group}} policy-options as-path {{fas_path_name}} {{fas_pathv}}
+set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} from as-path {{fas_path_name}}
 {%                         endfor %}
 {%                         if fexternal == 'ospf-type-1' %}
 set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} from external type 1
@@ -588,7 +590,7 @@ set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tnam
 set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then as-path-expand "{{tas_path_expand}}"
 {%                         endif %}
 {%                         if tas_path_prepend != '' %}
-set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then as-path-expand "{{tas_path_prepend}}"
+set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then as-path-prepend "{{tas_path_prepend}}"
 {%                         endif %}
 {%                         if term_action != '' %}
 set groups {{cfg_group}} policy-options policy-statement {{rp_name}} term {{tname}} then {{term_action}}
