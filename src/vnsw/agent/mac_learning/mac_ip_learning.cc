@@ -75,7 +75,7 @@ void MacIpLearningTable::Add(MacLearningEntryPtr ptr) {
                     "ip address does not belong to same subnet, ignoring");
         return;
     }
-    if (vm_intf->mac() == entry->Mac()) {
+    if (vm_intf->vm_mac() == entry->Mac()) {
         MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, entry->vrf()->GetName(),
                     entry->IpAddr().to_string(), entry->Mac().ToString(),
                     entry->intf()->name(),
