@@ -1311,13 +1311,21 @@ class FilterModule(object):
             existing_ipam = vnc_api.network_ipam_read(fq_name=ipam_fq_name)
             existing_ipam_subnets = existing_ipam.get_ipam_subnets()
             if existing_ipam_subnets:
-                new_ipam_subnet = [IpamSubnetType(
-                    subnet=FilterModule._new_subnet(sn.get('cidr')),
-                    default_gateway=sn.get('gateway'),
-                    subnet_uuid=str(uuid.uuid1())
-                ) for sn in subnets if int(sn.get('cidr').split('/')[-1]) < 31
-                ]
-                subnet_list = existing_ipam_subnets.get_subnets()
+                subnet_list = existing_ipam_subnets.get_subnets() or []
+                subnet_list_cidr = [str(sub.subnet.ip_prefix) + '/' +
+                                    str(sub.subnet.ip_prefix_len)
+                                    for sub in subnet_list]
+                new_ipam_subnet = []
+                for sn in subnets or []:
+                    if int(sn.get('cidr').split('/')[-1]) >= 31:
+                        continue
+                    if sn.get('cidr') in subnet_list_cidr:
+                        continue
+                    new_ipam_subnet.append(IpamSubnetType(
+                                           subnet=FilterModule._new_subnet(
+                                               sn.get('cidr')),
+                                           default_gateway=sn.get('gateway'),
+                                           subnet_uuid=str(uuid.uuid1())))
                 subnet_list.extend(new_ipam_subnet)
                 existing_ipam_subnets.set_subnets(subnet_list)
                 existing_ipam.set_ipam_subnets(existing_ipam_subnets)
