@@ -85,7 +85,7 @@ VmInterfaceConfigData::VmInterfaceConfigData(Agent *agent, IFMapNode *node) :
     instance_ipv4_list_(true), instance_ipv6_list_(false),
     bridge_domain_list_(),
     device_type_(VmInterface::DEVICE_TYPE_INVALID),
-    vmi_type_(VmInterface::VMI_TYPE_INVALID),
+    vmi_type_(VmInterface::VMI_TYPE_INVALID), hbs_intf_type_(VmInterface::HBS_INTF_INVALID),
     physical_interface_(""), parent_vmi_(), subnet_(0), subnet_plen_(0),
     rx_vlan_id_(VmInterface::kInvalidVlanId),
     tx_vlan_id_(VmInterface::kInvalidVlanId),
