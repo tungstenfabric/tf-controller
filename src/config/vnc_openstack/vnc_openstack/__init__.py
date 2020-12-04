@@ -415,6 +415,9 @@ class OpenstackDriver(vnc_plugin_base.Resync):
             self._sandesh_logger.error("Failed to open trace file %s" %
                                        self._err_file)
         self.q = queue.Queue(maxsize=Q_MAX_ITEMS)
+
+        # Connect to keystone
+        self._get_keystone_conn()
     # end __init__
 
     def _cgitb_error_log(self):
