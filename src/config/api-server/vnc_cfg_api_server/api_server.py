@@ -2533,9 +2533,6 @@ class VncApiServer(object):
 
                 self._extensions_transform_response(get_request(), response)
 
-                # Remove content length added by app, to force server
-                # to calculate the content length
-                bottle.response.headers.pop("Content-Length", None)
                 return response
             except Exception as e:
                 if trace:
