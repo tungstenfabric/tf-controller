@@ -1,8 +1,9 @@
+from gevent import monkey
+monkey.patch_all()
+
 import bottle
 import uwsgi
 import api_server
-from gevent import monkey
-monkey.patch_all()
 
 
 def get_apiserver():
