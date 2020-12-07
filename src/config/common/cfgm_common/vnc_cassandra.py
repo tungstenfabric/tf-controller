@@ -1196,7 +1196,7 @@ class VncCassandraClient(object):
             return obj_type
     # end uuid_to_obj_type
 
-    def fq_name_to_uuid(self, obj_type, fq_name):
+    def fq_name_to_uuid(self, obj_type, fq_name, include_multi_match=False):
         fq_name_str = utils.encode_string(':'.join(fq_name))
 
         col_infos = self._cassandra_driver.get(datastore_api.OBJ_FQ_NAME_CF_NAME,
@@ -1205,8 +1205,15 @@ class VncCassandraClient(object):
                              finish=fq_name_str + ';')
         if not col_infos:
             raise NoIdError('%s %s' % (obj_type, fq_name_str))
-        if len(col_infos) > 1:
-            raise VncError('Multi match %s for %s' % (fq_name_str, obj_type))
+        if include_multi_match and len(col_infos) > 1:
+            list_fq_name_uuid = []
+            for col in col_infos:
+                fq_name_uuid = utils.decode_string(col.popitem()[0]).split(':')
+                if obj_type != 'route_target' and fq_name_uuid[:-1] != fq_name:
+                    raise NoIdError('%s %s' % (obj_type, fq_name_str))
+                list_fq_name_uuid.append(fq_name_uuid[-1])
+            return list_fq_name_uuid
+
         fq_name_uuid = utils.decode_string(col_infos.popitem()[0]).split(':')
         if obj_type != 'route_target' and fq_name_uuid[:-1] != fq_name:
             raise NoIdError('%s %s' % (obj_type, fq_name_str))

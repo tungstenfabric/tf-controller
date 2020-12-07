@@ -3963,19 +3963,37 @@ class VncApiServer(object):
         # TODO remove backward compat create mapping in zk
         # for singleton START
         try:
-            cass_uuid = self._db_conn._object_db.fq_name_to_uuid(obj_type, fq_name)
-            try:
-                zk_uuid = self._db_conn.fq_name_to_uuid(obj_type, fq_name)
-            except NoIdError:
-                # doesn't exist in zookeeper but does so in cassandra,
-                # migrate this info to zookeeper
-                self._db_conn._zk_db.create_fq_name_to_uuid_mapping(obj_type, fq_name, str(cass_uuid))
+            cass_uuid = self._db_conn._object_db.fq_name_to_uuid(obj_type, fq_name, True)
+            if isinstance(cass_uuid, str):
+                try:
+                    zk_uuid = self._db_conn.fq_name_to_uuid(obj_type, fq_name)
+                except NoIdError:
+                    # doesn't exist in zookeeper but does so in cassandra,
+                    # migrate this info to zookeeper
+                    self._db_conn._zk_db.create_fq_name_to_uuid_mapping(obj_type, fq_name, str(cass_uuid))
+            else:
+                for uuid in cass_uuid:
+                    try:
+                        zk_uuid = self._db_conn.fq_name_to_uuid(obj_type, fq_name)
+                        if uuid != zk_uuid:
+                            # delete the entry from cassandra
+                            (ok, result) = self._object_db.object_delete(obj_type, uuid)
+                            if ok:
+                                # publish to message bus (rabbitmq)
+                                self._msgbus.dbe_publish('DELETE', obj_type, obj_uuid,
+                                                         obj_dict['fq_name'], obj_dict=obj_dict)
+                                self._dbe_publish_update_implicit(obj_type, result)
+                    except NoIdError:
+                        # doesn't exist in zookeeper but does so in cassandra,
+                        # migrate this info to zookeeper
+                        self._db_conn._zk_db.create_fq_name_to_uuid_mapping(obj_type, fq_name, str(uuid))
         except NoIdError:
             # doesn't exist in cassandra as well as zookeeper, proceed normal
             pass
         # TODO backward compat END
 
-        # create if it doesn't exist yet
+
+# create if it doesn't exist yet
         try:
             s_obj.uuid = self._db_conn.fq_name_to_uuid(obj_type, fq_name)
         except NoIdError:
