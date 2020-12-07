@@ -141,15 +141,15 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
         # we don't check anymore whether the VN is in use or not
         # non-provider VN in-use/not-in-use can be updated to provider VN
         # provider VN cannot be modified with provider_details
-        properties = obj_dict.get('provider_properties', None)
-        if properties is None:
+        properties = obj_dict.get('provider_properties')
+        if not properties:
             return (True, '')
 
         # VN create
         if create:
-            if properties.get('segmentation_id', None) is None:
+            if properties.get('segmentation_id') is None:
                 return (False, "Segmenation ID must be configured to create")
-            if properties.get('physical_network', None) is None:
+            if not properties.get('physical_network'):
                 return (False, "Physical Network must be configured to create")
             return (True, '')
 
@@ -164,10 +164,10 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
             return (ok, vn)
         if vn.get('is_provider_network', False):
             old_properties = vn.get('provider_properties', {})
-            if properties.get('segmentation_id', None) is None:
+            if properties.get('segmentation_id') is None:
                 properties['segmentation_id'] = \
                     old_properties.get('segmentation_id')
-            if properties.get('physical_network', None) is None:
+            if not properties.get('physical_network'):
                 properties['physical_network'] = \
                     old_properties.get('physical_network')
             if old_properties != properties:
@@ -177,9 +177,9 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
                         'is not allowed' % vn.get('uuid', ''))
             return (True, '')
 
-        if properties.get('segmentation_id', None) is None:
+        if properties.get('segmentation_id') is None:
             return (False, "Segmenation ID must be configured to update")
-        if properties.get('physical_network', None) is None:
+        if not properties.get('physical_network'):
             return (False, "Physical Network must be configured to update")
         return (True, '')
     # end _check_provider_details
