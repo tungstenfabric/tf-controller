@@ -12,5 +12,6 @@ def contrail_config_cli(argv=sys.argv[1:]):
         cliapp = ContrailCliApp(commands_list[app_name])
         return cliapp.run(argv)
     else:
+        print "test"
         print "commands list is empty, exiting"
         return
