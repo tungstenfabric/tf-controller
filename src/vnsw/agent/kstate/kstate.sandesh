@@ -95,7 +95,7 @@ struct KInterfaceInfo {
    42: i32          parent_vif_id;
    43: i16          vlan_id;
    44: i16          nh_id;
-   45: i32          cross_connect_id;
+   45: list<i32>    cross_connect_id;
    46: i32          bridge_id;
    47: i32          ovlan_id;
    48: i16          transport;
