@@ -1,0 +1,30 @@
+- import_role:
+    name: Juniper.junos
+
+- name: Execute commands on a Juniper Device to get routing instances
+  juniper_junos_config:
+    provider:
+      host: "{{prouter_dynamic_ip}}"
+      username: "{{username}}"
+      password: "{{password}}"
+      port: 22
+      timeout: "{{timeout}}"
+    retrieve: 'committed'
+    filter: 'routing-instances'
+    diff: true
+    check: false
+    commit: false
+    config_mode: 'private'
+    format: xml
+    options:
+      inherit: inherit
+  register: execute_command_resp
+
+- name: Save execute_command_resp as routing instances information
+  set_fact:
+    routing_instances_info: "{{execute_command_resp}}"
+
+- set_fact:
+    ri_info: {
+                 'routing_instances_info': "{{routing_instances_info}}"
+             }
