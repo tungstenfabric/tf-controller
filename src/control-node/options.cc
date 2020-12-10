@@ -206,6 +206,15 @@ void Options::Initialize(EventManager &evm,
         ("CONFIGDB.rabbitmq_ssl_ca_certs",
              opt::value<string>()->default_value(""),
              "CA Certificate file for SSL RabbitMQ connection")
+        ("CONFIGDB.rabbitmq_tcp_keepalive_time",
+             opt::value<int>()->default_value(15),
+             "RabbitMQ TCP connection keepalive time")
+        ("CONFIGDB.rabbitmq_tcp_keepalive_interval",
+             opt::value<int>()->default_value(5),
+             "RabbitMQ TCP connection keepalive interval")
+        ("CONFIGDB.rabbitmq_tcp_keepalive_probes",
+             opt::value<int>()->default_value(3),
+             "RabbitMQ TCP connection keepalive probes")
 
         ("CONFIGDB.config_db_use_etcd",
              opt::value<bool>()->default_value(false),
@@ -405,6 +414,15 @@ void Options::ParseConfigOptions(const boost::program_options::variables_map
     GetOptValue<string>(var_map,
                      configdb_options_.rabbitmq_ssl_ca_certs,
                      "CONFIGDB.rabbitmq_ssl_ca_certs");
+    GetOptValue<int>(var_map,
+                     configdb_options_.rabbitmq_tcp_keepalive_time,
+                     "CONFIGDB.rabbitmq_tcp_keepalive_time");
+    GetOptValue<int>(var_map,
+                     configdb_options_.rabbitmq_tcp_keepalive_interval,
+                     "CONFIGDB.rabbitmq_tcp_keepalive_interval");
+    GetOptValue<int>(var_map,
+                     configdb_options_.rabbitmq_tcp_keepalive_probes,
+                     "CONFIGDB.rabbitmq_tcp_keepalive_probes");
     GetOptValue<bool>(var_map,
                      configdb_options_.config_db_use_etcd,
                      "CONFIGDB.config_db_use_etcd");
