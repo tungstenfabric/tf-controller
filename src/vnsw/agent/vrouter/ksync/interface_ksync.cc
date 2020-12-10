@@ -675,6 +675,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
     vr_interface_req encoder;
     int encode_len;
     uint32_t vrf_id = vrf_id_;
+    std::vector<int32_t> cross_connect_idx_list;
 
     uint32_t flags = 0;
     encoder.set_h_op(op);
@@ -763,11 +764,12 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             if (xconnect_.get()) {
                 InterfaceKSyncEntry *xconnect =
                     static_cast<InterfaceKSyncEntry *>(xconnect_.get());
-                encoder.set_vifr_cross_connect_idx(xconnect->os_index_);
+                cross_connect_idx_list.push_back(xconnect->os_index_);
                 encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             } else {
-                encoder.set_vifr_cross_connect_idx(Interface::kInvalidIndex);
+                cross_connect_idx_list.push_back(Interface::kInvalidIndex);
             }
+            encoder.set_vifr_cross_connect_idx(cross_connect_idx_list);
         }
 
         std::vector<int8_t> intf_mac((int8_t *)mac,
@@ -979,11 +981,12 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             if (xconnect_.get()) {
                 InterfaceKSyncEntry *xconnect =
                    static_cast<InterfaceKSyncEntry *>(xconnect_.get());
-                encoder.set_vifr_cross_connect_idx(xconnect->os_index_);
+                cross_connect_idx_list.push_back(xconnect->os_index_);
                 encoder.set_vifr_loopback_ip(ksync_obj_->ksync()->agent()->loopback_ip().to_ulong());
             } else {
-                encoder.set_vifr_cross_connect_idx(Interface::kInvalidIndex);
+                cross_connect_idx_list.push_back(Interface::kInvalidIndex);
             }
+            encoder.set_vifr_cross_connect_idx(cross_connect_idx_list);
             break;
         default:
             encoder.set_vifr_type(VIF_TYPE_HOST);
