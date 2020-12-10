@@ -1,24 +1,9 @@
 - name: Encapsulate all the operations in a block rescue for error handling
   block:
-    - name: check to see if the ansible file for the vendor and family exists
-      stat:
-        path: "{{role_path}}/templates/{{prouter_vendor}}_{{prouter_family}}.j2"
-      register: p
-
-    - name: Use vendor and family specific template
-      block:
-        - name: set the jinja template file path
-          set_fact:
-            jinja_file_path: "../templates/{{prouter_vendor}}_{{prouter_family}}.j2"
-      when: p.stat.exists == True
-
-    # this is assuming device family does not matter
-    - name: Use vendor specific template
-      block:
-        - name: set the jinja template file path
-          set_fact:
-            jinja_file_path: "../templates/{{prouter_vendor}}.j2"
-      when: p.stat.exists == False
+    - name: Get interface payload
+      set_fact:
+        interfaces_payload: "{{pb_input | import_interface(device_info, ri_info)}}"
+      register: parser_output
 
     # validate schema including to check if the device_info is set as part of the ansible file
     - name: Validate Input Schema -- device_info
@@ -31,11 +16,6 @@
       vars:
         op_err_message: "Error while trying to validate the schema on {{prouter_vendor}} device, {{prouter_name}}: {{schema_validation_resp.error_msg}}"
         jl_err_message: "Error while trying to validate the schema on {{prouter_vendor}} device, {{prouter_name}}: {{schema_validation_resp.error_msg}}"
-
-    - name: parse interfaces info obtained to get appropriate payload format. Ensure Jinja template does not have any new lines
-      set_fact:
-        interfaces_payload: "{{lookup('template', jinja_file_path)}}"
-      register: parser_output
 
     # validate schema to check if the interfaces payload is of the correct output schema
     - name: Validate Output Schema -- interfaces_payload
