@@ -3004,6 +3004,30 @@ class DatabaseHealer(DatabaseManager):
 
         return errors
     # end heal_fq_name_index
+    
+    @healer
+    def heal_vn_is_shared_prop(self):
+        logger = self._logger
+        errors = []
+
+        fq_name_uuid_table = self._cf_dict['obj_fq_name_table']
+        obj_uuid_table = self._cf_dict['obj_uuid_table']
+        # get all vn uuids
+        vn_uuids = [x.split(':')[-1] for x, _ in
+                    fq_name_uuid_table.xget('virtual_network')]
+
+        bch = obj_uuid_table.batch()
+        for vn_uuid in vn_uuids:
+            try:
+                obj_uuid_table.get(vn_uuid, columns=['prop:is_shared'])
+            except pycassa.NotFoundException:
+                cols = {'prop:is_shared': json.dumps(False)}
+                if self._args.execute:
+                   self._logger.info("Adding is shared property to vn with uuid (%s) missing it" % (vn_uuid))
+                   bch.insert(vn_uuid, cols)
+                else:
+                   self._logger.info("Would add shared property to vn with uuid (%s) missing it" % (vn_uuid))
+        bch.send()
 
     def heal_back_ref_index(self):
         return []
