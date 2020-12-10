@@ -12,6 +12,7 @@
   roles:
     - import_device_facts
     - read_interfaces_info
+    - read_ri_info
     - import_interfaces_info
     - import_asn_info
     - update_physical_router_properties

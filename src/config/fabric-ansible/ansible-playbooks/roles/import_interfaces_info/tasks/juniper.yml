@@ -1,0 +1,3 @@
+- name: Get interface payload
+  set_fact:
+    interfaces_payload: "{{pb_input | import_interface(device_info, ri_info)}}"
