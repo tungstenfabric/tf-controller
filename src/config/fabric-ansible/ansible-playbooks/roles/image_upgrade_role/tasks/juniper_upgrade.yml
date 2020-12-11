@@ -6,7 +6,7 @@
         prouter_dynamic_ip: "{{pr_host}}"
         username: "{{pr_user}}"
         password: "{{pr_password}}"
-        port: 22
+        port: "{{prouter_port}}"
         timeout: 30
 
     - name: disable the GRES if enabled on dual RE
@@ -25,7 +25,7 @@
           host: "{{ pr_host }}"
           username: "{{ pr_user }}"
           password: "{{ pr_password }}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMIT_TIMEOUT | int}}"
       register: junos_response
       when : "routing_engines|length == 2"
@@ -35,7 +35,7 @@
           host: "{{pr_host}}"
           user: "{{pr_user}}"
           password: "{{pr_password}}"
-          port: 22
+          port: "{{prouter_port}}"
         version: "{{image_os_version}}"
         vmhost: "{{vmhost_flag}}"
         reboot: true
@@ -122,7 +122,7 @@
       host: "{{ pr_host }}"
       username: "{{ pr_user }}"
       password: "{{ pr_password }}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: "{{ JUNOS_COMMIT_TIMEOUT | int }}"
   register: junos_response
   when : "routing_engines | length == 2"

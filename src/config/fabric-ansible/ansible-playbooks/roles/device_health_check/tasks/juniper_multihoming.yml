@@ -66,7 +66,7 @@
                   host: "{{item.mgmt_ip}}"
                   username: "{{item.username}}"
                   password: "{{item.password}}"
-                  port: 22
+                  port: "{{prouter_port}}"
                   timeout: 30
               register: interface_info
               with_items:
@@ -135,7 +135,7 @@
                   host: "{{device_mgmt_ip}}"
                   username: "{{device_username}}"
                   password: "{{device_password}}"
-                  port: 22
+                  port: "{{prouter_port}}"
                   timeout: 30
               register: interface_info
           rescue:

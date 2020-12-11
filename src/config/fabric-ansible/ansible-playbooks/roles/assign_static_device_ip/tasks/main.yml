@@ -112,7 +112,7 @@
     - name: Wait for management port to reinitialize
       wait_for:
         host: "{{ prouter_mgmt_ip }}"
-        port: 22
+        port: "{{prouter_port}}"
         delay: 0
         sleep: 5
       when: "routing_engines|length == 1"
@@ -120,7 +120,7 @@
     - name: Wait for management port to reinitialize - Juniper with dual RE
       wait_for:
         host: "{{ prouter_mgmt_ip }}"
-        port: 22
+        port: "{{prouter_port}}"
         delay: 30
         sleep: 5
       when: "routing_engines|length > 1"

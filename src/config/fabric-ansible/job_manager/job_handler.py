@@ -276,6 +276,7 @@ class JobHandler(object):
                 image_uuid = device_data.get('device_image_uuid')
                 hitless_upgrade = device_data.get('device_hitless_upgrade')
                 device_os_version = device_data.get('device_os_version')
+                device_service_ports = device_data.get('device_service_ports')
                 extra_vars.update({
                     'device_id': device_id,
                     'device_fqname': device_fqname,
@@ -288,7 +289,8 @@ class JobHandler(object):
                     'product_name': device_product,
                     'device_os_version': device_os_version,
                     'device_image_uuid': image_uuid,
-                    'device_hitless_upgrade': hitless_upgrade
+                    'device_hitless_upgrade': hitless_upgrade,
+                    'device_service_ports': device_service_ports
                 })
 
                 self._logger.debug("Passing the following device "

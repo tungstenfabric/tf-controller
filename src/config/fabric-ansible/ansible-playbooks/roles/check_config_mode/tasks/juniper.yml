@@ -7,7 +7,7 @@
       host: "{{host}}"
       username: "{{username}}"
       password: "{{password}}"
-      port: 22
+      port: "{{prouter_port}}"
     retrieve: 'committed'
     format: xml
   register: execute_command_resp
