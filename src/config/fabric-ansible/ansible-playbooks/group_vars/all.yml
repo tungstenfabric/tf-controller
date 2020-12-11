@@ -315,6 +315,7 @@ feature_based_plugin_roles:
     - basic
     - underlay_ip_clos
     - underlay_infra_bms_access
+    - overlay_telemetry
   PNF-Servicechain@leaf:
     - overlay_service_chain
   PNF-Servicechain@spine:
