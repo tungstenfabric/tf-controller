@@ -180,6 +180,21 @@ bool ArpHandler::HandlePacket() {
                     EnqueueTrafficSeen(Ip4Address(ip), 32, itf->id(),
                                        vrf->vrf_id(),
                                        MacAddress(arp_->arp_sha));
+                const VmInterface *vm_itf = dynamic_cast<const VmInterface *>(itf);
+                if (vm_itf && vm_itf->vrf() &&
+                        (vrf->GetName() == agent()->fabric_vrf_name())) {
+                    MacAddress mac = agent()->mac_learning_proto()->
+                                            GetMacIpLearningTable()->
+                                            GetPairedMacAddress(
+                                                vm_itf->vrf()->vrf_id(),
+                                                Ip4Address(ip));
+                    if (mac != MacAddress()) {
+                        // If the MAC/IP is learnt via mac-ip learning, then
+                        // update vrf to interface vrf since thats where the
+                        // arp path preference will be stored.
+                        vrf = vm_itf->vrf();
+                    }
+                }
                 arp_proto->HandlePathPreferenceArpReply(vrf, itf->id(),
                                                         Ip4Address(ip));
 
