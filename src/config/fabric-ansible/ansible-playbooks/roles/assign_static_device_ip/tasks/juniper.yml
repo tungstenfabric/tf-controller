@@ -15,7 +15,7 @@
               host: "{{ host }}"
               username: "{{ username }}"
               password: "{{ password }}"
-              port: 22
+              port: "{{prouter_port}}"
               timeout: "{{ timeout }}"
           register: junos_response
         - set_fact:
