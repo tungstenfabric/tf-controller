@@ -2272,6 +2272,13 @@ class VncApiServer(object):
             except Exception as e:
                 err_msg = cfgm_common.utils.detailed_traceback()
                 self.config_log(err_msg, level=SandeshLevel.SYS_ERR)
+        elif 'resync' in self._extension_mgrs: # worker_id > 0
+            def _connect_to_keystone(ext):
+                if hasattr(ext.obj, '_get_keystone_conn'):
+                    ext.obj._get_keystone_conn()
+
+            # connect to keystone just to report keystone connection status
+            self._extension_mgrs['resync'].map(_connect_to_keystone)
 
         self._global_asn = None
         self._enable_4byte_as = None
