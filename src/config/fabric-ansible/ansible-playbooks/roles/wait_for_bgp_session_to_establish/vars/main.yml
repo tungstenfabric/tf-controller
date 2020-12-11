@@ -2,6 +2,7 @@
 prouter_name: "{{pr_name}}"
 prouter_vendor: "{{pr_vendor | lower}}"
 prouter_family: "{{pr_family}}"
+prouter_port: "{{playbook_input.device_service_ports[0]}}"
 username: "{{pr_user}}"
 host: "{{pr_host}}"
 password: "{{pr_password}}"

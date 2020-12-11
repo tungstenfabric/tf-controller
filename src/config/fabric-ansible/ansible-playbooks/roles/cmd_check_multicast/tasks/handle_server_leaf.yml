@@ -11,7 +11,7 @@
       host: "{{ physical_router_response.obj.physical_router_management_ip }}"
       username: "{{ inspected_device_user }}"
       password: "{{ inspected_device_password }}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: "{{ JUNOS_COMMAND_TIMEOUT|int }}"
   register: server_leaf_query_response
 

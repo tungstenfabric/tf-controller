@@ -12,7 +12,7 @@
       host: "{{item.host}}"
       username: "{{item.username}}"
       password: "{{item.password}}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: 3
   with_items:
     - "{{ output.leaf_devices }}"
