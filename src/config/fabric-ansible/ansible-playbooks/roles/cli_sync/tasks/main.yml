@@ -46,7 +46,7 @@
       host: "{{ pr_host }}"
       username: "{{ pr_user }}"
       password: "{{ pr_password }}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: "{{ JUNOS_COMMIT_TIMEOUT | int }}"
   register: junos_response
 
