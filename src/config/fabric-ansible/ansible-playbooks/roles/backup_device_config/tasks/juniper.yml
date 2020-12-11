@@ -8,7 +8,7 @@
           host: "{{host}}"
           username: "{{username}}"
           password: "{{password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
         retrieve: 'committed'
         diff: true

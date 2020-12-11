@@ -14,7 +14,7 @@
           host: "{{device_management_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
       register: dev_info
 
@@ -31,7 +31,7 @@
           host: "{{device_management_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
         retrieve: 'committed'
         filter: 'interfaces'
@@ -67,7 +67,7 @@
           host: "{{device_management_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
       register: device_info
 
