@@ -5,7 +5,7 @@
           host: "{{item.mgmt_ip}}"
           username: "{{item.username}}"
           password: "{{item.password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
         retrieve: 'committed'
         filter: 'groups'

@@ -5,7 +5,7 @@
           host: "{{pr_host}}"
           user: "{{pr_user}}"
           password: "{{pr_password}}"
-          port: 22
+          port: "{{prouter_port}}"
         version: "{{image_os_version}}"
         vmhost: "{{vmhost_flag}}"
         reboot: true

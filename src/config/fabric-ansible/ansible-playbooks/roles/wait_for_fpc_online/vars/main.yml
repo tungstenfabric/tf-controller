@@ -5,5 +5,6 @@ prouter_family: "{{playbook_input.device_family | lower}}"
 username: "{{playbook_input.device_username}}"
 host: "{{playbook_input.device_management_ip}}"
 password: "{{playbook_input.device_password}}"
+prouter_port: "{{playbook_input.device_service_ports[0]}}"
 timeout: "{{DEVICE_COMMAND_TIMEOUT | int}}"
 try_count: 0
