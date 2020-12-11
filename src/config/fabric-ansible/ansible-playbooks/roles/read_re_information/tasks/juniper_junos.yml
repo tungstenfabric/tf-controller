@@ -10,7 +10,7 @@
       host: "{{prouter_dynamic_ip}}"
       username: "{{username}}"
       password: "{{password}}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: "{{timeout}}"
   register: show_route_engine_resp
 

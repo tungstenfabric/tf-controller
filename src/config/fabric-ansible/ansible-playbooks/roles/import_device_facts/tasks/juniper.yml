@@ -7,7 +7,7 @@
       host: "{{host}}"
       username: "{{username}}"
       password: "{{password}}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: "{{timeout}}"
   register: execute_command_resp
 
