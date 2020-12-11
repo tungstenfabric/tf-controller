@@ -14,7 +14,7 @@
           host: "{{device_mgmt_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
       register: device_commits
 
@@ -110,7 +110,7 @@
           host: "{{device_mgmt_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
       register: rollback_compare
       loop: "{{ range(contrail_commit|int,0,-1)|list }}"

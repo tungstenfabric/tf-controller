@@ -20,7 +20,7 @@
               host: "{{ device_mgmt_ip }}"
               username: "{{ device_username }}"
               password: "{{ device_password }}"
-              port: 22
+              port: "{{prouter_port}}"
               timeout: "{{ JUNOS_COMMIT_TIMEOUT | int }}"
           register: junos_response
         - set_fact:
