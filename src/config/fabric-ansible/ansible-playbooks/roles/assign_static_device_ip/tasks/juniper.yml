@@ -6,7 +6,8 @@
 
         - juniper_junos_config:
             load: "{{ load }}"
-            lines: "{{ device_config }}"
+            lines: 
+              - "{{ device_config }}"
             comment: "Contrail execution ID: {{ job_ctx.job_execution_id }}"
             ignore_warning: "True"
             format: "{{ format }}"
