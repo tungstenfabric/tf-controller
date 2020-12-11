@@ -1,0 +1,1 @@
+prouter_port: "{{playbook_input.device_service_ports[0]}}"

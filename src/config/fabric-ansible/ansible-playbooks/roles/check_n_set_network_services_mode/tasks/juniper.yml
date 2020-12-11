@@ -10,7 +10,7 @@
       host: "{{prouter_dynamic_ip}}"
       username: "{{username}}"
       password: "{{password}}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: "{{timeout}}"
   register: show_chassis_response
 
@@ -32,7 +32,7 @@
               host: "{{ prouter_dynamic_ip }}"
               username: "{{ username }}"
               password: "{{ password }}"
-              port: 22
+              port: "{{prouter_port}}"
               timeout: "{{ timeout }}"
         register: junos_response
 
@@ -43,13 +43,13 @@
               host: "{{prouter_dynamic_ip}}"
               username: "{{username}}"
               password: "{{password}}"
-              port: 22
+              port: "{{prouter_port}}"
         ignore_errors: yes
 
       - name: Wait 300 seconds, to establish the connection after reboot of device.
         wait_for:
           host: "{{prouter_dynamic_ip}}"
-          port: 22
+          port: "{{prouter_port}}"
           delay: 90
           sleep: 10
           timeout: 300

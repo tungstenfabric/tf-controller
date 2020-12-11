@@ -22,7 +22,7 @@
       host: "{{device_management_ip}}"
       username: "{{device_username}}"
       password: "{{device_password}}"
-      port: 22
+      port: "{{prouter_port}}"
       timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
   register: evpn_database_command_resp
 
@@ -67,7 +67,7 @@
           host: "{{device_management_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
       register: evpn_command_resp
 
@@ -115,7 +115,7 @@
               host: "{{item.keys()[0]}}"
               username: "{{device_username}}"
               password: "{{device_password}}"
-              port: 22
+              port: "{{prouter_port}}"
               timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
           with_items: "{{mgmt_ips}}"
           register: command_resp

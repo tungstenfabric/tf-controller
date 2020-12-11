@@ -654,6 +654,7 @@ class DeviceJobManager(object):
                          'physical_router_device_family',
                          'physical_router_vendor_name',
                          'physical_router_product_name',
+                         'physical_router_junos_service_ports',
                          'fabric_refs'])
                     if not ok:
                         msg = "Error while reading the physical router " \
@@ -677,6 +678,9 @@ class DeviceJobManager(object):
                 device_vendor_name = result.get("physical_router_vendor_name")
                 device_product_name = result.get(
                     "physical_router_product_name")
+                device_service_ports = result.get("physical_router_junos_service_ports").get("service_port")
+                if not device_service_ports:
+                    device_service_ports = [22]
 
                 fabric_refs = result.get('fabric_refs')
                 if fabric_refs:
@@ -726,6 +730,9 @@ class DeviceJobManager(object):
 
             if device_product_name:
                 device_json.update({"device_product": device_product_name})
+            
+            if device_service_ports:
+                device_json.update({"device_service_ports": device_service_ports})
 
             device_data.update({device_id: device_json})
 
