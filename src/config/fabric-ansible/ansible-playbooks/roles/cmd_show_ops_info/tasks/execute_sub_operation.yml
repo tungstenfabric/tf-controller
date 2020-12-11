@@ -34,7 +34,7 @@
           host: "{{device_management_ip}}"
           username: "{{device_username}}"
           password: "{{device_password}}"
-          port: 22
+          port: "{{prouter_port}}"
           timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
       register: command_result
 

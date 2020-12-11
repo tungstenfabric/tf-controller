@@ -10,7 +10,7 @@
               host: "{{pr_host}}"
               username: "{{pr_user}}"
               password: "{{pr_password}}"
-              port: 22
+              port: "{{prouter_port}}"
               timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
             retrieve: 'committed'
             filter: 'groups'
@@ -56,7 +56,7 @@
               host: "{{pr_host}}"
               username: "{{pr_user}}"
               password: "{{pr_password}}"
-              port: 22
+              port: "{{prouter_port}}"
               timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
             retrieve: 'committed'
             filter: 'protocols/bgp'
@@ -94,7 +94,7 @@
                   host: "{{pr_host}}"
                   username: "{{pr_user}}"
                   password: "{{pr_password}}"
-                  port: 22
+                  port: "{{prouter_port}}"
                   timeout: "{{JUNOS_COMMAND_TIMEOUT|int}}"
                 retrieve: 'committed'
                 filter: 'interfaces'
