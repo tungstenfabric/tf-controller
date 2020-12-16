@@ -87,9 +87,23 @@
 
     - block:
         - block:
-            - name: Run health check
-              include_role:
-                name: maintenance_mode_validation
+            - name: Call vnc to read the physical-router {{pr_name}}
+              vnc_db_mod:
+                job_ctx: "{{ job_ctx }}"
+                object_type: "physical_router"
+                object_op: "read"
+                object_dict: {"uuid": "{{pr_uuid}}"}
+              register: prouter_obj
+
+            - name: Activating maintenance mode on device {{pr_name}}
+              set_fact:
+                device_maintenance_mode: "activate"
+
+            - name: Get physical and routing bridging role of the device
+              set_fact:
+                prouter_fq_name: "{{prouter_obj.obj.display_name}}"
+                physical_role: "{{ prouter_obj.obj.physical_router_role}}"
+                rb_role: "{{ prouter_obj.obj.routing_bridging_roles}}"
 
             - name: Push config to multihomed peers
               include_role:
