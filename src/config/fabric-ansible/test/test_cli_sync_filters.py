@@ -29,7 +29,10 @@ from cli_sync import FilterModule
 sys.path.append('../fabric-ansible/ansible-playbooks/module_utils')
 
 from job_manager import job_utils
+from job_manager.job_utils import JobVncApi
 from vnc_api.vnc_api import VncApi
+from vnc_api.exceptions import NoIdError
+
 
 from vnc_api.vnc_api import (
     Fabric,
@@ -63,6 +66,9 @@ from vnc_api.vnc_api import (
     DeviceCredential,
     VpgInterfaceParametersType
 )
+
+mock_prs=dict()
+mock_cli_configs=dict()
 
 DGSC = "default-global-system-config"
 
@@ -273,6 +279,13 @@ mock_job_templates_list = {
     ]
 }
 
+def _obj_serializer_all(obj):
+    if hasattr(obj, 'serialize_to_json'):
+        return obj.serialize_to_json()
+    else:
+        return dict((k, v) for k, v in list(obj.__dict__.items()))
+# end _obj_serializer_all
+
 class TestCliSyncFilters(test_case.JobTestCase):
     fake_zk_client = FakeKazooClient()
     @classmethod
@@ -296,30 +309,114 @@ class TestCliSyncFilters(test_case.JobTestCase):
         return
 
     def tearDown(self):
-        self._newMock.reset()
         self._initMock.reset()
-        self._readMock.reset()
         super(TestCliSyncFilters, self).tearDown()
 
     def init_test(self):
         self.mockFabric()
         for id, val in list(mock_physical_router_db.items()):
             self.mockPhysicalRouter(id)
+        for id,val in list(mock_cli_config_db.items()):
+            self.mockCliConfig(id)
         self.mockCreateFile()
         flexmock(job_utils.random).should_receive('shuffle').and_return()
         self._initMock = flexmock(VncApi).should_receive('__init__')
-        self._newMock = flexmock(VncApi).should_receive('__new__'). \
-            and_return(self._vnc_lib)
-        self._readMock = flexmock(self._vnc_lib). \
+
+        fake_vnc_lib = flexmock()
+        flexmock(JobVncApi).should_receive('vnc_init').and_return(fake_vnc_lib)
+        fake_vnc_lib.should_receive('__init__')
+        flexmock(fake_vnc_lib). \
             should_receive('job_template_read'). \
             and_return(
             self.mockJobTemplate("cli_sync_template"))
+
+        test_fab1=['default-global-system-config', 'test', 'test_cli_config']
+        test_fab2=['default-global-system-config', '5a12-qfx12', '5a12-qfx12_cli_config']
+        mock_cli_uuid='2a62bb68-4a1e-4bab-b2eb-0043bb1f9deb'
+
+        flexmock(fake_vnc_lib).should_receive(
+            'fabric_read').and_return(
+            self.mockFabricObj())
+
+        flexmock(fake_vnc_lib).should_receive(
+            'fabric_update')
+
+        flexmock(fake_vnc_lib).should_receive(
+            'physical_router_read'
+        ).and_return(mock_prs[DEV_UUID1])
+
+        flexmock(fake_vnc_lib).should_receive(
+            'physical_router_update'
+        ).and_return(fake_vnc_lib.physical_router_update(mock_prs[DEV_UUID1]))
+
+        mock_get_vnc_cls=flexmock(
+            from_dict= flexmock(
+                pending_field_updates= {'parent_type', 'uuid', 'fq_name'},
+                pending_field_list_updates= {},
+                pending_field_map_updates= {},
+                pending_ref_updates= set(),
+                type= 'cli-config',
+                name= '5a12-qfx12_cli_config',
+                parent_type= 'physical-router',
+                fq_name= ['default-global-system-config', '5a12-qfx12', '5a12-qfx12_cli_config']
+            )
+        )
+        flexmock(JobVncApi).should_receive(
+            'get_vnc_cls'
+        ).and_return(mock_get_vnc_cls)
+
+        flexmock(fake_vnc_lib).should_receive(
+            'cli_config_read'
+        ).with_args(fq_name=test_fab1).and_raise(NoIdError(unknown_id=None))
+
+        flexmock(fake_vnc_lib).should_receive(
+            'cli_config_read'
+        ).with_args(id=mock_cli_uuid).and_return(mock_cli_configs[CLI_CONFIG_UUID]) 
+
+        flexmock(fake_vnc_lib).should_receive(
+            'cli_config_read'
+        ).with_args(fq_name=test_fab2).and_return(mock_cli_configs[CLI_CONFIG_UUID])
+
+        flexmock(fake_vnc_lib).should_receive(
+            'cli_config_create'
+        ).and_return(mock_cli_uuid)
+
+        flexmock(fake_vnc_lib).should_receive(
+            'obj_to_dict'
+        ).and_return(json.loads(json.dumps(mock_cli_configs[CLI_CONFIG_UUID], default=_obj_serializer_all)))
+
+        flexmock(fake_vnc_lib).should_receive(
+            'cli_config_update'
+        )
+
+        flexmock(fake_vnc_lib).should_receive(
+            'cli_config_obj_update'
+        ).and_return(fake_vnc_lib.cli_config_obj_update(mock_cli_configs[CLI_CONFIG_UUID]))
+
+
+    def mockFabricObj(self):
+        fabric_obj = Fabric(name='fab01')
+        fabric_obj.uuid = FAB_UUID1
+        fabric_obj.fq_name = [DGSC, 'fab01']
+        cred = UserCredentials(username='root',
+                               password='c0ntrail123')
+        credentials = DeviceCredential(credential=cred)
+        fabric_credentials = DeviceCredentialList(
+            device_credential=[credentials])
+        fabric_obj.set_fabric_credentials(fabric_credentials)
+        fabric_obj.set_annotations(KeyValuePairs([
+            KeyValuePair(key='cli_sync_input',
+                         value=mock_job_template_input_schema)]))
+        return fabric_obj
+    #end mockFabricObj
 
     def test_create_cli_obj(self):
         cli_filter = FilterModule()
         self.mockCreateFile()
         device = mock_physical_router_db[DEV_UUID1]
-        device_name = device["display_name"]
+        #modified the device_name to determine which test case is calling the vnc_lib.cli_config_read method
+        #Since the mocked cli_config_read method is required raise NoIDError and cli_dict_to_update object successively . 
+        device_name = 'test'
         device_mgmt_ip = device["physical_router_management_ip"]
         updated_cli_obj = cli_filter.create_cli_obj(mock_job_ctx,
                                                     device_mgmt_ip, device_name)
@@ -414,6 +511,7 @@ class TestCliSyncFilters(test_case.JobTestCase):
                 physical_router_os_version=device["physical_router_os_version"]
             )
             device_obj.uuid = id
+            mock_prs[id]=device_obj
             self._vnc_lib.physical_router_create(device_obj)
         except RefsExistError:
             logger.info("Physical router {} already exists".format(id))
@@ -430,6 +528,7 @@ class TestCliSyncFilters(test_case.JobTestCase):
             cli_obj.uuid = id
             cli_obj.parent_uuid = cli_config['parent_uuid']
             cli_obj.fq_name = cli_config['fq_name']
+            mock_cli_configs[id]=cli_obj
             self._vnc_lib.cli_config_create(cli_obj)
         except RefsExistError:
             logger.info("Cli config {} already exists".format(id))
