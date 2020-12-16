@@ -8,18 +8,18 @@ import gevent.monkey
 gevent.monkey.patch_all(thread=False)
 import sys
 import os
-import io
 import logging
 from flexmock import flexmock
 import subprocess32
 import requests
 import uuid
-from vnc_api.vnc_api import PlaybookInfoType
-from vnc_api.vnc_api import PlaybookInfoListType
-from vnc_api.vnc_api import JobTemplate
-
+from cfgm_common.tests.test_common import retries
+from cfgm_common.tests.test_common import retry_exc_handler
+from vnc_api.vnc_api import (ExecutableInfoType, ExecutableInfoListType,
+                             JobTemplate, PlaybookInfoType,
+                             PlaybookInfoListType)
 from . import test_case
-from job_manager.job_mgr import WFManager
+from job_manager.job_mgr import ExecutableManager, WFManager
 from job_manager.job_utils import JobStatus
 from job_manager.job_utils import PLAYBOOK_EOL_PATTERN
 from cfgm_common.tests.test_utils import FakeKazooClient
@@ -72,6 +72,74 @@ class TestJobManager(test_case.JobTestCase):
         wm.start_job()
         self.assertEqual(wm.result_handler.job_result_status,
                          JobStatus.SUCCESS)
+
+    # Test for a single executable in the workflow template
+    def test_executable_job(self):
+        # create job template
+        exec_info = ExecutableInfoType(executable_path='/root/fake_binary')
+        executables_list = ExecutableInfoListType(executable_info=[exec_info])
+        job_template = JobTemplate(job_template_type='executable',
+                                   job_template_executables=executables_list,
+                                   name='Test_Executable')
+        job_template_uuid = self._vnc_lib.job_template_create(job_template)
+
+        # mocking creation of a process
+        self.mock_executable_execution()
+
+        # mocking Sandesh
+        TestJobManagerUtils.mock_sandesh_check()
+
+        # getting details required for job manager execution
+        job_input_json, log_utils = TestJobManagerUtils.get_min_details(
+            job_template_uuid)
+
+        em = ExecutableManager(log_utils.get_config_logger(), self._vnc_lib,
+                               job_input_json, log_utils)
+        em.start_job()
+
+        @retries(3, hook=retry_exc_handler)
+        def assert_values(em):
+            # A positive of negative return code of the executable process
+            # does not trigger an update to result_handler. So it will
+            # remain None. An exception will however cause a change
+            # and is tested in the test case: test_executable_timeout_exception
+            self.assertIsNone(em.result_handler.job_result_status)
+
+        assert_values(em)
+
+    # Test for a timeout exception in executable workflow
+    def test_executable_timeout_exception(self):
+        # create job template
+        exec_info = ExecutableInfoType(executable_path='/root/fake_binary')
+        executables_list = ExecutableInfoListType(executable_info=[exec_info])
+        job_template = JobTemplate(job_template_type='executable',
+                                   job_template_executables=executables_list,
+                                   name='Test_Executable_Exception')
+        job_template_uuid = self._vnc_lib.job_template_create(job_template)
+
+        # mocking creation of a process with a timeout exception
+        self.mock_executable_execution(with_exception=True)
+
+        # mocking Sandesh
+        TestJobManagerUtils.mock_sandesh_check()
+
+        # getting details required for job manager execution
+        job_input_json, log_utils = TestJobManagerUtils.get_min_details(
+            job_template_uuid)
+
+        em = ExecutableManager(log_utils.get_config_logger(), self._vnc_lib,
+                               job_input_json, log_utils)
+        em.start_job()
+
+        @retries(3, hook=retry_exc_handler)
+        def assert_values(em):
+            # executable will raise subprocess32.TimeoutException which
+            # will cause the result handler to mark the job status as
+            # failure
+            self.assertEqual(em.result_handler.job_result_status,
+                             JobStatus.FAILURE)
+
+        assert_values(em)
 
     # Test for job success with multiple playbooks in the workflow template
     def test_execute_job_success_multiple_templates(self):
@@ -361,3 +429,23 @@ class TestJobManager(test_case.JobTestCase):
         fake_resp = flexmock(status_code=123)
         fake_request = flexmock(requests).should_receive(
                            'post').and_return(fake_resp)
+
+    def mock_executable_execution(self, rc=0, with_exception=False):
+        fake_process = flexmock(returncode=rc, pid=321)
+        mock_subprocess32 = flexmock(subprocess32)
+        mock_subprocess32.should_receive('Popen').and_return(fake_process)
+        if not with_exception:
+            fake_process.should_receive('communicate').and_return(
+                ('Hello', 'There'))
+        else:
+            fake_process.should_receive('communicate').and_raise(
+                subprocess32.TimeoutExpired, "Fake Process", "Fake Timeout")
+            flexmock(os).should_receive('kill')
+
+        # mock the call to write an END to the file
+        with open("/tmp/" + TestJobManagerUtils.execution_id, "a") as f:
+            f.write("job_summary" + 'END' + PLAYBOOK_EOL_PATTERN)
+        # mock sys exit call
+        flexmock(sys).should_receive('exit')
+        fake_resp = flexmock(status_code=321)
+        flexmock(requests).should_receive('post').and_return(fake_resp)
