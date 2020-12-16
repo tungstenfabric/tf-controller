@@ -785,8 +785,18 @@ def initialize_zookeeper_client(args):
     else:
         client_pfx = ''
 
-    zookeeper_client = ZookeeperClient(client_pfx + "job-manager",
-                                       args.zk_server_ip, host_ip)
+    if args.zookeeper_ssl_enable:
+        zookeeper_client = ZookeeperClient(client_pfx + "job-manager",
+                                           args.zk_server_ip,
+                                           host_ip,
+                                           args.zookeeper_ssl_enable,
+                                           args.zookeeper_ssl_keyfile,
+                                           args.zookeeper_ssl_certificate,
+                                           args.zookeeper_ssl_ca_cert)
+    else:
+        zookeeper_client = ZookeeperClient(client_pfx + "job-manager",
+                                           args.zk_server_ip,
+                                           host_ip)
     return zookeeper_client
 
 

@@ -27,7 +27,6 @@ from job_manager.job_utils import JobStatus, JobVncApi
 
 
 class DeviceJobManager(object):
-
     JOB_REQUEST_EXCHANGE = "job_request_exchange"
     JOB_REQUEST_CONSUMER = "job_request_consumer"
     JOB_REQUEST_ROUTING_KEY = "job.request"
@@ -47,9 +46,20 @@ class DeviceJobManager(object):
         self._amqp_client = amqp_client
         # create zk client for devicejobmanager with call_back
         self.client_reconnect_gl = None
-        self._zookeeper_client = ZookeeperClient("device-job-manager",
-                                                 args.zk_server_ip,
-                                                 args.host_ip)
+        if args.zookeeper_ssl_enable:
+            self._zookeeper_client = ZookeeperClient(
+                "device-job-manager",
+                args.zk_server_ip,
+                args.host_ip,
+                args.zookeeper_ssl_enable,
+                args.zookeeper_ssl_keyfile,
+                args.zookeeper_ssl_certificate,
+                args.zookeeper_ssl_ca_cert)
+
+        else:
+            self._zookeeper_client = ZookeeperClient("device-job-manager",
+                                                     args.zk_server_ip,
+                                                     args.host_ip)
         self._zookeeper_client.set_lost_cb(self.client_reconnect)
         self._db_conn = db_conn
         self._args = args
@@ -68,7 +78,11 @@ class DeviceJobManager(object):
             'fabric_ansible_conf_file': self._args.fabric_ansible_conf_file,
             'host_ip': self._args.host_ip,
             'zk_server_ip': self._args.zk_server_ip,
-            'cluster_id': self._args.cluster_id
+            'cluster_id': self._args.cluster_id,
+            'zookeeper_ssl_enable': self._args.zookeeper_ssl_enable,
+            'zookeeper_ssl_keyfile': self._args.zookeeper_ssl_keyfile,
+            'zookeeper_ssl_certificate': self._args.zookeeper_ssl_certificate,
+            'zookeeper_ssl_ca_cert': self._args.zookeeper_ssl_ca_cert
         }
         self._job_args = json.dumps(job_args)
 
@@ -103,11 +117,13 @@ class DeviceJobManager(object):
             self.JOB_REQUEST_EXCHANGE,
             routing_key=self.JOB_ABORT_ROUTING_KEY,
             callback=self.handle_abort_job_request)
+
     # end __init__
 
     @classmethod
     def get_instance(cls):
         return cls._instance
+
     # end get_instance
 
     @classmethod
@@ -116,13 +132,15 @@ class DeviceJobManager(object):
         if not inst:
             return
         cls._instance = None
+
     # end destroy_instance
 
     def client_reconnect(self):
         if self.client_reconnect_gl is None:
-            self.client_reconnect_gl =\
+            self.client_reconnect_gl = \
                 vnc_greenlets.VncGreenlet("djm reconnect",
                                           self.zk_reconnect)
+
     # end client_reconnect
 
     def zk_reconnect(self):
@@ -144,6 +162,7 @@ class DeviceJobManager(object):
             return (False, str(e))
 
         return (ok, cassandra_result[0])
+
     # end db_read
 
     def is_max_job_threshold_reached(self):
@@ -151,6 +170,7 @@ class DeviceJobManager(object):
                 self._job_mgr_statistics.get('max_job_count'):
             return False
         return True
+
     # end is_max_job_threshold_reached
 
     def publish_job_status_notification(self, job_execution_id, status):
@@ -169,6 +189,7 @@ class DeviceJobManager(object):
         except Exception:
             self._logger.error("Failed to send job status change notification"
                                " %s %s" % (job_execution_id, status))
+
     # end publish_job_status_notification
 
     def get_job_template_id(self, job_template_fq_name):
@@ -179,6 +200,7 @@ class DeviceJobManager(object):
             msg = "Error while reading job_template_id: " + str(e)
             self._logger.error(msg)
             raise
+
     # end get_job_template_id
 
     def handle_execute_job_request(self, body, message):
@@ -332,6 +354,7 @@ class DeviceJobManager(object):
                               device_list=device_list,
                               fabric_job_uve_name=fabric_job_uve_name,
                               job_params=job_input_params)
+
     # end handle_execute_job_request
 
     def _abort_job(self, pid, job_instance, abort_mode):
@@ -358,6 +381,7 @@ class DeviceJobManager(object):
             # Abort next job
             else:
                 self._abort_job(pid, job_instance, abort_mode)
+
     # end handle_abort_job_request
 
     def create_fabric_job_uve(self, fabric_job_uve_name,
@@ -373,6 +397,7 @@ class DeviceJobManager(object):
         job_execution_uve = FabricJobUve(data=job_execution_data,
                                          sandesh=self._sandesh)
         job_execution_uve.send(sandesh=self._sandesh)
+
     # end create_fabric_job_uve
 
     def create_physical_router_job_uve(self, device_list, job_input_params,
@@ -400,6 +425,7 @@ class DeviceJobManager(object):
             device_fqnames.append(prouter_uve_name)
 
         return device_fqnames
+
     # end create_physical_router_job_uve
 
     def mark_failure(self, msg, job_template_fq_name, job_execution_id,
@@ -428,6 +454,7 @@ class DeviceJobManager(object):
                                                     fabric_job_uve_name,
                                                     JobStatus.FAILURE.value,
                                                     100.0)
+
     # end mark_failure
 
     def _load_job_log(self, marker, input_str):
@@ -436,6 +463,7 @@ class DeviceJobManager(object):
             return json.loads(json_str)
         except ValueError:
             return ast.literal_eval(json_str)
+
     # end _load_job_log
 
     def _extracted_file_output(self, execution_id):
@@ -467,6 +495,7 @@ class DeviceJobManager(object):
             self._logger.error(msg)
 
         return status, prouter_info, device_op_results, failed_devices_list
+
     # end _extracted_file_output
 
     def job_mgr_signal_handler(self, signalnum, frame):
@@ -491,7 +520,7 @@ class DeviceJobManager(object):
             self.job_status[exec_id] = status
             self.publish_job_status_notification(exec_id, status)
 
-            if signal_var.get('fabric_name') != "__DEFAULT__"\
+            if signal_var.get('fabric_name') != "__DEFAULT__" \
                     and not signal_var.get('device_fqnames'):
                 job_execution_data = FabricJobExecution(
                     name=signal_var.get('fabric_name'),
@@ -545,6 +574,7 @@ class DeviceJobManager(object):
             self._clean_up_job_data(signal_var, str(pid[0]))
             self._logger.error("Failed in job signal handler %s" %
                                str(unknown_exception))
+
     # end job_mgr_signal_handler
 
     def _clean_up_job_data(self, signal_var, pid):
@@ -559,6 +589,7 @@ class DeviceJobManager(object):
 
         self._job_mgr_statistics['running_job_count'] = len(
             self._job_mgr_running_instances)
+
     # end _clean_up_job_data
 
     def _is_existing_job_for_fabric(self, fabric_fq_name, job_execution_id):
@@ -581,6 +612,7 @@ class DeviceJobManager(object):
                                " job %s " % value)
             is_fabric_job_running = True
         return is_fabric_job_running
+
     # end _is_existing_job_for_fabric
 
     def _release_fabric_job_lock(self, fabric_fq_name):
@@ -594,6 +626,7 @@ class DeviceJobManager(object):
         except Exception as zk_error:
             self._logger.error("Exception while releasing the zookeeper lock"
                                " %s " % repr(zk_error))
+
     # end _release_fabric_job_lock
 
     def _cleanup_job_lock(self, fabric_fq_name):
@@ -606,6 +639,7 @@ class DeviceJobManager(object):
         except Exception as zk_error:
             self._logger.error("Exception while releasing the fabric node for "
                                "%s: %s " % (fabric_node_path, str(zk_error)))
+
     # end _cleanup_job_lock
 
     def save_abstract_config(self, job_params):
@@ -618,7 +652,7 @@ class DeviceJobManager(object):
             if not dev_mgt_ip:
                 raise ValueError('Missing management IP in abstract config')
 
-            dev_cfg_dir = '/opt/contrail/fabric_ansible_playbooks/config/' +\
+            dev_cfg_dir = '/opt/contrail/fabric_ansible_playbooks/config/' + \
                           dev_mgt_ip
             if not os.path.exists(dev_cfg_dir):
                 os.makedirs(dev_cfg_dir)
@@ -626,6 +660,7 @@ class DeviceJobManager(object):
                 with open(dev_cfg_dir + '/abstract_cfg.json', 'w') as f:
                     f.write(json.dumps(dev_abs_cfg, indent=4))
                 job_params.get('input').pop('device_abstract_config')
+
     # end save_abstract_config
 
     def get_job_concurrency(self, job_template_id, job_exec_id):
@@ -634,10 +669,11 @@ class DeviceJobManager(object):
                                     ['job_template_concurrency_level'])
         if not ok:
             msg = "Error while reading the job concurrency " \
-                  "from the job template with id %s : %s" %\
+                  "from the job template with id %s : %s" % \
                   (job_template_id, result)
             raise JobException(msg, job_exec_id)
         return result.get('job_template_concurrency_level')
+
     # end get_job_concurrency
 
     def read_device_data(self, device_list, request_params,
@@ -716,8 +752,7 @@ class DeviceJobManager(object):
                 decrypt_password = JobVncApi.decrypt_password(
                     encrypted_password=user_cred.get('password'),
                     pwd_key=device_id)
-                device_json.update({"device_password":
-                                    decrypt_password})
+                device_json.update({"device_password": decrypt_password})
             if device_family:
                 device_json.update({"device_family": device_family})
 
@@ -731,6 +766,7 @@ class DeviceJobManager(object):
 
         if len(device_data) > 0:
             request_params.update({"device_json": device_data})
+
     # end read_device_data
 
     def read_fabric_data(self, request_params, job_execution_id,

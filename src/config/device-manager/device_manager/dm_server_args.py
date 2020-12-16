@@ -40,6 +40,10 @@ def default_options():
         'analytics_password': None,
         'zk_server_ip': '127.0.0.1',
         'zk_server_port': '2181',
+        'zookeeper_ssl_enable': False,
+        'zookeeper_ssl_keyfile': '',
+        'zookeeper_ssl_certificate': '',
+        'zookeeper_ssl_ca_cert': '',
         'collectors': None,
         'http_server_port': '8096',
         'http_server_ip': '0.0.0.0',
@@ -260,6 +264,8 @@ def parse_args(args_str):
     args.sandesh_config = SandeshConfig.from_parser_arguments(args)
     args.cassandra_use_ssl = (str(args.cassandra_use_ssl).lower() == 'true')
     args.rabbit_use_ssl = (str(args.rabbit_use_ssl).lower() == 'true')
+    args.zookeeper_ssl_enable = (
+        str(args.zookeeper_ssl_enable).lower() == 'true')
     args.dnsmasq_reload_by_signal = \
         (str(args.dnsmasq_reload_by_signal).lower() == 'true')
 
