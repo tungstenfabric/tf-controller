@@ -469,7 +469,6 @@ class EventManager(object):
         self.msg_log(msg, SandeshLevel.SYS_DEBUG)
 
     def _event_tick_60(self):
-        self.tick_count += 1
         # get disk usage info periodically
         disk_usage_info = self.system_data.get_disk_usage()
         for group in self.process_state_db:
@@ -477,7 +476,7 @@ class EventManager(object):
 
             # typical ntp sync time is about 5 min - first time
             # thus let's sync after 5 minutes  and each 5 minutes to decrease load
-            if self.tick_count % 5:
+            if 0 < self.tick_count && (self.tick_count % 5) == 0:
                 if self.system_data.check_ntp_status():
                     self.fail_status_bits &= ~self.FAIL_STATUS_NTP_SYNC
                 else:
@@ -512,6 +511,8 @@ class EventManager(object):
             self.msg_log('DBG: event_tick_60: node_status=%s' % node_status,
                          SandeshLevel.SYS_DEBUG)
             node_status_uve.send()
+
+        self.tick_count += 1
 
     def send_init_data(self):
         self.send_nodemgr_process_status()
