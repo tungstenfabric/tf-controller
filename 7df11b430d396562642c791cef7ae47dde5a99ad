@@ -45,6 +45,29 @@
       "revId": "7df11b430d396562642c791cef7ae47dde5a99ad",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fbe8b685_de700734",
+        "filename": "src/vnsw/agent/oper/test/test_intf.cc",
+        "patchSetId": 5
+      },
+      "lineNbr": 3236,
+      "author": {
+        "id": 77
+      },
+      "writtenOn": "2020-12-17T10:39:05Z",
+      "side": 1,
+      "message": "nit",
+      "range": {
+        "startLine": 3236,
+        "startChar": 63,
+        "endLine": 3236,
+        "endChar": 64
+      },
+      "revId": "7df11b430d396562642c791cef7ae47dde5a99ad",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
