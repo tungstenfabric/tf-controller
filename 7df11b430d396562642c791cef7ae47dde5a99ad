@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "52488607_b7bd80e6",
+        "filename": "src/vnsw/agent/init/test/cfg.ini",
+        "patchSetId": 5
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 77
+      },
+      "writtenOn": "2020-12-17T09:50:32Z",
+      "side": 1,
+      "message": "one physical interface is missed here ?",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 124,
+        "endChar": 30
+      },
+      "revId": "7df11b430d396562642c791cef7ae47dde5a99ad",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8aafa50e_ca696e53",
+        "filename": "src/vnsw/agent/oper/nexthop.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 781,
+      "author": {
+        "id": 77
+      },
+      "writtenOn": "2020-12-17T09:50:32Z",
+      "side": 1,
+      "message": "if key is null then return false",
+      "range": {
+        "startLine": 781,
+        "startChar": 0,
+        "endLine": 781,
+        "endChar": 65
+      },
+      "revId": "7df11b430d396562642c791cef7ae47dde5a99ad",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
