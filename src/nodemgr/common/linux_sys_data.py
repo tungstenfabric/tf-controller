@@ -5,6 +5,7 @@
 import os
 import subprocess
 import psutil
+import logging
 
 from nodemgr.common.common_sys_cpu import SysCpuShare
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
@@ -96,7 +97,8 @@ class LinuxSysData(object):
             proc = subprocess.Popen(
                 cmd, shell=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
-            (_, _) = proc.communicate()
+            (o, e) = proc.communicate()
+            logging.warning('FROM NTP:\nSTDOUT: %s\n\nSTDERR: %s' % (o, e))
             if proc.returncode == 0:
                 return True
         return False
