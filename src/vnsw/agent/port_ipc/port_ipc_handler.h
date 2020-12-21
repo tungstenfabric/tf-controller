@@ -51,6 +51,8 @@ public:
     bool DelVgwFromJson(const std::string &json, std::string &err_msg) const;
     std::string MakeVmiUuidJson(const VmiSubscribeEntry *entry,
                                 bool meta_info) const;
+    void MakeVmVnPortJson(const VmVnPortSubscribeEntry *entry, string &info,
+                          bool meta_info) const;
     bool EnablePort(const string &url, string &err_msg);
     bool DisablePort(const string &url, string &err_msg);
 
@@ -109,8 +111,6 @@ private:
     bool WriteJsonToFile(VmiSubscribeEntry *entry, bool overwrite) const;
     bool WriteJsonToFile(VmVnPortSubscribeEntry *entry) const;
 
-    void MakeVmVnPortJson(const VmVnPortSubscribeEntry *entry, string &info,
-                          bool meta_info) const;
 
     Agent *agent_;
     std::string ports_dir_;

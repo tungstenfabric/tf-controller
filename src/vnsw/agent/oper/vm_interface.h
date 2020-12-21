@@ -1236,6 +1236,16 @@ public:
                 const Ip6Address &addr6, DeviceType dev_type, VmiType vmi_type,
                 uint8_t vhostuser_mode, bool os_oper_state,
                 const boost::uuids::uuid &logical_router_uuid);
+    VmInterface(const boost::uuids::uuid &uuid, const std::string &name,
+                const Ip4Address &addr, const MacAddress &mac,
+                const std::string &vm_name,
+                const boost::uuids::uuid &vm_project_uuid, uint16_t tx_vlan_id,
+                uint16_t rx_vlan_id, Interface *parent,
+                const Ip6Address &addr6, DeviceType dev_type, VmiType vmi_type,
+                uint8_t vhostuser_mode, bool os_oper_state,
+                string vhostsocket_dir,
+                string vhostsocket_filename,
+                const boost::uuids::uuid &logical_router_uuid);
     virtual ~VmInterface();
 
     virtual bool CmpInterface(const DBEntry &rhs) const;
@@ -1303,6 +1313,8 @@ public:
     uint16_t tx_vlan_id() const { return tx_vlan_id_; }
     uint16_t rx_vlan_id() const { return rx_vlan_id_; }
     uint8_t vhostuser_mode() const { return vhostuser_mode_; }
+    const std::string &vhostsocket_dir() const {return vhostsocket_dir_;}
+    const std::string &vhostsocket_filename() const {return vhostsocket_filename_;}
     const Interface *parent() const { return parent_.get(); }
     bool ecmp() const { return ecmp_;}
     bool ecmp6() const { return ecmp6_;}
@@ -1566,7 +1578,11 @@ public:
                        VmInterface::Configurer configurer);
     static void SetIfNameReq(InterfaceTable *table,
                              const boost::uuids::uuid &uuid,
-                             const std::string &ifname);
+                             const std::string &ifname,
+                             Interface::Transport transport,
+                             uint8_t vhostuser_mode,
+                             const std::string &vhostsocket_dir,
+                             const std::string &vhostsocket_filename);
     static void DeleteIfNameReq(InterfaceTable *table,
                                 const boost::uuids::uuid &uuid);
     void update_flow_count(int val) const;
@@ -1774,6 +1790,8 @@ private:
     // indicates if the VMI is the left interface of a service instance
     bool is_left_si_;
     uint32_t service_mode_;
+    string vhostsocket_dir_;
+    string vhostsocket_filename_;
     /* If current interface is SI VMI, then the below field indicates the VMI
      * uuid of the other end of SI. If current VMI is left VMI of SI si1, then
      * below field indicates right VMI of SI si1 and vice versa. This will have
@@ -1965,7 +1983,10 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     boost::uuids::uuid qos_config_uuid_;
     bool learning_enabled_;
     UuidList slo_list_;
+    Interface::Transport transport;
     uint8_t vhostuser_mode_;
+    std::string vhostsocket_dir_;
+    std::string vhostsocket_filename_;
     bool is_left_si_;
     uint32_t service_mode_;
     boost::uuids::uuid si_other_end_vmi_;
@@ -2050,7 +2071,10 @@ struct VmInterfaceNewFlowDropData : public VmInterfaceData {
 // Data used when interface added with only ifname in data
 struct VmInterfaceIfNameData : public VmInterfaceData {
     VmInterfaceIfNameData();
-    VmInterfaceIfNameData(const std::string &ifname);
+    VmInterfaceIfNameData(const std::string &ifname,
+                          Interface::Transport transport,
+                          uint8_t vhostuser_mode, const string &vhostsocket_dir,
+                          const string &vhostsocket_filename);
     virtual ~VmInterfaceIfNameData();
 
     virtual VmInterface *OnAdd(const InterfaceTable *table,
@@ -2060,6 +2084,9 @@ struct VmInterfaceIfNameData : public VmInterfaceData {
                           bool *force_update) const;
 
     std::string ifname_;
+    uint8_t vhostuser_mode_;
+    string vhostsocket_dir_;
+    string vhostsocket_filename_;
 };
 struct VmInterfaceLearntMacIpData : public VmInterfaceData {
     VmInterfaceLearntMacIpData();

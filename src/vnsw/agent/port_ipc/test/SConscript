@@ -11,8 +11,10 @@ AgentEnv.MakeTestEnv(env)
 port_ipc_test_suite=[]
 
 test_port_ipc = AgentEnv.MakeTestCmd(env, 'test_port_ipc', port_ipc_test_suite)
+test_port_ipc_vmvn_port = AgentEnv.MakeTestCmd(env, 'test_port_ipc_vmvn_port', port_ipc_test_suite)
 
 test = env.TestSuite('agent-test', port_ipc_test_suite)
 env.Alias('agent:port_ipc', test)
 env.Alias('controller/src/vnsw/agent/port_ipc:test', test)
+env.Alias('agent:port_ipc_vmvn_port', test_port_ipc_vmvn_port)
 Return('port_ipc_test_suite')

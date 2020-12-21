@@ -93,6 +93,8 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     vhostuser_mode_(entry->vhostuser_mode_),
     igmp_enable_(entry->igmp_enable_),
     mac_ip_learning_enable_(false),
+    vhostsocket_dir_(entry->vhostsocket_dir_),
+    vhostsocket_filename_(entry->vhostsocket_filename_),
     os_guid_(entry->os_guid_) {
 }
 
@@ -143,6 +145,7 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     pbb_cmac_vrf_(VrfEntry::kInvalidIndex), pbb_mac_(), etree_leaf_(false),
     pbb_interface_(false), vhostuser_mode_(VmInterface::vHostUserClient),
     igmp_enable_(false), mac_ip_learning_enable_(false),
+    vhostsocket_dir_(""), vhostsocket_filename_(""),
     os_guid_(intf->os_guid()) {
 
     if (intf->flow_key_nh()) {
@@ -164,6 +167,8 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
         }
         vmi_device_type_ = vmitf->device_type();
         vmi_type_ = vmitf->vmi_type();
+        vhostsocket_dir_ = vmitf->vhostsocket_dir();
+        vhostsocket_filename_ = vmitf->vhostsocket_filename();
         if (vmi_type_ == VmInterface::VHOST) {
             InterfaceKSyncEntry tmp(ksync_obj_, vmitf->parent());
             xconnect_ = ksync_obj_->GetReference(&tmp);
@@ -379,6 +384,15 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
 
         if (mac_ip_learning_enable_ != vm_port->mac_ip_learning_enable()) {
             mac_ip_learning_enable_ = vm_port->mac_ip_learning_enable();
+            ret = true;
+        }
+        if (vhostsocket_dir_ != vm_port->vhostsocket_dir()) {
+            vhostsocket_dir_ = vm_port->vhostsocket_dir();
+            ret = true;
+        }
+
+        if (vhostsocket_filename_ != vm_port->vhostsocket_filename()) {
+            vhostsocket_filename_ = vm_port->vhostsocket_filename();
             ret = true;
         }
     }
@@ -932,7 +946,21 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             encoder.set_vifr_ip6_u(data[0]);
             encoder.set_vifr_ip6_l(data[1]);
         }
+
         encoder.set_vifr_vhostuser_mode(vhostuser_mode_);
+
+        if(!vhostsocket_dir_.empty()) {
+            std::vector<signed char> vhostsocket_dir_v(vhostsocket_dir_.begin(),
+                                                       vhostsocket_dir_.end());
+            encoder.set_vifr_vhostsocket_dir(vhostsocket_dir_v);
+        }
+
+        if(!vhostsocket_filename_.empty()) {
+            std::vector<signed char> vhostsocket_filename_v(vhostsocket_filename_.begin(),
+                    vhostsocket_filename_.end());
+            encoder.set_vifr_vhostsocket_filename(vhostsocket_filename_v);
+        }
+
         break;
     }
 

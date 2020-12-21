@@ -1184,11 +1184,15 @@ VmInterfaceIfNameData::VmInterfaceIfNameData() :
     VmInterfaceData(NULL, NULL, INSTANCE_MSG, Interface::TRANSPORT_INVALID),
     ifname_() {
 }
-
-VmInterfaceIfNameData::VmInterfaceIfNameData
-(const std::string &ifname):
-    VmInterfaceData(NULL, NULL, INSTANCE_MSG, Interface::TRANSPORT_ETHERNET),
-    ifname_(ifname) {
+VmInterfaceIfNameData::VmInterfaceIfNameData(const std::string &ifname,
+                                             Interface::Transport transport,
+                                             uint8_t vhostuser_mode,
+                                             const string &vhostsocket_dir,
+                                             const string &vhostsocket_filename):
+    VmInterfaceData(NULL, NULL, INSTANCE_MSG, transport),
+    ifname_(ifname), vhostuser_mode_(vhostuser_mode),
+    vhostsocket_dir_(vhostsocket_dir),
+    vhostsocket_filename_(vhostsocket_filename){
 }
 
 VmInterfaceIfNameData::~VmInterfaceIfNameData() {
@@ -1204,7 +1208,8 @@ VmInterface *VmInterfaceIfNameData::OnAdd(const InterfaceTable *table,
                         nil_uuid(), VmInterface::kInvalidVlanId,
                         VmInterface::kInvalidVlanId, NULL, Ip6Address(),
                         VmInterface::VM_ON_TAP, VmInterface::INSTANCE,
-                        VmInterface::vHostUserClient, os_oper_state,
+                        vhostuser_mode_, os_oper_state,
+                        vhostsocket_dir_, vhostsocket_filename_,
                         logical_router_uuid_);
     vmi->SetConfigurer(VmInterface::INSTANCE_MSG);
     return vmi;
@@ -1257,12 +1262,16 @@ bool VmInterfaceLearntMacIpData::OnResync(const InterfaceTable *table,
 
 // Utility methods to enqueue add/delete requests
 void VmInterface::SetIfNameReq(InterfaceTable *table, const uuid &uuid,
-                               const string &ifname) {
+                               const string &ifname,Interface::Transport transport,
+                               uint8_t vhostuser_mode, const string &vhostsocket_dir,
+                               const string &vhostsocket_filename) {
     DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
     req.key.reset(new VmInterfaceKey(AgentKey::ADD_DEL_CHANGE, uuid,
                                      ifname));
 
-    req.data.reset(new VmInterfaceIfNameData(ifname));
+    req.data.reset(new VmInterfaceIfNameData(ifname, transport,
+                                             vhostuser_mode, vhostsocket_dir,
+                                             vhostsocket_filename));
     table->Enqueue(&req);
 }
 

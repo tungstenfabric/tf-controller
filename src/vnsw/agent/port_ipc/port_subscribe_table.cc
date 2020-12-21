@@ -159,17 +159,25 @@ bool VmiSubscribeEntry::MatchVm(const boost::uuids::uuid &u) const {
 /////////////////////////////////////////////////////////////////////////////
 // VmVnPortSubscribeEntry routines
 /////////////////////////////////////////////////////////////////////////////
-VmVnPortSubscribeEntry::VmVnPortSubscribeEntry
-(PortSubscribeEntry::Type type, const std::string &ifname, uint32_t version,
- const boost::uuids::uuid &vm_uuid, const boost::uuids::uuid &vn_uuid,
- const boost::uuids::uuid &vmi_uuid, const std::string &vm_name,
- const std::string &vm_identifier, const std::string &vm_ifname,
- const std::string &vm_namespace) :
+VmVnPortSubscribeEntry::VmVnPortSubscribeEntry(PortSubscribeEntry::Type type,
+                                               const std::string &ifname,
+                                               uint32_t version,
+                                               const boost::uuids::uuid &vm_uuid,
+                                               const boost::uuids::uuid &vn_uuid,
+                                               const boost::uuids::uuid &vmi_uuid,
+                                               const std::string &vm_name,
+                                               const std::string &vm_identifier,
+                                               const std::string &vm_ifname,
+                                               const std::string &vm_namespace,
+                                               uint8_t vhostuser_mode,
+                                               const std::string &vhostsocket_dir,
+                                               const std::string &vhostsocket_filename) :
     PortSubscribeEntry(type, ifname, version), vm_uuid_(vm_uuid),
     vn_uuid_(vn_uuid), vm_name_(vm_name), vm_identifier_(vm_identifier),
-    vm_ifname_(vm_ifname), vm_namespace_(vm_namespace), vmi_uuid_(vmi_uuid) {
+    vm_ifname_(vm_ifname), vm_namespace_(vm_namespace), vmi_uuid_(vmi_uuid),
+    vhostuser_mode_(vhostuser_mode),vhostsocket_dir_(vhostsocket_dir),
+    vhostsocket_filename_(vhostsocket_filename) {
 }
-
 VmVnPortSubscribeEntry::~VmVnPortSubscribeEntry() {
 }
 
@@ -179,7 +187,15 @@ void VmVnPortSubscribeEntry::Update(const PortSubscribeEntry *rhs) {
 
 void VmVnPortSubscribeEntry::OnAdd(Agent *agent, PortSubscribeTable *table)
     const {
-    VmInterface::SetIfNameReq(agent->interface_table(), vmi_uuid_, ifname_);
+    Interface::Transport transport = Interface::TRANSPORT_ETHERNET;
+    if ((agent->vrouter_on_nic_mode() == true ||
+         agent->vrouter_on_host_dpdk() == true) &&
+        type_ == PortSubscribeEntry::VMPORT) {
+        transport = Interface::TRANSPORT_PMD;
+    }
+    VmInterface::SetIfNameReq(agent->interface_table(), vmi_uuid_, ifname_,
+                              transport, vhostuser_mode_, vhostsocket_dir_,
+                              vhostsocket_filename_);
 
 }
 
@@ -273,7 +289,6 @@ void PortSubscribeTable::AddVmVnPort(const boost::uuids::uuid &vm_uuid,
     if (ret.second == false) {
         ret.first->second->Update(entry.get());
     }
-
     // Find VMI for the vm-vn
     //boost::uuids::uuid vmi_uuid = VmVnToVmiNoLock(vm_uuid);
     if (vmi_uuid.is_nil())
@@ -729,6 +744,9 @@ bool SandeshVmVnPortSubscribeTask::Run() {
         info.set_vm_ifname(entry->vm_ifname());
         info.set_vm_namespace(entry->vm_namespace());
         info.set_vmi_uuid(UuidToString(entry->vmi_uuid()));
+        info.set_vhostuser_mode(entry->vhostuser_mode());
+        info.set_vhostsocket_dir(entry->vhostsocket_dir());
+        info.set_vhostsocket_filename(entry->vhostsocket_filename());
         port_list.push_back(info);
     }
     resp->set_port_list(port_list);

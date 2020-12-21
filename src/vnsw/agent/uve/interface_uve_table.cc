@@ -235,6 +235,8 @@ bool InterfaceUveTable::UveInterfaceEntry::FrameInterfaceMsg(const string &name,
     } else if (intf_->hbs_intf_type() == VmInterface::HBS_INTF_MGMT) {
         s_intf->set_hbf_intf_type("mgmt");
     }
+    s_intf->set_vhostsocket_dir(intf_->vhostsocket_dir());
+    s_intf->set_vhostsocket_filename(intf_->vhostsocket_filename());
     return true;
 }
 
