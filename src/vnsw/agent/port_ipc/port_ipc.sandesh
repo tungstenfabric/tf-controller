@@ -82,6 +82,9 @@ traceobject sandesh ConfigAddVmVnPortEnqueue {
     8: string vm_ifname;
     9: string vm_namespace;
     10: i32 version;
+    11: byte vhostuser_mode;
+    12: string vhostsocket_dir;
+    13: string vhostsocket_filename;
 }
 
 /**
@@ -165,6 +168,9 @@ struct SandeshVmVnPortSubscriptionInfo {
     7:  string vm_identifier;
     8:  string vm_ifname;
     9:  string vm_namespace;
+    10: byte vhostuser_mode;
+    11: string vhostsocket_dir;
+    12: string vhostsocket_filename;
 }
 
 /**

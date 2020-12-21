@@ -351,6 +351,10 @@ struct ItfSandeshData {
    69: list<BondInterface> bond_interface_list;
    70: bool mac_ip_learning_enable;
    71: list<LearntMacIpSandeshList> mac_ip_list;
+    /** Name of the vhostsocket dir */
+   72: string vhostsocket_dir;
+    /** Name of the vhostsocket filename */
+   73: string vhostsocket_filename;
 }
 
 /**

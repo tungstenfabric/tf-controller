@@ -119,6 +119,18 @@ bool PortSubscribe(const std::string &ifname,
                    const boost::uuids::uuid &project_uuid,
                    const Ip4Address &ip4_addr, const Ip6Address &ip6_addr,
                    const std::string &mac_addr);
+bool VmVnPortSubscribe(VmVnPortSubscribeEntry *entry);
+bool VmVnPortSubscribe(const std::string &host_ifname,
+                   const boost::uuids::uuid &vmi_uuid,
+                   const boost::uuids::uuid &vm_uuid,
+                   const std::string &vm_id,
+                   const std::string &vm_name,
+                   const std::string &vm_ifname,
+                   const std::string &vm_namespace,
+                   const boost::uuids::uuid &vn_uuid,
+                   uint8_t vhostuser_mode,
+                   const std::string &vhostsocket_dir,
+                   const std::string &vhostsocket_filename);
 void PortUnSubscribe(const boost::uuids::uuid &u);
 void IntfSyncMsg(PortInfo *input, int id);
 void IntfCfgAddNoWait(int intf_id, const string &name, const string ipaddr,

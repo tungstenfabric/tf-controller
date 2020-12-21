@@ -837,11 +837,14 @@ bool PortIpcHandler::AddVmVnPortEntry(PortSubscribeEntryPtr entry_ref,
         CONFIG_TRACE(VmVnPortInfo, err_msg.c_str());
         return false;
     }
-
     CONFIG_TRACE(AddVmVnPortEnqueue, "Add", UuidToString(entry->vm_uuid()),
         UuidToString(entry->vn_uuid()), UuidToString(entry->vmi_uuid()),
         entry->vm_name(), entry->vm_identifier(), entry->ifname(),
-        entry->vm_ifname(), entry->vm_namespace(), version_);
+        entry->vm_ifname(), entry->vm_namespace(), version_,
+        entry->vhostuser_mode(),entry->vhostsocket_dir(),
+        entry->vhostsocket_filename());
+
+
     port_subscribe_table_->AddVmVnPort(entry->vm_uuid(),
         entry->vn_uuid(), entry->vmi_uuid(), entry_ref);
     return true;
@@ -892,21 +895,34 @@ std::string &err_msg) const {
         return NULL;
     }
 
+    uint32_t vhostuser_mode = 0;
+    GetUint32Member(d, "vhostuser-mode", &vhostuser_mode, &err_msg);
+
+    string vhostsocket_dir;
+    GetStringMember(d, "vhostsocket-dir", &vhostsocket_dir, NULL);
+
+    string vhostsocket_filename;
+    GetStringMember(d, "vhostsocket-filename", &vhostsocket_filename, NULL);
+
+
     CONFIG_TRACE(AddVmVnPortEnqueue, "Add", UuidToString(vm_uuid),
                  UuidToString(vn_uuid), UuidToString(vmi_uuid),
                  vm_name, vm_identifier, host_ifname, vm_ifname,
-                 vm_namespace, version_);
+                 vm_namespace, version_,
+                 vhostuser_mode,vhostsocket_dir,
+                 vhostsocket_filename);
 
     return new VmVnPortSubscribeEntry(vmi_type, host_ifname, version_, vm_uuid,
                                       vn_uuid, vmi_uuid, vm_name, vm_identifier,
-                                      vm_ifname, vm_namespace);
+                                      vm_ifname, vm_namespace, vhostuser_mode,
+                                      vhostsocket_dir, vhostsocket_filename);
 }
 
 void PortIpcHandler::MakeVmVnPortJson(const VmVnPortSubscribeEntry *entry,
                                       string &info, bool meta_info) const {
     contrail_rapidjson::Document doc;
     doc.SetObject();
-
+    contrail_rapidjson::Document::AllocatorType &a = doc.GetAllocator();
     string str2 = UuidToString(entry->vm_uuid());
     AddMember("vm-uuid", str2.c_str(), &doc);
     str2 = UuidToString(entry->vn_uuid());
@@ -918,6 +934,9 @@ void PortIpcHandler::MakeVmVnPortJson(const VmVnPortSubscribeEntry *entry,
     AddMember("host-ifname", entry->ifname().c_str(), &doc);
     AddMember("vm-ifname", entry->vm_ifname().c_str(), &doc);
     AddMember("vm-namespace", entry->vm_namespace().c_str(), &doc);
+    doc.AddMember("vhostuser-mode", (int)entry->vhostuser_mode(), a);
+    AddMember("vhostsocket-dir", entry->vhostsocket_dir().c_str(), &doc);
+    AddMember("vhostsocket-filename", entry->vhostsocket_filename().c_str(), &doc);
 
     if (meta_info) {
         AddMember("author", agent_->program_name().c_str(), &doc);

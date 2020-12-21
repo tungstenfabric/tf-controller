@@ -147,6 +147,63 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     flow_count_ = 0;
 }
 
+
+VmInterface::VmInterface(const boost::uuids::uuid &uuid,
+                         const std::string &name,
+                         const Ip4Address &addr, const MacAddress &mac,
+                         const std::string &vm_name,
+                         const boost::uuids::uuid &vm_project_uuid,
+                         uint16_t tx_vlan_id, uint16_t rx_vlan_id,
+                         Interface *parent, const Ip6Address &a6,
+                         DeviceType device_type, VmiType vmi_type,
+                         uint8_t vhostuser_mode, bool os_oper_state,
+                         string vhostsocket_dir, string vhostsocket_filename,
+                         const boost::uuids::uuid &logical_router_uuid) :
+    Interface(Interface::VM_INTERFACE, uuid, name, NULL, os_oper_state,
+              logical_router_uuid),
+    vm_(NULL, this), vn_(NULL), primary_ip_addr_(addr), subnet_bcast_addr_(0),
+    primary_ip6_addr_(a6), vm_mac_(mac), policy_enabled_(false),
+    mirror_entry_(NULL), mirror_direction_(MIRROR_RX_TX), cfg_name_(""),
+    fabric_port_(true), need_linklocal_ip_(false), drop_new_flows_(false),
+    dhcp_enable_(true), do_dhcp_relay_(false), proxy_arp_mode_(PROXY_ARP_NONE),
+    vm_name_(vm_name), vm_project_uuid_(vm_project_uuid), vxlan_id_(0),
+    bridging_(false), layer3_forwarding_(true),
+    flood_unknown_unicast_(false), mac_set_(false),
+    ecmp_(false), ecmp6_(false), disable_policy_(false),
+    tx_vlan_id_(tx_vlan_id), rx_vlan_id_(rx_vlan_id), parent_(parent, this),
+    local_preference_(0), oper_dhcp_options_(),
+    cfg_igmp_enable_(false), igmp_enabled_(false),
+    mac_ip_learning_enable_(false), max_flows_(0),
+    mac_vm_binding_state_(new MacVmBindingState()),
+    nexthop_state_(new NextHopState()),
+    vrf_table_label_state_(new VrfTableLabelState()),
+    metadata_ip_state_(new MetaDataIpState()),
+    resolve_route_state_(new ResolveRouteState()),
+    interface_route_state_(new VmiRouteState()),
+    sg_list_(), tag_list_(),
+    floating_ip_list_(), alias_ip_list_(), service_vlan_list_(),
+    static_route_list_(), allowed_address_pair_list_(),
+    instance_ipv4_list_(true), instance_ipv6_list_(false), fat_flow_list_(),
+    vrf_assign_rule_list_(), device_type_(device_type),
+    vmi_type_(vmi_type), hbs_intf_type_(VmInterface::HBS_INTF_INVALID),
+    configurer_(0), subnet_(0),
+    subnet_plen_(0), ethernet_tag_(0), logical_interface_(nil_uuid()),
+    nova_ip_addr_(0), nova_ip6_addr_(), dhcp_addr_(0), metadata_ip_map_(),
+    hc_instance_set_(), service_health_check_ip_(), is_vn_qos_config_(false),
+    learning_enabled_(false), etree_leaf_(false), layer2_control_word_(false),
+    slo_list_(), forwarding_vrf_(NULL), vhostuser_mode_(vhostuser_mode),
+    is_left_si_(false),
+    service_mode_(VmInterface::SERVICE_MODE_ERROR),
+    vhostsocket_dir_(vhostsocket_dir),vhostsocket_filename_(vhostsocket_filename),
+    service_intf_type_("") {
+    metadata_ip_active_ = false;
+    metadata_l2_active_ = false;
+    ipv4_active_ = false;
+    ipv6_active_ = false;
+    l2_active_ = false;
+    flow_count_ = 0;
+}
+
 VmInterface::~VmInterface() {
     // Release metadata first to ensure metadata_ip_map_ is empty
     metadata_ip_state_.reset(NULL);
