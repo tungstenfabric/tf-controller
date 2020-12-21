@@ -40,6 +40,8 @@ import (
         "poll-retries"  : 5,
         "log-level"     : "4",
         "log-file"      : "/var/log/contrail/cni/opencontrail.log"
+        "vhost-mode"    : "client/server"
+        "vrouter-mode"  : "kernel/userspace"
     },
     "type": "contrail-k8s-cni"
 }
@@ -48,6 +50,10 @@ import (
 const CONTRAIL_CNI_NAME = "contrail-k8s-cni"
 
 const K8S_CLUSTER_NAME = "k8s"
+
+//Modes for vrouter "kernel/userspace" and vhost protocol "client/server"
+const VROUTER_DEFAULT_MODE = "kernel"
+const VHOST_DEFAULT_MODE = "client"
 
 // Container orchestrator modes
 const CNI_MODE_K8S = "k8s"
@@ -59,6 +65,7 @@ const META_PLUGIN = "multus"
 const VIF_TYPE_VETH = "veth"
 const VIF_TYPE_MACVLAN = "macvlan"
 const VIF_TYPE_ETH = "eth"
+const VIF_TYPE_VIRTIO = "virtio"
 
 // In case of macvlan, the container interfaces will run as sub-interface
 // to interface on host network-namespace. Name of the interface inside
@@ -88,6 +95,8 @@ type ContrailCni struct {
     MesosPort     string `json:"mesos-port"`
     LogFile       string `json:"log-file"`
     LogLevel      string `json:"log-level"`
+    VrouterMode   string `json:"vrouter-mode"`
+    VhostMode     string `json:"vhost-mode"`
     VRouter       VRouter
 }
 
@@ -117,8 +126,11 @@ func (cni *ContrailCni) Log() {
     log.Infof("NetNS : %s\n", cni.cniArgs.Netns)
     log.Infof("Container Ifname : %s\n", cni.cniArgs.IfName)
     log.Infof("Meta Plugin Call : %t\n", MetaPluginCall)
+    log.Infof("Vif Type : %s\n", cni.VifType)
     log.Infof("Network Name: %s\n", cni.NetworkName)
     log.Infof("MTU : %d\n", cni.Mtu)
+    log.Infof("VROUTER Mode : %s\n", cni.VrouterMode)
+    log.Infof("VHOST Mode : %s\n", cni.VhostMode)
     cni.VRouter.Log()
     log.Infof("%+v\n", cni)
 }
@@ -274,7 +286,8 @@ func Init(args *skel.CmdArgs) (*ContrailCni, error) {
      contrailCni := ContrailCni{ClusterName: K8S_CLUSTER_NAME,
         Mode: CNI_MODE_K8S, VifType: VIF_TYPE_VETH,
         VifParent: CONTRAIL_PARENT_INTERFACE, Mtu: cniIntf.CNI_MTU,
-        MetaPlugin: META_PLUGIN, LogLevel: LOG_LEVEL, LogFile: LOG_FILE}
+        MetaPlugin: META_PLUGIN, LogLevel: LOG_LEVEL, LogFile: LOG_FILE,
+        VrouterMode: VROUTER_DEFAULT_MODE, VhostMode: VHOST_DEFAULT_MODE }
     json_args := cniJson{ContrailCni: contrailCni}
     json_args.ContrailCni.loggingInit()
     var dataBytes []byte
@@ -305,6 +318,14 @@ func Init(args *skel.CmdArgs) (*ContrailCni, error) {
     json_args.ContrailCni.NetworkName = json_args.NetworkName
     json_args.ContrailCni.getPodInfo(args.Args)
 
+    //Error handling for configuration conflicts
+    if json_args.ContrailCni.VrouterMode == "kernel" {
+        json_args.ContrailCni.VhostMode = ""
+    }
+    if json_args.ContrailCni.VrouterMode == "userspace" {
+        json_args.ContrailCni.VifType = VIF_TYPE_VIRTIO
+    }
+
     // If CNI version is blank, set to "0.2.0"
     CNIVersion = json_args.CniVersion
     if CNIVersion == "" {
@@ -330,7 +351,8 @@ func (cni *ContrailCni) UpdateContainerUuid(containerUuid string) {
 }
 
 /*
- *  makeInterface- Method to intialize interface object of type VETh or MACVLAN
+ *  makeInterface - Method to intialize interface object of type
+ *  VETh or MACVLAN or Virtio
  */
 func (cni *ContrailCni) makeInterface(
     vlanId int, containerIntfName string) cniIntf.CniIntfMethods {
@@ -338,6 +360,12 @@ func (cni *ContrailCni) makeInterface(
         return cniIntf.CniIntfMethods(cniIntf.InitMacVlan(cni.VifParent,
             containerIntfName, cni.cniArgs.ContainerID, cni.ContainerUuid,
             cni.cniArgs.Netns, cni.Mtu, vlanId))
+    }
+
+    if cni.VifType == VIF_TYPE_VIRTIO {
+        return cniIntf.CniIntfMethods(cniIntf.InitVirtio(
+            containerIntfName, cni.cniArgs.ContainerID,
+            cni.ContainerUuid, cni.cniArgs.Netns, cni.Mtu))
     }
 
     return cniIntf.CniIntfMethods(cniIntf.InitVEth(
@@ -360,7 +388,11 @@ func (cni *ContrailCni) buildContainerIntfName(
     if MetaPluginCall && cni.cniArgs.IfName != "" {
         intfName = cni.cniArgs.IfName
     } else {
-        intfName = VIF_TYPE_ETH + strconv.Itoa(index)
+        if(cni.VifType == VIF_TYPE_VIRTIO){
+            intfName = VIF_TYPE_VIRTIO + strconv.Itoa(index)
+        }else{
+            intfName = VIF_TYPE_ETH + strconv.Itoa(index)
+        }
     }
     log.Infof("Built container interface name - %s", intfName)
     return intfName
@@ -391,9 +423,14 @@ func (cni *ContrailCni) createInterfaceAndUpdateVrouter(
         updateAgent = false
     }
 
+    //For non DPDK vif get will return "" string
+    sockDir  := intf.GetSockDir()
+    sockName := intf.GetSockName()
+
     err = cni.VRouter.Add(cni.ContainerName, cni.ContainerUuid,
         result.VnId, cni.cniArgs.ContainerID, cni.cniArgs.Netns,
-        containerIntfName, intf.GetHostIfName(), result.VmiUuid, updateAgent)
+        containerIntfName, intf.GetHostIfName(), result.VmiUuid, updateAgent,
+        cni.VhostMode, sockDir, sockName)
     if err != nil {
         log.Errorf("Error in Add to VRouter. Error %+v", err)
         return err
@@ -412,6 +449,30 @@ func (cni *ContrailCni) configureContainerInterface(
     typesResult := MakeCniResult(containerIntfName, &vRouterResult)
 
     // Configure the interface based on config received above
+    if cni.VifType == VIF_TYPE_VIRTIO {
+
+        //SockDir and SockFile are created already in Create()
+        podConfFile := containerInterface.GetSockDir() +
+                       containerInterface.GetSockName() + ".conf"
+
+        confData := []byte("k8s.v1.cni.cncf.io/networks-status=")
+        buff, jsonerr := json.Marshal(*typesResult)
+        if jsonerr != nil {
+            return nil,jsonerr
+        }
+        confData = append(confData, buff...)
+        confData = append(confData, []byte("\n"+
+                          "opencontrail.org/vhostSockFileName="+
+                          "\""+containerInterface.GetSockName()+"\""+"\n")...)
+
+        fileerr := ioutil.WriteFile(podConfFile, confData, 0644)
+        if fileerr != nil {
+            log.Errorf("Error creating Virtio Config file, Error %+v", fileerr)
+            return nil,fileerr
+        }
+        return typesResult, nil
+    }
+
     err := containerInterface.Configure(vRouterResult.Mac, typesResult)
     if err != nil {
         log.Errorf("Error configuring container interface. Error %+v", err)
@@ -544,7 +605,7 @@ func (cni *ContrailCni) CmdAdd() error {
                     validateNetwork = true
                 }
             } else if (networkName == "default") {
-                    validateNetwork = true
+                validateNetwork = true
             }
             if validateNetwork {
                 fname := cni.VRouter.makeFileName(result.VmiUuid)

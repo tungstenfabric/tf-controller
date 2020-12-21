@@ -29,6 +29,8 @@ const VROUTER_AGENT_IP = "127.0.0.1"
 const VROUTER_AGENT_PORT = 9091
 const VROUTER_POLL_TIMEOUT = 3
 const VROUTER_POLL_RETRIES = 20
+const VHOST_MODE_CLIENT = 0
+const VHOST_MODE_SERVER = 1
 
 //Directory containing configuration for the container
 const VROUTER_CONFIG_DIR = "/var/lib/contrail/ports/vm"
@@ -248,16 +250,29 @@ type contrailAddMsg struct {
     Namespace       string `json:"vm-namespace"`
     VnId            string `json:"vn-uuid"`
     VmiUuid         string `json:"vmi-uuid"`
+    VhostMode       int    `json:"vhostuser-mode"`
+    VhostSockDir    string `json:"vhostsocket-dir"`
+    VhostSockName   string `json:"vhostsocket-filename"`
 }
 
 // Make JSON for Add Message
 func makeMsg(containerName, containerUuid, containerId, containerNamespace,
-    containerIfName, hostIfName, vmiUuid, vnId string) []byte {
+    containerIfName, hostIfName, vmiUuid, vnId string,
+    vhostMode string, sockDir string, sockName string) []byte {
     t := time.Now()
+    //Convert vhost-mode string to uint8 0-client, 1-server
+    var mode int = VHOST_MODE_CLIENT
+    if vhostMode == "client" {
+       mode = VHOST_MODE_CLIENT
+    }else if vhostMode == "server"{
+       mode = VHOST_MODE_SERVER
+    }
+
     addMsg := contrailAddMsg{Time: t.String(), Vm: containerId,
         VmUuid: containerUuid, VmName: containerName, HostIfName: hostIfName,
         ContainerIfName: containerIfName, Namespace: containerNamespace,
-        VmiUuid: vmiUuid, VnId: vnId}
+        VmiUuid: vmiUuid, VnId: vnId, VhostMode : mode, VhostSockDir : sockDir,
+        VhostSockName : sockName}
 
     msg, err := json.MarshalIndent(addMsg, "", "\t")
     if err != nil {
@@ -315,7 +330,8 @@ func (vrouter *VRouter) addVmToAgent(addMsg []byte) error {
 /* Process add of a VM. Writes config file and send message to agent */
 func (vrouter *VRouter) Add(containerName, containerUuid, containerVn,
     containerId, containerNamespace, containerIfName,
-    hostIfName, vmiUuid string, updateAgent bool) error {
+    hostIfName, vmiUuid string, updateAgent bool,
+    vhostMode string, sockDir string, sockName string) error {
     vrouter.containerName = containerName
     vrouter.containerUuid = containerUuid
     vrouter.containerId = containerId
@@ -324,7 +340,8 @@ func (vrouter *VRouter) Add(containerName, containerUuid, containerVn,
 
     // Make Add Message structure
     addMsg := makeMsg(containerName, containerUuid, containerId,
-        containerNamespace, containerIfName, hostIfName, vmiUuid, containerVn)
+        containerNamespace, containerIfName, hostIfName, vmiUuid, containerVn,
+        vhostMode, sockDir, sockName)
     log.Infof("VRouter add message is %s", addMsg)
 
     // Store config to file for persistency
@@ -371,7 +388,7 @@ func (vrouter *VRouter) delVmFile(containerIfName string) (error, error) {
 
 func (vrouter *VRouter) delVmToAgent() error {
     delMsg := makeMsg("", vrouter.containerUuid, vrouter.containerId,
-        "", "", "", "", "")
+        "", "", "", "", "", "", "", "")
     resp, err := vrouter.doOp("DELETE", "/vm", vrouter.containerUuid, "", delMsg)
     if err != nil {
         log.Errorf("Failed HTTP DELETE operation")

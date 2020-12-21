@@ -41,6 +41,8 @@ type CniIntfMethods interface {
     Delete() error
     Configure(mac string, result *current.Result) error
     GetHostIfName() string
+    GetSockName() string
+    GetSockDir() string
 }
 
 // Base definition for CniIntf

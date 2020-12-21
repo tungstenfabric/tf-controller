@@ -179,6 +179,14 @@ func (intf VEth) GetHostIfName() string {
     return intf.HostIfName
 }
 
+func (intf VEth) GetSockName() string {
+    return ""
+}
+
+func (intf VEth) GetSockDir() string {
+    return ""
+}
+
 func (intf VEth) Log() {
     log.Infof("%+v", intf)
 }

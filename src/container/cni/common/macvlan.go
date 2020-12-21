@@ -299,6 +299,14 @@ func (intf MacVlan) GetHostIfName() string {
     return intf.ParentIfName
 }
 
+func (intf MacVlan) GetSockName() string {
+    return ""
+}
+
+func (intf MacVlan) GetSockDir() string {
+    return ""
+}
+
 func (intf MacVlan) Log() {
     log.Infof("%+v", intf)
 }
