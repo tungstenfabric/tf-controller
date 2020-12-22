@@ -177,6 +177,11 @@ class JobLogUtils(object):
         args.collectors = config_args.get('collectors')
         args.host_ip = config_args.get('host_ip')
         args.zk_server_ip = config_args.get('zk_server_ip')
+        args.zookeeper_ssl_enable = config_args.get('zookeeper_ssl_enable')
+        args.zookeeper_ssl_keyfile = config_args.get('zookeeper_ssl_keyfile')
+        args.zookeeper_ssl_certificate = config_args.get(
+            'zookeeper_ssl_certificate')
+        args.zookeeper_ssl_ca_cert = config_args.get('zookeeper_ssl_ca_cert')
         args.cluster_id = config_args.get('cluster_id')
         if isinstance(args.collectors, str):
             args.collectors = args.collectors.split()
