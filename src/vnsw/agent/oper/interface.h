@@ -155,7 +155,7 @@ public:
 
 protected:
     void SetItfSandeshData(ItfSandeshData &data) const;
-    virtual void ObtainOsSpecificParams(const std::string &name);
+    virtual void ObtainOsSpecificParams(const std::string &name, Agent *agent);
 
     Type type_;
     boost::uuids::uuid uuid_;
