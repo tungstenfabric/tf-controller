@@ -507,8 +507,10 @@ void VnswInterfaceListenerBase::HandleAddressEvent(const Event *event) {
         dep_init_reqd = true;
 
     // Update vhost ip-address and enqueue db request
-    agent_->set_router_id(event->addr_);
-    agent_->set_vhost_prefix_len(event->plen_);
+    if (agent_->is_l3mh() == false) {
+        agent_->set_router_id(event->addr_);
+        agent_->set_vhost_prefix_len(event->plen_);
+    }
 
     agent_->interface_table()->CreateVhostReq();
 

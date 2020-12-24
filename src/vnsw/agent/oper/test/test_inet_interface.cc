@@ -110,7 +110,7 @@ static void AddInterface(InetInterfaceTest *t, const char *ifname,
     InetInterface::CreateReq(t->interface_table_, ifname, sub_type, vrf,
                              Ip4Address::from_string(ip), plen,
                              Ip4Address::from_string(gw),
-                             client->param()->eth_port(), "TEST",
+                             client->param()->eth_port_list()[0], "TEST",
                              Interface::TRANSPORT_ETHERNET);
 }
 
@@ -327,7 +327,7 @@ static void RestoreInetConfig(Agent *agent) {
     VnListType vn_list;
     vn_list.insert(agent->fabric_vrf_name());
     table->AddGatewayRouteReq(agent->local_peer(), agent->fabric_vrf_name(),
-                           Ip4Address(0), 0, param->vhost_gw(),
+                           Ip4Address(0), 0, param->gateway_list(),
                            vn_list,
                            MplsTable::kInvalidLabel, SecurityGroupList(),
                            TagList(), CommunityList(), true);

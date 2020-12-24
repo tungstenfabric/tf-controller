@@ -267,7 +267,7 @@ bool AgentUtXmlPacketUtils::MakePacket(Agent *agent, PktGen *pkt) {
     if (tunnel_type != TunnelType::INVALID) {
         const VmInterface *vhost = static_cast<const VmInterface *>
             (agent->vhost_interface());
-        if_id = vhost->parent()->id();
+        if_id = vhost->parent_list()[0]->id();
     }
 
     int vxlan_id = 0;
