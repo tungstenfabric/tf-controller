@@ -675,7 +675,7 @@ public:
     struct StaticRoute : ListEntry, VmInterfaceState {
         StaticRoute();
         StaticRoute(const StaticRoute &rhs);
-        StaticRoute(const IpAddress &addr, uint32_t plen, const IpAddress &gw,
+        StaticRoute(const IpAddress &addr, uint32_t plen, const AddressList &gw_list,
                     const CommunityList &communities);
         virtual ~StaticRoute();
 
@@ -691,7 +691,7 @@ public:
         mutable const VrfEntry *vrf_;
         IpAddress  addr_;
         uint32_t    plen_;
-        IpAddress  gw_;
+        AddressList gw_list_;
         CommunityList communities_;
     };
     typedef std::set<StaticRoute, StaticRoute> StaticRouteSet;
@@ -1571,6 +1571,8 @@ public:
                                 const boost::uuids::uuid &uuid);
     void update_flow_count(int val) const;
     uint32_t flow_count() const { return flow_count_; }
+    InterfaceList parent_list() const { return parent_list_; }
+
 
 private:
     friend struct VmInterfaceConfigData;
@@ -1585,7 +1587,7 @@ private:
     friend struct VmiRouteState;
     friend struct VmInterfaceLearntMacIpData;
 
-    virtual void ObtainOsSpecificParams(const std::string &name);
+    virtual void ObtainOsSpecificParams(const std::string &name, Agent *agent);
 
     bool IsMetaDataL2Active() const;
     bool IsMetaDataIPActive() const;
@@ -1783,6 +1785,7 @@ private:
     //In case Vhost interface, uuid_ is stored here
     boost::uuids::uuid vmi_cfg_uuid_;
     std::string service_intf_type_;
+    InterfaceList parent_list_;
     DISALLOW_COPY_AND_ASSIGN(VmInterface);
 };
 
@@ -1971,6 +1974,8 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     boost::uuids::uuid si_other_end_vmi_;
     boost::uuids::uuid vmi_cfg_uuid_;
     std::string service_intf_type_;
+    // Parent physical-interface-list. Used in case of l3mh Vhost0
+    std::vector<std::string> physical_interface_list_;
 };
 
 // Definition for structures when request queued from Nova
