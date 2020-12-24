@@ -117,7 +117,7 @@ public:
     }
 
     std::size_t fabric_interface_id() {
-        PhysicalInterfaceKey key(Agent::GetInstance()->params()->eth_port().c_str());
+        PhysicalInterfaceKey key(Agent::GetInstance()->params()->eth_port_list()[0].c_str());
         Interface *intf = static_cast<Interface *>
             (Agent::GetInstance()->interface_table()->FindActiveEntry(&key));
         if (intf)
