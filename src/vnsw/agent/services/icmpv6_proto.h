@@ -147,6 +147,7 @@ public:
 
     void AddUnsolNaEntry(NdpKey &key);
     void DeleteUnsolNaEntry(NdpEntry *entry);
+    void HandlePathPreferenceNA(const VrfEntry*, uint32_t, IpAddress);
     NdpEntry* FindUnsolNaEntry(NdpKey &key);
     NdpEntry* UnsolNaEntry (const NdpKey &key, const Interface *intf);
     Icmpv6Proto::UnsolNaIterator
@@ -250,6 +251,15 @@ private:
     DISALLOW_COPY_AND_ASSIGN(Icmpv6VrfState);
 };
 
+struct InterfaceIcmpv6PathPreferenceInfo {
+    uint32_t ns_try_count;
+    uint32_t ns_send_count;
+    uint32_t ns_retry_count;
+    InterfaceIcmpv6PathPreferenceInfo() :ns_try_count(0), ns_send_count(0),
+        ns_retry_count(0) {
+    }
+};
+
 class Icmpv6PathPreferenceState {
 public:
     static const uint32_t kMaxRetry = 30 * 5; //retries upto 5 minutes,
@@ -258,7 +268,9 @@ public:
 
     static const uint32_t kTimeoutMultiplier = 5;
 
-    typedef std::map<uint32_t, uint32_t> WaitForTrafficIntfMap;
+    static const uint32_t kNSTryCount = 9;
+
+    typedef std::map<uint32_t, InterfaceIcmpv6PathPreferenceInfo> WaitForTrafficIntfMap;
     typedef std::set<uint32_t> NDTransmittedIntfMap;
 
     Icmpv6PathPreferenceState(Icmpv6VrfState *vrf_state, uint32_t vrf_id,
@@ -269,7 +281,7 @@ public:
                             NDTransmittedIntfMap &nd_transmitted_map);
     void SendNeighborSolicitForAllIntf(const AgentRoute *route);
     void StartTimer();
-
+    void HandleNA(uint32_t itf);
     Icmpv6VrfState* vrf_state() {
         return vrf_state_;
     }
@@ -277,6 +289,8 @@ public:
     const IpAddress& ip() const {
         return vm_ip_;
     }
+
+    MacAddress mac(void) const { return mac_; }
 
     bool IntfPresentInIpMap(uint32_t id) {
         if (l3_wait_for_traffic_map_.find(id) ==
@@ -295,11 +309,11 @@ public:
     }
 
     uint32_t IntfRetryCountInIpMap(uint32_t id) {
-        return l3_wait_for_traffic_map_[id];
+        return l3_wait_for_traffic_map_[id].ns_retry_count;
     }
 
     uint32_t IntfRetryCountInEvpnMap(uint32_t id) {
-        return evpn_wait_for_traffic_map_[id];
+        return evpn_wait_for_traffic_map_[id].ns_retry_count;
     }
 
 private:
@@ -309,6 +323,7 @@ private:
     Timer *ns_req_timer_;
     uint32_t vrf_id_;
     IpAddress vm_ip_;
+    MacAddress mac_;
     uint8_t plen_;
     IpAddress svc_ip_;
     WaitForTrafficIntfMap l3_wait_for_traffic_map_;

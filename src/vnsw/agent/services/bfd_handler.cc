@@ -104,13 +104,15 @@ void BfdHandler::SendPacket(
                       htonl(remote_endpoint.address().to_v4().to_ulong()),
                       remote_endpoint.port());
     } else {
+        pkt_info_->ip6 = (struct ip6_hdr *)(ptr + len);
         Ip6Hdr((ip6_hdr *)(ptr + len),
-               sizeof(struct ip6_hdr) + sizeof(udphdr) + packet_length,
+               sizeof(udphdr) + packet_length,
                IPPROTO_UDP, 64,
                local_endpoint.address().to_v6().to_bytes().data(),
                remote_endpoint.address().to_v6().to_bytes().data());
         len += sizeof(ip6_hdr);
         memcpy(ptr + len + sizeof(udphdr), data, packet_length);
+        pkt_info_->transp.udp = (struct udphdr *)(ptr + len);
         UdpHdr((udphdr *)(ptr + len), sizeof(udphdr) + packet_length,
                local_endpoint.address().to_v6().to_bytes().data(),
                local_endpoint.port(),
