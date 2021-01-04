@@ -236,6 +236,13 @@ class DMUtils(object):
     # end make_ip_term_name
 
     @staticmethod
+    def make_ip_pool_name(ip):
+        if '/' in ip:
+            ip = ip.split("/")[0]
+        return 'pool_' + ip.replace('.', '_')
+    # end make_ip_pool_name
+
+    @staticmethod
     def make_vrf_term_name(ri_name):
         ri_prefix = ri_name[:DMUtils.MAX_FILTER_TERM_NAME_LENGTH -
                             len('term-')]
