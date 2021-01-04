@@ -148,6 +148,9 @@ bool Icmpv6Handler::HandlePacket() {
                 agent()->oper_db()->route_preference_module()->
                     EnqueueTrafficSeen(addr, 128, itf->id(),
                                        itf->vrf()->vrf_id(), mac);
+
+                icmpv6_proto->HandlePathPreferenceNA(itf->vrf(), itf->id(),
+                                                    IpAddress(addr));
                 NdpKey key(addr, itf->vrf());
                 NdpEntry *entry = icmpv6_proto->FindNdpEntry(key);
                 if (entry) {

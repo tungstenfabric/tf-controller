@@ -8,6 +8,7 @@
 #include "pkt/pkt_init.h"
 #include <oper/route_common.h>
 #include <services/icmpv6_proto.h>
+#include "mac_learning/mac_learning_proto.h"
 
 Icmpv6Proto::Icmpv6Proto(Agent *agent, boost::asio::io_service &io) :
     Proto(agent, "Agent::Services", PktHandler::ICMPV6, io) {
@@ -373,6 +374,41 @@ Icmpv6PathPreferenceState* Icmpv6VrfState::Locate(const IpAddress &ip) {
     return ptr;
 }
 
+void Icmpv6PathPreferenceState::HandleNA(uint32_t itf) {
+    WaitForTrafficIntfMap::iterator it = l3_wait_for_traffic_map_.find(itf);
+    if (it == l3_wait_for_traffic_map_.end()) {
+        return;
+    }
+    InterfaceIcmpv6PathPreferenceInfo &data = it->second;
+
+    // resetting ns_try_count as interface sent NA
+    data.ns_try_count = 0;
+
+}
+
+void Icmpv6Proto::HandlePathPreferenceNA(const VrfEntry *vrf, uint32_t itf,
+                                            IpAddress sip) {
+    if (!vrf) {
+        return;
+    }
+    InetUnicastRouteEntry *rt = vrf->GetUcRoute(sip);
+    if (!rt) {
+        return;
+    }
+
+    Icmpv6VrfState *state = static_cast<Icmpv6VrfState *>
+        (vrf->GetState(vrf->get_table_partition()->parent(),
+                       vrf_table_listener_id_));
+    if (!state) {
+        return;
+    }
+    Icmpv6PathPreferenceState *pstate = state->Get(sip);
+    if (!pstate) {
+        return;
+    }
+    pstate->HandleNA(itf);
+}
+
 void Icmpv6VrfState::Erase(const IpAddress &ip) {
     icmpv6_path_preference_map_.erase(ip);
 }
@@ -449,22 +485,44 @@ bool Icmpv6PathPreferenceState::SendNeighborSolicit(WaitForTrafficIntfMap
         if (!vm_intf) {
             continue;
         }
+        InterfaceIcmpv6PathPreferenceInfo &data = it->second;
         bool inserted = nd_transmitted_map.insert(it->first).second;
-        it->second++;
+        ++data.ns_retry_count;
         if (inserted == false) {
             continue;
         }
+
+        MacAddress mil_mac = vrf_state_->agent()->mac_learning_proto()->
+                        GetMacIpLearningTable()->GetPairedMacAddress(
+                                vm_intf->vrf_id(), ip());
+        if (mil_mac != MacAddress()) {
+            ++data.ns_try_count;
+            if (data.ns_try_count == kNSTryCount) {
+                IpAddress ip = vm_ip_;
+                MacAddress mac = mil_mac;
+                vrf_state_->agent()->mac_learning_proto()->
+                        GetMacIpLearningTable()->MacIpEntryUnreachable(
+                                vm_intf->vrf_id(), ip, mac);
+                return true;
+            }
+        }
+
         Ip6Address src_addr;
         if (svc_ip_.is_unspecified() == false && svc_ip_.is_v6())
             src_addr = svc_ip_.to_v6();
         handler.SendNeighborSolicit(src_addr, vm_ip_.to_v6(), vm_intf, vrf_id_);
+
         vrf_state_->icmp_proto()->IncrementStatsNeighborSolicit(vm_intf);
+        ++data.ns_send_count;
 
         // reduce the frequency of NS requests after some tries
-        if (it->second >= kMaxRetry) {
+        if (data.ns_send_count >= kMaxRetry) {
+            if ((mac() != MacAddress()) && (mac() != vm_intf->vm_mac())) {
+                ns_req_timer_->Reschedule(5000);
+            } else if (vm_intf->vmi_type() != VmInterface::REMOTE_VM) {
             // change frequency only if not in gateway mode with remote VMIs
-            if (vm_intf->vmi_type() != VmInterface::REMOTE_VM)
                 ns_req_timer_->Reschedule(kTimeout * kTimeoutMultiplier);
+            }
         }
 
         ret = true;
@@ -568,7 +626,8 @@ void Icmpv6PathPreferenceState::SendNeighborSolicitForAllIntf
             WaitForTrafficIntfMap::const_iterator wait_for_traffic_it =
                 wait_for_traffic_map.find(intf_id);
             if (wait_for_traffic_it == wait_for_traffic_map.end()) {
-                new_wait_for_traffic_map.insert(std::make_pair(intf_id, 0));
+                InterfaceIcmpv6PathPreferenceInfo data;
+                new_wait_for_traffic_map.insert(std::make_pair(intf_id, data));
             } else {
                 new_wait_for_traffic_map.insert(std::make_pair(intf_id,
                     wait_for_traffic_it->second));
