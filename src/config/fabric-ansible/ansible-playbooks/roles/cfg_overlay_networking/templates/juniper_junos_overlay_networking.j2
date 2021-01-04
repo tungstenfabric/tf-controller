@@ -4,7 +4,7 @@ This template is required to support the old workflow and retain the dc-gateway 
 {% set sys_config = device_abstract_config.get('system', None) %}
 {% set sys_roles = sys_config.get('routing_bridging_roles', []) %}
 {% if 'DC-Gateway' in sys_roles or 'DCI-Gateway' in sys_roles %}
-{%     set ns = namespace(irb_interface_list= []) %}
+{%     set ns = namespace(irb_interface_list= [], public_network='no') %}
 {# irb_interface_list maintains the list of all the irb interfaces associated with internal vns, which is generated from 
 lr(logical routers marked as public) workflow for DC-gateway. Later interfaces in the l3 routing-instance of public VN 
 are checked against irb_interface list for match. If there is a match, it implies that lr workflow is followed and no
@@ -24,7 +24,6 @@ and this template generates configs to extend VN to the box.#}
 {%             endfor %}
 {%         endif %}
 {%     endfor%}
-{%     set ns = namespace(public_network='no') %}
 {%     for bgp_elem in device_abstract_config.get('features', {}).get('overlay-bgp',{}).get('bgp', []) %}
 {%         set families = bgp_elem.get('families', []) %}
 {%         if 'evpn' in families %}
