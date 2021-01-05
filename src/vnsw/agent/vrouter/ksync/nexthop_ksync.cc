@@ -59,7 +59,10 @@ NHKSyncEntry::NHKSyncEntry(NHKSyncObject *obj, const NHKSyncEntry *entry,
     layer2_control_word_(entry->layer2_control_word_),
     crypt_(entry->crypt_), crypt_path_available_(entry->crypt_path_available_),
     crypt_interface_(entry->crypt_interface_),
-    transport_tunnel_type_(entry->transport_tunnel_type_) {
+    transport_tunnel_type_(entry->transport_tunnel_type_),
+    interface_list_(entry->interface_list_),
+    encap_valid_list_(entry->encap_valid_list_),
+    dmac_list_(entry->dmac_list_) {
     }
 
 NHKSyncEntry::NHKSyncEntry(NHKSyncObject *obj, const NextHop *nh) :
@@ -72,7 +75,8 @@ NHKSyncEntry::NHKSyncEntry(NHKSyncObject *obj, const NextHop *nh) :
     bridge_nh_(false), flood_unknown_unicast_(false),
     learning_enabled_(nh->learning_enabled()), need_pbb_tunnel_(false),
     etree_leaf_ (false), layer2_control_word_(false),
-    crypt_(false), crypt_path_available_(false), crypt_interface_(NULL) {
+    crypt_(false), crypt_path_available_(false), crypt_interface_(NULL),
+    interface_list_(), encap_valid_list_(), dmac_list_() {
 
     switch (type_) {
     case NextHop::ARP: {
@@ -705,6 +709,31 @@ bool NHKSyncEntry::Sync(DBEntry *e) {
             InterfaceKSyncEntry if_ksync(interface_object, oper_intf);
             interface = interface_object->GetReference(&if_ksync);
             dmac = oper_intf->mac();
+        } else if (active_nh->GetType() == NextHop::COMPOSITE) {
+            const CompositeNH *cnh =
+                static_cast<const CompositeNH *>(active_nh);
+            interface_list_.clear();
+            encap_valid_list_.clear();
+            dmac_list_.clear();
+            ComponentNHList::const_iterator component_nh_it =
+                cnh->begin();
+            while (component_nh_it != cnh->end()) {
+                const NextHop *component_nh = NULL;
+                if (*component_nh_it) {
+                    component_nh =  (*component_nh_it)->nh();
+                    if (component_nh->GetType() == NextHop::ARP) {
+                        const ArpNH *arp_nh = dynamic_cast<const ArpNH*>(component_nh);
+                        InterfaceKSyncObject *interface_object =
+                            ksync_obj_->ksync()->interface_ksync_obj();
+                        InterfaceKSyncEntry if_ksync(interface_object, arp_nh->GetInterface());
+                        interface_list_.push_back(interface_object->GetReference(&if_ksync));
+                        encap_valid_list_.push_back(arp_nh->IsValid());
+                        dmac_list_.push_back(arp_nh->GetMac());
+                    }
+                }
+                component_nh_it++;
+            }
+
         }
 
         bool crypt = tun_nh->GetCrypt();
@@ -931,6 +960,9 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
     std::vector<int8_t> encap;
     InterfaceKSyncEntry *if_ksync = NULL;
     InterfaceKSyncEntry *crypt_if_ksync = NULL;
+    std::vector<KSyncEntryPtr> if_ksync_list;
+    std::vector<int32_t> nhr_encap_valid_list;
+    std::vector<int32_t> intf_id_list;
     Agent *agent = ksync_obj_->ksync()->agent();
 
     encoder.set_h_op(op);
@@ -972,6 +1004,8 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
     }
 
     if_ksync = interface();
+    if_ksync_list = interface_list();
+    nhr_encap_valid_list = encap_valid_list();
     crypt_if_ksync = crypt_interface();
 
     switch (type_) {
@@ -983,6 +1017,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             if (if_ksync) {
                 intf_id = if_ksync->interface_id();
             }
+            //encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
             encoder.set_nhr_encap_oif_id(intf_id);
             encoder.set_nhr_encap_family(ETHERTYPE_ARP);
 
@@ -1009,17 +1044,31 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             encoder.set_nhr_tun_dip(htonl(dip_.to_v4().to_ulong()));
             encoder.set_nhr_encap_family(ETHERTYPE_ARP);
 
-            if (if_ksync) {
-                intf_id = if_ksync->interface_id();
+            if (if_ksync_list.empty() == false) {
+                //flags |= NH_FLAG_TUNNEL_UNDERLAY_ECMP;
+                uint32_t encap_len = 0;
+                for (size_t i = 0; i < if_ksync_list.size(); ++i) {
+                    InterfaceKSyncEntry *if_ksync_entry =
+                        static_cast<InterfaceKSyncEntry *>(if_ksync_list[i].get());
+                    intf_id_list.push_back(if_ksync_entry->interface_id());
+                    encap_len = encap.size();
+                    SetEncap(if_ksync_entry, encap, i);
+                    encap_len = encap.size() - encap_len;
+                }
+                encoder.set_nhr_encap_len(encap_len);
+            } else {
+                SetEncap(if_ksync, encap);
+                intf_id_list.push_back(0);
             }
-            encoder.set_nhr_encap_oif_id(intf_id);
+            //encoder.set_nhr_encap_oif_id(intf_id_list);
+            encoder.set_nhr_encap_oif_id(intf_id_list[0]);
+            //encoder.set_nhr_encap_valid(nhr_encap_valid_list);
             encoder.set_nhr_crypt_traffic(crypt_);
             encoder.set_nhr_crypt_path_available(crypt_path_available_);
             if (crypt_if_ksync && crypt_path_available_) {
                 crypt_intf_id = crypt_if_ksync->interface_id();
             }
             encoder.set_nhr_encap_crypt_oif_id(crypt_intf_id);
-            SetEncap(if_ksync,encap);
             encoder.set_nhr_encap(encap);
             if (tunnel_type_.GetType() == TunnelType::MPLS_UDP) {
                 flags |= NH_FLAG_TUNNEL_UDP_MPLS;
@@ -1031,7 +1080,8 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 //reusing tunnel NH as it provides most of
                 //functionality now
                 encoder.set_nhr_type(NH_ENCAP);
-                encoder.set_nhr_encap_oif_id(intf_id);
+                //encoder.set_nhr_encap_oif_id(intf_id_list);
+                encoder.set_nhr_encap_oif_id(intf_id_list[0]);
                 encoder.set_nhr_encap_family(ETHERTYPE_ARP);
                 encoder.set_nhr_tun_sip(0);
                 encoder.set_nhr_tun_dip(0);
@@ -1080,6 +1130,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             if (if_ksync) {
                 intf_id = if_ksync->interface_id();
             }
+            //encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
             encoder.set_nhr_encap_oif_id(intf_id);
             SetEncap(NULL,encap);
             encoder.set_nhr_encap(encap);
@@ -1102,6 +1153,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 flags |= NH_FLAG_RELAXED_POLICY;
             }
             intf_id = if_ksync->interface_id();
+            //encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
             encoder.set_nhr_encap_oif_id(intf_id);
             encoder.set_nhr_type(NH_RCV);
             break;
@@ -1251,6 +1303,8 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             assert(0);
     }
     encoder.set_nhr_flags(flags);
+    if (type_ == NextHop::TUNNEL)
+        std::cout << encoder.ToString() << std::endl;
     int error = 0;
     encode_len = encoder.WriteBinary((uint8_t *)buf, buf_len, &error);
     assert(error == 0);
@@ -1525,15 +1579,22 @@ static bool NeedRewrite(NHKSyncEntry *entry, InterfaceKSyncEntry *if_ksync) {
 }
 
 void NHKSyncEntry::SetEncap(InterfaceKSyncEntry *if_ksync,
-                            std::vector<int8_t> &encap) {
+                            std::vector<int8_t> &encap,
+                            const int32_t index) {
 
     if (NeedRewrite(this, if_ksync) == false)
         return;
 
     const MacAddress *smac = &MacAddress::ZeroMac();
     /* DMAC encode */
-    for (size_t i = 0 ; i < dmac_.size(); i++) {
-        encap.push_back(dmac_[i]);
+    if (type_ == NextHop::TUNNEL && index != -1) {
+        for (size_t i = 0; i < dmac_list_[index].size(); i++) {
+            encap.push_back(dmac_list_[index][i]);
+        }
+    } else {
+        for (size_t i = 0 ; i < dmac_.size(); i++) {
+            encap.push_back(dmac_[i]);
+        }
     }
     /* SMAC encode */
     if (type_ == NextHop::VLAN) {
