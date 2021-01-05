@@ -35,8 +35,9 @@ public:
     const VrfEntry *GetVrf() const {return vrf_.get();};
     const Ip4Address *GetSip() const {return &sip_;};
     const Ip4Address *GetDip() const {return &dip_;};
-    const AgentRoute *GetRt() const {return arp_rt_.get();};
-    const MacAddress *GetDmac() const {return &dmac_;}
+    const AgentRoute *GetRt() const {return tunnel_dst_rt_;};
+    const MacAddress *GetDmac() const {return &(encap_list_[0]->dmac_);}
+    const bool &IsEncapValid(const uint32_t &i) const {return encap_list_[i]->valid_;}
     const MacAddress &rewrite_dmac() const {return rewrite_dmac_;}
     const TunnelType &GetTunnelType() const {return tunnel_type_;};
     const Interface *GetCryptInterface() const {return crypt_interface_.get();};
@@ -56,14 +57,24 @@ public:
         return false;
     }
     virtual bool NeedMplsLabel() { return false; }
+
+    struct EncapData {
+        EncapData(NextHop *nh, InterfaceConstRef intf) : arp_rt_(nh), interface_(intf), valid_(false) {}
+        DependencyRef<NextHop, AgentRoute> arp_rt_;
+        InterfaceConstRef interface_;
+        MacAddress dmac_;
+        bool valid_;
+    };
+    typedef boost::shared_ptr<EncapData> EncapDataPtr;
+    typedef std::vector<EncapDataPtr> EncapDataList;
+
 protected:
     VrfEntryRef vrf_;
     Ip4Address sip_;
     Ip4Address dip_;
     TunnelType tunnel_type_;
-    DependencyRef<NextHop, AgentRoute> arp_rt_;
-    InterfaceConstRef interface_;
-    MacAddress dmac_;
+    AgentRoute* tunnel_dst_rt_;
+    EncapDataList encap_list_;
     bool crypt_;
     bool crypt_tunnel_available_;
     InterfaceConstRef crypt_interface_;

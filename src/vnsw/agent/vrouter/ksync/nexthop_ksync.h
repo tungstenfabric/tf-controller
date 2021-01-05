@@ -20,6 +20,7 @@
 #include "vr_nexthop.h"
 
 class NHKSyncObject;
+typedef std::vector<InterfaceKSyncEntry> InterfaceKSyncEntryList;
 
 class NHKSyncEntry : public KSyncNetlinkDBEntry {
 public:
@@ -33,6 +34,12 @@ public:
     NextHop::Type type() const {return type_;}
     InterfaceKSyncEntry *interface() const {
         return static_cast<InterfaceKSyncEntry *>(interface_.get());
+    }
+    std::vector<KSyncEntryPtr> interface_list() const {
+        return interface_list_;
+    }
+    std::vector<int32_t> encap_valid_list() const {
+        return encap_valid_list_;
     }
     InterfaceKSyncEntry *crypt_interface() const {
         return static_cast<InterfaceKSyncEntry *>(crypt_interface_.get());
@@ -124,6 +131,8 @@ private:
     bool crypt_path_available_;
     KSyncEntryPtr crypt_interface_;
     TunnelType::Type transport_tunnel_type_;
+    std::vector<KSyncEntryPtr> interface_list_;
+    std::vector<int32_t> encap_valid_list_;
     DISALLOW_COPY_AND_ASSIGN(NHKSyncEntry);
 };
 
