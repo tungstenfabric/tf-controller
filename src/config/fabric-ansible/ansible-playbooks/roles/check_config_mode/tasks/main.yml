@@ -31,11 +31,12 @@
         retry_no: "{{(JUNOS_COMMIT_TIMEOUT/30) | int}}"
 
     - name: Invoke the retry logic for "{{30*retry_no}}" sec when the command has failed
-      include_tasks: "do_until_loop.yml"
+      include_tasks: "../../../do_until_loop.yml"
       vars:
         count: 1
         retries: "{{retry_no}}"
         delay: 30
+        fail_message: "Timed out while waiting for config to be committed."
       when: "'failed' in execute_command_resp and execute_command_resp.failed == true"
 
     - name: Update job log with percentage
