@@ -15,4 +15,8 @@
 
 - name: setting task file to juniper.yml
   set_fact:
-    task_file: "juniper.yml"
+    task_file: "roles/check_config_mode/tasks/juniper.yml"
+
+- name: set loop_condition
+  set_fact:
+    loop_condition: "'failed' in execute_command_resp and execute_command_resp.failed == true"

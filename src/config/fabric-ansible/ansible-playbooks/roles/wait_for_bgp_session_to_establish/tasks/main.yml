@@ -16,11 +16,12 @@
       when: p.stat.exists == False
 
     - name: Execute commands from template in a do until loop
-      include_tasks: "do_until_loop.yml"
+      include_tasks: "../../../do_until_loop.yml"
       vars:
         count: 1
         retries: 24
         delay: 25
+        fail_message: "Timed out while waiting for bgp sessions to get established."
 
   rescue:
     - name: Perform the necessary error handling while trying to execute command
