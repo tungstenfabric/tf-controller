@@ -1280,6 +1280,7 @@ class DatabaseManager(object):
 
         back_refs_to_remove = {}
         errors = []
+        rt_ri_backref_heals = []
         for fq_name_uuid_str, _ in fq_name_table.xget('route_target'):
             fq_name_str, _, uuid = fq_name_uuid_str.rpartition(':')
             try:
@@ -1458,18 +1459,17 @@ class DatabaseManager(object):
                             # TODO(ethuleau): check import and export
                             ri_uuids.remove(vmi_ri_uuid)
                         except ValueError:
-                            # TODO(ethuleau): propose a heal method to add
-                            #                 missing RI back-refs
                             msg = ("RT %s(%s) has no back-ref to the RI "
                                    "pointed by LR's %s(%s) VMI %s" %
                                    (fq_name_str, uuid, lr_fq_name, lr_uuid,
                                     vmi_uuid))
+                            rt_ri_backref_heals.append((uuid, fq_name_str, vmi_ri_uuid))
                             self._logger.warning(msg)
                             errors.append(RTbackrefError(msg))
             if ri_uuids:
                 back_refs_to_remove[(fq_name_str, uuid)] = ri_uuids
 
-        return errors, back_refs_to_remove
+        return errors, back_refs_to_remove, rt_ri_backref_heals
 
     def audit_aggregated_ethernet_id(self):
         logger = self._logger
@@ -2084,7 +2084,7 @@ class DatabaseChecker(DatabaseManager):
 
     @checker
     def check_route_targets_routing_instance_backrefs(self):
-        errors, back_refs_to_remove =\
+        errors, back_refs_to_remove, _ =\
             self.audit_route_targets_routing_instance_backrefs()
         for (rt_fq_name_str, rt_uuid), ri_uuids in list(back_refs_to_remove.items()):
             msg = ("Extra RI back-ref(s) %s from RT %s(%s)" %
@@ -2841,7 +2841,7 @@ class DatabaseCleaner(DatabaseManager):
     def clean_route_targets_routing_instance_backrefs(self):
         uuid_table = self._cf_dict['obj_uuid_table']
 
-        errors, back_refs_to_remove =\
+        errors, back_refs_to_remove, _ =\
             self.audit_route_targets_routing_instance_backrefs()
         for (rt_fq_name_str, rt_uuid), ri_uuids in list(back_refs_to_remove.items()):
             if not self._args.execute:
@@ -3008,6 +3008,35 @@ class DatabaseHealer(DatabaseManager):
     def heal_back_ref_index(self):
         return []
     # end heal_back_ref_index
+
+    @healer
+    def heal_lr_vmi_ri_rt_refs(self):
+        """Heal method to add missing RT ref to RI and RI backref
+        to RT."""
+        logger = self._logger
+        ret_errors = []
+        obj_uuid_table = self._cf_dict['obj_uuid_table']
+        _, _, rt_ri_ref_list = self.audit_route_targets_routing_instance_backrefs()
+        bch = obj_uuid_table.batch()
+        for rt_uuid, rt_fq_name_str, ri_uuid in rt_ri_ref_list:
+            ri_obj = obj_uuid_table.xget(ri_uuid)
+            rt_ref_col_name =  'ref:route_target:%s' % (rt_uuid)
+            ri_val_dict  = {"attr": {"import_export": "import"}}
+            rt_col_val = {rt_ref_col_name:json.dumps(ri_val_dict)}
+            ri_rt_backref_col = 'backref:routing_instance:%s' % (ri_uuid)
+            rt_val_dict = {ri_rt_backref_col:json.dumps(ri_val_dict)}
+            if self._args.execute:
+                logger.info("Adding RT(%s) ref to RI(%s)" % (rt_uuid, ri_uuid))
+                bch.insert(ri_uuid, rt_col_val)
+                logger.info("Adding RI(%s) backref to RT(%s)" %
+                            (ri_uuid, rt_uuid))
+                bch.insert(rt_uuid, rt_val_dict)
+            else:
+                logger.info("Would add RT(%s) ref to RI(%s)" %
+                            (rt_uuid, ri_uuid))
+                logger.info("Would add RI(%s) backref to RT(%s)" %
+                            (ri_uuid, rt_uuid))
+        bch.send()
 
     @healer
     def heal_children_index(self):
