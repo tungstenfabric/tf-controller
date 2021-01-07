@@ -607,6 +607,14 @@ bool PortSubscribe(VmiSubscribeEntry *entry) {
     return agent->port_ipc_handler()->AddPortFromJson(json, false, err, false);
 }
 
+bool VmVnPortSubscribe(VmVnPortSubscribeEntry *entry) {
+    Agent *agent = Agent::GetInstance();
+    string info;
+    agent->port_ipc_handler()->MakeVmVnPortJson(entry, info, false);
+    string err;
+    int ret = agent->port_ipc_handler()->AddVmVnPort(info, false, err, false);
+}
+
 bool PortSubscribe(const std::string &ifname,
                    const boost::uuids::uuid &vmi_uuid,
                    const boost::uuids::uuid vm_uuid,
@@ -622,6 +630,24 @@ bool PortSubscribe(const std::string &ifname,
                             VmInterface::kInvalidVlanId,
                             VmInterface::vHostUserClient, 1);
     return PortSubscribe(&entry);
+}
+
+bool VmVnPortSubscribe(const std::string &host_ifname,
+                   const boost::uuids::uuid &vmi_uuid,
+                   const boost::uuids::uuid &vm_uuid,
+                   const std::string &vm_id,
+                   const std::string &vm_name,
+                   const std::string &vm_ifname,
+                   const std::string &vm_namespace,
+                   const boost::uuids::uuid &vn_uuid,
+                   uint8_t vhostuser_mode,
+                   const std::string &vhostsocket_dir,
+                   const std::string &vhostsocket_filename) {
+    VmVnPortSubscribeEntry entry(VmVnPortSubscribeEntry::VMPORT, host_ifname, 0,
+                            vm_uuid, vn_uuid, vmi_uuid, vm_name,
+                            vm_id, vm_ifname, vm_namespace,
+                            vhostuser_mode, vhostsocket_dir, vhostsocket_filename);
+    return VmVnPortSubscribe(&entry);
 }
 
 void PortUnSubscribe(const boost::uuids::uuid &u) {

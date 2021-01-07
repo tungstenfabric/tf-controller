@@ -131,7 +131,10 @@ public:
                            const std::string &vm_name,
                            const std::string &vm_identifier,
                            const std::string &vm_ifname,
-                           const std::string &vm_namespace);
+                           const std::string &vm_namespace,
+                           uint8_t vhostuser_mode,
+                           const std::string &vhostsocket_dir,
+                           const std::string &vhostsocket_filename);
     ~VmVnPortSubscribeEntry();
 
     virtual bool MatchVn(const boost::uuids::uuid &u) const;
@@ -149,6 +152,9 @@ public:
     const std::string &vm_namespace() const { return vm_namespace_; }
     void set_vmi_uuid(const boost::uuids::uuid &u) { vmi_uuid_ = u; }
     const boost::uuids::uuid &vmi_uuid() const { return vmi_uuid_; }
+    uint8_t vhostuser_mode() const { return vhostuser_mode_; }
+    const std::string &vhostsocket_dir() const { return vhostsocket_dir_; }
+    const std::string &vhostsocket_filename() const { return vhostsocket_filename_; }
 private:
     boost::uuids::uuid vm_uuid_;
     boost::uuids::uuid vn_uuid_;
@@ -157,6 +163,9 @@ private:
     std::string vm_ifname_;
     std::string vm_namespace_;
     boost::uuids::uuid vmi_uuid_;
+    uint8_t vhostuser_mode_;
+    std::string vhostsocket_dir_;
+    std::string vhostsocket_filename_;
     DISALLOW_COPY_AND_ASSIGN(VmVnPortSubscribeEntry);
 };
 
