@@ -80,6 +80,9 @@ TEST_F(FlowTest, FlowAdd_1) {
     get_flow_proto()->VnFlowCounters(vn, &in_count, &out_count);
     EXPECT_EQ(4U, in_count);
     EXPECT_EQ(4U, out_count);
+
+   // l3mh not enabled under gw index for flow is not set
+   EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
 }
 
 //Egress flow test (IP fabric to VMPort - Same VN)
@@ -151,6 +154,9 @@ TEST_F(FlowTest, FlowAdd_2) {
     EXPECT_EQ(2U, in_count);
     EXPECT_EQ(2U, out_count);
 
+    //l3mh not enabled under gw index for flow is not set
+    EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
+
     //1. Remove remote VM routes
     DeleteRemoteRoute("vrf5", remote_vm1_ip);
     DeleteRemoteRoute("vrf5", remote_vm3_ip);
@@ -218,6 +224,9 @@ TEST_F(FlowTest, FlowAdd_3) {
     EXPECT_EQ(2U, in_count);
     EXPECT_EQ(2U, out_count);
 
+    // l3mh not enabled under gw index for flow is not set
+    EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
+
     //1. Remove remote VM routes
     DeleteRoute("vrf5", vm4_ip);
     DeleteRoute("vrf3", vm1_ip);
@@ -283,6 +292,9 @@ TEST_F(FlowTest, FlowAdd_4) {
     get_flow_proto()->VnFlowCounters(vn, &in_count, &out_count);
     EXPECT_EQ(2U, in_count);
     EXPECT_EQ(2U, out_count);
+
+    // l3mh not enabled under gw index for flow is not set
+    EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
 
     //1. Remove remote VM routes
     DeleteRemoteRoute("vrf5", remote_vm4_ip);

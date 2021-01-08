@@ -155,6 +155,7 @@ private:
     boost::intrusive::list_member_hook<> free_list_node_;
     uint32_t qos_config_idx;
     uint32_t transaction_id_;
+    uint8_t underlay_gw_index;
     DISALLOW_COPY_AND_ASSIGN(FlowTableKSyncEntry);
 };
 
