@@ -51,7 +51,6 @@
 
 using namespace boost::asio::ip;
 using boost::uuids::nil_uuid;
-
 const std::map<FlowEntry::FlowPolicyState, const char*>
     FlowEntry::FlowPolicyStateStr = boost::assign::map_list_of
         (NOT_EVALUATED,            "00000000-0000-0000-0000-000000000000")
@@ -323,6 +322,7 @@ void FlowData::Reset() {
     dst_policy_vrf = VrfEntry::kInvalidIndex;
     dst_policy_plen = 0;
     allocated_port_ = 0;
+    underlay_gw_index_ = -1;
 }
 
 static std::vector<std::string> MakeList(const VnListType &ilist) {
@@ -587,6 +587,25 @@ void intrusive_ptr_release(FlowEntry *fe) {
     }
 }
 
+// Helper Functions
+static std::size_t HashCombine(std::size_t hash, uint64_t val) {
+    boost::hash_combine(hash, val);
+    return hash;
+}
+
+static std::size_t HashIp(std::size_t hash, const IpAddress &ip) {
+    if (ip.is_v6()) {
+        uint64_t val[2];
+        Ip6AddressToU64Array(ip.to_v6(), val, 2);
+        hash = HashCombine(hash, val[0]);
+        hash = HashCombine(hash, val[1]);
+    } else if (ip.is_v4()) {
+        hash = HashCombine(hash, ip.to_v4().to_ulong());
+    } else {
+        assert(0);
+    }
+    return hash;
+}
 bool FlowEntry::InitFlowCmn(const PktFlowInfo *info, const PktControlInfo *ctrl,
                             const PktControlInfo *rev_ctrl,
                             FlowEntry *rflow) {
@@ -657,6 +676,26 @@ bool FlowEntry::InitFlowCmn(const PktFlowInfo *info, const PktControlInfo *ctrl,
     data_.out_vm_entry.SetVm(rev_ctrl->vm_);
     l3_flow_ = info->l3_flow;
     data_.acl_assigned_vrf_index_ = VrfEntry::kInvalidIndex;
+
+    if (flow_table()->agent()->is_l3mh()) {
+        if (!info->local_flow && info->pkt->agent_hdr.ifindex &&
+            (info->pkt->agent_hdr.ifindex != Interface::kInvalidIndex)) {
+            Interface *itf = flow_table()->agent()->interface_table()->FindInterface(info->pkt->agent_hdr.ifindex);
+            if ((itf->id() < flow_table()->agent()->fabric_interface_name_list().size())
+                && (itf->type() == Interface::PHYSICAL)) {
+                    // Read from TNH encap list
+                    data_.underlay_gw_index_ = itf->id();
+            } else {
+                    data_.underlay_gw_index_ =
+                        L3mhFiveTupleHash(info->pkt->ip_saddr, info->pkt->ip_daddr,
+                                    info->pkt->ip_proto, info->pkt->sport, info->pkt->dport);
+           }
+        } else {
+            data_.underlay_gw_index_ = -1;
+        }
+    } else {
+        data_.underlay_gw_index_ = -1;
+    }
     return true;
 }
 
@@ -3604,6 +3643,19 @@ const std::string FlowEntry::fw_policy_name_uuid() const {
 
 void FlowEntry::set_flow_mgmt_info(FlowEntryInfo *info) {
     flow_mgmt_info_.reset(info);
+}
+
+std::size_t FlowEntry::L3mhFiveTupleHash(const IpAddress &sip, const IpAddress &dip,
+                                   uint8_t proto, uint16_t sport,
+                                   uint16_t dport) const {
+    std::size_t hash = 0;
+    hash = HashIp(hash, sip);
+    hash = HashIp(hash, dip);
+
+    hash = HashCombine(hash, sport);
+    hash = HashCombine(hash, dport);
+    hash = HashCombine(hash, proto);
+    return (hash % (flow_table()->agent()->fabric_interface_name_list().size()));
 }
 
 TcpPort::~TcpPort() {

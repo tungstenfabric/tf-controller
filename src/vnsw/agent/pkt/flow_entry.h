@@ -358,6 +358,7 @@ struct FlowData {
     uint32_t acl_assigned_vrf_index_;
     uint32_t qos_config_idx;
     uint16_t allocated_port_;
+    uint8_t underlay_gw_index_;
     // IMPORTANT: Keep this structure assignable. Assignment operator is used in
     // FlowEntry::Copy() on this structure
 };
@@ -804,6 +805,9 @@ private:
     void UpdateReflexiveAction(SessionPolicy *sp, SessionPolicy *rsp);
     const std::string BuildRemotePrefix(const FlowRouteRefMap &rt_list,
                                         uint32_t vr, const IpAddress &ip) const;
+    std::size_t L3mhFiveTupleHash(const IpAddress &sip, const IpAddress &dip,
+                                   uint8_t proto, uint16_t sport,
+                                   uint16_t dport) const;
 
     FlowKey key_;
     FlowTable *flow_table_;

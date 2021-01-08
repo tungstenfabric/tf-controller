@@ -159,6 +159,7 @@ void FlowTableKSyncEntry::Reset() {
     ksync_response_info_.Reset();
     qos_config_idx = AgentQosConfigTable::kInvalidIndex;
     transaction_id_ = 0;
+    underlay_gw_index = -1;
 }
 
 void FlowTableKSyncEntry::Reset(FlowEntry *flow, uint32_t hash_id) {
@@ -451,6 +452,7 @@ int FlowTableKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
         req.set_fr_drop_reason(drop_reason);
         req.set_fr_qos_id(qos_config_idx);
         req.set_fr_ttl(flow_entry_->data().ttl);
+        req.set_fr_underlay_ecmp_index(underlay_gw_index);
     }
 
     FlowProto *proto = ksync_obj_->ksync()->agent()->pkt()->get_flow_proto();
@@ -555,6 +557,10 @@ bool FlowTableKSyncEntry::Sync() {
     }
     if (transaction_id_ != flow_entry_->GetTransactionId()) {
         transaction_id_ = flow_entry_->GetTransactionId();
+        changed = true;
+    }
+    if (underlay_gw_index != flow_entry_->data().underlay_gw_index_) {
+        underlay_gw_index = flow_entry_->data().underlay_gw_index_;
         changed = true;
     }
     return changed;
