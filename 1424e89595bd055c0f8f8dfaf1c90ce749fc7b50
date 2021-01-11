@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "af2c7dbf_db13b943",
+        "filename": "src/container/cni/contrail/cni.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 44
+      },
+      "writtenOn": "2021-01-11T18:03:58Z",
+      "side": 1,
+      "message": "Where is vhostMode handled if vrouterMode is \"userspace\" ?",
+      "range": {
+        "startLine": 327,
+        "startChar": 4,
+        "endLine": 327,
+        "endChar": 5
+      },
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "aa6472e1_da308956",
+        "filename": "src/container/cni/contrail/cni.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 44
+      },
+      "writtenOn": "2021-01-11T18:03:58Z",
+      "side": 1,
+      "message": "What is the current CNI version ?",
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
