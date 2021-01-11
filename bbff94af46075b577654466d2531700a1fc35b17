@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f1dfc6c5_1901e873",
+        "filename": "src/vnsw/agent/pkt/flow_entry.cc",
+        "patchSetId": 2
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 752
+      },
+      "writtenOn": "2021-01-11T03:41:19Z",
+      "side": 1,
+      "message": "Is it always guaranteed that itf-\u003eid_ will follow 0, 1, 2 ordering ? Are you expecting here that packet can come on a physical interface which is not known to Agent ?",
+      "revId": "bbff94af46075b577654466d2531700a1fc35b17",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c3195cf9_41596f17",
+        "filename": "src/vnsw/agent/pkt/flow_entry.cc",
+        "patchSetId": 2
+      },
+      "lineNbr": 3658,
+      "author": {
+        "id": 752
+      },
+      "writtenOn": "2021-01-11T03:41:19Z",
+      "side": 1,
+      "message": "This hash can point to a physical interface which may be down. So, please use tnh encap_valid field to determine if that interface is good to use, else use the next available interface.",
+      "revId": "bbff94af46075b577654466d2531700a1fc35b17",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
