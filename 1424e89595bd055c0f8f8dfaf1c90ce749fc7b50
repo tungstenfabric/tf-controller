@@ -39,6 +39,40 @@
       "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c2e6d902_64a93de4",
+        "filename": "src/container/cni/contrail/vrouter.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 44
+      },
+      "writtenOn": "2021-01-11T18:06:27Z",
+      "side": 1,
+      "message": "Are VHOST_MODE_CLIENT \u0026 VHOST_MODE_SERVER values shared across CNI \u0026 agent ?",
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8206a89b_6f6f130f",
+        "filename": "src/container/cni/contrail/vrouter.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 44
+      },
+      "writtenOn": "2021-01-11T18:06:27Z",
+      "side": 1,
+      "message": "Does containerNamespace, containerIfName these parameters need to be passed to Agent ?\nHave we extended AddPort() parameter list to include these ?",
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
