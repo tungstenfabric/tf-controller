@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "ba235cd2_33437c18",
+        "filename": "src/container/cni/contrail/cni.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 1053
+      },
+      "writtenOn": "2021-01-11T18:44:27Z",
+      "side": 1,
+      "message": "Default Value is client and user configuration will be coming from cni configuration for userspace.",
+      "parentUuid": "af2c7dbf_db13b943",
+      "range": {
+        "startLine": 327,
+        "startChar": 4,
+        "endLine": 327,
+        "endChar": 5
+      },
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "aa6472e1_da308956",
         "filename": "src/container/cni/contrail/cni.go",
         "patchSetId": 1
@@ -39,6 +63,24 @@
       "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "1e74dcdf_b0354419",
+        "filename": "src/container/cni/contrail/cni.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 1053
+      },
+      "writtenOn": "2021-01-11T18:44:27Z",
+      "side": 1,
+      "message": "0.3.1 is current version via CNI configurations file.",
+      "parentUuid": "aa6472e1_da308956",
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     },
     {
       "key": {
@@ -59,6 +101,24 @@
     },
     {
       "key": {
+        "uuid": "bda8065a_220196d8",
+        "filename": "src/container/cni/contrail/vrouter.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 1053
+      },
+      "writtenOn": "2021-01-11T18:44:27Z",
+      "side": 1,
+      "message": "vhost mode is already supported in agent and vrouter and uses same values defined in CNI now.",
+      "parentUuid": "c2e6d902_64a93de4",
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8206a89b_6f6f130f",
         "filename": "src/container/cni/contrail/vrouter.go",
         "patchSetId": 1
@@ -73,6 +133,24 @@
       "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "03f57201_6aa39eb9",
+        "filename": "src/container/cni/contrail/vrouter.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 1053
+      },
+      "writtenOn": "2021-01-11T18:44:27Z",
+      "side": 1,
+      "message": "These are existing params already present in existing port add api are in agent used during vmiAdd. Newly added params are vhostMode, socketDir and socketName and agent code is modified for same. For backward compatibility the values will be empty string.",
+      "parentUuid": "8206a89b_6f6f130f",
+      "revId": "1424e89595bd055c0f8f8dfaf1c90ce749fc7b50",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
