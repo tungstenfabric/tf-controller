@@ -39,9 +39,6 @@ class FilterModule(object):
     def _load_role_to_feature_mapping(self):
         with open('./group_vars/all.yml') as f:
             group_vars = yaml.load(f)
-        role_to_feature_mapping = group_vars['role_to_feature_mapping']
-        self.role_to_feature_mapping = dict(
-            (k.lower(), v) for k, v in list(role_to_feature_mapping.items()))
         feature_based_plugin_roles = group_vars['feature_based_plugin_roles']
         self.feature_based_plugin_roles = \
             dict((k.lower(), v) for k, v in
@@ -111,8 +108,6 @@ class FilterModule(object):
         feature_based_list = set()
         for rb_role in self.device_rb_roles:
             role = rb_role.lower() + '@' + self.device_phy_role.lower()
-            role_features = self.role_to_feature_mapping.get(role, [])
-            dev_feature_list |= set(role_features)
             role_features = self.feature_based_plugin_roles.get(role, [])
             feature_based_list |= set(role_features)
         self.dev_feature_list = list(dev_feature_list)

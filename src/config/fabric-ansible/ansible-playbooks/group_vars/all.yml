@@ -98,27 +98,6 @@ device_family_info:
       - command: show system information | display xml
         data_format: xml
 
-# Role to feature mapping
-role_to_feature_mapping:
-  DC-Gateway@leaf:
-    - overlay_networking
-    - overlay_dc_gateway
-    - overlay_evpn
-    - overlay_evpn_access
-    - overlay_evpn_gateway
-    - overlay_evpn_type5
-    - overlay_lag
-    - overlay_multi_homing
-  DC-Gateway@spine:
-    - overlay_networking
-    - overlay_dc_gateway
-    - overlay_evpn
-    - overlay_evpn_access
-    - overlay_evpn_gateway
-    - overlay_evpn_type5
-    - overlay_lag
-    - overlay_multi_homing
-
 feature_based_plugin_roles:
   CRB-Access@leaf:
     - basic
@@ -196,6 +175,13 @@ feature_based_plugin_roles:
     - overlay_dc_gateway
     - overlay_dhcp_relay
     - overlay_telemetry
+    - overlay_networking
+    - overlay_evpn
+    - overlay_evpn_access
+    - overlay_evpn_gateway
+    - overlay_evpn_type5
+    - overlay_lag
+    - overlay_multi_homing
   DCI-Gateway@spine:
     - basic
     - underlay_ip_clos
@@ -263,6 +249,13 @@ feature_based_plugin_roles:
     - overlay_dc_gateway
     - overlay_dhcp_relay
     - overlay_telemetry
+    - overlay_networking
+    - overlay_evpn
+    - overlay_evpn_access
+    - overlay_evpn_gateway
+    - overlay_evpn_type5
+    - overlay_lag
+    - overlay_multi_homing
   DCI-Gateway@leaf:
     - basic
     - underlay_ip_clos
