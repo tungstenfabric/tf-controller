@@ -1,17 +1,13 @@
 #
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
-from __future__ import print_function
+
 import re
-from distutils.util import strtobool
 import kombu
 import gevent
 import gevent.monkey
 import json
 gevent.monkey.patch_all()
-import time
-import signal
-from gevent.queue import Queue
 try:
     from gevent.lock import Semaphore
 except ImportError:
@@ -25,21 +21,23 @@ from pysandesh.gen_py.process_info.ttypes import ConnectionType as ConnType
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
 from cfgm_common import vnc_greenlets
 '''
-import ssl
+# import ssl
 
 
 class IronicKombuClient(object):
 
-    def __init__(self, rabbit_server, rabbit_port,
+    def __init__(self, sandesh_logger,
+                 rabbit_server, rabbit_port,
                  rabbit_user, rabbit_password,
-                 notification_level, ironic_notif_mgr_obj, **kwargs):
+                 notification_level, ironic_notification_manager):
+        self._sandesh_logger = sandesh_logger
         self._rabbit_port = rabbit_port
         self._rabbit_user = rabbit_user
         self._rabbit_password = rabbit_password
         self._rabbit_hosts = self._parse_rabbit_hosts(rabbit_server)
         self._rabbit_ip = self._rabbit_hosts[0]["host"]
         self._notification_level = notification_level
-        self._ironic_notification_manager = ironic_notif_mgr_obj
+        self._ironic_notification_manager = ironic_notification_manager
         self._conn_lock = Semaphore()
 
         # Register a handler for SIGTERM so that we can release the lock
@@ -53,6 +51,7 @@ class IronicKombuClient(object):
                                              self._rabbit_ip,
                                              self._rabbit_port)
         msg = "Initializing RabbitMQ connection, urls %s" % self._url
+        self._sandesh_logger.info(msg)
         # self._conn_state = ConnectionStatus.INIT
         self._conn = kombu.Connection(self._url)
         self._exchange = self._set_up_exchange()
@@ -62,7 +61,6 @@ class IronicKombuClient(object):
             exit()
 
     def _parse_rabbit_hosts(self, rabbit_servers):
-
         default_dict = {'user': self._rabbit_user,
                         'password': self._rabbit_password,
                         'port': self._rabbit_port}
@@ -82,12 +80,8 @@ class IronicKombuClient(object):
 
         return ret
 
-    def _set_up_exchange(self, exchange_name=None):
-        if exchange_name:
-            exchange = kombu.Exchange(str(exchange_name),
-                                      type="topic", durable=False)
-        else:
-            exchange = kombu.Exchange("ironic", type="topic", durable=False)
+    def _set_up_exchange(self):
+        kombu.Exchange("ironic", type="topic", durable=False)
 
     def _set_up_queues(self, notification_level):
         if notification_level not in ['info', 'debug', 'warning', 'error']:
@@ -95,6 +89,7 @@ class IronicKombuClient(object):
                   str(notification_level) + \
                   "\nPlease enter a valid notification level from: " \
                   "'info', 'debug', 'warning', 'error'"
+            self._sandesh_logger.info(msg)
             return 0
         sub_queue_names = []
         sub_queues = []
@@ -109,8 +104,7 @@ class IronicKombuClient(object):
             log_levels = ['error']
 
         for level in log_levels:
-            sub_queue_names.append('ironic_versioned_notifications.' +
-                                   str(level))
+            sub_queue_names.append('ironic_versioned_notifications.' + str(level))
 
         for sub_queue_name in sub_queue_names:
             sub_queues.append(kombu.Queue(str(sub_queue_name),
@@ -131,7 +125,7 @@ class IronicKombuClient(object):
 
         with self._conn_lock:
             msg = "RabbitMQ connection down"
-            # self._logger(msg, level=SandeshLevel.SYS_NOTICE)
+            self._sandesh_logger.info(msg)
             # self._update_sandesh_status(ConnectionStatus.DOWN)
             # self._conn_state = ConnectionStatus.DOWN
 
@@ -143,7 +137,7 @@ class IronicKombuClient(object):
             # self._update_sandesh_status(ConnectionStatus.UP)
             # self._conn_state = ConnectionStatus.UP
             msg = 'RabbitMQ connection ESTABLISHED %s' % repr(self._conn)
-            # self._logger(msg, level=SandeshLevel.SYS_NOTICE)
+            self._sandesh_logger.info(msg)
 
             self._channel = self._conn.channel()
             self._consumer = kombu.Consumer(self._conn,
@@ -171,7 +165,7 @@ class IronicKombuClient(object):
                 self._connection_watch(connected, timeout)
             except Exception as e:
                 msg = 'Error in rabbitmq drainer greenlet: %s' % (str(e))
-                print(msg)
+                self._sandesh_logger.info(msg)
                 # avoid 'reconnect()' here as that itself might cause exception
                 connected = False
     # end _connection_watch_forever
@@ -189,8 +183,7 @@ class IronicKombuClient(object):
             ironic_object_data[k] = message_dict[k]
         ironic_node_list = []
         ironic_node_list.append(ironic_object_data)
-        self._ironic_notification_manager.process_ironic_node_info(
-            ironic_node_list)
+        self._ironic_notification_manager.process_ironic_node_info(ironic_node_list)
 
     def _subscriber(self, body, message):
         try:
@@ -205,4 +198,3 @@ class IronicKombuClient(object):
 
     def shutdown(self):
         self._conn.close()
-
