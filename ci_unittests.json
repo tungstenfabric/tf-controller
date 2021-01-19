@@ -30,6 +30,15 @@
         ],
         "misc_test_targets" : [ ]
     },
+    "ironic_notification_manager" : {
+        "source_directories" : [
+            "controller/src/config/ironic-notification-manager"
+        ],
+        "scons_test_targets" : [
+            "controller/src/config/ironic-notification-manager:test"
+        ],
+        "misc_test_targets" : [ ]
+    },
     "contrail-config" : {
         "source_directories" : [
             "controller/src/config"
