@@ -14,7 +14,10 @@ import ConfigParser
 import socket
 import hashlib
 import random
+import six
 
+from keystoneauth1.identity import ks_v3
+from keystoneauth1 import ks_session
 from ironicclient import client as ironicclient
 
 from sandesh_common.vns.ttypes import Module
@@ -34,7 +37,7 @@ class IronicNotificationManager(object):
 
     _ironic_kombu_client = None
 
-    IronicNodeDictKeyMap = {
+    IronicNoeDictKeyMap = {
         'uuid': 'name',
         'provision_state': 'provision_state',
         'power_state': 'power_state',
@@ -58,56 +61,54 @@ class IronicNotificationManager(object):
         'address': 'mac_address',
         'created_at': 'create_timestamp'
     }
-    sub_dict_list = ['driver_info', 'instance_info', 'properties',
-                     'port_info']
+    SubDictKeys = ['driver_info', 'instance_info', 'properties', 'port_info']
     SubDictKeyMap = {
-        'driver_info': ['ipmi_address', 'ipmi_password', 'ipmi_username',
-                        'ipmi_terminal_port', 'deploy_kernel',
-                        'deploy_ramdisk'],
-        'instance_info': ['display_name', 'nova_host_id', 'configdrive',
-                          'root_gb', 'memory_mb', 'vcpus', 'local_gb',
-                          'image_checksum', 'image_source', 'image_type',
-                          'image_url'],
-        'properties': ['cpu_arch', 'cpus', 'local_gb', 'memory_mb',
-                       'capabilities'],
-        'port_info': ['port_uuid', 'pxe_enabled', 'mac_address',
-                      'local_link_connection', 'internal_info']
+        'driver_info': [
+            'ipmi_address', 'ipmi_password', 'ipmi_username',
+            'ipmi_terminal_port', 'deploy_kernel', 'deploy_ramdisk'],
+        'instance_info': [
+            'display_name', 'nova_host_id', 'configdrive', 'root_gb',
+            'memory_mb', 'vcpus', 'local_gb', 'image_checksum',
+            'image_source', 'image_type', 'image_url'],
+        'properties': [
+            'cpu_arch', 'cpus', 'local_gb', 'memory_mb', 'capabilities'],
+        'port_info': [
+            'port_uuid', 'pxe_enabled', 'mac_address',
+            'local_link_connection', 'internal_info']
     }
 
     def __init__(self, args):
         self._args = args
-    # end __init__
 
-    def authenticate_with_ironicclient(self):
+    def get_ironic_client(self):
         if self._args.auth_url:
             auth_url = self._args.auth_url
         else:
-            auth_url = '%s://%s:%s/%s' % (self._args.auth_protocol,
-                                          self._args.auth_host,
-                                          self._args.auth_port,
-                                          self._args.auth_version)
-        kwargs = {
-            'os_auth_url': auth_url,
-            'os_username': self._args.admin_user,
-            'os_password': self._args.admin_password,
-            'os_project_name': self._args.admin_tenant_name,
-            'os_endpoint_type': self._args.endpoint_type,
-            'os_ironic_api_version': "1.19"
-        }
-        if 'v2.0' not in auth_url.split('/'):
-            kwargs['os_user_domain_name'] = self._args.user_domain_name
-            kwargs['os_project_domain_name'] = self._args.project_domain_name
+            auth_url = '%s://%s:%s/%s' % (
+                self._args.auth_protocol,
+                self._args.auth_host,
+                self._args.auth_port,
+                self._args.auth_version.strip('/'))
 
-        # TODO: Implement Keystone SSL support
+        auth = ks_v3.Password(
+            auth_url=auth_url,
+            username=self._args.admin_user,
+            password=self._args.admin_password,
+            project_name=self._args.admin_tenant_name,
+            user_domain_name=self._args.user_domain_name,
+            project_domain_name=self._args.project_domain_name
+        )
+        verify = self._args.cafile if self._args.cafile else not self._args.insecure
+        session = ks_session.Session(auth=auth, verify=verify)
 
-        ironic_client_object = ironicclient.get_client(1, **kwargs)
-        return ironic_client_object
+        return ironicclient.get_client(
+            1, os_ironic_api_version="1.19", session=session, region_name=self._args.region_name)
 
-    def sync_with_ironic(self):
-        auth_ironic_client = self.authenticate_with_ironicclient()
+    def resync_with_ironic(self):
+        ironic_client = self.get_ironic_client()
 
         # Get and process Ironic Nodes
-        node_dict_list = auth_ironic_client.node.list(detail=True)
+        node_dict_list = ironic_client.node.list(detail=True)
         new_node_dict_list = []
         node_port_map = {}
         for node_dict in node_dict_list:
@@ -116,15 +117,16 @@ class IronicNotificationManager(object):
         self.process_ironic_node_info(new_node_dict_list)
 
         # Get and process Ports for all Ironic Nodes
-        port_dict_list = auth_ironic_client.port.list(detail=True)
+        port_dict_list = ironic_client.port.list(detail=True)
         for port_dict in port_dict_list:
             ironic_node_with_port_info = self.process_ironic_port_info(port_dict.to_dict())
             node_port_map[ironic_node_with_port_info["name"]] += ironic_node_with_port_info["port_info"]
         for node_uuid in node_port_map.keys():
-            IronicNodeDict = {"name": str(node_uuid),
-                              "port_info": node_port_map[node_uuid]}
-            ironic_node_sandesh = IronicNode(**IronicNodeDict)
-            ironic_node_sandesh.name = IronicNodeDict["name"]
+            ironic_node_data = {
+                "name": str(node_uuid),
+                "port_info": node_port_map[node_uuid]}
+            ironic_node_sandesh = IronicNode(**ironic_node_data)
+            ironic_node_sandesh.name = ironic_node_data["name"]
             ironic_sandesh_object = IronicNodeInfo(data=ironic_node_sandesh)
             ironic_sandesh_object.send()
 
@@ -172,11 +174,11 @@ class IronicNotificationManager(object):
             syslog_facility=self._args.syslog_facility)
         self._sandesh_logger = sandesh_global._logger
 
-    def process_ironic_port_info(self, data_dict, IronicNodeDict=None):
+    def process_ironic_port_info(self, data_dict, ironic_node_data=None):
         PortInfoDict = dict()
         PortList = []
-        if not IronicNodeDict:
-            IronicNodeDict = dict()
+        if not ironic_node_data:
+            ironic_node_data = dict()
 
         for key in self.PortInfoDictKeyMap.keys():
             if key in data_dict:
@@ -185,9 +187,9 @@ class IronicNotificationManager(object):
 
         if "event_type" in data_dict and str(data_dict["event_type"]) == "baremetal.port.delete.end":
             if "node_uuid" in data_dict:
-                IronicNodeDict["name"] = data_dict["node_uuid"]
-            IronicNodeDict["port_info"] = []
-            return IronicNodeDict
+                ironic_node_data["name"] = data_dict["node_uuid"]
+            ironic_node_data["port_info"] = []
+            return ironic_node_data
 
         if "local_link_connection" in data_dict:
             local_link_connection = LocalLinkConnection(**data_dict["local_link_connection"])
@@ -200,86 +202,82 @@ class IronicNotificationManager(object):
             PortInfoDict["internal_info"] = internal_info
 
         if "node_uuid" in data_dict:
-            IronicNodeDict["name"] = data_dict["node_uuid"]
+            ironic_node_data["name"] = data_dict["node_uuid"]
             PortInfoDict["name"] = PortInfoDict["port_uuid"]
             PortList.append(PortInfo(**PortInfoDict))
-            IronicNodeDict["port_info"] = PortList
+            ironic_node_data["port_info"] = PortList
 
-        return IronicNodeDict
+        return ironic_node_data
 
     def process_ironic_node_info(self, node_dict_list):
         for node_dict in node_dict_list:
             if not isinstance(node_dict, dict):
                 node_dict = node_dict.to_dict()
 
-            IronicNodeDict = dict()
-            DriverInfoDict = dict()
-            InstanceInfoDict = dict()
-            NodePropertiesDict = dict()
+            ironic_node_data = dict()
+            driver_info_data = dict()
+            instance_info_data = dict()
+            node_properties_data = dict()
 
-            for key in self.IronicNodeDictKeyMap.keys():
-                if key in node_dict and key not in self.sub_dict_list:
-                    IronicNodeDict[self.IronicNodeDictKeyMap[key]] = \
+            for key in self.IronicNoeDictKeyMap.keys():
+                if key in node_dict and key not in self.SubDictKeys:
+                    ironic_node_data[self.IronicNoeDictKeyMap[key]] = \
                         node_dict[key]
 
-            for sub_dict in self.sub_dict_list:
-                IronicNodeDict[sub_dict] = {}
+            for sub_dict in self.SubDictKeys:
+                ironic_node_data[sub_dict] = {}
                 if sub_dict in node_dict.keys():
                     for key in node_dict[sub_dict]:
                         if key in self.SubDictKeyMap[sub_dict]:
-                            IronicNodeDict[sub_dict][key] = \
+                            ironic_node_data[sub_dict][key] = \
                                 node_dict[sub_dict][key]
 
             if "event_type" in node_dict:
                 if str(node_dict["event_type"]) == "baremetal.node.delete.end":
-                    ironic_node_sandesh = IronicNode(**IronicNodeDict)
+                    ironic_node_sandesh = IronicNode(**ironic_node_data)
                     ironic_node_sandesh.deleted = True
-                    ironic_node_sandesh.name = IronicNodeDict["name"]
+                    ironic_node_sandesh.name = ironic_node_data["name"]
                     ironic_sandesh_object = IronicNodeInfo(data=ironic_node_sandesh)
                     ironic_sandesh_object.send()
                     continue
                 if "port" in str(node_dict["event_type"]):
-                    IronicNodeDict = self.process_ironic_port_info(node_dict, IronicNodeDict)
+                    ironic_node_data = self.process_ironic_port_info(node_dict, ironic_node_data)
 
-            DriverInfoDict = IronicNodeDict.pop("driver_info", None)
-            InstanceInfoDict = IronicNodeDict.pop("instance_info", None)
-            NodePropertiesDict = IronicNodeDict.pop("properties", None)
-            PortInfoDictList = IronicNodeDict.pop("port_info", None)
+            driver_info_data = ironic_node_data.pop("driver_info", None)
+            instance_info_data = ironic_node_data.pop("instance_info", None)
+            node_properties_data = ironic_node_data.pop("properties", None)
+            port_info_list = ironic_node_data.pop("port_info", None)
 
-            ironic_node_sandesh = IronicNode(**IronicNodeDict)
-            ironic_node_sandesh.name = IronicNodeDict["name"]
+            ironic_node_sandesh = IronicNode(**ironic_node_data)
+            ironic_node_sandesh.name = ironic_node_data["name"]
 
-            if DriverInfoDict:
-                driver_info = DriverInfo(**DriverInfoDict)
+            if driver_info_data:
+                driver_info = DriverInfo(**driver_info_data)
                 ironic_node_sandesh.driver_info = driver_info
-            if InstanceInfoDict:
-                instance_info = InstanceInfo(**InstanceInfoDict)
+            if instance_info_data:
+                instance_info = InstanceInfo(**instance_info_data)
                 ironic_node_sandesh.instance_info = instance_info
-            if NodePropertiesDict:
-                node_properties = NodeProperties(**NodePropertiesDict)
+            if node_properties_data:
+                node_properties = NodeProperties(**node_properties_data)
                 ironic_node_sandesh.node_properties = node_properties
-            if PortInfoDictList:
+            if port_info_list:
                 port_list = []
-                for PortInfoDict in PortInfoDictList:
-                    port_info = PortInfo(**PortInfoDict)
+                for item in port_info_list:
+                    port_info = PortInfo(**item)
                     port_list.append(port_info)
                 ironic_node_sandesh.port_info = port_list
 
-            self._sandesh_logger.info('\nIronic Node Info: %s' % IronicNodeDict)
-            self._sandesh_logger.info('\nIronic Driver Info: %s' % DriverInfoDict)
-            self._sandesh_logger.info('\nIronic Instance Info: %s' % InstanceInfoDict)
-            self._sandesh_logger.info('\nNode Properties: %s' % NodePropertiesDict)
-            self._sandesh_logger.info('\nIronic Port Info: %s' % PortInfoDictList)
+            self._sandesh_logger.info('\nIronic Node Info: %s' % ironic_node_data)
+            self._sandesh_logger.info('\nIronic Driver Info: %s' % driver_info_data)
+            self._sandesh_logger.info('\nIronic Instance Info: %s' % instance_info_data)
+            self._sandesh_logger.info('\nNode Properties: %s' % node_properties_data)
+            self._sandesh_logger.info('\nIronic Port Info: %s' % port_info_list)
 
             ironic_sandesh_object = IronicNodeInfo(data=ironic_node_sandesh)
             ironic_sandesh_object.send()
 
     def start(self):
-        ironic_kombu_client = IronicKombuClient(
-            self._sandesh_logger,
-            self._args.rabbit_server, self._args.rabbit_port,
-            self._args.rabbit_user, self._args.rabbit_password,
-            self._args.notification_level, self)
+        ironic_kombu_client = IronicKombuClient(self, self._sandesh_logger, self._args)
         ironic_kombu_client._start()
 
 
@@ -307,9 +305,20 @@ def parse_args(args_str):
         'log_category': '',
         'log_file': Sandesh._DEFAULT_LOG_FILE,
         'use_syslog': False,
-        'syslog_facility': Sandesh._DEFAULT_SYSLOG_FACILITY
+        'syslog_facility': Sandesh._DEFAULT_SYSLOG_FACILITY,
+        # rabbitmq section
+        'rabbit_servers': None,
+        'rabbit_user': None,
+        'rabbit_password': None,
+        'rabbit_vhost': None,
+        'rabbit_use_ssl': None,
+        'kombu_ssl_version': None,
+        'kombu_ssl_certfile': None,
+        'kombu_ssl_keyfile': None,
+        'kombu_ssl_ca_certs': None,
     }
     ksopts = {
+        'auth_url': '',
         'auth_host': '127.0.0.1',
         'auth_port': '35357',
         'auth_protocol': 'http',
@@ -318,16 +327,10 @@ def parse_args(args_str):
         'admin_password': '',
         'admin_tenant_name': '',
         'user_domain_name': None,
-        'identity_uri': None,
         'project_domain_name': None,
-        'insecure': True,
-        'cafile': '',
-        'certfile': '',
-        'keyfile': '',
-        'auth_type': 'password',
-        'auth_url': '',
-        'region_name': '',
-        'endpoint_type': 'internalURL'
+        'insecure': False,
+        'cafile': None,
+        'region_name': 'RegionOne',
     }
     defaults.update(SandeshConfig.get_default_options(['DEFAULTS']))
     sandesh_opts = SandeshConfig.get_default_options()
@@ -355,10 +358,12 @@ def parse_args(args_str):
     parser.set_defaults(**defaults)
 
     args = parser.parse_args(remaining_argv)
-    if type(args.collectors) is str:
+    if isinstance(args.collectors, six.string_types):
         args.collectors = args.collectors.split()
-    if type(args.introspect_port) is str:
+    if isinstance(args.introspect_port, six.string_types):
         args.introspect_port = int(args.introspect_port)
+    if isinstance(args.insecure, six.string_types):
+        args.insecure = args.insecure.lower() == 'true'
     return args
 # end parse_args
 
@@ -367,13 +372,13 @@ def main(args_str=None):
     if not args_str:
         args_str = ' '.join(sys.argv[1:])
     args = parse_args(args_str)
+
     # Create Ironic Notification Daemon and sync with Ironic
     ironic_notification_manager = IronicNotificationManager(args)
     ironic_notification_manager.sandesh_init()
-    ironic_notification_manager.sync_with_ironic()
-    # Create RabbitMQ Message reader
-    # TODO: Enhance for Rabbit HA
+    ironic_notification_manager.resync_with_ironic()
 
+    # start listening
     ironic_notification_manager.start()
 
 

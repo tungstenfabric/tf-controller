@@ -2,11 +2,11 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
-import re
 import kombu
 import gevent
 import gevent.monkey
 import json
+import ssl
 gevent.monkey.patch_all()
 try:
     from gevent.lock import Semaphore
@@ -26,18 +26,12 @@ from cfgm_common import vnc_greenlets
 
 class IronicKombuClient(object):
 
-    def __init__(self, sandesh_logger,
-                 rabbit_server, rabbit_port,
-                 rabbit_user, rabbit_password,
-                 notification_level, ironic_notification_manager):
-        self._sandesh_logger = sandesh_logger
-        self._rabbit_port = rabbit_port
-        self._rabbit_user = rabbit_user
-        self._rabbit_password = rabbit_password
-        self._rabbit_hosts = self._parse_rabbit_hosts(rabbit_server)
-        self._rabbit_ip = self._rabbit_hosts[0]["host"]
-        self._notification_level = notification_level
+    _SUPPORTED_SSL_PROTOCOLS = ("tlsv1_2", "tlsv1.2")
+
+    def __init__(self, ironic_notification_manager, sandesh_logger, args):
         self._ironic_notification_manager = ironic_notification_manager
+        self._sandesh_logger = sandesh_logger
+        self._notification_level = args.notification_level
         self._conn_lock = Semaphore()
 
         # Register a handler for SIGTERM so that we can release the lock
@@ -46,39 +40,48 @@ class IronicKombuClient(object):
         # then we will have to modify this function to perhaps take an argument
         # gevent.signal(signal.SIGTERM, self.sigterm_handler)
 
-        self._url = "amqp://%s:%s@%s:%s/" % (self._rabbit_user,
-                                             self._rabbit_password,
-                                             self._rabbit_ip,
-                                             self._rabbit_port)
         msg = "Initializing RabbitMQ connection, urls %s" % self._url
         self._sandesh_logger.info(msg)
         # self._conn_state = ConnectionStatus.INIT
-        self._conn = kombu.Connection(self._url)
+
+        urls = list()
+        for server in args.rabbit_servers.strip().replace(',', ' ').split():
+            host, port = server.split(':')
+            url = "pyamqp://{}:{}@{}:{}/{}".format(
+                args.rabbit_user, args.rabbit_password, host, port,
+                args.rabbit_vhost if args.rabbit_vhost else ''
+            )
+            urls.append(url)
+        ssl_params = self._fetch_ssl_params(args)
+        self._conn = kombu.Connection(urls, ssl=ssl_params, transport_options={'confirm_publish': True})
         self._exchange = self._set_up_exchange()
         self._queues = []
         self._queues = self._set_up_queues(self._notification_level)
         if not self._queues:
             exit()
 
-    def _parse_rabbit_hosts(self, rabbit_servers):
-        default_dict = {'user': self._rabbit_user,
-                        'password': self._rabbit_password,
-                        'port': self._rabbit_port}
-        ret = []
-        rabbit_hosts = re.compile('[,\s]+').split(rabbit_servers)
-        for s in rabbit_hosts:
-            match = re.match("(?:(?P<user>.*?)"
-                             "(?::(?P<password>.*?))"
-                             "*@)*(?P<host>.*?)(?::(?P<port>\d+))*$", s)
-            if match:
-                mdict = match.groupdict().copy()
-                for key in ['user', 'password', 'port']:
-                    if not mdict[key]:
-                        mdict[key] = default_dict[key]
+    def _fetch_ssl_params(self, args):
+        if not args.rabbit_use_ssl:
+            return False
+        ssl_params = dict()
+        if args.kombu_ssl_version:
+            # legacy parameter - checking if user doesn't try to use
+            # unsupported protocol (he doesn't have choice anyway)
+            self._validate_ssl_version(args.kombu_ssl_version)
+        ssl_params['ssl_version'] = ssl.PROTOCOL_TLSv1_2
+        if args.kombu_ssl_keyfile:
+            ssl_params['keyfile'] = args.kombu_ssl_keyfile
+        if args.kombu_ssl_certfile:
+            ssl_params['certfile'] = args.kombu_ssl_certfile
+        if args.kombu_ssl_ca_certs:
+            ssl_params['ca_certs'] = args.kombu_ssl_ca_certs
+            ssl_params['cert_reqs'] = ssl.CERT_REQUIRED
+        return ssl_params or True
 
-                ret.append(mdict)
-
-        return ret
+    def _validate_ssl_version(self, version):
+        version = version.lower()
+        if version not in self._SUPPORTED_SSL_PROTOCOLS:
+            raise RuntimeError('Invalid SSL version: {}'.format(version))
 
     def _set_up_exchange(self):
         kombu.Exchange("ironic", type="topic", durable=False)
