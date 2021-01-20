@@ -14,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class InPlaceUpgradeTestCase(TestCase):
-    # Decide if missing tests should raise an Exception
-    RAISE_ON_MISSING_SCHEMA_TESTS = False
 
     @classmethod
     def setUpClass(cls, *args, **kwargs):
@@ -39,15 +37,13 @@ class InPlaceUpgradeTestCase(TestCase):
                 missing_objs.add(obj_type)
 
         if missing_objs:
-            msg = ('In-place-upgrade assertion error. '
-                   '{} schema object types have not been tested: "{}" '
-                   'These objects are not visible '
-                   'in golden json db-dump: {}'.format(len(missing_objs),
-                                                       missing_objs,
-                                                       golden_json_filename))
-            if InPlaceUpgradeTestCase.RAISE_ON_MISSING_SCHEMA_TESTS:
-                raise Exception(msg)
-            logger.debug(msg=msg)
+            raise Exception(
+                'In-place-upgrade assertion error. '
+                '{} schema object types have not been tested: "{}" '
+                'These objects are not visible '
+                'in golden json db-dump: {}'.format(len(missing_objs),
+                                                    missing_objs,
+                                                    golden_json_filename))
 
     @classmethod
     def _get_all_vnc_obj_types(cls):
@@ -90,12 +86,10 @@ class InPlaceUpgradeTestCase(TestCase):
                     continue
 
         if len(prop_not_found) > 0:
-            msg = ('Properties nod defined in prop_map: '
-                   '{} for object: {}'.format(', '.join(prop_not_found),
-                                              obj.resource_type))
-            if InPlaceUpgradeTestCase.RAISE_ON_MISSING_SCHEMA_TESTS:
-                raise Exception(msg)
-            logger.debug(msg=msg)
+            raise Exception(
+                'Properties nod defined in prop_map: '
+                '{} for object: {}'.format(', '.join(prop_not_found),
+                                           obj.resource_type))
 
         return obj(**prop_map)
 

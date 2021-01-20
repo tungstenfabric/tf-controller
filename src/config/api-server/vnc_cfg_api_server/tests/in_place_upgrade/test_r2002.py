@@ -60,21 +60,27 @@ class TestInPlaceUpgradeR2002(test_case.InPlaceUpgradeTestCase):
             PlaybookInfoType(playbook_uri='/tmp/fake/uri/playbook.yaml',
                              multi_device_playbook=False,
                              job_completion_weightage=5)])
-        prop_map = {'name': 'jt-{}'.format(self.id()),
-                    'parent_obj': self.gsc,
-                    'parent_type': 'global-system-config',
-                    'display_name': 'job template test',
-                    'job_template_executables': exe_info_list,
-                    'job_template_output_schema': 'some_string',
-                    'job_template_output_ui_schema': 'some_string',
-                    'job_template_concurrency_level': 'fabric',
-                    'job_template_description': 'test template',
-                    'job_template_type': 'workflow',
-                    'job_template_input_ui_schema': 'some_string',
-                    'job_template_synchronous_job': False,
-                    'job_template_input_schema': 'some_string',
-                    'job_template_playbooks': playbook_info_list,
-                    'annotations': {}}
+        recovery_playbook_info_list = PlaybookInfoListType()
+        recovery_playbook_info_list.set_playbook_info(
+            [PlaybookInfoType(playbook_uri='job_manager_test_recovery.yml')])
+        prop_map = {
+            'name': 'jt-{}'.format(self.id()),
+            'parent_obj': self.gsc,
+            'parent_type': 'global-system-config',
+            'display_name': 'job template test',
+            'job_template_executables': exe_info_list,
+            'job_template_output_schema': 'some_string',
+            'job_template_output_ui_schema': 'some_string',
+            'job_template_concurrency_level': 'fabric',
+            'job_template_description': 'test template',
+            'job_template_type': 'workflow',
+            'job_template_input_ui_schema': 'some_string',
+            'job_template_synchronous_job': False,
+            'job_template_input_schema': 'some_string',
+            'job_template_playbooks': playbook_info_list,
+            'job_template_recovery_playbooks': recovery_playbook_info_list,
+            'annotations': {}
+        }
 
         obj = self.set_properties(JobTemplate, prop_map)
         self.assertSchemaObjCreateOrUpdate(obj)
