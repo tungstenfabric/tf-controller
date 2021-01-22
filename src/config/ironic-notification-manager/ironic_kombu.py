@@ -40,8 +40,6 @@ class IronicKombuClient(object):
         # then we will have to modify this function to perhaps take an argument
         # gevent.signal(signal.SIGTERM, self.sigterm_handler)
 
-        msg = "Initializing RabbitMQ connection, urls %s" % self._url
-        self._sandesh_logger.info(msg)
         # self._conn_state = ConnectionStatus.INIT
 
         urls = list()
@@ -53,9 +51,12 @@ class IronicKombuClient(object):
             )
             urls.append(url)
         ssl_params = self._fetch_ssl_params(args)
+
+        msg = "Initializing RabbitMQ connection\nservers %s\nssl params %s" % (args.rabbit_servers, ssl_params)
+        self._sandesh_logger.info(msg)
+
         self._conn = kombu.Connection(urls, ssl=ssl_params, transport_options={'confirm_publish': True})
-        self._exchange = self._set_up_exchange()
-        self._queues = []
+        self._exchange = kombu.Exchange("ironic", type="topic", durable=False)
         self._queues = self._set_up_queues(self._notification_level)
         if not self._queues:
             exit()
@@ -82,9 +83,6 @@ class IronicKombuClient(object):
         version = version.lower()
         if version not in self._SUPPORTED_SSL_PROTOCOLS:
             raise RuntimeError('Invalid SSL version: {}'.format(version))
-
-    def _set_up_exchange(self):
-        kombu.Exchange("ironic", type="topic", durable=False)
 
     def _set_up_queues(self, notification_level):
         if notification_level not in ['info', 'debug', 'warning', 'error']:
@@ -143,11 +141,9 @@ class IronicKombuClient(object):
             self._sandesh_logger.info(msg)
 
             self._channel = self._conn.channel()
-            self._consumer = kombu.Consumer(self._conn,
-                                            queues=self._queues,
-                                            callbacks=[self._subscriber],
-                                            accept=["application/json"])
-    # end _reconnect
+            self._consumer = kombu.Consumer(
+                self._conn, queues=self._queues,
+                callbacks=[self._subscriber], accept=["application/json"])
 
     def _connection_watch(self, connected, timeout=10000):
         if not connected:
@@ -159,7 +155,6 @@ class IronicKombuClient(object):
                 self._conn.drain_events()
             except self._conn.connection_errors + self._conn.channel_errors:
                 self._reconnect()
-    # end _connection_watch
 
     def _connection_watch_forever(self, timeout=10000):
         connected = True
@@ -168,18 +163,16 @@ class IronicKombuClient(object):
                 self._connection_watch(connected, timeout)
             except Exception as e:
                 msg = 'Error in rabbitmq drainer greenlet: %s' % (str(e))
-                self._sandesh_logger.info(msg)
+                self._sandesh_logger.error(msg)
                 # avoid 'reconnect()' here as that itself might cause exception
                 connected = False
-    # end _connection_watch_forever
 
     def _process_message_dict(self, message_dict):
         return message_dict["event_type"]
 
     def _subscribe_cb(self, body):
-        # print("The body is {}".format(body))
+        self._sandesh_logger.debug("Received message from rabbitmq: {}".format(body))
         message_dict = json.loads(str(body["oslo.message"]))
-        # print("Message: \n" + str(message_dict))
         message_dict_payload = message_dict.pop("payload")
         ironic_object_data = message_dict_payload["ironic_object.data"]
         for k in message_dict:
@@ -193,7 +186,7 @@ class IronicKombuClient(object):
             self._subscribe_cb(body)
             message.ack()
         except Exception as e:
-            print("The error is " + str(e))
+            self._sandesh_logger.error("Received error from rabbitmq: " + str(e))
 
     def _start(self):
         self._reconnect()
