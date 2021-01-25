@@ -16,8 +16,8 @@ import hashlib
 import random
 import six
 
-from keystoneauth1.identity import ks_v3
-from keystoneauth1 import ks_session
+from keystoneauth1.identity import v3 as ks_v3
+from keystoneauth1 import session as ks_session
 from ironicclient import client as ironicclient
 
 from sandesh_common.vns.ttypes import Module
@@ -30,14 +30,14 @@ from .sandesh.ironic_notification_manager.ttypes import \
     PortInfo, InternalPortInfo, NodeProperties, DriverInfo, \
     InstanceInfo
 
-from ironic_notification_manager.ironic_kombu import IronicKombuClient
+from .ironic_kombu import IronicKombuClient
 
 
 class IronicNotificationManager(object):
 
     _ironic_kombu_client = None
 
-    IronicNoeDictKeyMap = {
+    IronicNodeDictKeyMap = {
         'uuid': 'name',
         'provision_state': 'provision_state',
         'power_state': 'power_state',
@@ -114,7 +114,8 @@ class IronicNotificationManager(object):
         for node_dict in node_dict_list:
             new_node_dict_list.append(node_dict.to_dict())
             node_port_map[node_dict.to_dict()["uuid"]] = []
-        self.process_ironic_node_info(new_node_dict_list)
+        if new_node_dict_list:
+            self.process_ironic_node_info(new_node_dict_list)
 
         # Get and process Ports for all Ironic Nodes
         port_dict_list = ironic_client.port.list(detail=True)
@@ -219,9 +220,9 @@ class IronicNotificationManager(object):
             instance_info_data = dict()
             node_properties_data = dict()
 
-            for key in self.IronicNoeDictKeyMap.keys():
+            for key in self.IronicNodeDictKeyMap.keys():
                 if key in node_dict and key not in self.SubDictKeys:
-                    ironic_node_data[self.IronicNoeDictKeyMap[key]] = \
+                    ironic_node_data[self.IronicNodeDictKeyMap[key]] = \
                         node_dict[key]
 
             for sub_dict in self.SubDictKeys:
@@ -308,10 +309,10 @@ def parse_args(args_str):
         'syslog_facility': Sandesh._DEFAULT_SYSLOG_FACILITY,
         # rabbitmq section
         'rabbit_servers': None,
-        'rabbit_user': None,
+        'rabbit_user': 'ironic',
         'rabbit_password': None,
-        'rabbit_vhost': None,
-        'rabbit_use_ssl': None,
+        'rabbit_vhost': 'openstack',
+        'rabbit_use_ssl': False,
         'kombu_ssl_version': None,
         'kombu_ssl_certfile': None,
         'kombu_ssl_keyfile': None,
@@ -357,15 +358,19 @@ def parse_args(args_str):
     defaults.update(sandesh_opts)
     parser.set_defaults(**defaults)
 
-    args = parser.parse_args(remaining_argv)
-    if isinstance(args.collectors, six.string_types):
-        args.collectors = args.collectors.split()
-    if isinstance(args.introspect_port, six.string_types):
-        args.introspect_port = int(args.introspect_port)
-    if isinstance(args.insecure, six.string_types):
-        args.insecure = args.insecure.lower() == 'true'
-    return args
-# end parse_args
+    # TODO: add command line params
+    SandeshConfig.add_parser_arguments(parser)
+
+    args_obj = parser.parse_args(remaining_argv)
+    if isinstance(args_obj.collectors, six.string_types):
+        args_obj.collectors = args_obj.collectors.split()
+    if isinstance(args_obj.introspect_port, six.string_types):
+        args_obj.introspect_port = int(args_obj.introspect_port)
+    if isinstance(args_obj.insecure, six.string_types):
+        args_obj.insecure = args_obj.insecure.lower() == 'true'
+    if isinstance(args_obj.rabbit_use_ssl, six.string_types):
+        args_obj.rabbit_use_ssl = args_obj.rabbit_use_ssl.lower() == 'true'
+    return args_obj
 
 
 def main(args_str=None):
