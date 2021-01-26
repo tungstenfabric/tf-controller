@@ -5206,6 +5206,7 @@ class RoutingPolicyDM(DBBaseDM):
 
         if o_term_action_list is not None:
             o_action = o_term_action_list.get('action', None)
+            action_value = o_term_action_list.get('action_next_value', None)
             o_update = o_term_action_list.get('update', None)
             o_external = o_term_action_list.get('external', None)
             as_path_expand = o_term_action_list.get('as_path_expand', None)
@@ -5333,7 +5334,8 @@ class RoutingPolicyDM(DBBaseDM):
 
         taction = AbstractDevXsd.TermActionListType(
             update=update_action, action=o_action, external=o_external,
-            as_path_expand=as_path_expand, as_path_prepend=as_path_prepend)
+            as_path_expand=as_path_expand, as_path_prepend=as_path_prepend,
+            action_next_val=action_value)
         # create Routing Policy Term
         term = AbstractDevXsd.RoutingPolicyTerm(
             term_match_condition=tcond,
