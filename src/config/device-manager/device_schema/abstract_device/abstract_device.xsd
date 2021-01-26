@@ -636,6 +636,13 @@
     </xsd:restriction>
 </xsd:simpleType>
 
+<xsd:simpleType name='ActionNextValue'>
+      <xsd:restriction base="xsd:string">
+          <xsd:enumeration value="term"/>
+          <xsd:enumeration value="policy"/>
+      </xsd:restriction>
+</xsd:simpleType>
+
 <xsd:complexType name='AsListType'>
     <xsd:element name='asn-list' type='xsd:integer' maxOccurs='unbounded'/>
 </xsd:complexType>
@@ -675,6 +682,7 @@
 <xsd:complexType name='TermActionListType'>
     <xsd:element name='update'  type='dac:ActionUpdateType'/>
     <xsd:element name='action'  type='dac:ActionType'/>
+    <xsd:element name='action-next-val'  type='dac:ActionNextValue' required='optional'/>
     <xsd:element name="external" type='dac:ExternalRouteType' required='optional'/>
     <xsd:element name="as-path-expand" type='xsd:string' required='optional'
             description="Valid only for network-device TermType. string should be in format of AS number(s) seperated by spaces"/>
