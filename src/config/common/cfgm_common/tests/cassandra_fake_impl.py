@@ -617,14 +617,17 @@ sys.modules["pycassa.cassandra.ttypes.ConsistencyLevel"] =\
     FakeTtypes.ConsistencyLevel
 
 
-class FakeTSSLSocket(object):
+class FakeThriftPackages(object):
     class TSSLSocket(object):  # noqa: D106
+        pass
+
+    class TTransport(object):  # noqa: D106
         pass
 
 
 class FakeThrift(object):
-    transport = FakeTSSLSocket
+    transport = FakeThriftPackages
 
 
 sys.modules["thrift"] = FakeThrift
-sys.modules["thrift.transport"] = FakeTSSLSocket
+sys.modules["thrift.transport"] = FakeThriftPackages
