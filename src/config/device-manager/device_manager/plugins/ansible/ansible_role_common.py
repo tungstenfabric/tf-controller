@@ -212,9 +212,11 @@ class AnsibleRoleCommon(AnsibleConf):
         encapsulation_priorities = \
            ri_conf.get("encapsulation_priorities") or ["MPLSoGRE"]
         highest_encapsulation = encapsulation_priorities[0]
-
+        cgnat_vn = ri_conf.get('cgnat_vn', None)
+        service_ifc = ri_conf.get('service_ifc', None)
         ri = RoutingInstance(name=ri_name)
         is_master_int_vn = False
+        is_public_lr_vn = False
         lr = None
         if vn:
             is_nat = True if fip_map else False
@@ -237,11 +239,30 @@ class AnsibleRoleCommon(AnsibleConf):
                     if is_internal_vn:
                         # set description only for interval VN/VRF
                         ri.set_description("__contrail_%s_%s" % (lr.name, lr_uuid))
+                        is_public_lr_vn = lr.logical_router_gateway_external
 
             ri.set_is_master(is_master_int_vn)
 
         self.ri_map[ri_name] = ri
 
+        if is_internal_vn and cgnat_vn and service_ifc:
+            pr = self.physical_router
+            service_port_ids = DMUtils.get_service_ports(network_id)
+            ms_interfaces = []
+            service_ports = pr.junos_service_ports. \
+                get('service_port')
+            ms_interfaces.append(
+                JunosInterface(
+                    service_ports[0] + "." + str(service_port_ids[0]),
+                    'l3', 0))
+            ms_interfaces.append(
+                JunosInterface(
+                    service_ports[0] + "." + str(service_port_ids[1]),
+                    'l3', 0))
+            self.add_ref_to_list(ri.get_ingress_interfaces(),
+                                 ms_interfaces[0].name)
+            self.add_ref_to_list(ri.get_egress_interfaces(),
+                                 ms_interfaces[1].name)
         ri.set_virtual_network_id(str(network_id))
         ri.set_vxlan_id(str(vni))
         ri.set_virtual_network_is_internal(is_internal_vn)
@@ -312,7 +333,7 @@ class AnsibleRoleCommon(AnsibleConf):
             self.add_ref_to_list(ri.get_interfaces(), interfaces[0].name)
 
         # add firewall config for public VRF
-        if router_external and is_l2 is False:
+        if router_external and is_l2 is False and not is_public_lr_vn:
             term_ri_name = ri.get_name()
             # Routing instance name is set to description for internal vns
             # in the template. Routing instance name in the firewall
@@ -348,12 +369,13 @@ class AnsibleRoleCommon(AnsibleConf):
                 self.inet6_forwarding_filter.set_terms(terms)
 
         # add firewall config for DCI Network
-        if fip_map is not None:
+        if fip_map is not None and not ri_conf.get('is_cgnat_vrf', False):
             self.firewall_config = self.firewall_config or Firewall(
                 comment=DMUtils.firewall_comment())
             f = FirewallFilter(
                 name=DMUtils.make_private_vrf_filter_name(ri_name))
             f.set_comment(DMUtils.vn_firewall_comment(vn, "private"))
+            self.firewall_config.set_family('inet')
             self.firewall_config.add_firewall_filters(f)
 
             term = Term(name=DMUtils.make_vrf_term_name(ri_name))
@@ -471,6 +493,68 @@ class AnsibleRoleCommon(AnsibleConf):
 
         for target in export_targets:
             self.add_to_list(ri.get_export_targets(), target)
+
+        if ri_conf.get('is_cgnat_vrf', False):
+            self.add_ref_to_list(ri.get_interfaces(), interfaces[0].name)
+            self.firewall_config = self.firewall_config or Firewall(
+                comment=DMUtils.firewall_comment())
+            self.firewall_config.set_family('inet')
+            f = FirewallFilter(
+                name=DMUtils.make_private_vrf_filter_name(ri_name))
+            f.set_comment(DMUtils.vn_firewall_comment(vn, "private"))
+            self.firewall_config.add_firewall_filters(f)
+
+            # Construct the Address pool
+            public_subnet = self._get_subnets_in_vn(vn)
+            address_pool = AddressPool(name=DMUtils.make_ip_pool_name(
+                public_subnet[0]), address=public_subnet[0])
+            term = Term(name=DMUtils.make_vrf_term_name(ri_name))
+            from_ = From()
+            term.set_from(from_)
+            term.set_then(Then(routing_instance=[ri_name]))
+            f.add_terms(term)
+
+            # cgnat services config
+            for_nat_rule = interfaces[0].name.replace("/", "_").replace(".", "_")
+            nat_rules = NatRules(allow_overlapping_nat_pools=True,
+                                 name=DMUtils.make_services_set_name(for_nat_rule),
+                                 comment=DMUtils.service_set_comment(vn))
+            ri.set_nat_rules(nat_rules)
+            snat_rule = NatRule(
+                name=DMUtils.make_snat_rule_name(for_nat_rule),
+                comment=DMUtils.service_set_nat_rule_comment(vn, "CGNAT"),
+                direction="input", translation_type="napt-44",
+                source_pool=address_pool.get_name())
+            snat_rule.set_comment(DMUtils.snat_rule_comment())
+            # Get all the private VN subnets
+            __, li_map = self.set_default_pi('irb', 'irb')
+            for private_vn in ri_conf.get('private_vns', []):
+                private_vn_obj = VirtualNetworkDM.get(private_vn)
+                # Add the irb
+                network_id = private_vn_obj.vn_network_id
+                intf_name = 'irb.' + str(network_id)
+                intf_unit = self.set_default_li(li_map, intf_name,
+                                                   network_id)
+                intf_unit.set_comment(DMUtils.vn_irb_fip_inet_comment(vn))
+                intf_unit.set_family("inet")
+                intf_unit.add_firewall_filters(
+                    DMUtils.make_private_vrf_filter_name(ri_name))
+                self.add_ref_to_list(ri.get_routing_interfaces(), intf_name)
+
+                subnet_list = self._get_subnets_in_vn(private_vn_obj)
+                for s in subnet_list:
+                    if s:
+                        from_.add_source_address(self.get_subnet_for_cidr(s))
+                        snat_rule.add_source_addresses(
+                            self.get_subnet_for_cidr(s))
+            nat_rules.add_rules(snat_rule)
+            nat_rules.set_inside_interface(interfaces[0].name)
+            nat_rules.set_outside_interface(interfaces[1].name)
+            nat_rules.set_address_pool(address_pool)
+            self.add_ref_to_list(ri.get_ingress_interfaces(),
+                                  interfaces[0].name)
+            self.add_ref_to_list(ri.get_egress_interfaces(),
+                                  interfaces[1].name)
     # end add_routing_instance
 
     def attach_acls(self, interface, unit):
@@ -657,6 +741,17 @@ class AnsibleRoleCommon(AnsibleConf):
             lr = LogicalRouterDM.get(lr_id)
             if not lr:
                 continue
+            if lr.logical_router_gateway_external is True:
+                # Here means the vn_obj is internal network and its a public LR.
+                # So for junos family, we need to check for the CGNAT VN.
+                if pr.device_family == 'junos':
+                    if lr.cgnat_vn:
+                        cgnat_vn_obj = VirtualNetworkDM.get(lr.cgnat_vn)
+                        if pr.is_junos_service_ports_enabled() and \
+                                pr.junos_service_ports.get('service_port') and \
+                                str(pr.junos_service_ports.get('service_port')[
+                                        0]).strip().startswith("ms-"):
+                            self.construct_cgnat_config(lr, cgnat_vn_obj)
             vn_list += lr.get_connected_networks(include_internal=True,
                                                  pr_uuid=pr.uuid)
 
@@ -703,6 +798,53 @@ class AnsibleRoleCommon(AnsibleConf):
                                     break
         return vn_dict
     # end
+
+    def construct_cgnat_config(self, lr, cgnat_vn):
+        vn_obj = cgnat_vn
+        pr = self.physical_router
+        private_vns = lr.get_connected_networks(include_internal=False,
+                                                 pr_uuid=pr.uuid)
+        if pr.is_junos_service_ports_enabled():
+            internal_vn = lr.virtual_network
+            internal_vn_obj = VirtualNetworkDM.get(internal_vn)
+            service_port_ids = DMUtils.get_service_ports(
+                internal_vn_obj.vn_network_id)
+            if not pr \
+                    .is_service_port_id_valid(service_port_ids[0]):
+                self._logger.error("DM can't allocate service interfaces"
+                                   " for (vn, vn-id)=(%s,%s)" %
+                                   (internal_vn_obj.fq_name,
+                                    internal_vn_obj.vn_network_id))
+            else:
+                vrf_name = DMUtils.make_vrf_name(internal_vn_obj.fq_name[-1],
+                                                 internal_vn_obj.vn_network_id,
+                                                 'l3', True)
+                interfaces = []
+                service_ports = pr.junos_service_ports. \
+                    get('service_port')
+                interfaces.append(
+                    JunosInterface(
+                        service_ports[0] + "." + str(service_port_ids[0]),
+                        'l3', 0))
+                interfaces.append(
+                    JunosInterface(
+                        service_ports[0] + "." + str(service_port_ids[1]),
+                        'l3', 0))
+                ex_rt, im_rt = vn_obj.get_route_targets()
+                ri_conf = {'ri_name': vrf_name, 'vn': vn_obj,
+                           'import_targets': im_rt,
+                           'interfaces': interfaces,
+                           'fip_map': vn_obj.instance_ip_map,
+                           'network_id': vn_obj.vn_network_id,
+                           'restrict_proxy_arp': vn_obj.router_external,
+                           'is_cgnat_vrf': True,
+                           'private_vns': private_vns}
+                self.add_routing_instance(ri_conf)
+
+    def _get_subnets_in_vn(self, vn_obj):
+        gateways = vn_obj.gateways
+        cidrs = list(gateways.keys())
+        return cidrs
 
     def get_vn_associated_physical_interfaces(self):
         pr = self.physical_router
@@ -1036,6 +1178,28 @@ class AnsibleRoleCommon(AnsibleConf):
                             lr_uuid = DMUtils.extract_lr_uuid_from_internal_vn_name(vrf_name_l3)
                             lr = LogicalRouterDM.get(lr_uuid)
                             if lr and not lr.is_master:
+                                # For MX router, we need to include the tenant
+                                # VN RTs as well
+                                if self.physical_router.device_family == 'junos':
+                                    lr_vns = lr.get_connected_networks(
+                                        include_internal=False, pr_uuid=
+                                        self.physical_router.uuid)
+                                    if lr.cgnat_vn:
+                                        lr_vns.append(lr.cgnat_vn)
+                                        # Add the service interface to the RI
+                                        ms_enabled, ms_ifc = self.is_ms_interface_enabled()
+                                        if ms_enabled:
+                                            ri_conf['service_ifc'] = ms_ifc
+                                            ri_conf['cgnat_vn'] = lr.cgnat_vn
+                                    for lr_vn in lr_vns:
+                                        lr_vn_obj = VirtualNetworkDM.get(lr_vn)
+                                        ex_rt, im_rt = \
+                                            lr_vn_obj.get_route_targets()
+                                        if ex_rt:
+                                            ri_conf['export_targets'] |= ex_rt
+                                        if im_rt:
+                                            ri_conf['import_targets'] |= im_rt
+
                                 ri_conf['vni'] = vn_obj.get_vxlan_vni(is_internal_vn = is_internal_vn)
                                 ri_conf['router_external'] = lr.logical_router_gateway_external
                                 dci = lr.get_interfabric_dci()
@@ -1050,10 +1214,13 @@ class AnsibleRoleCommon(AnsibleConf):
                                             ri_conf['export_targets'] |= exports
                         self.add_routing_instance(ri_conf)
                     break
-
+            pr = self.physical_router
             if export_set and\
                     self.physical_router.is_junos_service_ports_enabled() and\
-                    len(vn_obj.instance_ip_map) > 0:
+                    len(vn_obj.instance_ip_map) > 0 and \
+                    pr.junos_service_ports.get('service_port') and str(\
+                    pr.junos_service_ports.get('service_port')[
+                        0]).strip().startswith("si-"):
                 service_port_ids = DMUtils.get_service_ports(
                     vn_obj.vn_network_id)
                 if not self.physical_router \
@@ -1205,6 +1372,13 @@ class AnsibleRoleCommon(AnsibleConf):
                     for target in ri.get_export_targets():
                         self.add_to_list(vni_ri_right.get_export_targets(), target)
 
+    def is_ms_interface_enabled(self):
+        pr = self.physical_router
+        if pr.is_junos_service_ports_enabled():
+            sp = pr.junos_service_ports.get('service_port')
+            if sp and type(sp) is list and len(sp) > 0:
+                return str(sp[0]).strip().startswith("ms-"), str(sp[0]).strip()
+        return False
 
     def build_service_chain_irb_bd_config(self, svc_app_obj, left_right_params):
         left_fq_name = left_right_params['left_qfx_fq_name']
