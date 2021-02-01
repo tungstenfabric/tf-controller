@@ -98,5 +98,10 @@ set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} interface {{int_na
 {%                 set irb_name = irb_int.get('name') %}
 set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} interface {{irb_name}}
 {%             endfor %}
+{%             set ingress_ifcs = ri.get('ingress_interfaces', []) %}
+{%             for ingress_ifc in ingress_ifcs %}
+set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} routing-options static route 0.0.0.0/0 next-hop {{ingress_ifc.name}}
+set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} interface {{ingress_ifc.name}}
+{%             endfor %}
 {%         endif %}
 {%      endfor %}

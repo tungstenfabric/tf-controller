@@ -378,8 +378,11 @@ set groups {{cfg_group}} routing-instances {{name}} protocols ospf area {{area_i
 {%                 set sys_roles = sys_config.get('routing_bridging_roles', []) %}
 {%                 if (router_external == true and ('DC-Gateway' in sys_roles or 'DCI-Gateway' in sys_roles)) %}
 {%                     set ns.public_network = true %}
+{%                     set ingress_ifcs = ri.get('ingress_interfaces', []) %}
+{%                     if ingress_ifcs|length == 0 %}
 set groups {{cfg_group}} routing-instances {{name}} routing-options static route 0.0.0.0/0 next-table inet.0
 set groups {{cfg_group}} forwarding-options family inet filter input redirect_to_public_vrf_filter
+{%                     endif %}
 {%                     for subnet in ri.get('prefixes', []) %}
 {%                         set cidr = subnet.get('prefix') + '/' + (subnet.get('prefix_len')|string) %}
 {%                         if (':' in cidr) %}

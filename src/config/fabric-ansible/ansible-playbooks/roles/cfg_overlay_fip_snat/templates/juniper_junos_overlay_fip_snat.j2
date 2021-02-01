@@ -1,4 +1,4 @@
-{%     set ns = namespace(fip_accept_term = false, ipv4 = false, ipv6 = false) %}
+{%     set ns = namespace(fip_accept_term = false, ipv4 = false, ipv6 = false, si_ifc = false) %}
 {%     for ri in device_abstract_config.get('routing_instances', []) %}
 {%         set ri_vn_mode = ri.get('virtual_network_mode') %}
 {%         if (ri_vn_mode == 'l2') or 'virtual-switch' == ri.get('routing_instance_type', '') %}
@@ -11,7 +11,7 @@
 {%         set intfs = ri.get('interfaces', []) %}
 {%         for intf in intfs %}
 {%             set name = intf.get('name') %}
-{%             if 'irb' not in name %}
+{%             if 'irb' not in name and 'si-' in name%}
 set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} interface {{name}}
 {%             endif %}
 {%         endfor %}
@@ -21,6 +21,9 @@ set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} interface {{name}}
 {%             set phy_intf = intf_name.split(".")[0] %}
 {%             set lo_unit = intf_name.split(".")[1] %}
 set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} family inet
+set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} service-domain inside
+{%             if 'si-' in intf_name %}
+{%             set ns.si_ifc = true %}
 {%             set nat_ingress_import = contrail_l3_ri + '-import' %}
 {%             set nat_ingress_export = contrail_l3_ri + '-export' %}
 set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} instance-type {{ri_type}}
@@ -34,10 +37,10 @@ set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} routing-options au
 set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} term t1 from community {{community_target}}
 set groups {{cfg_group}} policy-options community {{community_target}} members {{import_target | rtfilter}}
 {%             endfor %}
-set policy-options policy-statement {{nat_ingress_import}} term t1 then accept
-set policy-options policy-statement {{nat_ingress_import}} then reject
+set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} term t1 then accept
+set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} then reject
 set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_export}} term t1 then reject
-set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} service-domain inside
+{%             endif %}
 {%         endfor %}
 {%         for intf in ri.get('egress_interfaces', []) %}
 {%             set intf_name = intf.get('name') %}
@@ -46,7 +49,9 @@ set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} service-domain
 set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} family inet
 {%             for route in ri.get('static_routes', []) %}
 {%                 set cidr = route.get('prefix') + '/' + route.get('prefix_len')|string %}
+{%                 if 'si-' in intf_name %}
 set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} routing-options static route {{cidr}} next-hop {{intf_name}}
+{%                 endif %}
 {%             endfor %}
 set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} service-domain outside
 {%         endfor %}
@@ -56,6 +61,11 @@ set groups {{cfg_group}} interfaces {{phy_intf}} unit {{lo_unit}} service-domain
 {%             if nat_rules_name == None %}
 {%                 set nat_rules_name = 'sv-'+contrail_l3_ri %}
 {%             endif %}
+{%             set address_pool = nat_rules.get('address_pool') %}
+{%             if address_pool != None %} {# /* Start of address_pool */ #}
+set groups {{cfg_group}} services nat pool {{address_pool.name}} address {{address_pool.address}}
+set groups {{cfg_group}} services nat pool {{address_pool.name}} port automatic random-allocation
+{%             endif %} {# /* End of address_pool */ #}
 {%             set rules = nat_rules.get('rules', []) %}
 {%             for rule in rules %}
 set groups {{cfg_group}} services service-set {{nat_rules_name}} nat-rules {{rule.get('name')}}
@@ -64,20 +74,27 @@ set groups {{cfg_group}} services nat rule {{rule.get('name')}} match-direction 
 {%                 set source_prefixes = rule.get('source_prefixes', []) %}
 {%                 for index in range(source_addrs|length) %}
 {%                     set source_addr = source_addrs[index] %}
-{%                     set source_prefix = source_prefixes[index] %}
 {%                     set term_name = 'term_'+source_addr.get('prefix', '').replace('.','_') %}
 {%                     set cidr = source_addr.get('prefix') + '/' + source_addr.get('prefix_len')|string %}
 set groups {{cfg_group}} services nat rule {{rule.name}} term {{term_name}} from source-address {{cidr}}
-{%                     set cidr = source_prefix.get('prefix') + '/' + source_prefix.get('prefix_len')|string %}
+{%                     set cidr = source_addr.get('prefix') + '/' + source_addr.get('prefix_len')|string %}
 {%                     set ns.fip_accept_term = true %}
 {%                     if ':' in cidr %}
 {%                         set ns.ipv6 = true %}
 {%                     else %}
 {%                         set ns.ipv4 = true %}
 {%                     endif %}
+{%                     if source_prefixes|length > 0 %}
+{%                         set source_prefix = source_prefixes[index] %}
+{%                         set cidr = source_prefix.get('prefix') + '/' + source_prefix.get('prefix_len')|string %}
 set groups {{cfg_group}} services nat rule {{rule.get('name')}} term {{term_name}} then translated source-prefix {{cidr}}
 set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term bms_term from destination-address {{cidr}}
+{%                     endif %}
 set groups {{cfg_group}} services nat rule {{rule.get('name')}} term {{term_name}} then translated translation-type {{rule.get('translation_type')}}
+{%                     set source_pool = rule.get('source_pool', '') %}
+{%                     if source_pool != '' %}
+set groups {{cfg_group}} services nat rule {{rule.name}} term {{term_name}} then translated source-pool {{source_pool}}
+{%                     endif %}
 {%                 endfor %}
 {%                 set dst_addrs = rule.get('destination_addresses', []) %}
 {%                 set dst_prefixes = rule.get('destination_prefixes', []) %}
@@ -141,11 +158,12 @@ set groups {{cfg_group}} firewall family {{family}} filter {{filter_name}} term 
 set groups {{cfg_group}} firewall family {{family}} filter {{filter_name}} term default-term then accept
 {%         endfor %}
 {%     endif %}
+set groups {{cfg_group}} interfaces irb gratuitous-arp-reply
+{%     if ns.si_ifc == true %}
 {%     set intfs = device_abstract_config.get('physical_interfaces', []) %}
 {%     for intf in intfs %}
 {%         set intf_type = intf.get('interface_type') %}
 {%         if intf_type == 'irb' %} 
-set groups {{cfg_group}} interfaces irb gratuitous-arp-reply
 {%             set li_intfs = intf.get('logical_interfaces', []) %}
 {%             for irb_intf in li_intfs %}
 {%                  set irb_unit = irb_intf.get('unit') %}
@@ -157,6 +175,7 @@ set groups {{cfg_group}} interfaces irb unit {{irb_unit}} family {{irb_family}} 
 {%             endfor %}
 {%         endif %}
 {%     endfor %}
+{%     endif %}
 {%     if ns.fip_accept_term == true %}
 {%         if ns.ipv4 == true %}
 set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term bms_term then accept
