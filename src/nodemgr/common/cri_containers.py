@@ -85,7 +85,7 @@ class Instrument:
 
     @staticmethod
     def craft_node_type_surrogate(labels_):
-        v = os.getenv('VENDOR_DOMAIN', 'tungsten.io')
+        v = os.getenv('VENDOR_DOMAIN', 'net.juniper.contrail')
         if not v:
             return None
 
