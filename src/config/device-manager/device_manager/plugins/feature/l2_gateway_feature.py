@@ -66,7 +66,7 @@ class L2GatewayFeature(FeatureBase):
         ri.set_is_public_network(vn.router_external)
 
         vlan = None
-        if highest_encapsulation == 'VXLAN':
+        if 'VXLAN' in encapsulation_priorities:
             ri.set_routing_instance_type('virtual-switch')
             vlan = Vlan(name=DMUtils.make_bridge_name(vxlan_id),
                         vxlan_id=vxlan_id)
@@ -75,7 +75,7 @@ class L2GatewayFeature(FeatureBase):
             feature_config.add_vlans(vlan)
             for interface in interfaces:
                 self._add_ref_to_list(vlan.get_interfaces(), interface.li_name)
-        elif highest_encapsulation in ['MPLSoGRE', 'MPLSoUDP']:
+        if highest_encapsulation in ['MPLSoGRE', 'MPLSoUDP']:
             ri.set_routing_instance_type('evpn')
 
         self._build_l2_evpn_interface_config(interfaces, vn, vlan)
