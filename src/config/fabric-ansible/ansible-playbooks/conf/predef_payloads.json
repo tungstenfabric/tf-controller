@@ -490,17 +490,15 @@
                 "multi_device_playbook": false,
                 "vendor": "Juniper",
                 "device_family": "",
-                "job_completion_weightage": 3,
+                "job_completion_weightage": 5,
                 "sequence_no": 10
-              },
+              }
+            ]
+          },
+          "job_template_recovery_playbooks": {
+            "playbook_info": [
               {
-                "recovery_playbook": true,
-                "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/update_dhcp_config.yml",
-                "multi_device_playbook": false,
-                "vendor": "Juniper",
-                "device_family": "",
-                "job_completion_weightage": 2,
-                "sequence_no": 11
+                "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/update_dhcp_config.yml"
               }
             ]
           },
@@ -886,17 +884,15 @@
                 "multi_device_playbook": false,
                 "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/update_dhcp_config.yml",
                 "vendor": "Juniper",
-                "job_completion_weightage": 18,
+                "job_completion_weightage": 20,
                 "sequence_no": 3
-              },
+              }
+            ]
+          },
+          "job_template_recovery_playbooks": {
+            "playbook_info": [
               {
-                "recovery_playbook": true,
-                "device_family": "",
-                "multi_device_playbook": false,
-                "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/update_dhcp_config.yml",
-                "vendor": "Juniper",
-                "job_completion_weightage": 2,
-                "sequence_no": 4
+                "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/update_dhcp_config.yml"
               }
             ]
           },
