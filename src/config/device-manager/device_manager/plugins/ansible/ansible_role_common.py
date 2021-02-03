@@ -1378,7 +1378,7 @@ class AnsibleRoleCommon(AnsibleConf):
             sp = pr.junos_service_ports.get('service_port')
             if sp and type(sp) is list and len(sp) > 0:
                 return str(sp[0]).strip().startswith("ms-"), str(sp[0]).strip()
-        return False
+        return False, None
 
     def build_service_chain_irb_bd_config(self, svc_app_obj, left_right_params):
         left_fq_name = left_right_params['left_qfx_fq_name']
