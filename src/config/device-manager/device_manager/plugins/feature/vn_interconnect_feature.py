@@ -45,6 +45,18 @@ class VnInterconnectFeature(FeatureBase):
                         return True
         return False
         # return dhcp_server_vn_map
+
+    def get_dhcp_server_in_same_network(self, dhcp_server_list, vn_list):
+        dhcp_vns_map = {}
+        for vn in vn_list:
+            for dhcp_ip in dhcp_server_list:
+                vn_obj = VirtualNetworkDM.get(vn)
+                ip_prefixes = vn_obj.get_prefixes(self._physical_router.uuid)
+                for ip_prefix in ip_prefixes:
+                    if IPAddress(dhcp_ip) in IPNetwork(ip_prefix):
+                        dhcp_vns_map[dhcp_ip] = vn
+        return dhcp_vns_map
+        # return dhcp_server_vn_map
     # end _is_dhcp_server_in_same_network
 
     def _get_interconnect_vn_map(self):
@@ -175,9 +187,20 @@ class VnInterconnectFeature(FeatureBase):
         vpg_vn_uuids = list(vn_li_map.keys())
         for internal_vn, vn_list in list(vn_map.items()):
             if self._physical_router.is_erb_only():
-                vn_list = list(set(vn_list) & set(vpg_vn_uuids))
-                if len(vn_list) == 0:
-                    continue
+                if internal_vn not in dhcp_servers:
+                    vn_list = list(set(vn_list) & set(vpg_vn_uuids))
+                    if len(vn_list) == 0:
+                        continue
+                else:
+                    # We need to have only the DHCP VN's in the VN list so
+                    # that we will create only the VNI and IRB for the DHCP VNs
+                    dhcp_server_ips = dhcp_servers[internal_vn]
+                    dhcp_ip_2_vn_map = self.get_dhcp_server_in_same_network(
+                        dhcp_server_ips, vn_list)
+                    vn_list = list(set(vn_list) & set(vpg_vn_uuids))
+                    for ip, vn in list(dhcp_ip_2_vn_map.items()):
+                        vn_list.append(vn)
+                    vn_list = list(set(vn_list))
 
             vn_obj = VirtualNetworkDM.get(internal_vn)
             ri_obj = self._get_primary_ri(vn_obj)
