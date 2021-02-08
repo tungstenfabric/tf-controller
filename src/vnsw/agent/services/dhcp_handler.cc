@@ -1158,14 +1158,44 @@ uint32_t DhcpHandler::OptionCode(const std::string &option) const {
     // if the option name is a number, use it as DHCP code
     // otherwise, use it as option name
     std::stringstream str(option);
+
     uint32_t code = 0;
     str >> code;
     if (code) return code;
 
     Dhcpv4NameCodeIter iter =
         g_dhcpv4_namecode_map.find(boost::to_lower_copy(option));
-    return (iter == g_dhcpv4_namecode_map.end()) ? 0 : iter->second;
+
+    if(iter != g_dhcpv4_namecode_map.end()){
+        return iter->second;
+    }
+
+    std::stringstream str_new(option);
+    //Checking if there is comma in the option
+    bool is_delimeter_set = false;
+    while(!(str_new.eof())){
+        str_new.get();
+        if (str_new.peek() == ','){
+            is_delimeter_set = true;
+        }
+    }
+    std::stringstream str_orig(option);
+    //If option name has a comma in it,
+    //eg: tag:!ipxe,67 , we should pick 67
+        if(is_delimeter_set){
+            vector<string> v;
+            while (str_orig.good()) {
+                string substr;
+                getline(str_orig, substr, ',');
+                v.push_back(substr);
+            }
+            std::stringstream str_temp(v[1]);
+            str_temp >> code;
+           }
+
+    return code;
 }
+
 
 void DhcpHandler::DhcpTrace(const std::string &msg) const {
     DHCP_TRACE(Error, "VM " << config_.ip_addr.to_string() << " : " << msg);

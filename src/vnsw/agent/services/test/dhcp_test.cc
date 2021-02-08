@@ -1942,6 +1942,21 @@ TEST_F(DhcpTest, RouterOption) {
                            false, "");
 }
 
+// Check dhcp options - dhcp options sent by Ironic openstack
+TEST_F(DhcpTest, IronicDhcpOptions) {
+    char vm_interface_attr[] =
+        "<virtual-machine-interface-dhcp-option-list>\
+            <dhcp-option>\
+                <dhcp-option-name>tag:ipxe,67</dhcp-option-name>\
+                <dhcp-option-value>TEST</dhcp-option-value>\
+            </dhcp-option>\
+        </virtual-machine-interface-dhcp-option-list>";
+
+      // check size of option value in dhcp response to verify option is set
+      #define OPTION_CATEGORY_BOOTFILE_NAME "43 04 54 45 53 54 "
+      DhcpOptionCategoryTest(vm_interface_attr, false, " ", true, OPTION_CATEGORY_BOOTFILE_NAME);
+}
+
 // Check dhcp options - classless host routes
 TEST_F(DhcpTest, ClasslessOption) {
     char vm_interface_attr[] =
