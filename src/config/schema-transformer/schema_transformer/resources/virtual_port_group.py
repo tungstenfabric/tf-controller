@@ -12,6 +12,8 @@ class VirtualPortGroupST(ResourceBaseST):
     @classmethod
     def reinit(cls):
         for obj in cls.list_vnc_obj():
+            if not obj.annotations:
+                continue
             for kvp in obj.annotations.key_value_pair:
                 if kvp.key == 'usage' and kvp.value == 'sriov-vm':
                     st_obj = cls.locate(obj.get_fq_name_str(), obj)
