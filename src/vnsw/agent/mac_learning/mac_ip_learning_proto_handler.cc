@@ -47,8 +47,14 @@ bool MacIpLearningProtoHandler::Run() {
         Log("Ingress packet on non-VMI interface");
         return true;
     }
+    uint32_t vrf_id = 0;
+    if (pkt_info_->agent_hdr.vrf == 0) {
+        vrf_id = vm_intf->vrf_id();
+    } else {
+        vrf_id = pkt_info_->agent_hdr.vrf;
+    }
     table_= agent()->mac_learning_proto()->GetMacIpLearningTable();
-    entry_.reset(new MacIpLearningEntry(table_, pkt_info_->agent_hdr.vrf,
+    entry_.reset(new MacIpLearningEntry(table_, vrf_id,
                                            pkt_info_->ip_saddr,
                                            pkt_info_->smac,
                                            intf_));
