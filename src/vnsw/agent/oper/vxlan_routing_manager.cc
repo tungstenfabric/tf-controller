@@ -746,9 +746,10 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
                 bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
         if (!(evpn_rt->IsDeleted())) {
             const AgentPath *p = evpn_rt->GetActivePath();
-            if ( p->peer()->GetType() != Peer::BGP_PEER)
-                return true;
             const VrfEntry *routing_vrf = lr_vrf_info.routing_vrf_;
+            if ((p->peer()->GetType() != Peer::BGP_PEER) || (routing_vrf == NULL)) {
+                return true;
+            }
             DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
             nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
             nh_req.data.reset(new VrfNHData(false, false, false));
