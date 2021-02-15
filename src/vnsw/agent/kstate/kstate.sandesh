@@ -30,6 +30,7 @@ struct KNHInfo {
     6: string          flags;
     7: i32             ref_cnt;
     8: optional string encap_family;
+    /* 9: optional list<i32> encap_oif_id (link = "KInterfaceReq"); */
     9: optional i32    encap_oif_id (link = "KInterfaceReq");
    10: optional i32    encap_len;
    11: optional string tun_sip;

@@ -970,9 +970,14 @@ void VrfNH::SendObjectLog(const NextHopTable *table,
 TunnelNH::TunnelNH(VrfEntry *vrf, const Ip4Address &sip, const Ip4Address &dip,
                    bool policy, TunnelType type, const MacAddress &rewrite_dmac) :
     NextHop(NextHop::TUNNEL, false, policy), vrf_(vrf, this), sip_(sip),
-    dip_(dip), tunnel_type_(type), arp_rt_(this), interface_(NULL), dmac_(),
-    crypt_(false), crypt_tunnel_available_(false), crypt_interface_(NULL),
-    rewrite_dmac_(rewrite_dmac) {
+    dip_(dip), tunnel_type_(type), tunnel_dst_rt_(NULL), crypt_(false),
+    crypt_tunnel_available_(false), crypt_interface_(NULL), rewrite_dmac_(rewrite_dmac) {
+
+        for (size_t i = 0;
+             i < Agent::GetInstance()->vhost_default_gateway().size(); i++) {
+            EncapDataPtr data(new EncapData(this, NULL));
+            encap_list_.push_back(data);
+        }
 }
 
 TunnelNH::~TunnelNH() {
@@ -1086,8 +1091,13 @@ bool TunnelNH::ChangeEntry(const DBRequest *req) {
         ret = true;
     }
 
-    if (arp_rt_.get() != rt) {
-        arp_rt_.reset(rt);
+    if (tunnel_dst_rt_ != rt) {
+        tunnel_dst_rt_ = rt;
+        ret = true;
+    }
+
+    if (encap_list_[0]->arp_rt_.get() != rt) {
+        encap_list_[0]->arp_rt_.reset(rt);
         ret = true;
     }
 
@@ -1129,17 +1139,47 @@ bool TunnelNH::ChangeEntry(const DBRequest *req) {
             const InterfaceNH *intf_nh =
                 static_cast<const InterfaceNH *>(active_nh);
             intf = intf_nh->GetInterface();
-            dmac_.Zero();
+            encap_list_[0]->dmac_.Zero();
         }
 
-        if (dmac_ != dmac) {
-            dmac_ = dmac;
+        if (encap_list_[0]->dmac_ != dmac) {
+            encap_list_[0]->dmac_ = dmac;
             ret = true;
         }
 
-        if (interface_ != intf) {
-            interface_ = intf;
+        if (encap_list_[0]->interface_ != intf) {
+            encap_list_[0]->interface_ = intf;
             ret = true;
+        }
+
+        if (active_nh->GetType() == NextHop::COMPOSITE) {
+            valid_ = false;
+            const CompositeNH *cnh = dynamic_cast<const CompositeNH*>(active_nh);
+            ComponentNHList::const_iterator component_nh_it =
+                cnh->begin();
+            int i = 0;
+            while (component_nh_it != cnh->end()) {
+                const NextHop *component_nh = NULL;
+                if (*component_nh_it) {
+                    component_nh =  (*component_nh_it)->nh();
+                    if (component_nh->GetType() == NextHop::ARP) {
+                        const ArpNH *anh = dynamic_cast<const ArpNH*>(component_nh);
+                        encap_list_[i]->dmac_ = anh->GetMac();
+                        encap_list_[i]->interface_ = anh->GetInterface();
+                        encap_list_[i]->valid_ = anh->IsValid();
+                        rt = rt_table->FindLPM(agent->vhost_default_gateway()[i]);
+                        encap_list_[i]->arp_rt_.reset(rt);
+                        /* if any single encap is valid then set tunnel flag to valid */
+                        if (encap_list_[i]->valid_) {
+                            valid_ = true;
+                        }
+                        ret = true;
+                        i++;
+                    }
+                }
+                component_nh_it++;
+            }
+            return ret;
         }
     }
 
@@ -3117,7 +3157,7 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
             snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                      m[0], m[1], m[2], m[3], m[4], m[5]);
             std::string mac(mstr);
-            data.set_mac(mac);
+            data.set_mac(std::vector<std::string>(1, mac));
             break;
         }
         case NDP: {
@@ -3134,7 +3174,7 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
             snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                      m[0], m[1], m[2], m[3], m[4], m[5]);
             std::string mac(mstr);
-            data.set_mac(mac);
+            data.set_mac(std::vector<std::string>(1, mac));
             break;
         }
         case VRF: {
@@ -3155,7 +3195,7 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
             snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                      m[0], m[1], m[2], m[3], m[4], m[5]);
             std::string mac(mstr);
-            data.set_mac(mac);
+            data.set_mac(std::vector<std::string>(1, mac));
             if (itf->is_multicastNH())
                 data.set_mcast("enabled");
             else
@@ -3182,7 +3222,7 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
                     snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                             m[0], m[1], m[2], m[3], m[4], m[5]);
                     std::string mac(mstr);
-                    data.set_mac(mac);
+                    data.set_mac(std::vector<std::string>(1, mac));
                 } else if (nh->GetType() == NextHop::NDP) {
                     const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
                     const unsigned char *m = ndp_nh->GetMac().GetData();
@@ -3190,7 +3230,29 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
                     snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                             m[0], m[1], m[2], m[3], m[4], m[5]);
                     std::string mac(mstr);
-                    data.set_mac(mac);
+                    data.set_mac(std::vector<std::string>(1, mac));
+                } else if (nh->GetType() == NextHop::COMPOSITE) {
+                    const CompositeNH *cnh = dynamic_cast<const CompositeNH*>(nh);
+                    ComponentNHList::const_iterator component_nh_it =
+                        cnh->begin();
+                    std::vector<std::string> mac_list;
+                    while (component_nh_it != cnh->end()) {
+                        const NextHop *component_nh = NULL;
+                        if (*component_nh_it) {
+                            component_nh =  (*component_nh_it)->nh();
+                            if (component_nh->GetType() == NextHop::ARP) {
+                                const ArpNH *arp_nh = dynamic_cast<const ArpNH*>(component_nh);
+                                const unsigned char *m = arp_nh->GetMac().GetData();
+                                char mstr[32];
+                                snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                        m[0], m[1], m[2], m[3], m[4], m[5]);
+                                std::string mac(mstr);
+                                mac_list.push_back(mac);
+                            }
+                        }
+                        component_nh_it++;
+                    }
+                    data.set_mac(mac_list);
                 }
             }
             data.set_crypt_all_traffic(tun->GetCrypt());
@@ -3223,7 +3285,7 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
                     snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                             m[0], m[1], m[2], m[3], m[4], m[5]);
                     std::string mac(mstr);
-                    data.set_mac(mac);
+                    data.set_mac(std::vector<std::string>(1, mac));
                 } else if (nh->GetType() == NextHop::NDP) {
                     const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
                     (mir_nh->GetRt()->GetActiveNextHop());
@@ -3232,10 +3294,33 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
                     snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                             m[0], m[1], m[2], m[3], m[4], m[5]);
                     std::string mac(mstr);
-                    data.set_mac(mac);
+                    data.set_mac(std::vector<std::string>(1, mac));
                 } else if (nh->GetType() == NextHop::RECEIVE) {
                     const ReceiveNH *rcv_nh = static_cast<const ReceiveNH*>(nh);
                     data.set_itf(rcv_nh->GetInterface()->name());
+                } else if (nh->GetType() == NextHop::COMPOSITE) {
+                    const CompositeNH *cnh = dynamic_cast<const CompositeNH*>(nh);
+                    ComponentNHList::const_iterator component_nh_it =
+                        cnh->begin();
+                    std::vector<std::string> mac_list;
+                    while (component_nh_it != cnh->end()) {
+                        const NextHop *component_nh = NULL;
+                        if (*component_nh_it) {
+                            component_nh =  (*component_nh_it)->nh();
+                            if (component_nh->GetType() == NextHop::ARP) {
+                                const ArpNH *arp_nh = dynamic_cast<const ArpNH*>(component_nh);
+                                const unsigned char *m = arp_nh->GetMac().GetData();
+                                char mstr[32];
+                                snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                        m[0], m[1], m[2], m[3], m[4], m[5]);
+                                std::string mac(mstr);
+                                mac_list.push_back(mac);
+                            }
+                        }
+                        component_nh_it++;
+                    }
+                    data.set_mac(mac_list);
+
                 }
             }
             break;
@@ -3278,7 +3363,7 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
             snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
                     m[0], m[1], m[2], m[3], m[4], m[5]);
             std::string mac(mstr);
-            data.set_mac(mac);
+            data.set_mac(std::vector<std::string>(1, mac));
             break;
         }
 
