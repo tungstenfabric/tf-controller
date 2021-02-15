@@ -285,6 +285,40 @@ TEST_F(VxlanRoutingTest, Route_1) {
     ValidateBridge("vrf2", "l3evpn_1",
                    Ip4Address::from_string("2.2.2.20"), 32, false);
 
+    // Get routing vrf
+    VrfEntry *routing_vrf= VrfGet("l3evpn_1");
+    EXPECT_TRUE(routing_vrf->vxlan_id() != VxLanTable::kInvalidvxlan_id);
+
+    // Delete routing vrf
+    DelLrRoutingVrf(1);
+    client->WaitForIdle();
+    // route update
+    autogen::EnetItemType item;
+    SecurityGroupList sg;
+    item.entry.nlri.af = BgpAf::L2Vpn;
+    item.entry.nlri.safi = BgpAf::Enet;
+    item.entry.nlri.address="10.10.10.10";
+    item.entry.nlri.ethernet_tag = 0;
+    autogen::EnetNextHopType nh;
+    nh.af = Address::INET;
+    nh.address = "10.10.10.10";;
+    nh.label = routing_vrf->vxlan_id();;
+    item.entry.next_hops.next_hop.push_back(nh);
+    item.entry.med = 0;
+
+    // send route add in deleted l3evpn_1 vrf
+    bgp_peer_->GetAgentXmppChannel()->AddEvpnRoute("l3evpn_1",
+            "00:00:00:00:00:00",
+            Ip4Address::from_string("4.4.4.0"),
+            24, &item);
+    client->WaitForIdle();
+
+    // since routing vrf was deleted, route is not found in bridge vrf
+    InetUnicastRouteEntry *rt_del =
+        RouteGet("vrf1", Ip4Address::from_string("4.4.4.0"), 24);
+    EXPECT_TRUE( rt_del == NULL);
+
+    // cleanup
     DeleteEnvironment(true);
     client->WaitForIdle();
     DelLrBridgeVrf("vn1", 1);
