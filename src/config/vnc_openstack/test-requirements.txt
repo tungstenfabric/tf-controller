@@ -23,4 +23,4 @@ sandesh-common
 pyOpenSSL==19.1.0
 mock<=4.0.2
 vine==1.1.3
-keystonemiddleware==9.0.0
+keystonemiddleware>=5.0.0,<7.0.0
