@@ -25,6 +25,7 @@ typedef std::vector<InterfaceKSyncEntry> InterfaceKSyncEntryList;
 class NHKSyncEntry : public KSyncNetlinkDBEntry {
 public:
     static const int kDefaultNhMsgSize = 4096;
+    static const int MAX_VR_PHY_INTF = 3;
     NHKSyncEntry(NHKSyncObject *obj, const NHKSyncEntry *entry,
                  uint32_t index);
     NHKSyncEntry(NHKSyncObject *obj, const NextHop *nh);
