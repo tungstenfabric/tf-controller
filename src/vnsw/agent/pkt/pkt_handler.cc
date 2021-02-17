@@ -433,10 +433,21 @@ bool PktHandler::ProcessPacket(boost::shared_ptr<PacketBufferEnqueueItem> item) 
 bool PktHandler::ProcessBfdDataPacket(boost::shared_ptr<PacketBufferEnqueueItem> item) {
     const AgentHdr &hdr = item->hdr;
     const PacketBufferPtr &buff = item->buff;
-    boost::shared_ptr<PktInfo> pkt_info (new PktInfo(buff));
     uint8_t *pkt = buff->data();
-    PktModuleName mod = ParseBfdDataPacket(hdr, pkt_info.get(), pkt);
+    PktModuleName mod;
 
+    // In certain Agent restart race condition, Agent would restart but
+    // vrouter is not in sync yet with agent restart. In this condition
+    // there could be BFD packets from the prior session could be trapped
+    // in vrouter and injected to the Agent's PKT0 i/f So, don't process
+    // BFD packets received, prior to agent init done.
+    if (!bfd_keepalive_proto_ || (agent_->init_done() == false)) {
+        PKT_TRACE(Err, "BFD proto_list is not Initialized. Ignoring");
+        return true;
+    }
+
+    boost::shared_ptr<PktInfo> pkt_info (new PktInfo(buff));
+    mod = ParseBfdDataPacket(hdr, pkt_info.get(), pkt);
     if (mod == BFD) {
         pkt_info->is_bfd_keepalive = true;
         pkt_info->packet_buffer()->set_module(mod);
