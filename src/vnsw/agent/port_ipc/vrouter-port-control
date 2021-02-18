@@ -315,7 +315,7 @@ class VrouterPortControl(object):
         print ("JSON data written to %s" % filename)
         try:
             with open(filename, 'w') as outfile:
-                json.dump(data, outfile, True)
+                json.dump(data, outfile, skipkeys=True)
                 outfile.close()
         except:
             return 1
