@@ -4970,6 +4970,10 @@ class VirtualPortGroupDM(DBBaseDM):
     def update(self, obj=None):
         if obj is None:
             obj = self.read_obj(self.uuid)
+
+        # Interested in only fabric VPG other ignore.
+        if obj.get('parent_type') != 'fabric':
+            return
         self.name = obj['fq_name'][-1]
         if self.virtual_machine_interfaces:
             self.update_job_trans(
