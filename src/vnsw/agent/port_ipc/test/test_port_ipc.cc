@@ -270,6 +270,13 @@ TEST_F(PortIpcTest, Port_Sync) {
     agent()->set_port_ipc_handler(ipc);
 }
 
+TEST_F(PortIpcTest, Port_Add_Python) {
+
+    const char* cmd = "python controller/src/vnsw/agent/port_ipc/vrouter-port-control --oper=add --uuid=100 --instance_uuid=f9885c6f-7278-11ea-bf6e-02486f9480e0 --vn_uuid=f988b4e1-7278-11ea-bf6e-02486f9480e0 --vm_project_uuid=f9886e9f-7278-11ea-bf6e-02486f9480e0 --ip_address=1.1.1.10 --ipv6_address= --vm_name=vm1 --tap_name=tap1 --mac=90:e2:ff:ff:94:9d --rx_vlan_id=0 --tx_vlan_id=0 --port_json_path='./'";
+
+    EXPECT_TRUE(!(system(cmd)));
+}
+
 int main (int argc, char **argv) {
     GETUSERARGS();
     client = TestInit(init_file, ksync_init);
