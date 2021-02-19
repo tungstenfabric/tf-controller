@@ -25,12 +25,22 @@ class PhysicalRouterServer(ResourceMixin, PhysicalRouter):
             # physical_router_encryption_type in db object and if not set or
             # set to 'none' encrypt.
             if not encryption_type:
-                if not db_dict:
-                    encryption_type = 'none'
-                else:
-                    encryption_type = db_dict.get(
-                        'physical_router_encryption_type',
-                        'none')
+                encryption_type = 'none'
+                if db_dict:
+                    # check to see if its a case of password update
+                    # If its a case of password update, then unset
+                    # encryption_type to none in order for it to be
+                    # encrypted
+
+                    old_encrypted_psswd = db_dict.get(
+                        'physical_router_user_credentials', {}).get(
+                        'password'
+                    )
+                    if dict_password == old_encrypted_psswd:
+                        # no password update, do not encrypt again
+                        encryption_type = db_dict.get(
+                            'physical_router_encryption_type',
+                            'none')
             # if pwd is not encrypted, do it now
             if encryption_type == 'none':
                 password = utils.encrypt_password(obj_dict['uuid'],
@@ -75,7 +85,9 @@ class PhysicalRouterServer(ResourceMixin, PhysicalRouter):
     def pre_dbe_update(cls, id, fq_name, obj_dict, db_conn, **kwargs):
         # read object from DB
         pr_uuid = db_conn.fq_name_to_uuid('physical_router', fq_name)
-        obj_fields = ['physical_router_encryption_type']
+        obj_fields = [
+            'physical_router_encryption_type',
+            'physical_router_user_credentials']
         (ok, pr_dict) = db_conn.dbe_read(obj_type='physical_router',
                                          obj_id=pr_uuid,
                                          obj_fields=obj_fields)
