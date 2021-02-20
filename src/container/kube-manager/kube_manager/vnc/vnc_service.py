@@ -274,7 +274,7 @@ class VncService(VncCommon):
             lb_obj = self._vnc_create_lb(service_id, service_name,
                                          service_namespace, service_ip)
             if not lb_obj:
-                raise NoIdError
+                raise NoIdError("{} ({}/{})".format(service_id, service_namespace, service_name))
             lb = LoadbalancerKM.locate(service_id)
 
         self._create_listeners(service_namespace, lb, ports)
