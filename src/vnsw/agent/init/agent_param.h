@@ -699,7 +699,6 @@ private:
     std::vector<std::string> eth_port_list_;
     AddressList eth_port_addr_list_;
     std::vector<int> eth_port_plen_list_;
-    AddressList gateway_list_;
     bool eth_port_no_arp_;
     std::string eth_port_encap_type_;
     std::string crypt_port_;
@@ -851,6 +850,7 @@ private:
     std::string cat_kSocketDir_;
     float vr_object_high_watermark_;
     Ip4Address loopback_ip_;
+    AddressList gateway_list_;
     DISALLOW_COPY_AND_ASSIGN(AgentParam);
 };
 

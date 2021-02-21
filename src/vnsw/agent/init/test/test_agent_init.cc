@@ -663,6 +663,15 @@ TEST_F(AgentParamTest, Agent_Debug_Trace_Options) {
     EXPECT_EQ(SandeshTraceBufferSizeGet(trace_buf), 5000);
 }
 
+TEST_F(AgentParamTest, Agent_No_GW_Conf_File) {
+    AgentParam param;
+    param.Init("controller/src/vnsw/agent/init/test/cfg-no-gw.ini", "test-param");
+
+    EXPECT_EQ(param.gateway_list().size(), 1);
+    EXPECT_EQ(param.gateway_list()[0].to_ulong(),
+              Ip4Address::from_string("0.0.0.0").to_ulong());
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     int ret = RUN_ALL_TESTS();

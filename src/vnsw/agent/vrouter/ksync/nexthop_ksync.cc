@@ -1303,8 +1303,6 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             assert(0);
     }
     encoder.set_nhr_flags(flags);
-    if (type_ == NextHop::TUNNEL)
-        std::cout << encoder.ToString() << std::endl;
     int error = 0;
     encode_len = encoder.WriteBinary((uint8_t *)buf, buf_len, &error);
     assert(error == 0);
