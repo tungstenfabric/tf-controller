@@ -142,9 +142,12 @@ class KubeMonitor(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         while True:
+            msg = "Connect Kube API %s:%s" % (self.kubernetes_api_server, self.kubernetes_api_server_port)
+            self.logger.info("%s - %s" % (self.name, msg))
             result = sock.connect_ex((self.kubernetes_api_server,
                                       self.kubernetes_api_server_port))
-
+            msg = "Connect Kube API result %s" % (result)
+            self.logger.debug("%s - %s" % (self.name, msg))
             if wait and result != 0:
                 # Connect to Kubernetes API server was not successful.
                 # If requested, wait indefinitely till connection is up.
@@ -255,10 +258,12 @@ class KubeMonitor(object):
 
         url = self.get_component_url()
         try:
+            self.logger.info("%s - Start Watching request %s" % (self.name, url))
             resp = requests.get(url, params={'watch': 'true'},
                                 stream=True, headers=self.headers,
                                 verify=self.verify)
             if resp.status_code != 200:
+                self.logger.error("%s - Watching request %s failed: %s" % (self.name, url, resp.status_code))
                 resp.close()
                 return
             # Get handle to events for this monitor.
@@ -362,18 +367,24 @@ class KubeMonitor(object):
 
     def process(self):
         """Process available events."""
-        if not self.kube_api_stream_handle:
-            self.logger.error("%s - Event handler not found. "
-                              "Cannot process its events. Re-registering event handler" % self.name)
-            self.register_monitor()
-            return
+        try:
+            if not self.kube_api_stream_handle:
+                self.logger.error(
+                    "%s - Event handler not found. "
+                    "Cannot process its events. Re-registering event handler" % self.name)
+                self.register_monitor()
+                return
 
-        resp = self.kube_api_resp
-        fp = resp.raw._fp.fp
-        if fp is None:
-            self.logger.error("%s - Kube API Resp FP not found. "
-                              "Cannot process events. Re-registering event handler" % self.name)
-            self.register_monitor()
+            resp = self.kube_api_resp
+            fp = resp.raw._fp.fp
+            if fp is None:
+                self.logger.error(
+                    "%s - Kube API Resp FP not found. "
+                    "Cannot process events. Re-registering event handler" % self.name)
+                self.register_monitor()
+                return
+        except Exception as e:
+            self.logger.error("%s - %s" % (self.name, e))
             return
 
         try:
