@@ -1778,7 +1778,7 @@ AgentParam::AgentParam(bool enable_flow_options,
         mvpn_ipv4_enable_(false),AgentMock_(false), cat_MockDPDK_(false),
         cat_kSocketDir_("/tmp/"),
         vr_object_high_watermark_(Agent::kDefaultHighWatermark),
-        loopback_ip_() {
+        loopback_ip_(), gateway_list_(AddressList(1, Ip4Address(0))) {
 
     uint32_t default_pkt0_tx_buffers = Agent::kPkt0TxBufferCount;
     uint32_t default_stale_interface_cleanup_timeout = Agent::kDefaultStaleInterfaceCleanupTimeout;
