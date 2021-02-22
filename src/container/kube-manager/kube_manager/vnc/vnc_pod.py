@@ -98,12 +98,18 @@ class VncPod(VncCommon):
             self._logger.notice("%s - Pod %s:%s:%s Not Found"
                                 "(Might Got Delete Event From K8s)"
                                 % (self._name, pod_namespace, pod_name, pod_id))
-            return
+            return None
 
         vn_fq_name = pod.get_vn_fq_name()
         ns = self._get_namespace(pod_namespace)
 
         # FIXME: Check if ns is not None
+        if ns is None:
+            self._logger.notice("%s - Pod namespace %s:%s:%s Not Found"
+                                "(Might Got Delete Event From K8s)"
+                                % (self._name, pod_namespace, pod_name, pod_id))
+            return None
+
         # Check of virtual network configured on the namespace.
         if not vn_fq_name:
             vn_fq_name = ns.get_annotated_network_fq_name()
@@ -500,7 +506,7 @@ class VncPod(VncCommon):
 
         vn_obj = self._get_default_network(pod_id, pod_name, pod_namespace)
         if not vn_obj:
-            return
+            return None
 
         pod = PodKM.find_by_name_or_uuid(pod_id)
         total_interface_count = len(pod.networks) + 1
@@ -536,15 +542,17 @@ class VncPod(VncCommon):
             self._link_vm_to_node(vm_obj, pod_node, node_ip)
 
         vm = VirtualMachineKM.locate(pod_id)
-        if vm:
-            vm.pod_namespace = pod_namespace
-            vm.pod_node = pod_node
-            vm.node_ip = node_ip
-            self._set_label_to_pod_cache(labels, vm)
-            self._set_tags_on_pod_vmi(pod_id)
-            # Update network-status in pod description
-            self._update_network_status(pod_name, pod_namespace, network_status)
-            return vm
+        if not vm:
+            return None
+
+        vm.pod_namespace = pod_namespace
+        vm.pod_node = pod_node
+        vm.node_ip = node_ip
+        self._set_label_to_pod_cache(labels, vm)
+        self._set_tags_on_pod_vmi(pod_id)
+        # Update network-status in pod description
+        self._update_network_status(pod_name, pod_namespace, network_status)
+        return vm
 
     def vnc_pod_update(self, pod_id, pod_name, pod_namespace,
                        pod_node, node_ip, labels, vm_vmi):
@@ -555,7 +563,7 @@ class VncPod(VncCommon):
                 pod_id, pod_name, pod_namespace,
                 pod_node, node_ip, labels, vm_vmi)
             if not vm:
-                return
+                return None
         vm.pod_namespace = pod_namespace
         if not vm.virtual_router:
             self._link_vm_to_node(vm, pod_node, node_ip)
