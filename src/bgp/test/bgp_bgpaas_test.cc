@@ -23,6 +23,7 @@
 #include "io/test/event_manager_test.h"
 #include "rtarget/rtarget_route.h"
 #include "rtarget/rtarget_table.h"
+#include "bgp/bgp_log.h"
 
 using namespace std;
 
@@ -41,27 +42,14 @@ private:
     bool state_machine_restart_;
 };
 
-typedef std::tr1::tuple<bool, bool, bool, bool> TestParams;
-class BGPaaSTest : public ::testing::TestWithParam<TestParams>{
-public:
-    // Allow IBGP bgpaas sessions for this test.
-    bool ProcessSession() const { return true; }
-
-    // Disable IBGP Split Horizon check for this test.
-    virtual bool CheckSplitHorizon(uint32_t cluster_id = 0,
-            uint32_t ribout_cid = 0) const { return false; }
-
+class BGPaaSBase {
 protected:
-    BGPaaSTest() :
+    BGPaaSBase() :
             server_session_manager_(NULL), vm1_session_manager_(NULL),
             vm2_session_manager_(NULL) {
     }
 
-    virtual void SetUp() {
-        set_local_as_ = std::tr1::get<0>(GetParam());
-        ebgp_ = std::tr1::get<1>(GetParam());
-        set_auth_ = std::tr1::get<2>(GetParam());
-        server_as4_supported_ = std::tr1::get<3>(GetParam());
+    virtual void SetUp(int vm1_port, int vm2_port) {
         server_.reset(new BgpServerTest(&evm_, "local"));
         server2_.reset(new BgpServerTest(&evm_, "remote"));
         vm1_.reset(new BgpServerTest(&evm_, "vm1"));
@@ -81,12 +69,12 @@ protected:
             server_session_manager_->GetPort());
 
         vm1_session_manager_ = vm1_->session_manager();
-        vm1_session_manager_->Initialize(0);
+        vm1_session_manager_->Initialize(vm1_port);
         BGP_DEBUG_UT("Created server at port: " <<
             vm1_session_manager_->GetPort());
 
         vm2_session_manager_ = vm2_->session_manager();
-        vm2_session_manager_->Initialize(0);
+        vm2_session_manager_->Initialize(vm2_port);
         BGP_DEBUG_UT("Created server at port: " <<
             vm2_session_manager_->GetPort());
         xmpp_server_ = new XmppServerTest(&evm_, "bgp.contrail.com");
@@ -129,97 +117,6 @@ protected:
         agent_->SessionUp();
         TASK_UTIL_EXPECT_TRUE(agent_->IsEstablished());
         agent_->SubscribeAll("test", 1);
-    }
-
-    bool WalkCallback(const DBTablePartBase *tpart,
-                      const DBEntryBase *db_entry) const {
-        CHECK_CONCURRENCY("db::DBTable");
-        const BgpRoute *route = static_cast<const BgpRoute *>(db_entry);
-        std::cout << route->ToString() << "(" << route->count() << ") 0x";
-        std::cout << std::hex << (uint64_t) route << std::endl;
-        return true;
-    }
-
-    void WalkDoneCallback(DBTable::DBTableWalkRef ref,
-                          const DBTableBase *table, bool *complete) const {
-        if (complete)
-            *complete = true;
-    }
-
-    void PrintTable(const BgpTable *table) const {
-        bool complete = false;
-        DBTable::DBTableWalkRef walk_ref =
-            const_cast<BgpTable *>(table)->AllocWalker(
-                boost::bind(&BGPaaSTest::WalkCallback, this, _1, _2),
-                boost::bind(&BGPaaSTest::WalkDoneCallback, this, _1, _2,
-                            &complete));
-        std::cout << "Table " << table->name() << " walk start\n";
-        const_cast<BgpTable *>(table)->WalkTable(walk_ref);
-        TASK_UTIL_EXPECT_TRUE(complete);
-        std::cout << "Table " << table->name() << " walk end\n";
-    }
-
-    void CheckBGPaaSRTargetRoutePresence(const BgpTable *table,
-            const BgpPeerTest *peer, bool *result) const {
-        CHECK_CONCURRENCY("bgp::Config");
-        const RTargetTable::RequestKey key(
-            RTargetPrefix::FromString("64512:target:64512:100", NULL), peer);
-        const BgpRoute *rt = static_cast<const BgpRoute *>(table->Find(&key));
-        if (!rt) {
-            *result = false;
-            return;
-        }
-        const BgpPath *path = rt->FindPath(peer);
-        *result = path != NULL;
-    }
-
-    bool CheckBGPaaSRTargetRoutePresence(const BgpTable *table,
-                                         const BgpPeerTest *peer) const {
-        bool result = false;
-        task_util::TaskFire(
-            boost::bind(&BGPaaSTest::CheckBGPaaSRTargetRoutePresence, this,
-                        table, peer, &result), "bgp::Config");
-        return result;
-    }
-
-    void CheckBGPaaSRTargetRouteAbsence(const BgpTable *table,
-            const BgpPeerTest *peer, bool *result) const {
-        CHECK_CONCURRENCY("bgp::Config");
-        const RTargetTable::RequestKey key(
-            RTargetPrefix::FromString("64512:target:64512:100", NULL), peer);
-        const BgpRoute *rt = static_cast<const BgpRoute *>(table->Find(&key));
-        if (!rt) {
-            *result = true;
-            return;
-        }
-        const BgpPath *path = rt->FindPath(peer);
-        *result = path == NULL;
-    }
-
-    bool CheckBGPaaSRTargetRouteAbsence(const BgpTable *table,
-                                        const BgpPeerTest *peer) const {
-        bool result = false;
-        task_util::TaskFire(
-            boost::bind(&BGPaaSTest::CheckBGPaaSRTargetRouteAbsence, this,
-                        table, peer, &result), "bgp::Config");
-        return result;
-    }
-
-    void VerifyBGPaaSRTargetRoutes(const BgpServerTest *server,
-            const BgpPeerTest *peer, bool presence) const {
-        const RoutingInstance *rtinstance= static_cast<const RoutingInstance *>(
-            server->routing_instance_mgr()->GetRoutingInstance(
-                BgpConfigManager::kMasterInstance));
-        const BgpTable *table = rtinstance->GetTable(Address::RTARGET);
-        if (presence) {
-            BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
-            TASK_UTIL_EXPECT_EQ(true,
-                CheckBGPaaSRTargetRoutePresence(table, peer));
-        } else {
-            BGP_WAIT_FOR_PEER_STATE_NE(peer, StateMachine::ESTABLISHED);
-            TASK_UTIL_EXPECT_EQ(true,
-                CheckBGPaaSRTargetRouteAbsence(table, peer));
-        }
     }
 
     void UpdateTemplates() {
@@ -279,6 +176,152 @@ protected:
                                      uuid);
         BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
         return peer;
+    }
+
+    void VerifyBGPaaSRTargetRoutes(const BgpServerTest *server,
+            const BgpPeerTest *peer, bool presence) const {
+        const RoutingInstance *rtinstance= static_cast<const RoutingInstance *>(
+            server->routing_instance_mgr()->GetRoutingInstance(
+                BgpConfigManager::kMasterInstance));
+        const BgpTable *table = rtinstance->GetTable(Address::RTARGET);
+        if (presence) {
+            BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
+            TASK_UTIL_EXPECT_EQ(true,
+                CheckBGPaaSRTargetRoutePresence(table, peer));
+        } else {
+            BGP_WAIT_FOR_PEER_STATE_NE(peer, StateMachine::ESTABLISHED);
+            TASK_UTIL_EXPECT_EQ(true,
+                CheckBGPaaSRTargetRouteAbsence(table, peer));
+        }
+    }
+
+    void CheckBGPaaSRTargetRoutePresence(const BgpTable *table,
+            const BgpPeerTest *peer, bool *result) const {
+        CHECK_CONCURRENCY("bgp::Config");
+        const RTargetTable::RequestKey key(
+            RTargetPrefix::FromString("64512:target:64512:100", NULL), peer);
+        const BgpRoute *rt = static_cast<const BgpRoute *>(table->Find(&key));
+        if (!rt) {
+            *result = false;
+            return;
+        }
+        const BgpPath *path = rt->FindPath(peer);
+        *result = path != NULL;
+    }
+
+    bool CheckBGPaaSRTargetRoutePresence(const BgpTable *table,
+                                         const BgpPeerTest *peer) const {
+        bool result = false;
+        task_util::TaskFire(
+            boost::bind(&BGPaaSBase::CheckBGPaaSRTargetRoutePresence, this,
+                        table, peer, &result), "bgp::Config");
+        return result;
+    }
+
+    void CheckBGPaaSRTargetRouteAbsence(const BgpTable *table,
+            const BgpPeerTest *peer, bool *result) const {
+        CHECK_CONCURRENCY("bgp::Config");
+        const RTargetTable::RequestKey key(
+            RTargetPrefix::FromString("64512:target:64512:100", NULL), peer);
+        const BgpRoute *rt = static_cast<const BgpRoute *>(table->Find(&key));
+        if (!rt) {
+            *result = true;
+            return;
+        }
+        const BgpPath *path = rt->FindPath(peer);
+        *result = path == NULL;
+    }
+
+    bool CheckBGPaaSRTargetRouteAbsence(const BgpTable *table,
+                                        const BgpPeerTest *peer) const {
+        bool result = false;
+        task_util::TaskFire(
+            boost::bind(&BGPaaSBase::CheckBGPaaSRTargetRouteAbsence, this,
+                        table, peer, &result), "bgp::Config");
+        return result;
+    }
+
+    void InitializeTemplates(bool set_local_as, const string &vm1_server_as,
+                             const string &vm2_server_as, bool set_auth);
+    void SetUpControlNodes();
+
+    EventManager evm_;
+    boost::scoped_ptr<ServerThread> thread_;
+    boost::scoped_ptr<BgpServerTest> server_;
+    boost::scoped_ptr<BgpServerTest> server2_;
+    boost::scoped_ptr<BgpServerTest> vm1_;
+    boost::scoped_ptr<BgpServerTest> vm2_;
+    BgpSessionManager *server_session_manager_;
+    BgpSessionManager *server2_session_manager_;
+    BgpSessionManager *vm1_session_manager_;
+    BgpSessionManager *vm2_session_manager_;
+    XmppServerTest *xmpp_server_;
+    boost::scoped_ptr<test::NetworkAgentMock> agent_;
+    boost::scoped_ptr<BgpXmppChannelManager> channel_manager_;
+    bool set_local_as_;
+    bool ebgp_;
+    string vm1_client_config_;
+    string vm2_client_config_;
+    string server_config_;
+    string server2_config_;
+    string vm1_server_as_;
+    string vm2_server_as_;
+    string vm1_as_;
+    string vm2_as_;
+    bool set_auth_;
+    bool server_as4_supported_;
+    string auth_config_;
+};
+
+typedef std::tr1::tuple<bool, bool, bool, bool> TestParams;
+class BGPaaSTest : public BGPaaSBase,
+                   public ::testing::TestWithParam<TestParams>{
+public:
+    // Allow IBGP bgpaas sessions for this test.
+    bool ProcessSession() const { return true; }
+
+    // Disable IBGP Split Horizon check for this test.
+    virtual bool CheckSplitHorizon(uint32_t cluster_id = 0,
+             uint32_t ribout_cid = 0) const { return false; }
+protected:
+    virtual void SetUp() {
+        set_local_as_ = std::tr1::get<0>(GetParam());
+        ebgp_ = std::tr1::get<1>(GetParam());
+        set_auth_ = std::tr1::get<2>(GetParam());
+        server_as4_supported_ = std::tr1::get<3>(GetParam());
+        BGPaaSBase::SetUp(0, 0);
+    }
+
+    virtual void TearDown() {
+        BGPaaSBase::TearDown();
+    }
+
+    bool WalkCallback(const DBTablePartBase *tpart,
+                      const DBEntryBase *db_entry) const {
+        CHECK_CONCURRENCY("db::DBTable");
+        const BgpRoute *route = static_cast<const BgpRoute *>(db_entry);
+        std::cout << route->ToString() << "(" << route->count() << ") 0x";
+        std::cout << std::hex << (uint64_t) route << std::endl;
+        return true;
+    }
+
+    void WalkDoneCallback(DBTable::DBTableWalkRef ref,
+                          const DBTableBase *table, bool *complete) const {
+        if (complete)
+            *complete = true;
+    }
+
+    void PrintTable(const BgpTable *table) const {
+        bool complete = false;
+        DBTable::DBTableWalkRef walk_ref =
+            const_cast<BgpTable *>(table)->AllocWalker(
+                boost::bind(&BGPaaSTest::WalkCallback, this, _1, _2),
+                boost::bind(&BGPaaSTest::WalkDoneCallback, this, _1, _2,
+                            &complete));
+        std::cout << "Table " << table->name() << " walk start\n";
+        const_cast<BgpTable *>(table)->WalkTable(walk_ref);
+        TASK_UTIL_EXPECT_TRUE(complete);
+        std::cout << "Table " << table->name() << " walk end\n";
     }
 
     void AddBgpInetRoute(BgpServerTest *server,
@@ -569,40 +612,10 @@ protected:
             agent->Inet6RouteLookup("test", prefix));
     }
 
-    void InitializeTemplates(bool set_local_as, const string &vm1_server_as,
-                             const string &vm2_server_as, bool set_auth);
     void RunTest();
-    void SetUpControlNodes();
-
-    EventManager evm_;
-    boost::scoped_ptr<ServerThread> thread_;
-    boost::scoped_ptr<BgpServerTest> server_;
-    boost::scoped_ptr<BgpServerTest> server2_;
-    boost::scoped_ptr<BgpServerTest> vm1_;
-    boost::scoped_ptr<BgpServerTest> vm2_;
-    BgpSessionManager *server_session_manager_;
-    BgpSessionManager *server2_session_manager_;
-    BgpSessionManager *vm1_session_manager_;
-    BgpSessionManager *vm2_session_manager_;
-    XmppServerTest *xmpp_server_;
-    boost::scoped_ptr<test::NetworkAgentMock> agent_;
-    boost::scoped_ptr<BgpXmppChannelManager> channel_manager_;
-    bool set_local_as_;
-    bool ebgp_;
-    string vm1_client_config_;
-    string vm2_client_config_;
-    string server_config_;
-    string server2_config_;
-    string vm1_server_as_;
-    string vm2_server_as_;
-    string vm1_as_;
-    string vm2_as_;
-    bool set_auth_;
-    bool server_as4_supported_;
-    string auth_config_;
 };
 
-void BGPaaSTest::InitializeTemplates(bool set_local_as,
+void BGPaaSBase::InitializeTemplates(bool set_local_as,
                                      const string &vm1_server_as,
                                      const string &vm2_server_as,
                                      bool set_auth) {
@@ -632,8 +645,8 @@ void BGPaaSTest::InitializeTemplates(bool set_local_as,
 "         <xmpp-helper-enable>true</xmpp-helper-enable>\n"
 "      </graceful-restart-parameters>\n"
 "       <bgpaas-parameters>\n"
-"           <port-start>0</port-start>\n"
-"           <port-end>0</port-end>\n"
+"           <port-start>11000</port-start>\n"
+"           <port-end>11100</port-end>\n"
 "       </bgpaas-parameters>\n"
 "   </global-system-config>\n"
 "   <bgp-router name='bgpaas-server'> \n"
@@ -702,8 +715,8 @@ void BGPaaSTest::InitializeTemplates(bool set_local_as,
 "         <xmpp-helper-enable>true</xmpp-helper-enable>\n"
 "      </graceful-restart-parameters>\n"
 "       <bgpaas-parameters>\n"
-"           <port-start>0</port-start>\n"
-"           <port-end>0</port-end>\n"
+"           <port-start>11000</port-start>\n"
+"           <port-end>11100</port-end>\n"
 "       </bgpaas-parameters>\n"
 "   </global-system-config>\n"
 "   <bgp-router name='bgpaas-server'> \n"
@@ -780,8 +793,8 @@ void BGPaaSTest::InitializeTemplates(bool set_local_as,
 "         <xmpp-helper-enable>true</xmpp-helper-enable>\n"
 "      </graceful-restart-parameters>\n"
 "       <bgpaas-parameters>\n"
-"           <port-start>0</port-start>\n"
-"           <port-end>0</port-end>\n"
+"           <port-start>11000</port-start>\n"
+"           <port-end>11100</port-end>\n"
 "       </bgpaas-parameters>\n"
 "   </global-system-config>\n"
 "   <bgp-router name='local'> \n"
@@ -897,8 +910,8 @@ void BGPaaSTest::InitializeTemplates(bool set_local_as,
 "         <xmpp-helper-enable>true</xmpp-helper-enable>\n"
 "      </graceful-restart-parameters>\n"
 "       <bgpaas-parameters>\n"
-"           <port-start>0</port-start>\n"
-"           <port-end>0</port-end>\n"
+"           <port-start>11000</port-start>\n"
+"           <port-end>11100</port-end>\n"
 "       </bgpaas-parameters>\n"
 "   </global-system-config>\n"
 "   <bgp-router name='local'> \n"
@@ -946,7 +959,7 @@ void BGPaaSTest::InitializeTemplates(bool set_local_as,
     UpdateTemplates();
 }
 
-void BGPaaSTest::SetUpControlNodes() {
+void BGPaaSBase::SetUpControlNodes() {
     server_->Configure(server_config_);
     server2_->Configure(server2_config_);
     task_util::WaitForIdle();
@@ -1393,6 +1406,72 @@ TEST_P(BGPaaSTest, Basic) {
     VerifyBGPaaSRTargetRoutes(server_.get(), peer_vm1, true);
     VerifyBGPaaSRTargetRoutes(server_.get(), peer_vm2, true);
     RunTest();
+}
+
+class BGPaaSTestPort : public BGPaaSBase,
+                       public ::testing::Test {
+public:
+    bool ProcessSession() const { return true; }
+
+    bool CheckSplitHorizon() const { return false; }
+protected:
+
+    virtual void SetUp() {
+        set_local_as_ = true;
+        ebgp_ = false;
+        set_auth_ = true;
+        server_as4_supported_ = false;
+        BGPaaSBase::SetUp(11036, 10043);
+    }
+
+    virtual void TearDown() {
+        BGPaaSBase::TearDown();
+    }
+};
+
+namespace {
+
+TEST_F(BGPaaSTestPort, TestSourcePort) {
+
+//Initialize tempplates with 2 vm's and a server with start and end port for bgpaas
+//configure 1 vm with port range less than start port and 1 vm with greater
+//check if session is established
+
+    vm1_as_ = "700";
+    vm2_as_ = "800";
+
+    BGPaaSBase::InitializeTemplates(set_local_as_, set_local_as_ ? "700" : "64512",
+                        set_local_as_ ? "800" : "64512", set_auth_);
+
+    vm1_->Configure(vm1_client_config_);
+    vm2_->Configure(vm2_client_config_);
+    vm2_->set_source_port(10025);
+    SetUpControlNodes();
+    SetUpAgent();
+
+    BgpPeerTest *peer_vm1 = FindPeer(server_.get(), "test",
+            BgpConfigParser::session_uuid("bgpaas-server", "vm1", 1));
+    peer_vm1->set_process_session_fnc(
+        boost::bind(&BGPaaSTestPort::ProcessSession, this));
+    peer_vm1->set_check_split_horizon_fnc(
+        boost::bind(&BGPaaSTestPort::CheckSplitHorizon, this));
+
+    BgpPeerTest *peer_vm2 = FindPeer(server_.get(), "test",
+            BgpConfigParser::session_uuid("bgpaas-server", "vm2", 1));
+    peer_vm2->set_process_session_fnc(
+        boost::bind(&BGPaaSTestPort::ProcessSession, this));
+    peer_vm2->set_check_split_horizon_fnc(
+        boost::bind(&BGPaaSTestPort::CheckSplitHorizon, this));
+
+    string uuid = BgpConfigParser::session_uuid("bgpaas-server", "vm1", 1);
+    BgpPeerTest *peer = BGPaaSBase::FindPeer(vm1_.get(), BgpConfigManager::kMasterInstance, uuid);
+    BGP_WAIT_FOR_PEER_STATE(peer, StateMachine::ESTABLISHED);
+
+    uuid = BgpConfigParser::session_uuid("bgpaas-server", "vm2", 1);
+    BgpPeerTest *peer1 = BGPaaSBase::FindPeer(vm2_.get(), BgpConfigManager::kMasterInstance, uuid);
+    BGP_WAIT_FOR_PEER_STATE_NE(peer1, StateMachine::ESTABLISHED);
+}
+
 }
 
 INSTANTIATE_TEST_CASE_P(BGPaaSTestWithParam, BGPaaSTest,
