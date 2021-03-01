@@ -106,13 +106,13 @@ class KubeMonitorTest(unittest.TestCase):
 
         # Validate that, even an explicit api_group is given, we will construct
         # url with appropriate api_group for the known resource_type
-        custom_url = get_custom_group_url("apis/extensions", "v1beta1")
+        custom_url = get_custom_group_url("apis/networking.k8s.io", "v1")
         resource_type = "networkpolicy"
         netpol_monitor = kube_monitor.KubeMonitor(
             self.args,
             resource_type=resource_type,
             logger=mock.Mock(),
-            api_group="networking.k8s.io")
+            api_group="extensions")
         k8s_url_resource =\
             self.get_k8s_url_resource(netpol_monitor.k8s_api_resources, resource_type)
         self.assertTrue(check_custom_url(netpol_monitor, custom_url))

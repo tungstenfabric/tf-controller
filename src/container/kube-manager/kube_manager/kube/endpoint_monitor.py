@@ -4,7 +4,6 @@
 
 from __future__ import print_function
 
-import gevent
 from kube_manager.kube.kube_monitor import KubeMonitor
 
 
@@ -13,8 +12,6 @@ class EndPointMonitor(KubeMonitor):
     def __init__(self, args=None, logger=None, q=None):
         super(EndPointMonitor, self).__init__(
             args, logger, q, resource_type='endpoints')
-        self.init_monitor()
-        self.logger.info("EndPointyMonitor init done.")
 
     def process_event(self, event):
         endpoint_data = event['object']
@@ -40,8 +37,3 @@ class EndPointMonitor(KubeMonitor):
             "%s - Got %s %s %s:%s:%s"
             % (self.name, event_type, kind, namespace, endpoint_name, uid))
         self.q.put(event)
-
-    def event_callback(self):
-        while True:
-            self.process()
-            gevent.sleep(0)

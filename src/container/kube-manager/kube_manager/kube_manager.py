@@ -9,16 +9,20 @@ Kubernetes network manager.
 import random
 import os
 import sys
-import time
 import gc
 import traceback
 import greenlet
+import socket
+
+from six import StringIO
 
 from gevent.queue import Queue
 import gevent
 
 from cfgm_common.vnc_amqp import VncAmqpHandle
 from cfgm_common.zkclient import ZookeeperClient
+from cfgm_common.utils import cgitb_hook
+
 from .common import logger as common_logger
 from .common import args as kube_args
 from .kube import (
@@ -41,78 +45,95 @@ class KubeNetworkManager(object):
 
     _kube_network_manager = None
 
-    def __init__(self, args=None, logger=None, kube_api_connected=False,
+    def __init__(self, args=None, logger=None, kube_api_skip=False,
                  queue=None, vnc_kubernetes_config_dict=None, is_master=True):
+
+        self.logger = logger
+        self.logger.info("KubeNetworkManager - init start")
 
         self.q = queue if queue else Queue()
         self.args = args
-        self.logger = logger
         self.is_master = is_master
         # All monitors supported by this manager.
         self.monitors = {}
-        self.kube = None
         self.greenlets = []
-        while not kube_api_connected:
-            try:
-                self.kube = kube_monitor.KubeMonitor(
+
+        kube = None
+        # kube_api_skip is used by unittests (True)
+        if not kube_api_skip:
+            # create monitors w/o accessing kubeapi
+            # each monitor will be initialized individually
+            # by its callback function
+            self.monitors['namespace'] = namespace_monitor.NamespaceMonitor(
+                args=self.args, logger=self.logger, q=self.q)
+
+            self.monitors['network'] = \
+                network_monitor.NetworkMonitor(
                     args=self.args, logger=self.logger, q=self.q)
 
-                self.monitors['namespace'] = namespace_monitor.NamespaceMonitor(
+            self.monitors['pod'] = pod_monitor.PodMonitor(
+                args=self.args, logger=self.logger, q=self.q)
+
+            self.monitors['service'] = service_monitor.ServiceMonitor(
+                args=self.args, logger=self.logger, q=self.q)
+
+            self.monitors['network_policy'] =\
+                network_policy_monitor.NetworkPolicyMonitor(
                     args=self.args, logger=self.logger, q=self.q)
 
-                self.monitors['network'] = \
-                    network_monitor.NetworkMonitor(
-                        args=self.args, logger=self.logger, q=self.q)
-
-                self.monitors['pod'] = pod_monitor.PodMonitor(
+            self.monitors['endpoint'] = \
+                endpoint_monitor.EndPointMonitor(
                     args=self.args, logger=self.logger, q=self.q)
 
-                self.monitors['service'] = service_monitor.ServiceMonitor(
+            self.monitors['ingress'] = \
+                ingress_monitor.IngressMonitor(
                     args=self.args, logger=self.logger, q=self.q)
 
-                self.monitors['network_policy'] =\
-                    network_policy_monitor.NetworkPolicyMonitor(
+            for monitor in list(self.monitors.values()):
+                while True:
+                    try:
+                        monitor.init_monitor()
+                        break
+                    except (OSError, IOError, socket.error) as e:
+                        msg = "KubeNetworkManager - init monitor exception (%s)" % e
+                        self.logger.error(msg)
+                        gevent.sleep(3)
+
+            while True:
+                try:
+                    kube = kube_monitor.KubeMonitor(
                         args=self.args, logger=self.logger, q=self.q)
-
-                self.monitors['endpoint'] = \
-                    endpoint_monitor.EndPointMonitor(
-                        args=self.args, logger=self.logger, q=self.q)
-
-                self.monitors['ingress'] = \
-                    ingress_monitor.IngressMonitor(
-                        args=self.args, logger=self.logger, q=self.q)
-
-                kube_api_connected = True
-
-            except Exception:  # FIXME: Except clause is too broad
-                time.sleep(30)
-
-        # Register all the known monitors.
-        for monitor in list(self.monitors.values()):
-            monitor.register_monitor()
+                    break
+                except (OSError, IOError, socket.error) as e:
+                    self.logger.error("KubeNetworkManager - init exception(%s)" % e)
+                    gevent.sleep(3)
 
         self.vnc = vnc_kubernetes.VncKubernetes(
-            args=self.args, logger=self.logger, q=self.q, kube=self.kube,
+            args=self.args, logger=self.logger, q=self.q, kube=kube,
             vnc_kubernetes_config_dict=vnc_kubernetes_config_dict)
 
+        self.logger.info("KubeNetworkManager - init done")
     # end __init__
 
     def _kube_object_cache_enabled(self):
         return self.args.kube_object_cache == 'True'
 
     def launch_timer(self):
-        self.logger.info("KubeNetworkManager - kube_timer_interval(%ss)"
+        self.logger.info("KubeNetworkManager - kube_timer_interval(%s)"
                          % self.args.kube_timer_interval)
-        time.sleep(int(self.args.kube_timer_interval))
         while True:
-            gevent.sleep(int(self.args.kube_timer_interval))
             try:
-                self.timer_callback()
-            except Exception:  # FIXME: Except clause is too broad
-                pass
-
-    def timer_callback(self):
-        self.vnc.vnc_timer()
+                self.logger.info(
+                    "KubeNetworkManager - launch_timer - kube_timer_interval(%s)" %
+                    self.args.kube_timer_interval)
+                self.vnc.vnc_timer()
+            except Exception:
+                string_buf = StringIO()
+                cgitb_hook(file=string_buf, format="text")
+                trace = string_buf.getvalue()
+                msg = "KubeNetworkManager - launch_timer exception - %s" % (trace)
+                self.logger.error(msg)
+            gevent.sleep(int(self.args.kube_timer_interval))
 
     def start_tasks(self):
         self.logger.info("Starting all tasks.")
@@ -125,6 +146,7 @@ class KubeNetworkManager(object):
                                   "in contrail-kubernetes.conf. \
                                    example: kube_timer_interval=60")
             sys.exit()
+        # dont start if timer 0 - unittests use it
         if int(self.args.kube_timer_interval) > 0:
             self.greenlets.append(gevent.spawn(self.launch_timer))
 
@@ -196,7 +218,7 @@ def run_kube_manager(km_logger, args, kube_api_skip, event_queue,
     km_logger.introspect_init()
     kube_nw_mgr = KubeNetworkManager(
         args, km_logger,
-        kube_api_connected=kube_api_skip,
+        kube_api_skip=kube_api_skip,
         queue=event_queue,
         vnc_kubernetes_config_dict=vnc_kubernetes_config_dict,
         is_master=True)
