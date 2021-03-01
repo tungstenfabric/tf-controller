@@ -4,7 +4,6 @@
 
 from __future__ import print_function
 
-import gevent
 from kube_manager.common.kube_config_db import ServiceKM
 from kube_manager.kube.kube_monitor import KubeMonitor
 
@@ -14,8 +13,6 @@ class ServiceMonitor(KubeMonitor):
     def __init__(self, args=None, logger=None, q=None):
         super(ServiceMonitor, self).__init__(
             args, logger, q, ServiceKM, resource_type='service')
-        self.init_monitor()
-        self.logger.info("ServiceMonitor init done.")
 
     def process_event(self, event):
         service_data = event['object']
@@ -46,8 +43,3 @@ class ServiceMonitor(KubeMonitor):
             "%s - Got %s %s %s:%s:%s"
             % (self.name, event_type, kind, namespace, service_name, service_uuid))
         self.q.put(event)
-
-    def event_callback(self):
-        while True:
-            self.process()
-            gevent.sleep(0)

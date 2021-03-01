@@ -10,10 +10,10 @@ from __future__ import print_function
 from builtins import str
 from six import StringIO
 import gevent
-from gevent.queue import Empty
-import time
 
 import requests
+import socket
+
 
 from cfgm_common import importutils
 from cfgm_common.exceptions import ResourceExhaustionError, NoIdError, RefsExistError
@@ -57,7 +57,6 @@ class VncKubernetes(vnc_common.VncCommon):
         self.args = args
         self.logger = logger
         self.q = q
-        self.kube = kube
         self._cluster_pod_ipam_fq_name = None
         self._cluster_service_ipam_fq_name = None
         self._cluster_ip_fabric_ipam_fq_name = None
@@ -68,7 +67,7 @@ class VncKubernetes(vnc_common.VncCommon):
         # Cache common config.
         self.vnc_kube_config = vnc_kube_config(
             logger=self.logger,
-            vnc_lib=self.vnc_lib, args=self.args, queue=self.q, kube=self.kube)
+            vnc_lib=self.vnc_lib, args=self.args, queue=self.q, kube=kube)
 
         #
         # In nested mode, kube-manager connects to contrail components running
@@ -185,10 +184,10 @@ class VncKubernetes(vnc_common.VncCommon):
 
     def _vnc_connect(self):
         # Retry till API server connection is up
-        connected = False
         self.connection_state_update(ConnectionStatus.INIT)
         api_server_list = self.args.vnc_endpoint_ip.split(',')
-        while not connected:
+        self.logger.info("%s - vnc_connect starting" % (self._name))
+        while True:
             try:
                 vnc_lib = VncApi(
                     self.args.auth_user,
@@ -196,14 +195,18 @@ class VncKubernetes(vnc_common.VncCommon):
                     api_server_list, self.args.vnc_endpoint_port,
                     auth_token_url=self.args.auth_token_url,
                     api_health_check=True)
-                connected = True
                 self.connection_state_update(ConnectionStatus.UP)
-            except requests.exceptions.ConnectionError as e:
+                break
+            except (requests.exceptions.ConnectionError,
+                    ResourceExhaustionError,
+                    socket.error,
+                    IOError,
+                    OSError) as e:
+                self.logger.error("%s - vnc_connect failed: %s" % (self._name, str(e)))
                 # Update connection info
                 self.connection_state_update(ConnectionStatus.DOWN, str(e))
-                time.sleep(3)
-            except ResourceExhaustionError:
-                time.sleep(3)
+            gevent.sleep(3)
+        self.logger.info("%s - vnc_connect done" % (self._name))
         return vnc_lib
 
     def _sync_km(self):
@@ -395,7 +398,7 @@ class VncKubernetes(vnc_common.VncCommon):
             except NoIdError:
                 if count == 20:
                     return
-                time.sleep(3)
+                gevent.sleep(3)
                 count += 1
         port_count = 1024
         start_port = 56000
@@ -545,23 +548,34 @@ class VncKubernetes(vnc_common.VncCommon):
     def _get_cluster_ip_fabric_ipam_fq_name(self):
         return self._cluster_ip_fabric_ipam_fq_name
 
-    def vnc_timer(self):
+    def _call_safe(self, func):
         try:
-            self.network_policy_mgr.network_policy_timer()
-            self.ingress_mgr.ingress_timer()
-            self.service_mgr.service_timer()
-            self.pod_mgr.pod_timer()
-            self.namespace_mgr.namespace_timer()
-        except Exception:
-            string_buf = StringIO()
-            cgitb_hook(file=string_buf, format="text")
-            err_msg = string_buf.getvalue()
-            self.logger.error("vnc_timer: %s - %s" % (self._name, err_msg))
+            func()
+        except (OSError, IOError, socket.error,
+                requests.exceptions.ChunkedEncodingError) as e:
+            self.logger.error("%s  - %s - %s" % (self.name, func.__name__, e))
+
+    def vnc_timer(self):
+        tfuncs = [
+            self.network_policy_mgr.network_policy_timer,
+            self.ingress_mgr.ingress_timer,
+            self.service_mgr.service_timer,
+            self.pod_mgr.pod_timer,
+            self.namespace_mgr.namespace_timer,
+        ]
+        for f in tfuncs:
+            self._call_safe(f)
 
     def vnc_process(self):
         while True:
             try:
-                event = self.q.get()
+                msg = "%s - wait for event (timeout %s)" % \
+                      (self._name, self.args.kube_timer_interval)
+                print(msg)
+                self.logger.info(msg)
+                t = int(self.args.kube_timer_interval)
+                timeout = t if t > 0 else None
+                event = self.q.get(timeout=timeout)
                 event_type = event['type']
                 kind = event['object'].get('kind')
                 metadata = event['object']['metadata']
@@ -583,19 +597,18 @@ class VncKubernetes(vnc_common.VncCommon):
                 elif kind == 'NetworkAttachmentDefinition':
                     self.network_mgr.process(event)
                 else:
-                    print(
-                        "%s - Event %s %s %s:%s:%s not handled"
-                        % (self._name, event_type, kind, namespace, name, uid))
-                    self.logger.error(
-                        "%s - Event %s %s %s:%s:%s not handled"
-                        % (self._name, event_type, kind, namespace, name, uid))
-            except Empty:
-                gevent.sleep(0)
+                    msg = "%s - Event %s %s %s:%s:%s not handled" % \
+                          (self._name, event_type, kind, namespace, name, uid)
+                    print(msg)
+                    self.logger.error(msg)
+            except gevent.queue.Empty:
+                pass
             except Exception:
                 string_buf = StringIO()
                 cgitb_hook(file=string_buf, format="text")
                 err_msg = string_buf.getvalue()
                 self.logger.error("%s - %s" % (self._name, err_msg))
+            gevent.sleep(0)
 
     @classmethod
     def get_instance(cls):
