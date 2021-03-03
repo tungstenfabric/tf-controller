@@ -86,20 +86,24 @@ class ContainerProcessInfoManager(object):
         pod = labels.get(vendor_domain + '.pod')
         service = labels.get(vendor_domain + '.service')
 
-        if not pod:
-            # try to detect pod from Env.NODE_TYPE
+        if not(pod) or not(service):
+            # try to detect values from Env
             if 'Env' not in container:
                 # list_containers does not return 'Env' information
                 info = self._get_full_info(container['Id'])
                 if info:
                     container = info['Config']
             env = container.get('Env')
-            if env:
+            if env and not(pod):
+                # for now pod equals to NODE_TYPE
                 node_type = next(iter(
                     [i for i in env if i.startswith('NODE_TYPE=')]), None)
-                if node_type:
-                    # for now pod equals to NODE_TYPE
-                    pod = node_type.split('=')[1]
+                pod = node_type.split('=')[1] if node_type else None
+            if env and not(service):
+                # for now service equals to SERVICE_NAME
+                service_name = next(iter(
+                    [i for i in env if i.startswith('SERVICE_NAME=')]), None)
+                service = service_name.split('=')[1] if service_name else None
 
         if pod and service:
             return pod + '-' + service
