@@ -525,8 +525,11 @@ class EventManager(object):
     def run_periodically(self, function, interval, *args, **kwargs):
         while True:
             before = time.time()
-            function(*args, **kwargs)
-
+            try:
+                function(*args, **kwargs)
+            except Exception as e:
+                msg = 'Exception in run_periodically job: {}'.format(e)
+                self.msg_log(msg, SandeshLevel.SYS_WARN)
             duration = time.time() - before
             if duration < interval:
                 gevent.sleep(interval - duration)
