@@ -9,7 +9,16 @@ cd $SANDBOX
 ./src/contrail-api-client/generateds/generateDS.py -f -o controller/src/cat/types -g golang-api src/contrail-api-client/schema/ietf-l3vpn-schema.xsd
 ./src/contrail-api-client/generateds/generateDS.py -f -o controller/src/cat/types -g golang-api src/contrail-api-client/schema/bgp_schema.xsd
 ./src/contrail-api-client/generateds/generateDS.py -f -o controller/src/cat/types -g golang-api src/contrail-api-client/schema/vnc_cfg.xsd
-cd controller/src/cat/test
+
+Create Agent Binary:
+scons contrail-vrouter-agent -uj4 
+
+Create Control-node test binary for CAT:
+cd controller
+NO_HEAPCHECK=1 scons -uj4 src/bgp:bgp_cat_control_node_test
+
+Run CAT:
+cd src/cat/test
 ../../../../third_party/go/bin/go test
 ```
 
