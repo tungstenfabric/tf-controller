@@ -12,8 +12,7 @@ from nodemgr.common.sandesh.nodeinfo.cpuinfo.ttypes import ProcessCpuInfo
 class CriContainerMemoryCpuUsage:
     def __init__(self, last_cpu_, last_time_, query_, pid_):
         self._query = query_
-        self._cgroup = '/sys/fs/cgroup/memory{0}/memory.stat'\
-            .format(utils.get_memory_cgroup(pid_))
+        self._pid = pid_
         self._last_cpu = last_cpu_
         self._last_time = last_time_
 
@@ -27,7 +26,9 @@ class CriContainerMemoryCpuUsage:
 
     def _get_rss_from_cgroup(self):
         try:
-            with open(self._cgroup, 'r') as f:
+            cgroup = '/sys/fs/cgroup/memory{0}/memory.stat'.format(
+                utils.get_memory_cgroup(self._pid))
+            with open(cgroup, 'r') as f:
                 while True:
                     ll = f.readline()
                     if not ll:
