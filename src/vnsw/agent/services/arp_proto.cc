@@ -598,6 +598,22 @@ void ArpProto::InterfaceNotify(DBEntryBase *entry) {
         (entry->GetState(entry->get_table_partition()->parent(),
                        interface_table_listener_id_));
 
+    /* On phy intf down, delete its associated arp route and set state to resolving */
+    if (agent_->is_l3mh() && intf->type() == Interface::PHYSICAL && intf->os_oper_state() == false) {
+        InterfaceArpInfo &intf_entry = ArpMapIndexToEntry(intf->id());
+        ArpKeySet::iterator key_it = intf_entry.arp_key_list.begin();
+        while (key_it != intf_entry.arp_key_list.end()) {
+            ArpKey key = *key_it;
+            ++key_it;
+            ArpEntry *arp_entry = FindArpEntry(key);
+            if (arp_entry) {
+                arp_entry->SetState(ArpEntry::RESOLVING);
+                arp_entry->DeleteArpRoute();
+            }
+        }
+        return;
+    }
+
     Interface *itf = static_cast<Interface *>(entry);
     if (entry->IsDeleted()) {
         if (state) {

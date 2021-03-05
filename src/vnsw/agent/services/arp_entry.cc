@@ -95,7 +95,15 @@ bool ArpEntry::RetryExpiry() {
         retry_count_++;
         SendArpRequest();
     } else {
+        std::vector<Ip4Address> gateway_list =
+            handler_->agent()->vhost_default_gateway();
         Ip4Address ip(key_.ip);
+        if (std::find(gateway_list.begin(), gateway_list.end(), ip) !=
+                gateway_list.end()) {
+            state_ = ArpEntry::RESOLVING;
+            ARP_TRACE(Trace, "Retry exceeded, set arp to resolving",
+                    ip.to_string(),  key_.vrf->GetName(), "");
+        }
         ARP_TRACE(Trace, "Retry exceeded", ip.to_string(),
                   key_.vrf->GetName(), "");
         arp_proto->IncrementStatsMaxRetries();
