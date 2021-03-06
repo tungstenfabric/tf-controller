@@ -38,11 +38,8 @@ set groups {{cfg_group}} vlans {{vlan_name}} description "{{vlan.get('descriptio
 {%             endif %}
 set groups {{cfg_group}} vlans {{vlan_name}} l3-interface {{int_name}}
 {%         endfor %}
-{%         if device_model.startswith('qfx51') %}
-{%             set vlan_id = vlan.get('vxlan_id', '') %}
-{%             if vlan_id != '' %}
-set groups {{cfg_group}} vlans {{vlan_name}} vlan-id {{vlan_id}}
-{%             endif %}
+{%         if device_model.startswith('qfx51') and vni != '' and (vni|int) < 4095 %}
+set groups {{cfg_group}} vlans {{vlan_name}} vlan-id {{vni}}
 {%         else %}
 set groups {{cfg_group}} vlans {{vlan_name}} vlan-id none
 {%         endif %}
