@@ -22,6 +22,9 @@ class ServiceMonitor(KubeMonitor):
         namespace = service_data['metadata'].get('namespace')
         service_name = service_data['metadata'].get('name')
         if not namespace or not service_name:
+            self.logger.debug(
+                "%s - Skipped %s %s ns=%s sn=%s(ns or sn is empty)"
+                % (self.name, event_type, kind, namespace, service_name))
             return
 
         if self.db:
@@ -36,10 +39,8 @@ class ServiceMonitor(KubeMonitor):
         else:
             service_uuid = service_data['metadata'].get('uid')
 
-        print(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, service_name, service_uuid))
-        self.logger.debug(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, service_name, service_uuid))
+        msg = "%s - Got %s %s %s:%s:%s" \
+              % (self.name, event_type, kind, namespace, service_name, service_uuid)
+        print(msg)
+        self.logger.debug(msg)
         self.q.put(event)

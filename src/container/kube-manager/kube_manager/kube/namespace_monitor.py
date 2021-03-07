@@ -42,10 +42,8 @@ class NamespaceMonitor(KubeMonitor):
         else:
             namespace_uuid = event['object']['metadata'].get('uid')
 
-        print(
-            "%s - Got %s %s %s:%s"
-            % (self.name, event_type, kind, name, namespace_uuid))
-        self.logger.debug(
-            "%s - Got %s %s %s:%s"
-            % (self.name, event_type, kind, name, namespace_uuid))
+        msg = "%s - Got %s %s %s:%s" \
+              % (self.name, event_type, kind, name, namespace_uuid)
+        print(msg)
+        self.logger.debug(msg)
         self.q.put(event)

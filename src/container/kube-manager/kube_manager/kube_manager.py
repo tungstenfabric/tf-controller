@@ -118,14 +118,23 @@ class KubeNetworkManager(object):
     def _kube_object_cache_enabled(self):
         return self.args.kube_object_cache == 'True'
 
+    def _trace_active_tasks(self):
+        c = len(self.greenlets)
+        ec = 0
+        for g in self.greenlets:
+            c -= 1 if g.ready() else 0
+            ec += 1 if g.ready() and not g.successful() else 0
+        self.logger.info(
+            "KubeNetworkManager - tasks - run=%s failed=%s" %
+            (c, ec))
+
     def launch_timer(self):
-        self.logger.info("KubeNetworkManager - kube_timer_interval(%s)"
-                         % self.args.kube_timer_interval)
+        self.logger.info(
+            "KubeNetworkManager - launch_timer started - kube_timer_interval=%s" %
+            self.args.kube_timer_interval)
         while True:
             try:
-                self.logger.info(
-                    "KubeNetworkManager - launch_timer - kube_timer_interval(%s)" %
-                    self.args.kube_timer_interval)
+                self._trace_active_tasks()
                 self.vnc.vnc_timer()
             except Exception:
                 string_buf = StringIO()
@@ -136,7 +145,7 @@ class KubeNetworkManager(object):
             gevent.sleep(int(self.args.kube_timer_interval))
 
     def start_tasks(self):
-        self.logger.info("Starting all tasks.")
+        self.logger.info("Starting all tasks")
         self.greenlets = [gevent.spawn(self.vnc.vnc_process)]
         for monitor in list(self.monitors.values()):
             self.greenlets.append(gevent.spawn(monitor.event_callback))
@@ -150,6 +159,7 @@ class KubeNetworkManager(object):
         if int(self.args.kube_timer_interval) > 0:
             self.greenlets.append(gevent.spawn(self.launch_timer))
 
+        self.logger.info("Wait for %s started tasks" % len(self.greenlets))
         gevent.joinall(self.greenlets)
 
     @staticmethod

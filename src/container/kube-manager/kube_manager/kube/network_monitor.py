@@ -106,10 +106,16 @@ class NetworkMonitor(KubeMonitor):
         # if network is not designated to contrail-k8s-cni, dont process
         nested_keys = ['object', 'spec', 'config']
         if not self.key_exists(event, *nested_keys):
+            self.logger.debug(
+                "%s - Skipped %s %s ns=%s name=%s (not for contrail-k8s-cni)"
+                % (self.name, event_type, kind, namespace, name))
             return
         config_json = json.loads(event['object']['spec']['config'])
         if ('type' not in config_json.keys() or
                 config_json['type'] != 'contrail-k8s-cni'):
+            self.logger.debug(
+                "%s - Skipped %s %s ns=%s config_json=%s (not for contrail-k8s-cni)"
+                % (self.name, event_type, kind, namespace, config_json))
             return
 
         if self.db:
@@ -124,10 +130,8 @@ class NetworkMonitor(KubeMonitor):
         else:
             nw_uuid = event['object']['metadata'].get('uid')
 
-        print(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, name, nw_uuid))
-        self.logger.debug(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, name, nw_uuid))
+        msg = "%s - Got %s %s %s:%s:%s" \
+              % (self.name, event_type, kind, namespace, name, nw_uuid)
+        print(msg)
+        self.logger.debug(msg)
         self.q.put(event)
