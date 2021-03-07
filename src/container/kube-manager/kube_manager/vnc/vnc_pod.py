@@ -504,8 +504,13 @@ class VncPod(VncCommon):
 
             return vm
 
+        msg_obj = "pod=%s:%s:%s node=%s:%s" \
+                  % (pod_namespace, pod_name, pod_id, pod_node, node_ip)
+
         vn_obj = self._get_default_network(pod_id, pod_name, pod_namespace)
         if not vn_obj:
+            self._logger.debug("%s - vnc_pod_add no default network for %s"
+                               % (self._name, msg_obj))
             return None
 
         pod = PodKM.find_by_name_or_uuid(pod_id)
@@ -543,6 +548,8 @@ class VncPod(VncCommon):
 
         vm = VirtualMachineKM.locate(pod_id)
         if not vm:
+            self._logger.debug("%s - vnc_pod_add cannot locate %s"
+                               % (self._name, msg_obj))
             return None
 
         vm.pod_namespace = pod_namespace
@@ -692,11 +699,10 @@ class VncPod(VncCommon):
         pod_id = event['object']['metadata'].get('uid')
         labels = event['object']['metadata'].get('labels', {})
 
-        print("%s - Got %s %s %s:%s:%s"
-              % (self._name, event_type, kind, pod_namespace, pod_name, pod_id))
-        self._logger.debug("%s - Got %s %s %s:%s:%s"
-                           % (self._name, event_type, kind, pod_namespace,
-                              pod_name, pod_id))
+        msg_obj = "%s %s %s:%s:%s" \
+                  % (event_type, kind, pod_namespace, pod_name, pod_id)
+        print("%s - Got %s" % (self._name, msg_obj))
+        self._logger.debug("%s - Got %s" % (self._name, msg_obj))
 
         if event['type'] == 'ADDED' or event['type'] == 'MODIFIED':
 
@@ -705,6 +711,8 @@ class VncPod(VncCommon):
             node_ip = event['object']['status'].get('hostIP')
             host_network = event['object']['spec'].get('hostNetwork')
             if host_network:
+                self._logger.debug("%s - Skipped %s (host_network)"
+                                   % (self._name, msg_obj))
                 return
 
             # If the pod is nested, proceed ONLY if host vmi is found.

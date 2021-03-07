@@ -37,10 +37,8 @@ class NetworkPolicyMonitor(KubeMonitor):
         else:
             np_uuid = event['object']['metadata'].get('uid')
 
-        print(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, name, np_uuid))
-        self.logger.debug(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, name, np_uuid))
+        msg = "%s - Got %s %s %s:%s:%s" \
+              % (self.name, event_type, kind, namespace, name, np_uuid)
+        print(msg)
+        self.logger.debug(msg)
         self.q.put(event)

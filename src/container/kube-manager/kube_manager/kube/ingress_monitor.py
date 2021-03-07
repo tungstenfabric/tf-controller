@@ -21,6 +21,9 @@ class IngressMonitor(KubeMonitor):
         namespace = event['object']['metadata'].get('namespace')
         name = event['object']['metadata'].get('name')
         if not namespace or not name:
+            self.logger.debug(
+                "%s - Skipped %s %s ns=%s name=%s (ns or name is empty)"
+                % (self.name, event_type, kind, namespace, name))
             return
 
         event_obj = event['object']
@@ -36,10 +39,8 @@ class IngressMonitor(KubeMonitor):
         else:
             uuid = event['object']['metadata'].get('uid')
 
-        print(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, name, uuid))
-        self.logger.debug(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, name, uuid))
+        msg = "%s - Got %s %s %s:%s:%s" \
+              % (self.name, event_type, kind, namespace, name, uuid)
+        print(msg)
+        self.logger.debug(msg)
         self.q.put(event)

@@ -18,16 +18,28 @@ class PodMonitor(KubeMonitor):
         pod_data = event['object']
         event_type = event['type']
         kind = event['object'].get('kind')
+        metadata = pod_data.get('metadata', {})
+        namespace = metadata.get('namespace')
+        pod_name = metadata.get('name')
+        msg_obj = "%s:%s" % (namespace, pod_name)
 
         if event_type != 'DELETED':
-            if pod_data['spec'].get('hostNetwork'):
+            spec = pod_data['spec']
+            if spec.get('hostNetwork'):
+                self.logger.debug(
+                    "%s - Skipped %s %s %s (hostNetwork=%s)"
+                    % (self.name, event_type, kind, msg_obj, spec.get('hostNetwork')))
                 return
-            if not pod_data['spec'].get('nodeName'):
+            if not spec.get('nodeName'):
+                self.logger.debug(
+                    "%s - Skipped %s %s %s (no nodeName)"
+                    % (self.name, event_type, kind, msg_obj))
                 return
 
-        namespace = pod_data['metadata'].get('namespace')
-        pod_name = pod_data['metadata'].get('name')
         if not namespace or not pod_name:
+            self.logger.debug(
+                "%s - Skipped %s %s %s (ns or name is empty)"
+                % (self.name, event_type, kind, msg_obj))
             return
 
         if self.db:
@@ -42,10 +54,8 @@ class PodMonitor(KubeMonitor):
         else:
             pod_uuid = pod_data['metadata'].get('uid')
 
-        print(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, pod_name, pod_uuid))
-        self.logger.debug(
-            "%s - Got %s %s %s:%s:%s"
-            % (self.name, event_type, kind, namespace, pod_name, pod_uuid))
+        msg = "%s - Got %s %s %s:%s:%s" \
+              % (self.name, event_type, kind, namespace, pod_name, pod_uuid)
+        print(msg)
+        self.logger.debug(msg)
         self.q.put(event)

@@ -569,8 +569,8 @@ class VncKubernetes(vnc_common.VncCommon):
     def vnc_process(self):
         while True:
             try:
-                msg = "%s - wait for event (timeout %s)" % \
-                      (self._name, self.args.kube_timer_interval)
+                msg = "%s - start wait event (qsize=%s timeout=%s)" % \
+                      (self._name, self.q.qsize(), self.args.kube_timer_interval)
                 print(msg)
                 self.logger.info(msg)
                 t = int(self.args.kube_timer_interval)
@@ -602,13 +602,14 @@ class VncKubernetes(vnc_common.VncCommon):
                     print(msg)
                     self.logger.error(msg)
             except gevent.queue.Empty:
+                gevent.sleep(0)
                 pass
             except Exception:
+                gevent.sleep(0)
                 string_buf = StringIO()
                 cgitb_hook(file=string_buf, format="text")
                 err_msg = string_buf.getvalue()
                 self.logger.error("%s - %s" % (self._name, err_msg))
-            gevent.sleep(0)
 
     @classmethod
     def get_instance(cls):
