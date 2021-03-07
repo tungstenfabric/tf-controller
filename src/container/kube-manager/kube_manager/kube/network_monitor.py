@@ -5,7 +5,6 @@
 from __future__ import print_function
 
 import json
-import gevent
 from kube_manager.common.kube_config_db import NetworkKM
 from kube_manager.kube.kube_monitor import KubeMonitor
 
@@ -19,6 +18,11 @@ class NetworkMonitor(KubeMonitor):
             NetworkKM, resource_type=self.resource_type,
             api_group='apis/k8s.cni.cncf.io', api_version='v1')
 
+    def init_monitor(self):
+        self._create_crds()
+        super(NetworkMonitor, self).init_monitor()
+
+    def _create_crds(self):
         # Check if Network CustomResourceDefinition is already created,
         # If not create it internally
         (crd_info) = self.get_resource(
@@ -40,12 +44,21 @@ class NetworkMonitor(KubeMonitor):
                 # Create Networks CRD - networks.kubernetes.cni.cncf.io
                 self.logger.debug("%s - Creating Network CRD" % (self.name))
                 network_crd_body = self.create_network_crd_yaml()
-                self.post_resource(
+                resp = self.post_resource(
                     resource_type=self.crd_resource_type,
                     resource_name='', body_params=network_crd_body)
-                # TODO: Check if Netowrk CRD is created else return.
-        self.init_monitor()
-        self.logger.info("NetworkMonitor init done.")
+                if not resp:
+                    return
+                msg = ""
+                try:
+                    while True:
+                        line = next(resp)
+                        if not line:
+                            break
+                        msg += line
+                except StopIteration:
+                    pass
+                self.logger.debug("%s - Creating Network CRD response - %s" % (self.name, msg))
 
     def create_network_crd_yaml(self):
         api_group = self.k8s_api_resources[self.crd_resource_type]['group']
@@ -118,8 +131,3 @@ class NetworkMonitor(KubeMonitor):
             "%s - Got %s %s %s:%s:%s"
             % (self.name, event_type, kind, namespace, name, nw_uuid))
         self.q.put(event)
-
-    def event_callback(self):
-        while True:
-            self.process()
-            gevent.sleep(0)

@@ -6,6 +6,7 @@ import json
 import socket
 import time
 import requests
+
 from six import StringIO
 
 from cfgm_common.utils import cgitb_hook
@@ -23,7 +24,7 @@ class KubeMonitor(object):
             'kind': 'Service',
             'version': 'v1',
             'k8s_url_resource': 'services',
-            'group': 'v1'},
+            'group': ''},
         'ingress': {
             'kind': 'Ingress',
             'version': 'v1beta1',
@@ -41,9 +42,9 @@ class KubeMonitor(object):
             'group': ''},
         'networkpolicy': {
             'kind': 'NetworkPolicy',
-            'version': 'v1beta1',
+            'version': 'v1',
             'k8s_url_resource': 'networkpolicies',
-            'group': 'extensions'},
+            'group': 'networking.k8s.io'},
         'customresourcedefinition': {
             'kind': 'CustomResourceDefinition',
             'version': 'v1beta1',
@@ -91,21 +92,20 @@ class KubeMonitor(object):
             protocol = "http"
             self.kubernetes_api_server_port = self.args.kubernetes_api_port
 
-        if not self._is_kube_api_server_alive():
-            msg = "kube_api_service is not available"
-            self.logger.error("%s - %s" % (self.name, msg))
-            raise Exception(msg)
-
         self.url = "%s://%s:%s" % (protocol,
                                    self.kubernetes_api_server,
                                    self.kubernetes_api_server_port)
 
         if (resource_type == 'KubeMonitor'):
+            # this is only for base class which instance is used as kube config
             self.base_url = self.url + "/openapi/v2"
+            self._is_kube_api_server_alive(wait=True)
             resp = requests.get(
                 self.base_url,
-                headers=self.headers, verify=self.verify)
-            if resp.status_code == 200:
+                headers=self.headers,
+                verify=self.verify)
+            try:
+                resp.raise_for_status()
                 json_data = resp.json()['definitions']
                 for key in json_data.keys():
                     if 'x-kubernetes-group-version-kind' in json_data[key]:
@@ -119,7 +119,10 @@ class KubeMonitor(object):
                                 k8s_resource['kind']
                             self.k8s_api_resources[kind_lower]['group'] = \
                                 k8s_resource['group']
-            resp.close()
+            except Exception:
+                raise
+            finally:
+                resp.close()
 
         # Resource Info corresponding to this monitor.
         self.resource_type = resource_type
@@ -134,8 +137,7 @@ class KubeMonitor(object):
         # course of the process.
         # URL to the api server.
         self.base_url = self._get_base_url(self.url, api_group, api_version)
-
-        self.logger.info("%s - KubeMonitor init done." % self.name)
+        self.logger.info("%s - KubeMonitor init done: url=%s" % (self.name, self.base_url))
 
     def _is_kube_api_server_alive(self, wait=False):
 
@@ -144,14 +146,17 @@ class KubeMonitor(object):
         while True:
             msg = "Connect Kube API %s:%s" % (self.kubernetes_api_server, self.kubernetes_api_server_port)
             self.logger.info("%s - %s" % (self.name, msg))
-            result = sock.connect_ex((self.kubernetes_api_server,
-                                      self.kubernetes_api_server_port))
+            try:
+                # it cann raise errors related to host name resolving
+                result = sock.connect_ex((self.kubernetes_api_server,
+                                          int(self.kubernetes_api_server_port)))
+            except (OSError, socket.error) as e:
+                result = e.errno if e.errno else -1
             msg = "Connect Kube API result %s" % (result)
             self.logger.debug("%s - %s" % (self.name, msg))
             if wait and result != 0:
                 # Connect to Kubernetes API server was not successful.
                 # If requested, wait indefinitely till connection is up.
-
                 msg = "kube_api_service is not reachable. Retry in %s secs." % (self.timeout)
                 self.logger.error("%s - %s" % (self.name, msg))
                 time.sleep(self.timeout)
@@ -206,46 +211,35 @@ class KubeMonitor(object):
         As a part of this init, this method will read existing entries in api
         server and populate the local db.
         """
-        # Get the URL to this component.
         url = self.get_component_url()
+        self.logger.info("%s - Start init_monitor component_url=%s" % (self.name, url))
 
+        # Check if kubernetes api service is up. If not, wait till its up.
+        self._is_kube_api_server_alive(wait=True)
+
+        # Get the URL to this component.
+        resp = requests.get(url, headers=self.headers, verify=self.verify)
         try:
-            resp = requests.get(url, headers=self.headers, verify=self.verify)
-            if resp.status_code != 200:
+            resp.raise_for_status()
+            initial_entries = resp.json()['items']
+        except Exception:
+            raise
+        finally:
+            resp.close()
+        for entry in initial_entries:
+            entry_url = self.get_entry_url(self.url, entry)
+            resp = requests.get(entry_url, headers=self.headers,
+                                verify=self.verify)
+            try:
+                resp.raise_for_status()
+                # Construct the event and initiate processing.
+                event = {'object': resp.json(), 'type': 'ADDED'}
+                self.process_event(event)
+            except Exception:
+                raise
+            finally:
                 resp.close()
-                return
-        except requests.exceptions.RequestException as e:
-            self.logger.error("%s - %s" % (self.name, e))
-            return
-
-        initial_entries = resp.json()['items']
-        resp.close()
-        if initial_entries:
-            for entry in initial_entries:
-                entry_url = self.get_entry_url(self.url, entry)
-                try:
-                    resp = requests.get(entry_url, headers=self.headers,
-                                        verify=self.verify)
-                    if resp.status_code != 200:
-                        resp.close()
-                        continue
-                except requests.exceptions.RequestException as e:
-                    self.logger.error("%s - %s" % (self.name, e))
-                    continue
-                try:
-                    # Construct the event and initiate processing.
-                    event = {'object': resp.json(), 'type': 'ADDED'}
-                    self.process_event(event)
-                except ValueError:
-                    self.logger.error("Invalid data read from kube api server:"
-                                      " %s" % (entry))
-                except Exception:
-                    string_buf = StringIO()
-                    cgitb_hook(file=string_buf, format="text")
-                    err_msg = string_buf.getvalue()
-                    self.logger.error("%s - %s" % (self.name, err_msg))
-
-                resp.close()
+        self.logger.info("%s - Done init_monitor component_url=%s" % (self.name, url))
 
     def register_monitor(self):
         """Register this component for notifications from api server.
@@ -257,22 +251,19 @@ class KubeMonitor(object):
         self._is_kube_api_server_alive(wait=True)
 
         url = self.get_component_url()
+        self.logger.info("%s - Start Watching request %s" % (self.name, url))
+        resp = requests.get(url, params={'watch': 'true'},
+                            stream=True, headers=self.headers,
+                            verify=self.verify)
         try:
-            self.logger.info("%s - Start Watching request %s" % (self.name, url))
-            resp = requests.get(url, params={'watch': 'true'},
-                                stream=True, headers=self.headers,
-                                verify=self.verify)
-            if resp.status_code != 200:
-                self.logger.error("%s - Watching request %s failed: %s" % (self.name, url, resp.status_code))
-                resp.close()
-                return
-            # Get handle to events for this monitor.
-            self.kube_api_resp = resp
-            self.kube_api_stream_handle = resp.iter_lines(chunk_size=256,
-                                                          delimiter='\n')
-            self.logger.info("%s - Watches %s" % (self.name, url))
-        except requests.exceptions.RequestException as e:
-            self.logger.error("%s - %s" % (self.name, e))
+            resp.raise_for_status()
+        except Exception:
+            resp.close()
+            raise
+        # Get handle to events for this monitor.
+        self.kube_api_resp = resp
+        self.kube_api_stream_handle = resp.iter_lines(chunk_size=256, delimiter='\n')
+        self.logger.info("%s - Watches %s" % (self.name, url))
 
     def get_resource(self, resource_type, resource_name,
                      namespace=None, api_group=None, api_version=None):
@@ -295,7 +286,7 @@ class KubeMonitor(object):
             if resp.status_code == 200:
                 json_data = json.loads(resp.raw.read())
             resp.close()
-        except requests.exceptions.RequestException as e:
+        except (OSError, IOError, socket.error) as e:
             self.logger.error("%s - %s" % (self.name, e))
 
         return json_data
@@ -327,7 +318,7 @@ class KubeMonitor(object):
             if resp.status_code != 200:
                 resp.close()
                 return
-        except requests.exceptions.RequestException as e:
+        except (OSError, IOError, socket.error) as e:
             self.logger.error("%s - %s" % (self.name, e))
             return
 
@@ -359,54 +350,48 @@ class KubeMonitor(object):
                                  verify=self.verify)
             if resp.status_code not in [200, 201]:
                 resp.close()
-                return
-        except requests.exceptions.RequestException as e:
+                return None
+        except (OSError, IOError, socket.error) as e:
             self.logger.error("%s - %s" % (self.name, e))
-            return
+            return None
+
         return resp.iter_lines(chunk_size=10, delimiter='\n')
 
     def process(self):
         """Process available events."""
         try:
-            if not self.kube_api_stream_handle:
+            self.logger.info("%s - start process kube event" % (self.name))
+
+            if not self.kube_api_stream_handle or \
+               not self.kube_api_resp or \
+               not self.kube_api_resp.raw._fp.fp:
+
                 self.logger.error(
                     "%s - Event handler not found. "
-                    "Cannot process its events. Re-registering event handler" % self.name)
+                    "Re-registering event handler" % self.name)
                 self.register_monitor()
-                return
 
-            resp = self.kube_api_resp
-            fp = resp.raw._fp.fp
-            if fp is None:
-                self.logger.error(
-                    "%s - Kube API Resp FP not found. "
-                    "Cannot process events. Re-registering event handler" % self.name)
-                self.register_monitor()
-                return
-        except Exception as e:
-            self.logger.error("%s - %s" % (self.name, e))
-            return
-
-        try:
             line = next(self.kube_api_stream_handle)
-            if not line:
-                return
+            if line:
+                self.process_event(json.loads(line))
         except StopIteration:
-            return
-        except requests.exceptions.ChunkedEncodingError as e:
+            pass
+        except (OSError, IOError, socket.error,
+                requests.exceptions.ChunkedEncodingError) as e:
             self.logger.error("%s - %s" % (self.name, e))
-            return
-
-        try:
-            self.process_event(json.loads(line))
         except ValueError:
             self.logger.error(
                 "Invalid JSON data from response stream:%s" % line)
-        except Exception:
+        except Exception as e:
             string_buf = StringIO()
             cgitb_hook(file=string_buf, format="text")
             err_msg = string_buf.getvalue()
-            self.logger.error("%s - %s" % (self.name, err_msg))
+            self.logger.error("%s - %s - %s" % (self.name, e, err_msg))
+
+    def event_callback(self):
+        while True:
+            self.process()
+            time.sleep(0)
 
     def process_event(self, event):
         """Process an event."""
