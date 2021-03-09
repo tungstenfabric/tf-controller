@@ -36,7 +36,6 @@ class VncNetworkPolicy(VncCommon):
     def __init__(self):
         super(VncNetworkPolicy, self).__init__('NetworkPolicy')
         self._name = type(self).__name__
-        self._queue = vnc_kube_config.queue()
         self._ingress_ns_label_cache = {}
         self._ingress_pod_label_cache = {}
         self._np_pod_label_cache = {}
@@ -620,7 +619,7 @@ class VncNetworkPolicy(VncCommon):
         object_['metadata']['namespace'] = fw_policy.k8s_namespace
 
         event['object'] = object_
-        self._queue.put(event)
+        self.schedule_event(event)
         return
 
     def _network_policy_sync(self):

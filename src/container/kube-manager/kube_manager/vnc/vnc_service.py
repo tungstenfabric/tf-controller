@@ -42,7 +42,6 @@ class VncService(VncCommon):
         self._labels.reset_resource()
         self._args = vnc_kube_config.args()
         self.logger = vnc_kube_config.logger()
-        self._queue = vnc_kube_config.queue()
         self.kube = vnc_kube_config.kube()
         self._fip_pool_obj = None
 
@@ -628,7 +627,7 @@ class VncService(VncCommon):
         if event_type == 'delete':
             event['type'] = 'DELETED'
             event['object'] = object_
-            self._queue.put(event)
+            self.schedule_event(event)
         return
 
     def _sync_service_lb(self):

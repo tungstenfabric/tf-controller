@@ -3,9 +3,10 @@
 #
 from builtins import next
 import json
+import requests
 import socket
 import time
-import requests
+import sys
 
 from six import StringIO
 
@@ -66,9 +67,18 @@ class KubeMonitor(object):
         self.cloud_orchestrator = self.args.orchestrator
         # token valid only for OpenShift
         self.token = self.args.token
-        self.headers = {'Connection': 'Keep-Alive'}
+        self.headers = {
+            'Connection': 'Keep-Alive',
+            'Accept': 'application/json; charset="UTF-8"'
+        }
         self.verify = False
-        self.timeout = 60
+
+        self.timeout = int(self.args.kube_timer_interval) if self.args.kube_timer_interval else None
+        self.resource_version = None
+        self.resource_version_valid = False
+        if not self.verify:
+            # disable ssl insecure warning
+            requests.packages.urllib3.disable_warnings()
 
         # Per-monitor stream handle to api server.
         self.kube_api_resp = None
@@ -126,6 +136,8 @@ class KubeMonitor(object):
 
         # Resource Info corresponding to this monitor.
         self.resource_type = resource_type
+        self.kind = self.k8s_api_resources.get(self.resource_type, {}).get('kind')
+
         api_group, api_version, self.k8s_url_resource = \
             self._get_k8s_api_resource(resource_type, api_group, api_version)
 
@@ -137,15 +149,16 @@ class KubeMonitor(object):
         # course of the process.
         # URL to the api server.
         self.base_url = self._get_base_url(self.url, api_group, api_version)
-        self.logger.info("%s - KubeMonitor init done: url=%s" % (self.name, self.base_url))
+        self._log("%s - KubeMonitor init done: url=%s" % (self.name, self.base_url))
 
     def _is_kube_api_server_alive(self, wait=False):
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         while True:
-            msg = "Connect Kube API %s:%s" % (self.kubernetes_api_server, self.kubernetes_api_server_port)
-            self.logger.info("%s - %s" % (self.name, msg))
+            msg = "Try to connect Kube API %s:%s" % \
+                  (self.kubernetes_api_server, self.kubernetes_api_server_port)
+            self._log("%s - %s" % (self.name, msg))
             try:
                 # it cann raise errors related to host name resolving
                 result = sock.connect_ex((self.kubernetes_api_server,
@@ -153,13 +166,13 @@ class KubeMonitor(object):
             except (OSError, socket.error) as e:
                 result = e.errno if e.errno else -1
             msg = "Connect Kube API result %s" % (result)
-            self.logger.debug("%s - %s" % (self.name, msg))
+            self._log("%s - %s" % (self.name, msg))
             if wait and result != 0:
                 # Connect to Kubernetes API server was not successful.
                 # If requested, wait indefinitely till connection is up.
-                msg = "kube_api_service is not reachable. Retry in %s secs." % (self.timeout)
-                self.logger.error("%s - %s" % (self.name, msg))
-                time.sleep(self.timeout)
+                msg = "kube_api_service is not reachable. Retry in 10 secs."
+                self._log("%s - %s" % (self.name, msg), level='error')
+                time.sleep(10)
                 continue
 
             # Return result of connection attempt to kubernetes api server.
@@ -212,16 +225,19 @@ class KubeMonitor(object):
         server and populate the local db.
         """
         url = self.get_component_url()
-        self.logger.info("%s - Start init_monitor component_url=%s" % (self.name, url))
+        self._log("%s - Start init url=%s resource_version=%s"
+                  % (self.name, url, self.resource_version))
 
-        # Check if kubernetes api service is up. If not, wait till its up.
-        self._is_kube_api_server_alive(wait=True)
-
-        # Get the URL to this component.
-        resp = requests.get(url, headers=self.headers, verify=self.verify)
+        resource_version = self.resource_version
+        params = None
+        if resource_version:
+            params = {"resourceVersion": resource_version}
+        resp = requests.get(url, headers=self.headers, verify=self.verify, params=params)
         try:
             resp.raise_for_status()
-            initial_entries = resp.json()['items']
+            jdata = resp.json()
+            initial_entries = jdata['items']
+            resource_version = jdata.get('metadata', {}).get('resourceVersion')
         except Exception:
             raise
         finally:
@@ -239,22 +255,42 @@ class KubeMonitor(object):
                 raise
             finally:
                 resp.close()
-        self.logger.info("%s - Done init_monitor component_url=%s" % (self.name, url))
+        self.resource_version = resource_version
+        self.resource_version_valid = bool(self.resource_version)
+        self._log("%s - Done init url=%s, resource_version=%s"
+                  % (self.name, url, self.resource_version))
 
     def register_monitor(self):
         """Register this component for notifications from api server.
         """
+        if not self.resource_version_valid:
+            self.resource_version = None
+
         if self.kube_api_resp:
             self.kube_api_resp.close()
 
         # Check if kubernetes api service is up. If not, wait till its up.
         self._is_kube_api_server_alive(wait=True)
 
+        # init monitor and assign resourceVersion
+        if not self.resource_version:
+            self.init_monitor()
+            # schedule tasks for cleanups after alll objects read from kube
+            self._schedule_vnc_sync()
+
         url = self.get_component_url()
-        self.logger.info("%s - Start Watching request %s" % (self.name, url))
-        resp = requests.get(url, params={'watch': 'true'},
+        params = {
+            'watch': 'true',
+            'allowWatchBookmarks': 'true',
+            "resourceVersion": self.resource_version
+        }
+        self._log(
+            "%s - Start Watching request %s (%s)(timeout=%s)"
+            % (self.name, url, params, self.timeout))
+        resp = requests.get(url, params=params,
                             stream=True, headers=self.headers,
-                            verify=self.verify)
+                            verify=self.verify,
+                            timeout=self.timeout)
         try:
             resp.raise_for_status()
         except Exception:
@@ -263,7 +299,7 @@ class KubeMonitor(object):
         # Get handle to events for this monitor.
         self.kube_api_resp = resp
         self.kube_api_stream_handle = resp.iter_lines(chunk_size=256, delimiter='\n')
-        self.logger.info("%s - Watches %s" % (self.name, url))
+        self._log("%s - Watches %s (%s)" % (self.name, url, params))
 
     def get_resource(self, resource_type, resource_name,
                      namespace=None, api_group=None, api_version=None):
@@ -287,7 +323,7 @@ class KubeMonitor(object):
                 json_data = json.loads(resp.raw.read())
             resp.close()
         except (OSError, IOError, socket.error) as e:
-            self.logger.error("%s - %s" % (self.name, e))
+            self._log("%s - %s" % (self.name, e), level='error')
 
         return json_data
 
@@ -319,7 +355,7 @@ class KubeMonitor(object):
                 resp.close()
                 return
         except (OSError, IOError, socket.error) as e:
-            self.logger.error("%s - %s" % (self.name, e))
+            self._log("%s - %s" % (self.name, e), level='error')
             return
 
         return resp.iter_lines(chunk_size=10, delimiter='\n')
@@ -352,46 +388,144 @@ class KubeMonitor(object):
                 resp.close()
                 return None
         except (OSError, IOError, socket.error) as e:
-            self.logger.error("%s - %s" % (self.name, e))
+            self._log("%s - %s" % (self.name, e), level='error')
             return None
 
         return resp.iter_lines(chunk_size=10, delimiter='\n')
 
+    def _schedule_vnc_sync(self):
+        self._log("%s - _schedule_vnc_sync: schedule" % (self.name))
+        # artificial internal event to sync objects periodically
+        self.q.put(({'type': 'TF_VNC_SYNC', "object": {"kind": self.kind}}, None))
+
     def process(self):
         """Process available events."""
         try:
-            self.logger.info("%s - start process kube event" % (self.name))
+            self._log("%s - start process kube event" % (self.name))
 
-            if not self.kube_api_stream_handle or \
+            if not self.resource_version_valid or \
+               not self.kube_api_stream_handle or \
                not self.kube_api_resp or \
                not self.kube_api_resp.raw._fp.fp:
 
-                self.logger.error(
-                    "%s - Event handler not found. "
-                    "Re-registering event handler" % self.name)
+                msg = "%s - Re-registering event handler. " \
+                      "resource_version_valid=%s, resource_version=%s" \
+                      % (self.name, self.resource_version_valid, self.resource_version)
+                self._log(msg)
                 self.register_monitor()
 
             line = next(self.kube_api_stream_handle)
             if line:
-                self.process_event(json.loads(line))
+                self._process_event(json.loads(line))
         except StopIteration:
             pass
+        except requests.HTTPError as e:
+            if e.response.status_code == 410:
+                # means "Gone response from kube api"
+                # and requires to re-request resources w/o resourceVersion set
+                self._log("%s - invalidate resourceVersion %s (response 410)"
+                          % (self.name, self.resource_version), level='error')
+                self.resource_version_valid = False
         except (OSError, IOError, socket.error,
                 requests.exceptions.ChunkedEncodingError) as e:
-            self.logger.error("%s - %s" % (self.name, e))
+            self._log("%s - %s" % (self.name, e), level='error')
         except ValueError:
-            self.logger.error(
-                "Invalid JSON data from response stream:%s" % line)
+            self._log("Invalid JSON data from response stream:%s" % line, level='error')
         except Exception as e:
             string_buf = StringIO()
             cgitb_hook(file=string_buf, format="text")
             err_msg = string_buf.getvalue()
-            self.logger.error("%s - %s - %s" % (self.name, e, err_msg))
+            self._log("%s - %s - %s" % (self.name, e, err_msg), level='error')
 
     def event_callback(self):
         while True:
             self.process()
             time.sleep(0)
+
+    def _log(self, msg, level='info'):
+        print(msg)
+        if level == 'error':
+            self.logger.error(msg)
+        else:
+            self.logger.info(msg)
+
+    def _process_event(self, event):
+        event_type = event['type']
+        obj = event['object']
+        kind = obj.get('kind')
+        metadata = obj['metadata']
+        namespace = metadata.get('namespace')
+        name = metadata.get('name')
+        uid = metadata.get('uid')
+
+        if event_type == 'ERROR':
+            # {'object': {
+            #     'status': 'Failure', 'kind': 'Status', 'code': 410,
+            #     'apiVersion': 'v1', 'reason': 'Expired',
+            #     'message': 'too old resource version: 6384 (12181)', 'metadata': {}
+            #   },
+            #  'type': u'ERROR'}
+            msg = "%s - Received ERROR: %s" % (self.name, event)
+            if kind == 'Status' and obj.get('code') == 410:
+                msg += " - invalidate resourceVersion (%s)" % (self.resource_version)
+                self._log(msg, level='error')
+                self.resource_version_valid = False
+            else:
+                self._log(msg, level='error')
+            return
+
+        if event_type == 'BOOKMARK':
+            # update resource version for next watch call, e.g.
+            # {
+            #   "type": "BOOKMARK",
+            #   "object": {"kind": "Pod", "apiVersion": "v1", "metadata": {"resourceVersion": "12746"} }
+            # }
+            if self.kind and self.kind != kind:
+                self._log("%s - Received BOOKMARK: Internal error: received %s for %s Monitor" %
+                          (self.name, kind, self.kind), level='error')
+                # Wrong behaviour - internal program error
+                sys.exit(1)
+            new_version = metadata['resourceVersion']
+            self._log("%s - Received BOOKMARK: oldResVer=%s newResVer=%s" %
+                      (self.name, self.resource_version, new_version))
+            self.resource_version = new_version
+            return
+
+        msg_obj = "%s %s %s:%s:%s" \
+                  % (event_type, kind, namespace, name, uid)
+        if self.kind and self.kind != kind:
+            self._log("%s - Internal error: Received %s for %s Monitor" %
+                      (self.name, msg_obj, self.kind), level='error')
+            # Wrong behaviour - internal program error
+            sys.exit(1)
+        self._log("%s - Received %s" % (self.name, msg_obj))
+
+        self.process_event(event)
+
+    def register_event(self, uuid, event):
+        data = event['object']
+        event_type = event['type']
+        metadata = data.get('metadata', {})
+
+        kind = data.get('kind')
+        namespace = metadata.get('namespace')
+        name = metadata.get('name')
+
+        msg = "%s - Got %s %s %s:%s:%s" \
+              % (self.name, event_type, kind, namespace, name, uuid)
+        print(msg)
+        self.logger.debug(msg)
+        self.q.put((event, self.event_process_callback))
+
+    def event_process_callback(self, event, err):
+        if err is not None:
+            msg = "%s - invalidate resourceVersion (%s): Vnc event process error: %s (%s)" \
+                  % (self.name, self.resource_version, err, event)
+            self._log(msg, level='error')
+            # invalidate resourceVersion as something went wrong
+            # and it is needed to check data consistency
+            # on next cycle
+            self.resource_version_valid = False
 
     def process_event(self, event):
         """Process an event."""

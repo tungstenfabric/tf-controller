@@ -14,14 +14,11 @@ import traceback
 import greenlet
 import socket
 
-from six import StringIO
-
 from gevent.queue import Queue
 import gevent
 
 from cfgm_common.vnc_amqp import VncAmqpHandle
 from cfgm_common.zkclient import ZookeeperClient
-from cfgm_common.utils import cgitb_hook
 
 from .common import logger as common_logger
 from .common import args as kube_args
@@ -59,6 +56,7 @@ class KubeNetworkManager(object):
         self.greenlets = []
 
         kube = None
+        event_callbacks = None
         # kube_api_skip is used by unittests (True)
         if not kube_api_skip:
             # create monitors w/o accessing kubeapi
@@ -89,15 +87,9 @@ class KubeNetworkManager(object):
                 ingress_monitor.IngressMonitor(
                     args=self.args, logger=self.logger, q=self.q)
 
-            for monitor in list(self.monitors.values()):
-                while True:
-                    try:
-                        monitor.init_monitor()
-                        break
-                    except (OSError, IOError, socket.error) as e:
-                        msg = "KubeNetworkManager - init monitor exception (%s)" % e
-                        self.logger.error(msg)
-                        gevent.sleep(3)
+            event_callbacks = dict()
+            for _, m in self.monitors.items():
+                event_callbacks[m.kind] = m.event_process_callback
 
             while True:
                 try:
@@ -109,40 +101,14 @@ class KubeNetworkManager(object):
                     gevent.sleep(3)
 
         self.vnc = vnc_kubernetes.VncKubernetes(
-            args=self.args, logger=self.logger, q=self.q, kube=kube,
-            vnc_kubernetes_config_dict=vnc_kubernetes_config_dict)
+            args=self.args, logger=self.logger, q=self.q, callbacks=event_callbacks,
+            kube=kube, vnc_kubernetes_config_dict=vnc_kubernetes_config_dict)
 
         self.logger.info("KubeNetworkManager - init done")
     # end __init__
 
     def _kube_object_cache_enabled(self):
         return self.args.kube_object_cache == 'True'
-
-    def _trace_active_tasks(self):
-        c = len(self.greenlets)
-        ec = 0
-        for g in self.greenlets:
-            c -= 1 if g.ready() else 0
-            ec += 1 if g.ready() and not g.successful() else 0
-        self.logger.info(
-            "KubeNetworkManager - tasks - run=%s failed=%s" %
-            (c, ec))
-
-    def launch_timer(self):
-        self.logger.info(
-            "KubeNetworkManager - launch_timer started - kube_timer_interval=%s" %
-            self.args.kube_timer_interval)
-        while True:
-            try:
-                self._trace_active_tasks()
-                self.vnc.vnc_timer()
-            except Exception:
-                string_buf = StringIO()
-                cgitb_hook(file=string_buf, format="text")
-                trace = string_buf.getvalue()
-                msg = "KubeNetworkManager - launch_timer exception - %s" % (trace)
-                self.logger.error(msg)
-            gevent.sleep(int(self.args.kube_timer_interval))
 
     def start_tasks(self):
         self.logger.info("Starting all tasks")
@@ -155,9 +121,6 @@ class KubeNetworkManager(object):
                                   "in contrail-kubernetes.conf. \
                                    example: kube_timer_interval=60")
             sys.exit()
-        # dont start if timer 0 - unittests use it
-        if int(self.args.kube_timer_interval) > 0:
-            self.greenlets.append(gevent.spawn(self.launch_timer))
 
         self.logger.info("Wait for %s started tasks" % len(self.greenlets))
         gevent.joinall(self.greenlets)

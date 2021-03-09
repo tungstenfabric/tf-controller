@@ -16,29 +16,22 @@ class NetworkPolicyMonitor(KubeMonitor):
             NetworkPolicyKM, resource_type='networkpolicy')
 
     def process_event(self, event):
-        np_data = event['object']
+        data = event['object']
         event_type = event['type']
-        kind = event['object'].get('kind')
-        namespace = event['object']['metadata'].get('namespace')
-        name = event['object']['metadata'].get('name')
+        metadata = data['metadata']
 
         if self.db:
-            np_uuid = self.db.get_uuid(np_data)
-            np = self.db.locate(np_uuid)
+            uuid = self.db.get_uuid(data)
+            obj = self.db.locate(uuid)
             if event_type != 'DELETED':
                 # Update Network Policy DB.
-                np.update(np_data)
+                obj.update(data)
             else:
                 # Invoke pre-delete processing for network policy delete.
-                np.remove_entry()
-
+                obj.remove_entry()
                 # Remove the entry from Network Policy DB.
-                self.db.delete(np_uuid)
+                self.db.delete(uuid)
         else:
-            np_uuid = event['object']['metadata'].get('uid')
+            uuid = metadata.get('uid')
 
-        msg = "%s - Got %s %s %s:%s:%s" \
-              % (self.name, event_type, kind, namespace, name, np_uuid)
-        print(msg)
-        self.logger.debug(msg)
-        self.q.put(event)
+        self.register_event(uuid, event)

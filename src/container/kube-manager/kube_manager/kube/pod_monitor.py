@@ -15,16 +15,16 @@ class PodMonitor(KubeMonitor):
             args, logger, q, PodKM, resource_type='pod')
 
     def process_event(self, event):
-        pod_data = event['object']
+        data = event['object']
         event_type = event['type']
-        kind = event['object'].get('kind')
-        metadata = pod_data.get('metadata', {})
-        namespace = metadata.get('namespace')
-        pod_name = metadata.get('name')
-        msg_obj = "%s:%s" % (namespace, pod_name)
+        metadata = data.get('metadata', {})
 
         if event_type != 'DELETED':
-            spec = pod_data['spec']
+            kind = event['object'].get('kind')
+            namespace = metadata.get('namespace')
+            name = metadata.get('name')
+            msg_obj = "%s:%s" % (namespace, name)
+            spec = data['spec']
             if spec.get('hostNetwork'):
                 self.logger.debug(
                     "%s - Skipped %s %s %s (hostNetwork=%s)"
@@ -35,27 +35,22 @@ class PodMonitor(KubeMonitor):
                     "%s - Skipped %s %s %s (no nodeName)"
                     % (self.name, event_type, kind, msg_obj))
                 return
-
-        if not namespace or not pod_name:
-            self.logger.debug(
-                "%s - Skipped %s %s %s (ns or name is empty)"
-                % (self.name, event_type, kind, msg_obj))
-            return
+            if not namespace or not name:
+                self.logger.debug(
+                    "%s - Skipped %s %s %s (ns or name is empty)"
+                    % (self.name, event_type, kind, msg_obj))
+                return
 
         if self.db:
-            pod_uuid = self.db.get_uuid(event['object'])
+            uuid = self.db.get_uuid(event['object'])
             if event_type != 'DELETED':
                 # Update Pod DB.
-                pod = self.db.locate(pod_uuid)
-                pod.update(pod_data)
+                obj = self.db.locate(uuid)
+                obj.update(data)
             else:
                 # Remove the entry from Pod DB.
-                self.db.delete(pod_uuid)
+                self.db.delete(uuid)
         else:
-            pod_uuid = pod_data['metadata'].get('uid')
+            uuid = metadata.get('uid')
 
-        msg = "%s - Got %s %s %s:%s:%s" \
-              % (self.name, event_type, kind, namespace, pod_name, pod_uuid)
-        print(msg)
-        self.logger.debug(msg)
-        self.q.put(event)
+        self.register_event(uuid, event)
