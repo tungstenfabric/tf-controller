@@ -90,10 +90,12 @@ def decode_string(dec_str, encoding='utf-8'):
     """
     ret_dec_str = dec_str
     try:
-        if type(ret_dec_str) is str:
+        if type(ret_dec_str) is not str:
             ret_dec_str = str(ret_dec_str)
-        ret_dec_str = urllib.parse.unquote_plus(ret_dec_str)
-        return ret_dec_str.decode(encoding)
+        ret = ret_dec_str.decode(encoding)
+        if ret != ret_dec_str:
+            return urllib.parse.unquote_plus(ret)
+        return ret
     except Exception:
         return dec_str
 
