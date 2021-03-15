@@ -30,7 +30,7 @@
 
 - name: Construct image fq name
   set_fact:
-    image_fq_name: ["default-global-system-config", "{{filename}}"]
+    image_fq_name: ["default-global-system-config", "{{playbook_input.input.displayname}}"]
 
 - name: Delete the image object from the database
   vnc_db_mod:
