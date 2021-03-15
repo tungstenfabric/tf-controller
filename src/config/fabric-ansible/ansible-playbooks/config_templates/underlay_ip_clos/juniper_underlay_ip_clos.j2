@@ -1,4 +1,6 @@
 {%     set device_product_name = device_abstract_config.get('system', {}).get('product_name', '') %}
+{%     set sys_config = device_abstract_config.get('system') %}
+{%     set sys_roles = sys_config.get('routing_bridging_roles', []) %}
 {%     set cmd_fmt = namespace(command_format='ether-options') %}
 {%     set pi_mtu = namespace(phy_mtu = 9192) %}
 {%     if device_product_name.startswith('mx') %}
@@ -44,6 +46,10 @@ set groups {{cfg_group}} interfaces {{ifd.name}} unit {{ifl.unit}} family inet a
 set groups {{cfg_group}} interfaces {{ifd.name}} unit {{ifl.unit}} family inet address {{address}}/32 preferred
 {%                         else %}
 set groups {{cfg_group}} interfaces {{ifd.name}} unit {{ifl.unit}} family inet address {{address}}/30
+{# This change is required to resolve next-hop of BGP L3VPN routers. #}
+{%                            if 'Route-Reflector' in sys_roles %}
+set groups {{cfg_group}} interfaces {{ifd.name}} unit {{ifl.unit}} family mpls
+{%                            endif %}
 {%                         endif %}
 {%                     endif %}
 {%                 endif %}
@@ -105,6 +111,10 @@ set groups {{cfg_group}} interfaces {{ifd.name}} unit {{ifl.unit}} description "
 {%     endfor %}
 
 {% if manage_underlay == true %}
+{# This change is required to resolve next-hop of BGP L3VPN routers. #}
+{%     if 'Route-Reflector' in sys_roles %}
+set groups {{cfg_group}} protocols mpls interface all
+{%     endif %}
 {%     set loopback_ip_list = device_abstract_config.get('system', {}).get('loopback_ip_list', []) %}
 {%     if loopback_ip_list|length > 0 %}
 {%         set loopback_ip = loopback_ip_list[0] %}
