@@ -271,7 +271,8 @@ class VirtualMachineInterfaceST(ResourceBaseST):
                 physical_interface = \
                     self._vnc_lib \
                         .physical_interface_read(id=physical_interface_uuid)
-                if physical_interface.get_display_name() == switch_port_id:
+                if physical_interface.get_display_name().replace(":", "_") == \
+                        switch_port_id:
                     fabric_uuid = physical_router.get_fabric_refs()[0]['uuid']
                     return (physical_interface,
                             self._vnc_lib.fabric_read(id=fabric_uuid))
