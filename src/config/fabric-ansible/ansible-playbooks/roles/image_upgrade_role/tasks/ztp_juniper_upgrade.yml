@@ -80,4 +80,9 @@
           {% else -%}
             Validating image version on device.
           {%- endif %}
+
+    - import_role:
+        name: wait_for_fpc_online
+
   when: task_fail is not defined
+
