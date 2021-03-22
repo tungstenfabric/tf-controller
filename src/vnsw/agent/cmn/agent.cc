@@ -126,7 +126,7 @@ bool Agent::is_vhost_interface_up() const {
         return false;
     }
     err = ioctl(sock, SIOCGIFADDR, &ifr);
-    if (err < 0) {
+    if (false == is_l3mh() && err < 0) {
         close(sock);
         if ((err_count % log_rate_limit) == 0) {
             LOG(DEBUG, "vhost is up. but ip is not set");
