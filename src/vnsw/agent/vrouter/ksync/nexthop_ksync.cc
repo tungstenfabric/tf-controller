@@ -734,6 +734,11 @@ bool NHKSyncEntry::Sync(DBEntry *e) {
                 component_nh_it++;
             }
 
+            /* vRouter expects encap_valid vector should always be size = 3.
+             * It helps in accessing valid enacp_data and oif */
+            while (encap_valid_list_.size() < MAX_VR_PHY_INTF) {
+                encap_valid_list_.push_back(false);
+            }
         }
 
         bool crypt = tun_nh->GetCrypt();
@@ -1017,8 +1022,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             if (if_ksync) {
                 intf_id = if_ksync->interface_id();
             }
-            //encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
-            encoder.set_nhr_encap_oif_id(intf_id);
+            encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
             encoder.set_nhr_encap_family(ETHERTYPE_ARP);
 
             SetEncap(if_ksync, encap);
@@ -1045,7 +1049,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             encoder.set_nhr_encap_family(ETHERTYPE_ARP);
 
             if (if_ksync_list.empty() == false) {
-                //flags |= NH_FLAG_TUNNEL_UNDERLAY_ECMP;
+                flags |= NH_FLAG_TUNNEL_UNDERLAY_ECMP;
                 uint32_t encap_len = 0;
                 for (size_t i = 0; i < if_ksync_list.size(); ++i) {
                     InterfaceKSyncEntry *if_ksync_entry =
@@ -1060,9 +1064,8 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 SetEncap(if_ksync, encap);
                 intf_id_list.push_back(0);
             }
-            //encoder.set_nhr_encap_oif_id(intf_id_list);
-            encoder.set_nhr_encap_oif_id(intf_id_list[0]);
-            //encoder.set_nhr_encap_valid(nhr_encap_valid_list);
+            encoder.set_nhr_encap_oif_id(intf_id_list);
+            encoder.set_nhr_encap_valid(nhr_encap_valid_list);
             encoder.set_nhr_crypt_traffic(crypt_);
             encoder.set_nhr_crypt_path_available(crypt_path_available_);
             if (crypt_if_ksync && crypt_path_available_) {
@@ -1080,8 +1083,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 //reusing tunnel NH as it provides most of
                 //functionality now
                 encoder.set_nhr_type(NH_ENCAP);
-                //encoder.set_nhr_encap_oif_id(intf_id_list);
-                encoder.set_nhr_encap_oif_id(intf_id_list[0]);
+                encoder.set_nhr_encap_oif_id(intf_id_list);
                 encoder.set_nhr_encap_family(ETHERTYPE_ARP);
                 encoder.set_nhr_tun_sip(0);
                 encoder.set_nhr_tun_dip(0);
@@ -1130,8 +1132,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
             if (if_ksync) {
                 intf_id = if_ksync->interface_id();
             }
-            //encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
-            encoder.set_nhr_encap_oif_id(intf_id);
+            encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
             SetEncap(NULL,encap);
             encoder.set_nhr_encap(encap);
             flags |= NH_FLAG_TUNNEL_UDP;
@@ -1153,8 +1154,7 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 flags |= NH_FLAG_RELAXED_POLICY;
             }
             intf_id = if_ksync->interface_id();
-            //encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
-            encoder.set_nhr_encap_oif_id(intf_id);
+            encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, intf_id));
             encoder.set_nhr_type(NH_RCV);
             break;
 
