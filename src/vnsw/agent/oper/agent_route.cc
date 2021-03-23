@@ -739,6 +739,20 @@ AgentPath *AgentRoute::FindLocalPath() const {
     return NULL;
 }
 
+AgentPath *AgentRoute::FindInetEvpnPath() const {
+    for(Route::PathList::const_iterator it = GetPathList().begin();
+        it != GetPathList().end(); it++) {
+        const AgentPath *path = static_cast<const AgentPath *>(it.operator->());
+        if (path->peer() == NULL) {
+            continue;
+        }
+        if (path->peer()->GetType() == Peer::INET_EVPN_PEER) {
+            return const_cast<AgentPath *>(path);
+        }
+    }
+    return NULL;
+}
+
 AgentPath *AgentRoute::FindLocalVmPortPath() const {
     for(Route::PathList::const_iterator it = GetPathList().begin();
         it != GetPathList().end(); it++) {

@@ -241,6 +241,33 @@ TEST_F(TestKSyncRoute, remote_evpn_route_1) {
                 == MacAddress::ZeroMac());
 }
 
+// IP-MAC binding should happen for inet evpn routes
+TEST_F(TestKSyncRoute, remote_evpn_route_2) {
+    uint32_t ethernet_tag = 1000;
+    MacAddress mac("00:01:02:03:04:05");
+    IpAddress addr = IpAddress(Ip4Address::from_string("1.1.1.100"));
+    AddRemoteEvpnRoute(bgp_peer_, mac, addr, ethernet_tag, "vn1");
+
+    BridgeRouteEntry *rt = vrf1_bridge_table_->FindRoute(mac);
+    EXPECT_TRUE(rt != NULL);
+
+    InetUnicastRouteEntry *uc_rt = vrf1_uc_table_->FindLPM(addr);
+    EXPECT_TRUE(uc_rt != NULL);
+
+    const AgentPath *path = uc_rt->FindInetEvpnPath();
+    EXPECT_TRUE(path != NULL);
+    EXPECT_TRUE(path->peer()->GetType() == Peer::INET_EVPN_PEER);
+
+    EXPECT_TRUE(vrf1_obj_->RouteNeedsMacBinding(uc_rt));
+    EXPECT_TRUE(vrf1_obj_->GetIpMacBinding(vrf1_, addr, NULL) == mac);
+
+    vrf1_evpn_table_->DeleteReq(bgp_peer_, "vrf1", mac, addr, 32, ethernet_tag,
+                                (new ControllerVmRoute(bgp_peer_)));
+    client->WaitForIdle();
+    EXPECT_TRUE(vrf1_obj_->GetIpMacBinding(vrf1_, addr, NULL)
+                == MacAddress::ZeroMac());
+}
+
 // proxy_arp_ and flood_ flags for route with different VNs
 TEST_F(TestKSyncRoute, different_vn_1) {
     IpAddress addr = IpAddress(Ip4Address::from_string("2.2.2.100"));
