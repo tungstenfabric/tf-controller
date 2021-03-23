@@ -1160,6 +1160,11 @@ bool VrfKSyncObject::RouteNeedsMacBinding(const InetUnicastRouteEntry *rt) {
             return false;
     }
 
+    // Return true if route has inet evpn path
+    if (rt->FindInetEvpnPath()) {
+        return true;
+    }
+
     // If the route crosses a VN, we want packet to be routed. So, override
     const NextHop *nh = rt->GetActiveNextHop();
     if (nh == NULL)
