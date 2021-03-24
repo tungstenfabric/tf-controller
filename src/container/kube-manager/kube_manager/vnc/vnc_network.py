@@ -134,8 +134,10 @@ class VncNetwork(VncCommon):
     def _get_network_pod_vn_name(self, nw_name):
         return vnc_kube_config.cluster_name() + '-' + nw_name + "-pod-network"
 
-    def _make_vn_fq_name(self, ns_name, vn_name, domain_name='default-domain'):
+    def _make_vn_fq_name(self, ns_name, vn_name):
+
         vn_fq_name = []
+        domain_name = vnc_kube_config.cluster_domain()
         vn_fq_name.append(domain_name)
         project_name = vnc_kube_config.cluster_project_name(ns_name)
         vn_fq_name.append(project_name)

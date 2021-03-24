@@ -477,7 +477,7 @@ class VncNamespace(VncCommon):
         secure_vn = not secure_project
 
         proj_fq_name = vnc_kube_config.cluster_project_fq_name(name)
-        proj_obj = Project(name=proj_fq_name[-1], fq_name=proj_fq_name)
+        proj_obj = Project(name=proj_fq_name[-1], fq_name=proj_fq_name, parent_type='domain')
 
         ProjectKM.add_annotations(self, proj_obj, namespace=name, name=name,
                                   k8s_uuid=(namespace_id),

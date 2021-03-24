@@ -1354,6 +1354,7 @@ class DomainKM(DBBaseKM):
         if obj is None:
             obj = self.read_obj(self.uuid)
         self.fq_name = obj['fq_name']
+        self.name = obj['fq_name'][-1]
         self.annotations = obj.get('annotations', None)
         self.build_fq_name_to_uuid(self.uuid, obj)
 
