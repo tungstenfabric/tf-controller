@@ -19,6 +19,10 @@ from cfgm_common.tests.test_common import retry_exc_handler
 from vnc_api.vnc_api import PlaybookInfoType
 from vnc_api.vnc_api import PlaybookInfoListType
 from vnc_api.vnc_api import JobTemplate
+from vnc_api.vnc_api import KeyValuePair
+from vnc_api.vnc_api import KeyValuePairs
+from vnc_api.vnc_api import ConfigProperties
+from vnc_api.exceptions import NoIdError, RefsExistError
 
 from . import test_case
 from job_manager.job_mgr import WFManager
@@ -39,13 +43,35 @@ class TestJobManager(test_case.JobTestCase):
         cls.console_handler.setLevel(logging.DEBUG)
         logger.addHandler(cls.console_handler)
         super(TestJobManager, cls).setUpClass(*args, **kwargs)
+        cls._create_config_props()
     # end setUpClass
 
     @classmethod
     def tearDownClass(cls, *args, **kwargs):
         logger.removeHandler(cls.console_handler)
+        cls._delete_config_props()
         super(TestJobManager, cls).tearDownClass(*args, **kwargs)
     # end tearDownClass
+
+    @classmethod
+    def _create_config_props(cls):
+        prop = KeyValuePair(key='ztp_timeout', value='570')
+        props = KeyValuePairs()
+        props.add_key_value_pair(prop)
+        config_props = ConfigProperties(properties=props, name='config_property')
+        try:
+            obj = cls._vnc_lib.config_properties_read(fq_name=['default-global-system-config', 'config_property'])
+        except NoIdError:
+            obj_id = cls._vnc_lib.config_properties_create(config_props)
+        except RefsExistError:
+            pass
+
+    @classmethod
+    def _delete_config_props(cls):
+        try:
+            cls._vnc_lib.config_properties_delete(fq_name=['default-global-system-config', 'config_property'])
+        except NoIdError:
+            pass
 
     # Test for a single playbook in the workflow template
     def test_execute_job_success(self):

@@ -236,6 +236,14 @@ class JobHandler(object):
                 playbooks = (
                     self._job_template.get_job_template_recovery_playbooks())
 
+            # get config_properties and add them to playbook input
+            config_props = self._vnc_api.config_properties_read(
+                fq_name=['default-global-system-config', 'config_property'])
+            props_list = config_props.properties.key_value_pair
+            for props in props_list or []:
+                extra_vars[props.key] = props.value
+
+            playbooks = self._job_template.get_job_template_playbooks()
             if device_id:
                 if not self._device_json:
                     msg = MsgBundle.getMessage(MsgBundle.DEVICE_JSON_NOT_FOUND)

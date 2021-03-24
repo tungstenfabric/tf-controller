@@ -154,7 +154,8 @@ class DeviceZtpManager(object):
             if action is None:
                 return
 
-            timeout = self._timeout
+            timeout = config.get('ztp_timeout')
+            self._timeout = timeout
             file_name = headers.get('file_name')
             file_path = os.path.join(self._dnsmasq_conf_dir, file_name)
 
