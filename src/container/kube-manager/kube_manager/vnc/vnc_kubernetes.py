@@ -10,7 +10,7 @@ from __future__ import print_function
 from builtins import str
 from six import StringIO
 import gevent
-
+import time
 import requests
 import socket
 
@@ -28,10 +28,10 @@ from vnc_api.gen.resource_xsd import (
     AddressType, PortType, PolicyEntriesType, VirtualNetworkPolicyType,
     PolicyRuleType, ActionListType, SequenceType, IpamSubnetType,
     VirtualNetworkType, VnSubnetsType, PortTranslationPool,
-    PortTranslationPools, SubnetType, IpamSubnets
+    PortTranslationPools, SubnetType, IpamSubnets, IdPermsType
 )
 from vnc_api.gen.resource_client import (
-    NetworkPolicy, VirtualNetwork, Project, NetworkIpam
+    NetworkPolicy, VirtualNetwork, Project, NetworkIpam, SecurityGroup
 )
 
 import kube_manager.common.args as kube_args
@@ -60,7 +60,7 @@ class VncKubernetes(vnc_common.VncCommon):
         self._cluster_pod_ipam_fq_name = None
         self._cluster_service_ipam_fq_name = None
         self._cluster_ip_fabric_ipam_fq_name = None
-
+        self.timeout = 60
         # init vnc connection
         self.vnc_lib = self._vnc_connect()
 
@@ -323,15 +323,36 @@ class VncKubernetes(vnc_common.VncCommon):
                 policy_name, proj_obj, cluster_vn_obj)
             self._attach_policy(cluster_vn_obj, nested_underlay_policy)
 
+    def _create_default_security_groups(self, ns_name, proj_obj):
+        # create default security group
+        sg_name = vnc_kube_config.get_default_sg_name(ns_name)
+        DEFAULT_SECGROUP_DESCRIPTION = "Default security group"
+        id_perms = IdPermsType(enable=True,
+                               description=DEFAULT_SECGROUP_DESCRIPTION)
+
+        rules = []
+        sg_rules = PolicyEntriesType(rules)
+        sg_obj = SecurityGroup(name=sg_name, parent_obj=proj_obj,
+                               id_perms=id_perms,
+                               security_group_entries=sg_rules)
+
+        try:
+            self.vnc_lib.security_group_create(sg_obj)
+            self.vnc_lib.chown(sg_obj.get_uuid(), proj_obj.get_uuid())
+        except RefsExistError:
+            pass
+
     def _create_project(self, project_name):
         proj_fq_name = vnc_kube_config.cluster_project_fq_name(project_name)
-        proj_obj = Project(name=proj_fq_name[-1], fq_name=proj_fq_name)
+        proj_obj = Project(name=proj_fq_name[-1], fq_name=proj_fq_name, parent_type='domain')
         try:
-            self.vnc_lib.project_create(proj_obj)
+            proj_obj.uuid = self.vnc_lib.project_create(proj_obj)
         except RefsExistError:
             proj_obj = self.vnc_lib.project_read(
                 fq_name=proj_fq_name)
         ProjectKM.locate(proj_obj.uuid)
+
+        self._create_default_security_groups(project_name, proj_obj)
         return proj_obj
 
     def _create_ipam(self, ipam_name, subnets, proj_obj, type='flat-subnet'):
@@ -419,7 +440,23 @@ class VncKubernetes(vnc_common.VncCommon):
         except NoIdError:
             pass
 
+    def _wait_for_configured_domain(self):
+        while True:
+            try:
+                self.vnc_lib.domain_read(fq_name=[vnc_kube_config.cluster_domain()])
+                self.logger.info("%s domain available." % (vnc_kube_config.cluster_domain()))
+                break
+            except NoIdError:
+                self.logger.error(
+                    "%s - Domain %s not available. check again in %s secs."
+                    % (self._name, vnc_kube_config.cluster_domain(), self.timeout))
+                time.sleep(self.timeout)
+                continue
+
     def _provision_cluster(self):
+        # Ensure domain confgured exist.
+        self._wait_for_configured_domain()
+
         # Pre creating default project before namespace add event.
         proj_obj = self._create_project('default')
 
