@@ -1,0 +1,27 @@
+{
+   "input_schema":{
+      "$schema":"http://json-schema.org/draft-06/schema#",
+      "title":"Config Property input",
+      "type":"object",
+      "properties":{
+         "key":{
+            "type":"string"
+         }
+      },
+      "required":[
+         "key"
+      ]
+   },
+   "output_schema":{
+      "$schema":"http://json-schema.org/draft-06/schema#",
+      "title":"Generic Job Output",
+      "type":"object",
+      "properties":{
+         "value":{
+            "type":"string"
+         }
+      },
+      "required":[
+      ]
+   }
+}

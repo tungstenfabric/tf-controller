@@ -1,5 +1,5 @@
 # Timeout settings for Ansible junos modules
-JUNOS_COMMIT_TIMEOUT: 600
+JUNOS_COMMIT_TIMEOUT: "{{ playbook_input.junos_commit_timeout }}"
 JUNOS_FACTS_TIMEOUT: 10
 JUNOS_COMMAND_TIMEOUT: 120
 
@@ -61,7 +61,7 @@ job_ctx:
 POOL_SIZE: 500
 
 #Device Retry Timeout in Seconds
-TOTAL_RETRY_TIMEOUT: 600
+TOTAL_RETRY_TIMEOUT: "{{ playbook_input.total_retry_timeout }}"
 
 #vendor mapping
 vendor_mapping:
@@ -350,7 +350,7 @@ feature_apply_order:
   - overlay_evpn_collapsed_gateway
 
 DEVICE_FACTS_TIMEOUT: 120
-DEVICE_COMMAND_TIMEOUT: 600
+DEVICE_COMMAND_TIMEOUT: "{{ playbook_input.device_command_timeout }}"
 
 # Server Discovery test variables
 ipmi_subnets:

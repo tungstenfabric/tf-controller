@@ -39,7 +39,8 @@ class DeviceInfo(object):
         self.logger = module.logger
         self.job_ctx = module.job_ctx
         self.fabric_uuid = module.params['fabric_uuid']
-        self.total_retry_timeout = float(module.params['total_retry_timeout'])
+        self.total_retry_timeout = self.job_ctx.get('job_input', {}).get(
+            'retry_timeout') or float(module.params['total_retry_timeout'])
         self._job_file_write = JobFileWrite(self.logger)
         self.credentials = []
 
