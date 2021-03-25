@@ -49,7 +49,7 @@ bool IgmpHandler::HandleVmIgmpPacket() {
         return true;
     }
 
-    const VmInterface *vm_itf = static_cast<const VmInterface *>(itf);
+    const VmInterface *vm_itf = dynamic_cast<const VmInterface *>(itf);
     if (!vm_itf || vm_itf->vmi_type() == VmInterface::VHOST) {
         igmp_proto->IncrStatsBadInterface();
         return true;
