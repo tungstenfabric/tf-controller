@@ -84,12 +84,21 @@ except ImportError:
     from vnc_cfg_ifmap import VncServerCassandraClient
 
 
-__version__ = "1.36"
+__version__ = "1.39"
 """
 NOTE: As that script is not self contained in a python package and as it
 supports multiple Contrail releases, it brings its own version that needs to be
 manually updated each time it is modified. We also maintain a change log list
 in that header:
+* 1.39:
+  - Fix CEM-21530. Added check for verifying missing key in cols and
+    continue.
+* 1.38:
+  - Fix CEM-20996. Changed the import structure for compatibility between
+    python 2 and python 3.
+* 1.37:
+  - Fix CEM-10351. Adding heal method to add missing RT refs to RI
+    and RI back-refs to RT.
 * 1.36:
   - Repairing problems with auditing isolated k8s VNs
 * 1.35:
@@ -1724,6 +1733,11 @@ class DatabaseChecker(DatabaseManager):
             try:
                 cols = obj_uuid_table.get(
                     obj_uuid, columns=['type', 'fq_name'])
+                if 'type' and 'fq_name' not in cols:
+                    msg = ("'type' property of '%s' missing" %
+                                obj_uuid)
+                    ret_errors.append(MandatoryFieldsMissingError(msg))
+                    continue
             except pycassa.NotFoundException:
                 msg = ("'type' and/or 'fq_name' properties of '%s' missing" %
                        obj_uuid)
