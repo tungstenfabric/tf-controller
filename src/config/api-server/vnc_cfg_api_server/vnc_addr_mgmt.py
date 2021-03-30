@@ -623,17 +623,14 @@ class AddrMgmt(object):
         if subnet_objs is None:
             if not ipam_dict:
                 #read ipam to get ipam_subnets and generate subnet_objs
-                (ok, ipam_dict) = self._uuid_to_obj_dict('network_ipam',
-                                                         ipam_uuid)
+                (ok, ipam_dict) = self._uuid_to_obj_dict(
+                    'network_ipam',
+                    ipam_uuid,
+                    req_fields=['ipam_subnets', 'ipam_subnetting'])
                 if not ok:
                     raise cfgm_common.exceptions.VncError(ipam_dict)
 
             self._subnet_objs[ipam_uuid] = OrderedDict()
-            #read ipam to get ipam_subnets and generate subnet_objs
-            (ok, ipam_dict) = self._uuid_to_obj_dict('network_ipam',
-                                                     ipam_uuid)
-            if not ok:
-                raise cfgm_common.exceptions.VncError(ipam_dict)
 
             ipam_subnets_dict = ipam_dict.get('ipam_subnets') or {}
             ipam_subnets = ipam_subnets_dict.get('subnets') or []
@@ -669,8 +666,10 @@ class AddrMgmt(object):
     def _get_ipam_subnet_dicts(self, ipam_uuid, ipam_dict=None):
         # Read in the ipam details if not passed in
         if not ipam_dict:
-            (ok, ipam_dict) = self._uuid_to_obj_dict('network_ipam',
-                                                     ipam_uuid)
+            (ok, ipam_dict) = self._uuid_to_obj_dict(
+                'network_ipam',
+                ipam_uuid,
+                req_fields=['ipam_subnets'])
             if not ok:
                 raise cfgm_common.exceptions.VncError(ipam_dict)
 
@@ -2177,7 +2176,9 @@ class AddrMgmt(object):
         ipam_dicts = {}
         for ipam_ref in vn_dict.get('network_ipam_refs', []):
             (ok, ipam_dict) = self._uuid_to_obj_dict(
-                    'network_ipam', ipam_ref['uuid'])
+                'network_ipam',
+                ipam_ref['uuid'],
+                req_fields=['ipam_subnets', 'ipam_subnetting'])
             if not ok:
                 return (False,
                         (500, 'Could not fetch IPAM to free allocated IP : ' +
@@ -2470,7 +2471,10 @@ class AddrMgmt(object):
     def ipam_update_notify(self, obj_id):
         db_conn = self._get_db_conn()
         try:
-            ok, result = db_conn.dbe_read('network_ipam', obj_id=obj_id)
+            ok, result = db_conn.dbe_read('network_ipam',
+                                          obj_id=obj_id,
+                                          obj_fields=['ipam_subnets',
+                                                      'ipam_subnetting'])
         except cfgm_common.exceptions.NoIdError as e:
             return False, (404, str(e))
         if not ok:
@@ -2500,8 +2504,10 @@ class AddrMgmt(object):
         ipam_refs = vn_dict['network_ipam_refs']
         for ipam_ref in ipam_refs:
             ipam_uuid = ipam_ref['uuid']
-            (ok, ipam_dict) = self._uuid_to_obj_dict('network_ipam',
-                                                     ipam_uuid)
+            (ok, ipam_dict) = self._uuid_to_obj_dict(
+                'network_ipam',
+                ipam_uuid,
+                req_fields=['ipam_subnets'])
             if not ok:
                 raise cfgm_common.exceptions.VncError(ipam_dict)
 
