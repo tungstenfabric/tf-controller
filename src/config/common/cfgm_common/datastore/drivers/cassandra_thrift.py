@@ -405,7 +405,7 @@ class CassandraDriverThrift(datastore_api.CassandraDriver):
         if batch:
             batch.insert(key, columns)
         elif column_family:
-            column_famlily.insert(key, columns)
+            column_family.insert(key, columns)
         elif cf_name:
             self._cf_dict[cf_name].insert(key, columns)
         else:
@@ -419,7 +419,7 @@ class CassandraDriverThrift(datastore_api.CassandraDriver):
         if batch:
             batch.remove(key, columns)
         elif column_family:
-            column_famlily.remove(key, columns)
+            column_family.remove(key, columns)
         elif cf_name:
             self._cf_dict[cf_name].remove(key, columns)
         else:
