@@ -286,7 +286,7 @@ class VncApiServer(object):
     # end __new__
 
     @classmethod
-    def _validate_complex_type(cls, dict_cls, dict_body):
+    def _validate_complex_type(cls, dict_cls, dict_body, config):
         if dict_body is None:
             return
         for key, value in list(dict_body.items()):
@@ -310,10 +310,10 @@ class VncApiServer(object):
                 attr_cls = cfgm_common.utils.str_to_class(attr_type, __name__)
                 for item in values:
                     if attr_type == 'AllowedAddressPair':
-                        cls._validate_allowed_address_pair_prefix_len(item)
+                        cls._validate_allowed_address_pair_prefix_len(item,config)
                     if attr_type == 'SubnetType':
                         cls._validate_subnet_type(item)
-                    cls._validate_complex_type(attr_cls, item)
+                    cls._validate_complex_type(attr_cls, item,config)
             else:
                 simple_type = attr_type_vals['simple_type']
                 for idx, item in enumerate(values):
@@ -338,7 +338,7 @@ class VncApiServer(object):
         subnet['ip_prefix_len'] = cidr.prefixlen
 
     @classmethod
-    def _validate_allowed_address_pair_prefix_len(cls, value):
+    def _validate_allowed_address_pair_prefix_len(cls, value, config):
         '''Do not allow configuration of AAP with
            IPv4 prefix length less than 24 and 120 for IPv6.
            LP #1720118
@@ -348,9 +348,13 @@ class VncApiServer(object):
            if ip_net_family == 6 and value['ip']['ip_prefix_len'] < 120:
                raise ValueError('IPv6 Prefix length lesser than 120 is'
                                 ' is not acceptable')
-           if ip_net_family == 4 and value['ip']['ip_prefix_len'] < 24:
-               raise ValueError('IPv4 Prefix length lesser than 24'
-                                ' is not acceptable')
+           aap_prefix_len_limit = int(getattr(config,'aap_prefix_len_limit',24))
+
+           if ip_net_family == 4 and value['ip']['ip_prefix_len'] < aap_prefix_len_limit:
+               raise ValueError('IPv4 Prefix length lesser than ' +
+                                str(aap_prefix_len_limit) + ':it is ' +
+                                str(value['ip']['ip_prefix_len']) +
+                                ' - is not acceptable')
     # end _validate_allowed_address_pair_prefix_len
 
     @classmethod
@@ -837,7 +841,7 @@ class VncApiServer(object):
             prop_cls = cfgm_common.utils.str_to_class(prop_type, __name__)
             if isinstance(prop_value, dict):
                 try:
-                    self._validate_complex_type(prop_cls, prop_value)
+                    self._validate_complex_type(prop_cls, prop_value,self._args)
                 except Exception as e:
                     err_msg = 'Error validating property %s value %s ' %(
                         prop_name, prop_value)
@@ -862,7 +866,7 @@ class VncApiServer(object):
             attr_cls = cfgm_common.utils.str_to_class(ref_link_type, __name__)
             for ref_dict in obj_dict.get(ref_name) or []:
                 try:
-                    self._validate_complex_type(attr_cls, ref_dict['attr'])
+                    self._validate_complex_type(attr_cls, ref_dict['attr'],self._args)
                 except Exception as e:
                     err_msg = 'Error validating reference %s value %s ' \
                               %(ref_name, ref_dict)
@@ -3008,7 +3012,7 @@ class VncApiServer(object):
             prop_val_type = prop_cls.attr_field_type_vals[prop_cls.attr_fields[0]]['attr_type']
             prop_val_cls = cfgm_common.utils.str_to_class(prop_val_type, __name__)
             try:
-                self._validate_complex_type(prop_val_cls, field_val)
+                self._validate_complex_type(prop_val_cls, field_val,self._args)
             except Exception as e:
                 raise cfgm_common.exceptions.HttpError(400, str(e))
             if prop_coll_type == 'list':
