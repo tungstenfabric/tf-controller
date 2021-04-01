@@ -954,6 +954,40 @@
       ]
     },
     {
+      "object_type": "config-properties",
+      "objects": [
+        {
+          "fq_name": [
+            "default-global-system-config",
+            "config_property"
+          ],
+          "name": "config_property",
+          "display_name": "Config Property",
+          "parent_type": "global-system-config",
+          "properties": {
+            "key_value_pair": [
+              {
+                "key": "junos_commit_timeout",
+                "value": "600"
+              },
+              {
+                "key": "total_retry_timeout",
+                "value": "600"
+              },
+              {
+                "key": "device_command_timeout",
+                "value": "600"
+              },
+              {
+                "key": "ztp_timeout",
+                "value": "570"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
       "object_type": "tag",
       "objects": [
         {
