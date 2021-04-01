@@ -183,6 +183,16 @@
         "type": "integer",
         "description": "Total number of devices in the fabric that needs to be zero-touch provisioned"
       },
+      "ztp_timeout": {
+        "title": "Value of ZTP timeout in seconds",
+        "type": "integer",
+        "description": "Value of ZTP timeout in seconds"
+      },
+      "retry_timeout": {
+        "title": "Value of retry timeout in seconds",
+        "type": "integer",
+        "description": "Value of retry timeout in seconds"
+      },
       "supplemental_day_0_cfg": {
         "title": "List of day 0 config that can be used to supplement the ZTP config",
         "type": "array",

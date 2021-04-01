@@ -217,15 +217,27 @@ class FilterModule(object):
     def read_dhcp_leases(cls, ipam_subnets, file_name, fabric_name, job_ctx,
                          payload_key, payload_value, action='create'):
         vnc_api = VncApi(auth_type=VncApi._KEYSTONE_AUTHN_STRATEGY,
+                         auth_token=job_ctx.get('auth_token'))
+        timeout = job_ctx.get('job_input', {}).get('ztp_timeout', 0)
+        # get the ztp_timeout from config properties if not defined in ztp.yml
+        if timeout == 0:
+            config_props = vnc_api.config_properties_read(
+                fq_name=['default-global-system-config', 'config_property'])
+            props_list = config_props.properties.key_value_pair
+            for props in props_list or []:
+                if props.key == 'ztp_timeout':
+                    timeout = int(props.value)
+        vnc_api = VncApi(auth_type=VncApi._KEYSTONE_AUTHN_STRATEGY,
                          auth_token=job_ctx.get('auth_token'),
-                         timeout=600)
+                         timeout=timeout + 30)
         headers = {
             'fabric_name': fabric_name,
             'file_name': file_name,
             'action': action
         }
         payload = {
-            'ipam_subnets': ipam_subnets
+            'ipam_subnets': ipam_subnets,
+            'ztp_timeout': timeout
         }
         payload[payload_key] = payload_value
         return vnc_api.amqp_request(

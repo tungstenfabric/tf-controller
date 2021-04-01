@@ -8,15 +8,21 @@ import gevent.monkey
 gevent.monkey.patch_all(thread=False)
 import sys
 import os
-import io
+import signal
 import logging
 from flexmock import flexmock
 import subprocess32
 import requests
 import uuid
+from cfgm_common.tests.test_common import retries
+from cfgm_common.tests.test_common import retry_exc_handler
 from vnc_api.vnc_api import PlaybookInfoType
 from vnc_api.vnc_api import PlaybookInfoListType
 from vnc_api.vnc_api import JobTemplate
+from vnc_api.vnc_api import KeyValuePair
+from vnc_api.vnc_api import KeyValuePairs
+from vnc_api.vnc_api import ConfigProperties
+from vnc_api.exceptions import NoIdError, RefsExistError
 
 from . import test_case
 from job_manager.job_mgr import WFManager
@@ -37,14 +43,35 @@ class TestJobManager(test_case.JobTestCase):
         cls.console_handler.setLevel(logging.DEBUG)
         logger.addHandler(cls.console_handler)
         super(TestJobManager, cls).setUpClass(*args, **kwargs)
+        cls._create_config_props()
     # end setUpClass
 
     @classmethod
     def tearDownClass(cls, *args, **kwargs):
         logger.removeHandler(cls.console_handler)
+        cls._delete_config_props()
         super(TestJobManager, cls).tearDownClass(*args, **kwargs)
-
     # end tearDownClass
+
+    @classmethod
+    def _create_config_props(cls):
+        prop = KeyValuePair(key='ztp_timeout', value='570')
+        props = KeyValuePairs()
+        props.add_key_value_pair(prop)
+        config_props = ConfigProperties(properties=props, name='config_property')
+        try:
+            obj = cls._vnc_lib.config_properties_read(fq_name=['default-global-system-config', 'config_property'])
+        except NoIdError:
+            obj_id = cls._vnc_lib.config_properties_create(config_props)
+        except RefsExistError:
+            pass
+
+    @classmethod
+    def _delete_config_props(cls):
+        try:
+            cls._vnc_lib.config_properties_delete(fq_name=['default-global-system-config', 'config_property'])
+        except NoIdError:
+            pass
 
     # Test for a single playbook in the workflow template
     def test_execute_job_success(self):
@@ -113,24 +140,20 @@ class TestJobManager(test_case.JobTestCase):
             vendor='Juniper',
             device_family='MX',
             sequence_no=0)
-        play_info_2 = PlaybookInfoType(
-            playbook_uri='job_manager_test_recovery.yml',
-            vendor='Juniper',
-            device_family='QFX',
-            sequence_no=1,
-            recovery_playbook=True)
+        recovery_play_info = PlaybookInfoType(
+            playbook_uri='job_manager_test_recovery.yml')
 
-        playbooks_list = PlaybookInfoListType([play_info_1, play_info_2])
+        playbooks_list = PlaybookInfoListType([play_info_1])
+        recovery_playbooks_list = PlaybookInfoListType([recovery_play_info])
 
-        job_template = JobTemplate(job_template_type='workflow',
-                                   job_template_multi_device_job=False,
-                                   job_template_playbooks=playbooks_list,
-                                   name='Test_template_with_recovery')
+        job_template = JobTemplate(
+            job_template_type='workflow',
+            job_template_multi_device_job=False,
+            job_template_playbooks=playbooks_list,
+            job_template_recovery_playbooks=recovery_playbooks_list,
+            name='Test_template_with_recovery')
 
         job_template_uuid = self._vnc_lib.job_template_create(job_template)
-
-        # Mock creation of a process
-        self.mock_play_book_execution(rc=42)
 
         # Mock sandesh
         TestJobManagerUtils.mock_sandesh_check()
@@ -139,16 +162,77 @@ class TestJobManager(test_case.JobTestCase):
         job_input_json, log_utils = TestJobManagerUtils.get_min_details(
             job_template_uuid)
 
+        # Mock creation of a process that will succeed
+        self.mock_play_book_execution(rc=0)
         wm = WFManager(log_utils.get_config_logger(), self._vnc_lib,
                        job_input_json, log_utils, self.fake_zk_client)
         wm.start_job()
 
+        # Since our WF succeeded
         self.assertEqual(wm.result_handler.job_result_status,
-                         JobStatus.FAILURE)
+                         JobStatus.SUCCESS)
 
-        expected_job_result_message = "Finished cleaning up after the error"
-        self.assertTrue(wm.result_handler.job_result_message,
-                        expected_job_result_message)
+        # Mock creation of a process that will fail
+        self.mock_play_book_execution(rc=42)
+        wm = WFManager(log_utils.get_config_logger(), self._vnc_lib,
+                       job_input_json, log_utils, self.fake_zk_client)
+        wm.start_job()
+
+        @retries(3, hook=retry_exc_handler)
+        def assert_values(wm):
+            # Since our WF failed
+            self.assertEqual(wm.result_handler.job_result_status,
+                             JobStatus.FAILURE)
+        assert_values(wm)
+
+    # Test for job that receives an abort
+    def test_execute_job_with_abort(self):
+        # Create a job template
+        play_info_1 = PlaybookInfoType(
+            playbook_uri='job_manager_test_error.yml',
+            vendor='Juniper',
+            device_family='MX',
+            sequence_no=0)
+        recovery_play_info = PlaybookInfoType(
+            playbook_uri='job_manager_test_recovery.yml')
+
+        playbooks_list = PlaybookInfoListType([play_info_1])
+        recovery_playbooks_list = PlaybookInfoListType([recovery_play_info])
+
+        job_template = JobTemplate(
+            job_template_type='workflow',
+            job_template_multi_device_job=False,
+            job_template_playbooks=playbooks_list,
+            job_template_recovery_playbooks=recovery_playbooks_list,
+            name='Test_abort_with_recovery')
+
+        job_template_uuid = self._vnc_lib.job_template_create(job_template)
+
+        # Mock sandesh
+        TestJobManagerUtils.mock_sandesh_check()
+
+        # getting details required for job manager execution
+        job_input_json, log_utils = TestJobManagerUtils.get_min_details(
+            job_template_uuid)
+
+        # Mock creation of a process
+        self.mock_play_book_execution(with_abort=True)
+        wm = WFManager(log_utils.get_config_logger(), self._vnc_lib,
+                       job_input_json, log_utils, self.fake_zk_client)
+        wm.start_job()
+        wm.job_mgr_abort_signal_handler(signalnum=signal.SIGABRT, frame=None)
+
+        # Wait for some time to let the signal handler finish its work
+        gevent.sleep(1)
+
+        @retries(3, hook=retry_exc_handler)
+        def assert_values(wm):
+            # Since we've aborted our WF, we should have job status as failure
+            # and cleanup mode true
+            self.assertEqual(wm.result_handler.job_result_status,
+                             JobStatus.FAILURE)
+
+        assert_values(wm)
 
     # to test the case when only device vendor is passed in job_template_input
     def test_execute_job_with_vendor_only(self):
@@ -338,7 +422,7 @@ class TestJobManager(test_case.JobTestCase):
 
         return job_input_json, log_utils
 
-    def mock_play_book_execution(self, rc=0):
+    def mock_play_book_execution(self, rc=0, with_abort=False):
         mock_subprocess32 = flexmock(subprocess32)
         playbook_id = uuid.uuid4()
         mock_unique_pb_id = flexmock(uuid)
@@ -351,6 +435,10 @@ class TestJobManager(test_case.JobTestCase):
         fake_process.should_receive('poll').and_return(123)
         # mock the call to invoke the playbook process
         flexmock(os.path).should_receive('exists').and_return(True)
+
+        if with_abort:
+            # mock the call to kill the playbook process
+            flexmock(os).should_receive('kill')
 
         # mock the call to write an END to the file
         with open("/tmp/"+TestJobManagerUtils.execution_id, "a") as f:
