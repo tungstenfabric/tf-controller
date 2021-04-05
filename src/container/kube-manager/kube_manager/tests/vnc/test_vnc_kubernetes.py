@@ -39,6 +39,7 @@ class VncKubernetesTest(unittest.TestCase):
         self.args.ip_fabric_subnets = ['20.20.0.0/16']
         self.args.service_subnets = ['192.168.0.0/24']
         self.args.kubernetes_api_secure_port = "8443"
+        self.args.kubernetes_cluster_domain = "default-domain"
         self.args.auth_user = "admin"
         self.args.auth_password = "qwerty"
         self.args.auth_tenant = "default"
@@ -62,6 +63,9 @@ class VncKubernetesTest(unittest.TestCase):
         proj = api.project_read(id=proj_uuid)
         net = VirtualNetwork("ip-fabric", proj)
         api.virtual_network_create(net)
+
+        # create a custom domain.
+        api.domain_create(Domain("admin_domain"))
 
     def tearDown(self):
         vnc_kubernetes.VncKubernetes.reset()
@@ -108,7 +112,7 @@ class VncKubernetesTest(unittest.TestCase):
         mock_vnc_amqp_handle.establish.assert_called_once_with()
 
         # check if KM dictionaries are synchronized with database
-        self.assertEquals(2, len(config_db.DomainKM.list_obj()))
+        self.assertEquals(3, len(config_db.DomainKM.list_obj()))
         self.assertEquals(5, len(config_db.ProjectKM.list_obj()))
         obj = config_db.DomainKM.get('123')
         self.assertIsNotNone(obj)
@@ -222,3 +226,55 @@ class VncKubernetesTest(unittest.TestCase):
         api.virtual_network_create(net)
 
         vnc_kubernetes.VncKubernetes(self.args, Mock())
+
+    @patch("kube_manager.vnc.db.KubeNetworkManagerDB", new=DBMock)
+    @patch("kube_manager.vnc.vnc_kubernetes.VncApi", new=VncApiMock)
+    @patch("kube_manager.vnc.vnc_kubernetes.VncAmqpHandle", new=Mock())
+    def test_create_custom_domain_resources(self):
+
+        self.args.kubernetes_cluster_domain = "admin_domain"
+        vnc_kubernetes.VncKubernetes(self.args, Mock())
+
+        default_proj_name = vnc_kubernetes_config.cluster_project_name('default')
+        kube_system_proj_name = vnc_kubernetes_config.cluster_project_name('kube-system')
+
+        # Verify projects
+        system_proj = self.verify_if_created('project', kube_system_proj_name,
+                                             ['admin_domain'])
+        default_proj = self.verify_if_created('project', default_proj_name,
+                                              ['admin_domain'])
+        self.verify_if_synchronized(config_db.ProjectKM, system_proj)
+        self.verify_if_synchronized(config_db.ProjectKM, default_proj)
+
+        # Verify cluster pod network
+        net = self.verify_if_created('virtual-network', 'cluster-default-pod-network',
+                                     ['admin_domain', default_proj_name])
+        self.verify_if_synchronized(config_db.VirtualNetworkKM, net)
+        ipam_refs = net.get_network_ipam_refs()
+        self.assertEquals(1, len(ipam_refs))
+        self.assertEquals([], ipam_refs[0]['attr'].ipam_subnets)
+
+        # Verify pod ipam
+        pod_ipam = self.verify_if_created('network-ipam', self.args.cluster_name + '-pod-ipam',
+                                          ['admin_domain', default_proj_name])
+        self.verify_if_synchronized(config_db.NetworkIpamKM, pod_ipam)
+        self.assertEquals('flat-subnet', pod_ipam.get_ipam_subnet_method())
+        self.assertEquals(16, pod_ipam.get_ipam_subnets().subnets[0].subnet.get_ip_prefix_len())
+        self.assertEquals('10.10.0.0', pod_ipam.get_ipam_subnets().subnets[0].subnet.get_ip_prefix())
+
+        # Verify cluster service network
+        net = self.verify_if_created(
+            'virtual-network', 'cluster-default-service-network',
+            ['admin_domain', default_proj_name])
+        self.verify_if_synchronized(config_db.VirtualNetworkKM, net)
+        ipam_refs = net.get_network_ipam_refs()
+        self.assertEquals(1, len(ipam_refs))
+        self.assertEquals([], ipam_refs[0]['attr'].ipam_subnets)
+
+        # Verify service ipam
+        service_ipam = self.verify_if_created('network-ipam', self.args.cluster_name + '-service-ipam',
+                                              ['admin_domain', default_proj_name])
+        self.verify_if_synchronized(config_db.NetworkIpamKM, service_ipam)
+        self.assertEquals('flat-subnet', pod_ipam.get_ipam_subnet_method())
+        self.assertEquals(24, service_ipam.get_ipam_subnets().subnets[0].subnet.get_ip_prefix_len())
+        self.assertEquals('192.168.0.0', service_ipam.get_ipam_subnets().subnets[0].subnet.get_ip_prefix())
