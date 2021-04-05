@@ -67,7 +67,7 @@ public:
     };
     typedef boost::shared_ptr<EncapData> EncapDataPtr;
     typedef std::vector<EncapDataPtr> EncapDataList;
-
+    const EncapDataList GetEncapDataList() const { return encap_list_; };
 protected:
     VrfEntryRef vrf_;
     Ip4Address sip_;
