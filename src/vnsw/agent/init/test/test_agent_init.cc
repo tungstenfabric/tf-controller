@@ -113,6 +113,16 @@ TEST_F(AgentParamTest, Agent_Conf_file_1) {
 
     // watermark parameter
     EXPECT_EQ(param.vr_object_high_watermark(), 75.5);
+
+    /* DPDK parameters */
+    EXPECT_STREQ(param.physical_interface_pci_addr_list()[0].c_str(),
+              "0000:00:09.0");
+    EXPECT_STREQ(param.physical_interface_pci_addr_list()[1].c_str(),
+              "0000:00:0a.0");
+    EXPECT_STREQ(param.physical_interface_mac_addr_list()[0].c_str(),
+              "08:00:27:dc:f2:46");
+    EXPECT_STREQ(param.physical_interface_mac_addr_list()[1].c_str(),
+              "08:00:37:dc:f2:47");
 }
 
 TEST_F(AgentParamTest, Agent_Conf_file_2) {

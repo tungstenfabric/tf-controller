@@ -739,6 +739,21 @@ void AgentParam::ParseNexthopServerArguments
     }
 }
 
+void AgentParam::SplitByDelimiter (const std::string &txt,
+                                   std::vector<std::string> &strs, char ch) {
+    size_t pos = txt.find(ch);
+    size_t initialPos = 0;
+    strs.clear();
+
+    while(pos != std::string::npos) {
+        strs.push_back(txt.substr(initialPos, pos - initialPos));
+        initialPos = pos + 1;
+        pos = txt.find(ch, initialPos);
+    }
+    strs.push_back(txt.substr(initialPos, std::min(pos, txt.size()) -
+                                                   initialPos + 1));
+}
+
 void AgentParam::ParsePlatformArguments
     (const boost::program_options::variables_map &var_map) {
     if (var_map.count("DEFAULT.platform") &&
@@ -748,10 +763,20 @@ void AgentParam::ParsePlatformArguments
         } else if (var_map["DEFAULT.platform"].as<string>() == "dpdk") {
             platform_ = AgentParam::VROUTER_ON_HOST_DPDK;
             if (var_map.count("DEFAULT.physical_interface_address")) {
-                physical_interface_pci_addr_ =
-                var_map["DEFAULT.physical_interface_address"].as<string>();
-                physical_interface_mac_addr_ =
-                var_map["DEFAULT.physical_interface_mac"].as<string>();
+                string physical_interface_pci_addr_list;
+                physical_interface_pci_addr_list_.clear();
+                if (GetOptValue<string>(var_map, physical_interface_pci_addr_list,
+                            "DEFAULT.physical_interface_address")) {
+                    SplitByDelimiter(physical_interface_pci_addr_list,
+                                     physical_interface_pci_addr_list_, ' ');
+                }
+                string physical_interface_mac_addr_list;
+                physical_interface_mac_addr_list_.clear();
+                if (GetOptValue<string>(var_map, physical_interface_mac_addr_list,
+                            "DEFAULT.physical_interface_mac")) {
+                    SplitByDelimiter(physical_interface_mac_addr_list,
+                                     physical_interface_mac_addr_list_, ' ');
+                }
             }
         } else {
             platform_ = AgentParam::VROUTER_ON_HOST;
@@ -1736,8 +1761,6 @@ AgentParam::AgentParam(bool enable_flow_options,
         vrouter_on_nic_mode_(false),
         exception_packet_interface_(""),
         platform_(VROUTER_ON_HOST),
-        physical_interface_pci_addr_(""),
-        physical_interface_mac_addr_(""),
         agent_base_dir_(),
         flow_thread_count_(Agent::kDefaultFlowThreadCount),
         flow_trace_enable_(true),

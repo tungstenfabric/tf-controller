@@ -395,15 +395,17 @@ public:
         return compute_node_address_list_;
     }
     void BuildAddressList(const std::string &val);
+    void SplitByDelimiter(const std::string &txt,
+                          std::vector<std::string> &strs, char ch);
 
     std::string exception_packet_interface() const {
         return exception_packet_interface_;
     }
-    std::string physical_interface_pci_addr() const {
-        return physical_interface_pci_addr_;
+    const std::vector<std::string> &physical_interface_pci_addr_list() const {
+        return physical_interface_pci_addr_list_;
     }
-    std::string physical_interface_mac_addr() const {
-        return physical_interface_mac_addr_;
+    const std::vector<std::string> &physical_interface_mac_addr_list() const {
+        return physical_interface_mac_addr_list_;
     }
     std::string agent_base_dir() const { return agent_base_dir_; }
     const std::string &bgp_as_a_service_port_range() const {
@@ -786,8 +788,8 @@ private:
     bool vrouter_on_nic_mode_;
     std::string exception_packet_interface_;
     Platform platform_;
-    std::string physical_interface_pci_addr_;
-    std::string physical_interface_mac_addr_;
+    std::vector<std::string> physical_interface_pci_addr_list_;
+    std::vector<std::string> physical_interface_mac_addr_list_;
     std::string agent_base_dir_;
     uint16_t flow_thread_count_;
     bool flow_trace_enable_;
