@@ -141,6 +141,7 @@ struct SandeshFlowData {
     68: optional list<i32> remote_tag_list;
     69: optional string remote_prefix;
     70: optional string vmi;
+    79: i16 underlay_gw_index;
 }
 
 /**

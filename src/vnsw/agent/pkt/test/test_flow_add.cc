@@ -81,7 +81,7 @@ TEST_F(FlowTest, FlowAdd_1) {
     EXPECT_EQ(4U, in_count);
     EXPECT_EQ(4U, out_count);
 
-   // l3mh not enabled under gw index for flow is not set
+   // l3mh not enabled underlay gw index for flow is not set
    EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
 }
 
@@ -154,7 +154,7 @@ TEST_F(FlowTest, FlowAdd_2) {
     EXPECT_EQ(2U, in_count);
     EXPECT_EQ(2U, out_count);
 
-    //l3mh not enabled under gw index for flow is not set
+    //l3mh not enabled underlay gw index for flow is not set
     EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
 
     //1. Remove remote VM routes
@@ -224,7 +224,7 @@ TEST_F(FlowTest, FlowAdd_3) {
     EXPECT_EQ(2U, in_count);
     EXPECT_EQ(2U, out_count);
 
-    // l3mh not enabled under gw index for flow is not set
+    // l3mh not enabled underlay gw index for flow is not set
     EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
 
     //1. Remove remote VM routes
@@ -293,7 +293,7 @@ TEST_F(FlowTest, FlowAdd_4) {
     EXPECT_EQ(2U, in_count);
     EXPECT_EQ(2U, out_count);
 
-    // l3mh not enabled under gw index for flow is not set
+    // l3mh not enabled underlay gw index for flow is not set
     EXPECT_TRUE(fe->data().underlay_gw_index_ == 255);
 
     //1. Remove remote VM routes

@@ -805,9 +805,9 @@ private:
     void UpdateReflexiveAction(SessionPolicy *sp, SessionPolicy *rsp);
     const std::string BuildRemotePrefix(const FlowRouteRefMap &rt_list,
                                         uint32_t vr, const IpAddress &ip) const;
-    std::size_t L3mhFiveTupleHash(const IpAddress &sip, const IpAddress &dip,
-                                   uint8_t proto, uint16_t sport,
-                                   uint16_t dport) const;
+    uint8_t GetUnderlayGwIndex(uint32_t intf_in, const IpAddress &sip,
+                                  const IpAddress &dip, uint8_t proto, uint16_t sport,
+                                  uint16_t dport) const;
 
     FlowKey key_;
     FlowTable *flow_table_;

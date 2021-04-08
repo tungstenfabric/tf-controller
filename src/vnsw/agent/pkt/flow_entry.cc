@@ -23,6 +23,7 @@
 #include <cmn/agent_cmn.h>
 #include <oper/interface_common.h>
 #include <oper/nexthop.h>
+#include <oper/tunnel_nh.h>
 
 #include <init/agent_param.h>
 #include <cmn/agent_cmn.h>
@@ -677,25 +678,6 @@ bool FlowEntry::InitFlowCmn(const PktFlowInfo *info, const PktControlInfo *ctrl,
     l3_flow_ = info->l3_flow;
     data_.acl_assigned_vrf_index_ = VrfEntry::kInvalidIndex;
 
-    if (flow_table()->agent()->is_l3mh()) {
-        if (!info->local_flow && info->pkt->agent_hdr.ifindex &&
-            (info->pkt->agent_hdr.ifindex != Interface::kInvalidIndex)) {
-            Interface *itf = flow_table()->agent()->interface_table()->FindInterface(info->pkt->agent_hdr.ifindex);
-            if ((itf->id() < flow_table()->agent()->fabric_interface_name_list().size())
-                && (itf->type() == Interface::PHYSICAL)) {
-                    // Read from TNH encap list
-                    data_.underlay_gw_index_ = itf->id();
-            } else {
-                    data_.underlay_gw_index_ =
-                        L3mhFiveTupleHash(info->pkt->ip_saddr, info->pkt->ip_daddr,
-                                    info->pkt->ip_proto, info->pkt->sport, info->pkt->dport);
-           }
-        } else {
-            data_.underlay_gw_index_ = -1;
-        }
-    } else {
-        data_.underlay_gw_index_ = -1;
-    }
     return true;
 }
 
@@ -786,6 +768,10 @@ void FlowEntry::InitFwdFlow(const PktFlowInfo *info, const PktInfo *pkt,
             vm_intf->update_flow_count(2);
         }
     }
+
+    data_.underlay_gw_index_ =  GetUnderlayGwIndex(intf_in,
+                                info->pkt->ip_saddr, info->pkt->ip_daddr,
+                                info->pkt->ip_proto, info->pkt->sport, info->pkt->dport);
 }
 
 void FlowEntry::InitRevFlow(const PktFlowInfo *info, const PktInfo *pkt,
@@ -874,6 +860,10 @@ void FlowEntry::InitRevFlow(const PktFlowInfo *info, const PktInfo *pkt,
             vm_intf->update_flow_count(2);
         }
     }
+
+    data_.underlay_gw_index_ =  GetUnderlayGwIndex(intf_in,
+                                info->pkt->ip_saddr, info->pkt->ip_daddr,
+                                info->pkt->ip_proto, info->pkt->sport, info->pkt->dport);
 }
 
 void FlowEntry::InitAuditFlow(uint32_t flow_idx, uint8_t gen_id) {
@@ -3645,17 +3635,66 @@ void FlowEntry::set_flow_mgmt_info(FlowEntryInfo *info) {
     flow_mgmt_info_.reset(info);
 }
 
-std::size_t FlowEntry::L3mhFiveTupleHash(const IpAddress &sip, const IpAddress &dip,
-                                   uint8_t proto, uint16_t sport,
-                                   uint16_t dport) const {
-    std::size_t hash = 0;
-    hash = HashIp(hash, sip);
-    hash = HashIp(hash, dip);
+uint8_t FlowEntry::GetUnderlayGwIndex(uint32_t intf_in, const IpAddress &sip,
+                                  const IpAddress &dip, uint8_t proto, uint16_t sport,
+                                  uint16_t dport) const {
+    if ((!flow_table()->agent()->is_l3mh()) || (is_flags_set(FlowEntry::LocalFlow))) {
+        return -1;
+    }
 
-    hash = HashCombine(hash, sport);
-    hash = HashCombine(hash, dport);
-    hash = HashCombine(hash, proto);
-    return (hash % (flow_table()->agent()->fabric_interface_name_list().size()));
+    uint8_t underlay_gw_index = -1;
+    if (is_flags_set(FlowEntry::ReverseFlow)) {
+        FlowEntry *rflow = reverse_flow_entry_.get();
+        if (rflow != NULL) {
+            underlay_gw_index = rflow->data().underlay_gw_index_;
+        }
+        return underlay_gw_index;
+    }
+    Interface *intf = flow_table()->agent()->interface_table()->
+            FindInterface(intf_in);
+    if (intf && intf->type() == Interface::PHYSICAL) {
+        underlay_gw_index = intf->id();
+        return underlay_gw_index;
+    } else {
+        std::size_t hash = 0;
+        hash = HashIp(hash, sip);
+        hash = HashIp(hash, dip);
+
+        hash = HashCombine(hash, sport);
+        hash = HashCombine(hash, dport);
+        hash = HashCombine(hash, proto);
+        underlay_gw_index = hash % (flow_table()->agent()->fabric_interface_name_list().size());
+    }
+    InetUnicastRouteEntry *rt = static_cast<InetUnicastRouteEntry *>
+        (FlowEntry::GetUcRoute(GetDestinationVrf(), dip));
+    if (rt == NULL) {
+        return -1;
+    }
+    const TunnelNH *tunnel_nh =
+        dynamic_cast<const TunnelNH *>(rt->GetActiveNextHop());
+    if ( !(tunnel_nh && (tunnel_nh->IsValid()))) {
+         return -1;
+    }
+    uint8_t index = 0;
+    TunnelNH::EncapDataList encap_list = tunnel_nh->GetEncapDataList();
+    while (index < encap_list.size()) {
+        if ( underlay_gw_index == (encap_list[index].get()->interface_).get()->id()) {
+            underlay_gw_index = index;
+            break;
+        }
+        index++;
+    }
+
+    if (tunnel_nh->IsEncapValid(underlay_gw_index)) {
+        return underlay_gw_index;
+    } else if ( ((underlay_gw_index +1) < (uint8_t)tunnel_nh->GetEncapDataList().size()) &&
+            tunnel_nh->IsEncapValid(underlay_gw_index +1)) {
+        return underlay_gw_index +1;
+    } else if (((underlay_gw_index +1) >= (uint8_t)tunnel_nh->GetEncapDataList().size()) &&
+            tunnel_nh->IsEncapValid(underlay_gw_index + 1 - tunnel_nh->GetEncapDataList().size())) {
+        return (underlay_gw_index + 1 - tunnel_nh->GetEncapDataList().size());
+    }
+    return -1;
 }
 
 TcpPort::~TcpPort() {

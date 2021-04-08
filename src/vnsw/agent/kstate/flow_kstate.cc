@@ -286,6 +286,7 @@ void FlowKState::SetFlowData(vector<KFlowInfo> &list,
     data.set_tcp_seq(k_flow->fe_tcp_seq);
     data.set_oflow_bytes(k_flow->fe_stats.flow_bytes_oflow);
     data.set_oflow_packets(k_flow->fe_stats.flow_packets_oflow);
+    data.set_underlay_gw_index(k_flow->fe_underlay_ecmp_index);
     list.push_back(data);
 }
 

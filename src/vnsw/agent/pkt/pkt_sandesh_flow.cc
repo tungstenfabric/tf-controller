@@ -160,6 +160,7 @@ static string InetRouteFlowMgmtKeyToString(uint16_t id,
         const VmInterface *vmi_e = static_cast<const VmInterface *>(itfe);\
         data.set_vmi(vmi_e->cfg_name());\
     }\
+    data.set_underlay_gw_index(fe->data().underlay_gw_index_);\
 
 const std::string PktSandeshFlow::start_key = "0-0-0-0-0-0.0.0.0-0.0.0.0";
 
