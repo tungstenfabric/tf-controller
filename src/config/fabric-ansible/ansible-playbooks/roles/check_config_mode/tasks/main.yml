@@ -28,7 +28,7 @@
 
     - name: Calculate retries based on JUNOS_COMMIT_TIMEOUT value
       set_fact:
-        retry_no: "{{(JUNOS_COMMIT_TIMEOUT/30) | int}}"
+        retry_no: "{{ JUNOS_COMMIT_TIMEOUT | int / 30 }}"
 
     - name: Invoke the retry logic for "{{30*retry_no}}" sec when the command has failed
       include_tasks: "do_until_loop.yml"
