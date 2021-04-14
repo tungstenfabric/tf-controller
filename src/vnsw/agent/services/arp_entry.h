@@ -49,6 +49,7 @@ public:
                 const SecurityGroupList &sg,
                 const TagList &tag);
     int retry_count() const { return retry_count_; }
+    void SetState(State state) { state_ = state; }
 private:
     void StartTimer(uint32_t timeout, uint32_t mtype);
     void SendArpRequest();

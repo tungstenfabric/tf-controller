@@ -174,6 +174,9 @@ public:
     DBTableBase::ListenerId vrf_table_listener_id() const {
         return vrf_table_listener_id_;
     }
+    DBTableBase::ListenerId interface_table_listener_id() const {
+        return interface_table_listener_id_;
+    }
 private:
     void VrfNotify(DBTablePartBase *part, DBEntryBase *entry);
     void NextHopNotify(DBEntryBase *entry);

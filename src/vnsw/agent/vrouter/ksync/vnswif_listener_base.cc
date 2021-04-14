@@ -383,8 +383,9 @@ void VnswInterfaceListenerBase::HandleInterfaceEvent(const Event *event) {
         ResetSeen(event->interface_, false);
     } else {
         bool up = (event->flags_ & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING);
-        if((event->type_ == VnswInterfaceListenerBase::VR_FABRIC) ||
-            (event->type_ == VnswInterfaceListenerBase::VR_BOND_SLAVES))
+        if (agent_->is_l3mh() == false &&
+            ((event->type_ == VnswInterfaceListenerBase::VR_FABRIC) ||
+             (event->type_ == VnswInterfaceListenerBase::VR_BOND_SLAVES)))
         {
             std::vector<std::string> interface_info;
             std::istringstream iss(event->interface_);
@@ -426,6 +427,21 @@ void VnswInterfaceListenerBase::HandleInterfaceEvent(const Event *event) {
                             table->Enqueue(&req);
                         }
                     }
+                }
+            }
+        } else if (agent_->is_l3mh() &&
+                   event->type_ == VnswInterfaceListenerBase::VR_FABRIC) {
+            InterfaceTable *table = agent_->interface_table();
+            PhysicalInterfaceKey key(event->interface_);
+            PhysicalInterface *intf = static_cast<PhysicalInterface *>(
+                    table->FindActiveEntry(&key));
+            if (intf && IsHostLinkStateUp(event->interface_) != up) {
+                DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+                req.key.reset(new PhysicalInterfaceKey(event->interface_));
+                req.data.reset(new PhysicalInterfaceOsOperStateData(event->type_,
+                                   event->interface_, event->interface_, up));
+                if (table) {
+                    table->Enqueue(&req);
                 }
             }
         }

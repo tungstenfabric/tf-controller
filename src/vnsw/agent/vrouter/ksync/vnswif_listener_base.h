@@ -197,6 +197,7 @@ public:
 
 protected:
     friend class TestVnswIf;
+    friend class VHostMultiHomeTest;
     void InterfaceNotify(DBTablePartBase *part, DBEntryBase *e);
     void FabricRouteNotify(DBTablePartBase *part, DBEntryBase *e);
     void VnNotify(DBTablePartBase *part, DBEntryBase *e);
