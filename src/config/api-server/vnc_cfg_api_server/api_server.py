@@ -711,6 +711,7 @@ class VncApiServer(object):
             response_key (Type string): routing key for the response message
             headers (Type dict): headers for the message
             payload (Type object): the message
+            amqp_timeout (Type int): amqp_timeout value
         '''
         self.config_log("Entered amqp-request",
                         level=SandeshLevel.SYS_INFO)
@@ -735,7 +736,10 @@ class VncApiServer(object):
                                   routing_key=body.get('routing_key'),
                                   headers=body.get('headers'))
         try:
-            amqp_worker.queue.get(block=True, timeout=self._args.amqp_timeout)
+            amqp_timeout = self._args.amqp_timeout
+            if 'amqp_timeout' in body and body.get('amqp_timeout'):
+                amqp_timeout = body.get('amqp_timeout')
+            amqp_worker.queue.get(block=True, timeout=amqp_timeout)
             bottle.response.status = 200
         except gevent.queue.Empty:
             bottle.response.status = 500
