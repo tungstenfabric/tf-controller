@@ -138,19 +138,23 @@ func readConf(dir string) ([]byte, error) {
 		if strings.HasSuffix(fname, CONTRAIL_CONF_FILE) ||
 			strings.HasSuffix(fname, TF_CONF_FILE) {
 
+			log.Infof("Read file *%s\n", fname)
 			dataBytes, err = ioutil.ReadFile(fname)
 			if err != nil {
 				log.Errorf("Failed to read %s. Error %+v\n", fname, err)
 				return nil, err
 			}
 			return dataBytes, nil
+		} else {
+			log.Infof("Skip file *%s\n", fname)
 		}
 	}
 
-	log.Infof("File *%s is not found in %s\n",
+	err = fmt.Errorf("File *%s is not found in %s\n",
 		CONTRAIL_CONF_FILE, dir)
+	log.Infof("%s\n", err)
 	dataBytes, _ = json.Marshal(cniJson{})
-	return dataBytes, nil
+	return dataBytes, err
 }
 
 func (cni *ContrailCni) readContrailConf() ([]byte, error) {
