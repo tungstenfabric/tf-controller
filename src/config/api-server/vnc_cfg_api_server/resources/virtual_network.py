@@ -552,8 +552,10 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
                 if not ipam_uuid:
                     ipam_uuid = db_conn.fq_name_to_uuid('network_ipam',
                                                         ipam_fq_name)
-                (ok, ipam_dict) = db_conn.dbe_read(obj_type='network_ipam',
-                                                   obj_id=ipam_uuid)
+                (ok, ipam_dict) = db_conn.dbe_read(
+                    obj_type='network_ipam',
+                    obj_id=ipam_uuid,
+                    obj_fields=['ipam_subnet_method'])
                 if not ok:
                     return (ok, (400, ipam_dict))
 
@@ -901,8 +903,10 @@ class VirtualNetworkServer(ResourceMixin, VirtualNetwork):
                 ipam_fq_name = ipam['to']
                 ipam_uuid = db_conn.fq_name_to_uuid('network_ipam',
                                                     ipam_fq_name)
-                (ok, ipam_dict) = db_conn.dbe_read(obj_type='network_ipam',
-                                                   obj_id=ipam_uuid)
+                (ok, ipam_dict) = db_conn.dbe_read(
+                    obj_type='network_ipam',
+                    obj_id=ipam_uuid,
+                    obj_fields=['ipam_subnet_method'])
                 if not ok:
                     return (ok, (409, ipam_dict))
 
