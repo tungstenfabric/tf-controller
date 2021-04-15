@@ -245,7 +245,7 @@ class FilterModule(object):
             exchange_type=cls.ZTP_EXCHANGE_TYPE,
             routing_key=cls.ZTP_REQUEST_ROUTING_KEY,
             response_key=cls.ZTP_RESPONSE_ROUTING_KEY + fabric_name,
-            headers=headers, payload=payload)
+            headers=headers, payload=payload, amqp_timeout=timeout)
     # end read_dhcp_leases
 
     @classmethod
