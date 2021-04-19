@@ -395,20 +395,35 @@ bool PortIpcHandler::WriteJsonToFile(VmiSubscribeEntry *entry, bool overwrite)
     string filename = ports_dir_ + "/" + UuidToString(entry->vmi_uuid());
     fs::path file_path(filename);
 
+    bool remove = true;
     /* Don't overwrite if the file already exists */
-    if (!overwrite && fs::exists(file_path)) {
-        return true;
+    if (!overwrite) {
+        remove = !fs::exists(file_path);
+        if (!remove) {
+            return true;
+        }
     }
 
     string info = MakeVmiUuidJson(entry, true);
-    std::ofstream fs(filename.c_str());
-    if (fs.fail()) {
+    if (info.empty()) {
+        LOG(ERROR, "Error producing entry JSON for port " << file_path.filename());
         return false;
     }
-    fs << info;
+    std::ofstream fs(filename.c_str());
+    if (fs.fail()) {
+        LOG(ERROR, "Cannot open file " << filename << " for writing");
+        return false;
+    }
+    bool output = (fs << info).good();
     fs.close();
+    if (!output) {
+        LOG(ERROR, "Cannot write JSON to the file " << filename);
+        if (remove) {
+            fs::remove(file_path);
+        }
+    }
 
-    return true;
+    return output;
 }
 
 bool PortIpcHandler::ValidateMac(const string &mac) const {
@@ -952,14 +967,23 @@ bool PortIpcHandler::WriteJsonToFile(VmVnPortSubscribeEntry *entry) const {
 
     string info;
     MakeVmVnPortJson(entry, info, true);
-    std::ofstream fs(filename.c_str());
-    if (fs.fail()) {
+    if (info.empty()) {
+        LOG(ERROR, "Error producing entry JSON for VM " << entry->vm_name());
         return false;
     }
-    fs << info;
+    std::ofstream fs(filename.c_str());
+    if (fs.fail()) {
+        LOG(ERROR, "Cannot open file " << filename << " for writing");
+        return false;
+    }
+    bool output = (fs << info).good();
     fs.close();
+    if (!output) {
+        LOG(ERROR, "Cannot write JSON to the file " << filename);
+        fs::remove(file_path);
+    }
 
-    return true;
+    return output;
 }
 
 bool PortIpcHandler::DeleteVmVnPort(const boost::uuids::uuid &vm_uuid,
