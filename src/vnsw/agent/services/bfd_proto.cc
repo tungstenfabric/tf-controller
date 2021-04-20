@@ -127,11 +127,21 @@ bool BfdProto::BfdHealthCheckSessionControl(
                 BfdSessionsKey skey(service->interface()->id(),
                                     service->destination_ip());
                 Sessions::iterator it = sessions_.find(skey);
-                sessions_.erase(it);
-                BFD_TRACE(Trace, "Delete",
-                        destination_ip.to_string(),
-                        source_ip.to_string(), service->interface()->id(),
-                        0, 0, 0);
+                if (it != sessions_.end()) {
+                    sessions_.erase(it);
+                    BFD_TRACE(Trace, "Delete",
+                            destination_ip.to_string(),
+                            source_ip.to_string(), service->interface()->id(),
+                            0, 0, 0);
+                } else {
+                    // TODO: replace log with trace
+                    std::string str("BFD delete session ");
+                    str += " interface-id: " + service->interface()->id();
+                    str += " source-ip: " + source_ip.to_string();
+                    str += " destination-ip: " + destination_ip.to_string();
+
+                    LOG(ERROR, "Duplicate request: " << str);
+                }
                 break;
             }
 
