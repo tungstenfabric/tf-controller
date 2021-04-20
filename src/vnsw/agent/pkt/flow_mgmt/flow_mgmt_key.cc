@@ -59,8 +59,9 @@ void BgpAsAServiceFlowMgmtKey::StartHealthCheck(
 }
 
 void BgpAsAServiceFlowMgmtKey::StopHealthCheck(FlowEntry *flow) {
-    if (bgp_health_check_instance_) {
-        bgp_health_check_instance_->StopTask(bgp_health_check_service_);
+    if (bgp_health_check_service_ && bgp_health_check_instance_) {
+        bgp_health_check_service_->StopHealthCheckService(
+                                        bgp_health_check_instance_);
         bgp_health_check_instance_ = NULL;
         bgp_health_check_service_ = NULL;
     }
