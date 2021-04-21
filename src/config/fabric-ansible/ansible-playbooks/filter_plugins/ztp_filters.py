@@ -27,6 +27,8 @@ class FilterModule(object):
     TFTP_FILE_ROUTING_KEY = 'device_ztp.tftp.file'
     ZTP_REQUEST_ROUTING_KEY = 'device_ztp.request'
     ZTP_RESPONSE_ROUTING_KEY = 'device_ztp.response.'
+    AMQP_BUFFER_TIME = 55
+    VNC_API_REQUEST_BUFFER_TIME = 60
 
     def filters(self):
         return {
@@ -229,7 +231,7 @@ class FilterModule(object):
                     timeout = int(props.value)
         vnc_api = VncApi(auth_type=VncApi._KEYSTONE_AUTHN_STRATEGY,
                          auth_token=job_ctx.get('auth_token'),
-                         timeout=timeout + 30)
+                         timeout=timeout + cls.VNC_API_REQUEST_BUFFER_TIME)
         headers = {
             'fabric_name': fabric_name,
             'file_name': file_name,
@@ -240,12 +242,13 @@ class FilterModule(object):
             'ztp_timeout': timeout
         }
         payload[payload_key] = payload_value
+        amqp_timeout = timeout + cls.AMQP_BUFFER_TIME
         return vnc_api.amqp_request(
             exchange=cls.ZTP_EXCHANGE,
             exchange_type=cls.ZTP_EXCHANGE_TYPE,
             routing_key=cls.ZTP_REQUEST_ROUTING_KEY,
             response_key=cls.ZTP_RESPONSE_ROUTING_KEY + fabric_name,
-            headers=headers, payload=payload, amqp_timeout=timeout)
+            headers=headers, payload=payload, amqp_timeout=amqp_timeout)
     # end read_dhcp_leases
 
     @classmethod
