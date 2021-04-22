@@ -929,7 +929,18 @@ bool LocalVmRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
             mac = evpn_rt->mac();
         }
     }
-
+    if (vm_port && vm_port->mac_ip_learning_enable()) {
+        MplsLabel *mpls = agent->mpls_table()->FindMplsLabel(mpls_label_);
+        if (mpls != NULL) {
+            const InterfaceNH *label_nh = dynamic_cast<const InterfaceNH *>(mpls->nexthop());
+            if (label_nh) {
+                const MacAddress nh_dmac = label_nh->GetDMac();
+                if (mac == vm_port->vm_mac() && nh_dmac != vm_port->vm_mac()) {
+                    mac = nh_dmac;
+                }
+            }
+        }
+    }
     InterfaceNHKey key(intf_.Clone(), policy, flags_, mac);
     nh = static_cast<NextHop *>(agent->nexthop_table()->FindActiveEntry(&key));
 
