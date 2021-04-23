@@ -483,8 +483,8 @@ Interface::~Interface() {
     }
 }
 
-void Interface::SetPciIndex(Agent *agent) {
-    std::istringstream pci(agent->params()->physical_interface_pci_addr());
+void Interface::SetPciIndex(Agent *agent, size_t index) {
+    std::istringstream pci(agent->params()->physical_interface_pci_addr_list()[index]);
 
     uint32_t  domain, bus, device, function;
     char c;
@@ -529,10 +529,19 @@ void Interface::GetOsParams(Agent *agent) {
         lookup_name = phy_intf->display_name();
     }
 
+    size_t index = 0;
     if (transport_ == TRANSPORT_PMD && type_ == PHYSICAL) {
         //PCI address is the name of the interface
         // os index from that
-       SetPciIndex(agent);
+       std::vector<std::string>::const_iterator ptr;
+       for (ptr = agent->fabric_interface_name_list().begin();
+            ptr != agent->fabric_interface_name_list().end(); ++ptr) {
+           if (*ptr == lookup_name) {
+               break;
+           }
+           index++;
+       }
+       SetPciIndex(agent, index);
     }
 
     //In case of DPDK, set mac-address to the physical
@@ -541,15 +550,25 @@ void Interface::GetOsParams(Agent *agent) {
     //will not be present
     const VmInterface *vm_intf = dynamic_cast<const VmInterface *>(this);
     if (transport_ == TRANSPORT_PMD) {
-        if (phy_intf || (vm_intf && vm_intf->vmi_type() == VmInterface::VHOST)) {
-            struct ether_addr *addr = ether_aton(agent->params()->
-                                      physical_interface_mac_addr().c_str());
-            if (addr) {
-                os_params_.mac_ = *addr;
-            } else {
-                LOG(ERROR,
-                    "Physical interface MAC not set in DPDK vrouter agent");
+        struct ether_addr *addr = NULL;
+        if (agent->is_l3mh()) {
+            if (phy_intf) {
+                addr = ether_aton(agent->params()->
+                        physical_interface_mac_addr_list()[index].c_str());
+            }  else if (vm_intf && vm_intf->vmi_type() == VmInterface::VHOST) {
+                addr = ether_aton(agent->vrrp_mac().ToString().c_str());
             }
+        } else {
+            if (phy_intf || (vm_intf && vm_intf->vmi_type() == VmInterface::VHOST)) {
+                addr = ether_aton(agent->params()->
+                        physical_interface_mac_addr_list()[0].c_str());
+            }
+        }
+        if (addr) {
+            os_params_.mac_ = *addr;
+        } else {
+            LOG(ERROR,
+                    "Physical interface MAC not set in DPDK vrouter agent");
         }
         return;
     }
