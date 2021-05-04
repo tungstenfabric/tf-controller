@@ -16,6 +16,7 @@
 namespace opt = boost::program_options;
 using std::map;
 using std::string;
+rlim_t rlimit_max;
 
 class AgentParamTest : public ::testing::Test {
 public:
@@ -132,8 +133,16 @@ TEST_F(AgentParamTest, Agent_Conf_file_2) {
     // QOS.priorty_tagging is configured as true in cfg1.ini.
     EXPECT_TRUE(param.qos_priority_tagging());
     EXPECT_EQ(param.max_vm_flows(), 100);
-    EXPECT_EQ(param.linklocal_system_flows(), 2048);
-    EXPECT_EQ(param.linklocal_vm_flows(), 2048);
+    uint32_t total_required_fds = Agent::kDefaultMaxLinkLocalOpenFds +
+                                  Agent::kMaxOtherOpenFds + 1;
+    uint32_t total_actual_ll_fds = 0;
+    if (total_required_fds < rlimit_max) {
+        total_actual_ll_fds = Agent::kDefaultMaxLinkLocalOpenFds;
+    } else {
+        total_actual_ll_fds = rlimit_max - Agent::kMaxOtherOpenFds - 1;
+    }
+    EXPECT_EQ(param.linklocal_system_flows(), total_actual_ll_fds);
+    EXPECT_EQ(param.linklocal_vm_flows(), total_actual_ll_fds);
 
     // The following check deliberately hardcodes 512 which is the current value
     // of Agent::kMaxOtherOpenFds. Any change in Agent::kMaxOtherOpenFds should
@@ -142,7 +151,7 @@ TEST_F(AgentParamTest, Agent_Conf_file_2) {
     struct rlimit rl;
     int result = getrlimit(RLIMIT_NOFILE, &rl);
     EXPECT_EQ(result, 0);
-    EXPECT_TRUE(rl.rlim_cur == (512 + 1 + 2048));
+    EXPECT_TRUE(rl.rlim_cur == (512 + 1 + total_actual_ll_fds));
 
     std::vector<string>servers;
     EXPECT_EQ(param.controller_server_list().size(), 2);
@@ -684,6 +693,10 @@ TEST_F(AgentParamTest, Agent_No_GW_Conf_File) {
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    /* Checking process soft limit before agent starts */
+    struct rlimit rl;
+    getrlimit(RLIMIT_NOFILE, &rl);
+    rlimit_max = rl.rlim_max;
     int ret = RUN_ALL_TESTS();
     return ret;
 }

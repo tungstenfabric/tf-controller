@@ -357,7 +357,7 @@ extern void RouterIdDepInit(Agent *agent);
 
 class Agent {
 public:
-    static const uint32_t kDefaultMaxLinkLocalOpenFds = 2048;
+    static const uint32_t kDefaultMaxLinkLocalOpenFds = 16384;
     // max open files in the agent, excluding the linklocal bind ports
     static const uint32_t kMaxOtherOpenFds = 512;
     // max BGP-as-a-server sessions, for which local ports are reserved
