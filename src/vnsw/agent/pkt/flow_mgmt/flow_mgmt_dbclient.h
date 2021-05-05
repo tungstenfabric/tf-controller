@@ -98,7 +98,8 @@ public:
     };
 
     struct NhFlowHandlerState : public FlowMgmtState {
-        NhFlowHandlerState() { }
+        NhFlowHandlerState(uint8_t valid_encap_size) : valid_encap_size_(valid_encap_size) { }
+        uint8_t valid_encap_size_;
         virtual ~NhFlowHandlerState() { }
     };
 

@@ -483,6 +483,7 @@ class FlowEntry {
         SHORT_PORT_MAP_DROP,
         SHORT_NO_SRC_ROUTE_L2RPF,
         SHORT_FAT_FLOW_NAT_CONFLICT,
+        SHORT_L3MH_PHY_INTF_DOWN,
         SHORT_MAX
     };
 
