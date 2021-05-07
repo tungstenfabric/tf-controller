@@ -177,8 +177,10 @@ class FWRule(object):
         tagsns = []
         tagsps = []
         ps_or_ns = False
+        ns_present = False
 
         if 'namespaceSelector' in from_rule:
+            ns_present = True
             ps_or_ns = True
             ns_ps_name = 'namespaceSelector'
             ns_selector = from_rule.get('namespaceSelector')
@@ -190,7 +192,10 @@ class FWRule(object):
             ns_ps_name = 'podSelector'
             pod_selector = from_rule.get('podSelector')
             if pod_selector:
-                tagsps = cls._get_tags(pod_selector, namespace)
+                if ns_present:
+                    tagsps = cls._get_tags(pod_selector)
+                else:
+                    tagsps = cls._get_tags(pod_selector, namespace)
 
         if ps_or_ns:
             tags = tagsns + tagsps
