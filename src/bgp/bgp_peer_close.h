@@ -41,6 +41,7 @@ class BgpPeerClose : public IPeerClose {
     virtual bool IsCloseLongLivedGraceful() const;
     virtual void CloseComplete();
     virtual void GetGracefulRestartFamilies(Families *families) const;
+    virtual void GetLongLivedGracefulRestartFamilies(Families *families) const;
     virtual PeerCloseManager *GetManager() const;
     virtual void UpdateRouteStats(Address::Family family,
         const BgpPath *old_path, uint32_t path_flags) const;

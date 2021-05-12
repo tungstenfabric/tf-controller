@@ -365,6 +365,13 @@ void BgpPeerClose::GetGracefulRestartFamilies(Families *families) const {
     }
 }
 
+void BgpPeerClose::GetLongLivedGracefulRestartFamilies(Families *families) const {
+    families->clear();
+    BOOST_FOREACH(const string family, llgr_families_) {
+        families->insert(Address::FamilyFromString(family));
+    }
+}
+
 void BgpPeerClose::AddGRCapabilities(
         BgpProto::OpenMessage::OptParam *opt_param) {
     vector<Address::Family> gr_families;
