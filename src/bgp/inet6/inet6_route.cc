@@ -81,13 +81,17 @@ bool Inet6Prefix::IsMoreSpecific(const Inet6Prefix &rhs) const {
 Inet6Prefix Inet6Prefix::operator&(const Inet6Prefix& right) const {
     Ip6Address::bytes_type addr_bytes;
     ARRAYBYTES_FILL(addr_bytes,0);
+
     Ip6Address::bytes_type lhs = ToBytes();
     Ip6Address::bytes_type rhs = right.ToBytes();
+
+    int plen = (prefixlen_ <= right.prefixlen_ ? prefixlen() : right.prefixlen());
+
     for (size_t i = 0; i < sizeof(Ip6Address::bytes_type); ++i) {
         addr_bytes[i] = lhs[i] & rhs[i];
     }
-    return Inet6Prefix(Ip6Address(addr_bytes),
-        (prefixlen_ <= right.prefixlen_ ? prefixlen() : right.prefixlen()));
+
+    return Inet6Prefix(Ip6Address(addr_bytes), plen);
 }
 
 // Routines for class Inet6Route
