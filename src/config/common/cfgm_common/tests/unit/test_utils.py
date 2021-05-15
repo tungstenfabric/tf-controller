@@ -53,6 +53,7 @@ class TestFqNameEncode(unittest.TestCase):
             ('only/ascii/with/forward/slash', 'only/ascii/with/forward/slash'),
             ('only!ascii!with!exclamatory', 'only!ascii!with!exclamatory'),
             ('only~ascii~tilde', 'only~ascii~tilde'),
+            ('only+ascii+plus', 'only+ascii+plus'),
             ('foo=bar', 'foo=bar'),
             # (, ),
             # ('non-ascii-é', 'non-ascii-%C3%A9'),
