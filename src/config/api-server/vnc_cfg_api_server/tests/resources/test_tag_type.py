@@ -52,15 +52,43 @@ class TestTagType(TestTagBase):
 
     def test_tag_type_id_cannot_be_set(self):
         tag_type = TagType(name='tag-type-%s' % self.id(),
-                           tag_type_id='0xBEEF')
+                           tag_type_id='0x0EEF')
         self.assertRaises(BadRequest, self.api.tag_type_create, tag_type)
+
+    def test_ud_tag_type_id_can_be_set(self):
+        tag_type = TagType(name='tag-type-%s' % self.id(),
+                           tag_type_id='0xBEEF')
+        tag_type_uuid = self.api.tag_type_create(tag_type)
+        tag_type = self.api.tag_type_read(id=tag_type_uuid)
+        self.assertEqual(tag_type.tag_type_id, "0xbeef")
+        self.api.tag_type_delete(id=tag_type_uuid)
 
     def test_tag_type_id_cannot_be_updated(self):
         tag_type = TagType(name='tag-type-%s' % self.id())
         tag_type_uuid = self.api.tag_type_create(tag_type)
         tag_type = self.api.tag_type_read(id=tag_type_uuid)
+        tag_type.tag_type_id = '0x0eef'
+        self.assertRaises(BadRequest, self.api.tag_type_update, tag_type)
+
+    def test_ud_tag_type_id_cannot_be_updated(self):
+        tag_type = TagType(name='tag-type-%s' % self.id(),
+                           tag_type_id="0x8eef")
+        tag_type_uuid = self.api.tag_type_create(tag_type)
+        tag_type = self.api.tag_type_read(id=tag_type_uuid)
         tag_type.tag_type_id = '0xbeef'
         self.assertRaises(BadRequest, self.api.tag_type_update, tag_type)
+        self.api.tag_type_delete(id=tag_type_uuid)
+
+    def test_ud_tag_type_id_cannot_be_assigned_to_multiple_tag_types(self):
+        tag_type = TagType(name='tag-type-%s' % self.id(),
+                           tag_type_id="0x8eef")
+        tag_type_uuid = self.api.tag_type_create(tag_type)
+        tag_type = self.api.tag_type_read(id=tag_type_uuid)
+
+        tag_type = TagType(name="fake-tag-type%s" % self.id(),
+                           tag_type_id="0x8eef")
+        self.assertRaises(BadRequest, self.api.tag_type_create, tag_type)
+        self.api.tag_type_delete(id=tag_type_uuid)
 
     def test_tag_type_display_name_cannot_be_set(self):
         name = 'tag-type-%s' % self.id()
@@ -86,12 +114,34 @@ class TestTagType(TestTagBase):
         zk_id = int(tag_type.tag_type_id, 0)
         self.assertEqual(type_str, mock_zk.get_tag_type_from_id(zk_id))
 
+    def test_allocate_ud_tag_type_id(self):
+        mock_zk = self._api_server._db_conn._zk_db
+        type_str = 'tag-type-%s' % self.id()
+        tag_type = TagType(name=type_str, tag_type_id="0xbeef",)
+        tag_type_uuid = self.api.tag_type_create(tag_type)
+
+        tag_type = self.api.tag_type_read(id=tag_type_uuid)
+        zk_id = int(tag_type.tag_type_id, 0)
+        self.assertEqual(type_str, mock_zk.get_tag_type_from_id(zk_id))
+        self.api.tag_type_delete(id=tag_type_uuid)
+
     def test_deallocate_tag_type_id(self):
         mock_zk = self._api_server._db_conn._zk_db
         type_str = 'tag-type-%s' % self.id()
         tag_type = TagType(name=type_str)
         tag_type_uuid = self.api.tag_type_create(tag_type)
 
+        tag_type = self.api.tag_type_read(id=tag_type_uuid)
+        zk_id = int(tag_type.tag_type_id, 0)
+        self.api.tag_type_delete(id=tag_type_uuid)
+        self.assertNotEqual(mock_zk.get_tag_type_from_id(zk_id),
+                            tag_type.fq_name[-1])
+
+    def test_deallocate_ud_tag_type_id(self):
+        mock_zk = self._api_server._db_conn._zk_db
+        type_str = 'tag-type-%s' % self.id()
+        tag_type = TagType(name=type_str, tag_type_id="0xbeef",)
+        tag_type_uuid = self.api.tag_type_create(tag_type)
         tag_type = self.api.tag_type_read(id=tag_type_uuid)
         zk_id = int(tag_type.tag_type_id, 0)
         self.api.tag_type_delete(id=tag_type_uuid)
@@ -112,3 +162,18 @@ class TestTagType(TestTagBase):
         self.api.tag_type_delete(id=tag_type_uuid)
         self.assertIsNotNone(mock_zk.get_tag_type_from_id(zk_id))
         self.assertEqual(fake_tag_type, mock_zk.get_tag_type_from_id(zk_id))
+
+    def test_not_deallocate_ud_tag_type_id_if_value_does_not_correspond(self):
+        mock_zk = self._api_server._db_conn._zk_db
+        type_str = 'tag-type-%s' % self.id()
+        tag_type = TagType(name=type_str, tag_type_id="0xbeef")
+        tag_type_uuid = self.api.tag_type_create(tag_type)
+        tag_type = self.api.tag_type_read(id=tag_type_uuid)
+        zk_id = int(tag_type.tag_type_id, 0)
+        fake_tag_type = "fake tag type"
+        mock_zk._ud_tag_type_id_allocator.delete(zk_id)
+        mock_zk._ud_tag_type_id_allocator.reserve(zk_id, fake_tag_type)
+        self.api.tag_type_delete(id=tag_type_uuid)
+        self.assertIsNotNone(mock_zk.get_tag_type_from_id(zk_id))
+        self.assertEqual(fake_tag_type, mock_zk.get_tag_type_from_id(zk_id))
+        mock_zk._ud_tag_type_id_allocator.delete(zk_id)

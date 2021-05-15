@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Juniper Networks, Inc. All rights reserved.
 #
 
-from cfgm_common.exceptions import HttpError
+from cfgm_common.exceptions import HttpError, ResourceExistsError
 from sandesh_common.vns.constants import TagTypeNameToId
 from vnc_api.gen.resource_common import Tag
 from vnc_api.gen.resource_xsd import IdPermsType
@@ -35,18 +35,51 @@ class TagServer(ResourceMixin, Tag):
     def pre_dbe_create(cls, tenant_name, obj_dict, db_conn):
         type_str = obj_dict['tag_type_name']
 
-        if obj_dict.get('tag_id') is not None:
-            msg = "Tag ID is not setable"
+        tag_id = obj_dict.get('tag_id') or None
+        tag_value_id = None
+        tag_type_id = None
+
+        # For user defined tags tag id and tag-type id
+        # is input from user. Range for user defined
+        # ids are 32768 - 65535. Both values are expected
+        # in hex format.
+        if tag_id is not None:
+            try:
+                tag_value_id = int(tag_id, 16) & (2**16 - 1)
+                tag_type_id = int(tag_id, 16) >> 16
+            except ValueError:
+                return False, (400, "Tag value must be in hexadecimal")
+
+        if tag_value_id is not None and \
+           not cls.vnc_zk_client.user_def_tag(tag_value_id):
+            msg = "Tag id can be set only for user defined tags in range\
+                   32678-65535"
             return False, (400, msg)
 
         if obj_dict.get('tag_type_refs') is not None:
             msg = "Tag Type reference is not setable"
             return False, (400, msg)
 
+        # check if tag-type is already present use that.
         ok, result = cls.server.get_resource_class('tag_type').locate(
-            [type_str], id_perms=IdPermsType(user_visible=False))
-        if not ok:
-            return False, result
+            [type_str], create_it=False)
+
+        if not ok and result[0] == 404:
+            if tag_type_id is not None and \
+               not cls.vnc_zk_client.user_def_tag(tag_type_id):
+                msg = "Tag type id can be set only for user defined tag types\
+                        in range 32678-65535"
+                return False, (400, msg)
+
+            params = {"id_perms": IdPermsType(user_visible=False),
+                      "tag_type_id": None if tag_type_id is None
+                      else "0x%x" % tag_type_id,
+                      }
+            ok, result = cls.server.get_resource_class('tag_type').locate(
+                [type_str], **params)
+            if not ok:
+                return False, result
+
         tag_type = result
 
         def undo_tag_type():
@@ -63,14 +96,23 @@ class TagServer(ResourceMixin, Tag):
 
         # Allocate ID for tag value. Use the all fq_name to distinguish same
         # tag values between global and scoped
-        value_id = cls.vnc_zk_client.alloc_tag_value_id(
-            type_str, ':'.join(obj_dict['fq_name']))
+        try:
+            value_id = cls.vnc_zk_client.alloc_tag_value_id(
+                type_str, ':'.join(obj_dict['fq_name']), tag_value_id)
+
+        except ResourceExistsError:
+            return False, (400, "Requested Tag id is already allocated")
 
         def undo_value_id():
             cls.vnc_zk_client.free_tag_value_id(type_str, value_id,
                                                 ':'.join(obj_dict['fq_name']))
             return True, ""
         get_context().push_undo(undo_value_id)
+
+        # value id is None in case of Failure otherwise any positive
+        # value between 0 and 65535
+        if value_id is None:
+            return False, (400, "Failed to allocate tag Id")
 
         # Compose Tag ID with the type ID and value ID
         obj_dict['tag_id'] = "{}{:04x}".format(tag_type['tag_type_id'],
