@@ -119,13 +119,16 @@ class AnsibleRoleCommon(AnsibleConf):
                         self.add_ref_to_list(int_ri.get_routing_interfaces(), irb_name)
     # end set_internal_vn_irb_config
 
-    def add_irb_config(self, ri_conf):
+    def add_irb_config(self, ri_conf, ri=None):
         vn = ri_conf.get("vn")
+        irb_comment = None
         is_l2_l3 = ri_conf.get("is_l2_l3", False)
         gateways = ri_conf.get("gateways", [])
         network_id = ri_conf.get("network_id", None)
         router_external = ri_conf.get("router_external", False)
         irb_intf, li_map = self.set_default_pi('irb', 'irb')
+        if ri and ri.get_is_master():
+            irb_comment = "Master LR IRB"
         if self._logger.ok_to_log("SYS_DEBUG"):
             self._logger.debug("Vn=" + vn.name + ", IRB: " + str(gateways) +
                                ", pr=" + self.physical_router.name)
@@ -136,7 +139,8 @@ class AnsibleRoleCommon(AnsibleConf):
             if vn.has_ipv6_subnet is True:
                 intf_unit.set_is_virtual_router(True)
             intf_unit.set_comment(
-                DMUtils.vn_irb_comment(vn,False, is_l2_l3, router_external))
+                DMUtils.vn_irb_comment(vn,False, is_l2_l3, router_external,
+                                       irb_comment))
             for (irb_ip, gateway) in gateways:
                 if len(gateway) and gateway != '0.0.0.0':
                     intf_unit.set_gateway(gateway)
@@ -326,7 +330,7 @@ class AnsibleRoleCommon(AnsibleConf):
             self.add_interface_lo0(ri, vn_network_id, ip_addr, comment)
 
         if self.is_gateway() and is_l2_l3 and not is_internal_vn:
-            self.add_irb_config(ri_conf)
+            self.add_irb_config(ri_conf, ri)
             self.attach_irb(ri_conf, ri)
 
         if fip_map is not None:
