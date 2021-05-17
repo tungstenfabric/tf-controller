@@ -456,10 +456,15 @@ void KSync::UpdateVhostMac() {
     strcpy(ifm.if_kind, VHOST_KIND);
     ifm.if_flags = IFF_UP;
 
-    PhysicalInterfaceKey key(agent_->fabric_interface_name());
-    Interface *eth = static_cast<Interface *>
-        (agent_->interface_table()->FindActiveEntry(&key));
-    eth->mac().ToArray((u_int8_t *)ifm.if_mac, sizeof(ifm.if_mac));
+    //on l3mh compute vhost0 mac is set to vrrp mac instead of phy interface mac
+    if (agent_->is_l3mh()) {
+        agent_->vrrp_mac().ToArray((u_int8_t *)ifm.if_mac, sizeof(ifm.if_mac));
+    } else {
+        PhysicalInterfaceKey key(agent_->fabric_interface_name());
+        Interface *eth = static_cast<Interface *>
+            (agent_->interface_table()->FindActiveEntry(&key));
+        eth->mac().ToArray((u_int8_t *)ifm.if_mac, sizeof(ifm.if_mac));
+    }
     assert(nl_build_if_create_msg(cl, &ifm, 1) == 0);
     assert(nl_sendmsg(cl) > 0);
     assert(nl_recvmsg(cl) > 0);
@@ -476,12 +481,17 @@ void KSync::UpdateVhostMac() {
     strncpy(ifr.ifr_name, agent_->vhost_interface_name().c_str(),
             sizeof(ifr.ifr_name));
 
-    PhysicalInterfaceKey key(agent_->fabric_interface_name());
-    Interface *eth = static_cast<Interface *>
-        (agent_->interface_table()->FindActiveEntry(&key));
-    ifr.ifr_addr = eth->mac();
-
-    ifr.ifr_addr.sa_len = eth->mac().size();
+    // on l3mh compute vhost0 mac is set to vrrp mac instead of phy interface mac
+    if (agent_->is_l3mh()) {
+        ifr.ifr_addr = agent_->vrrp_mac();
+        ifr.ifr_addr.sa_len = agent_->vrrp_mac().size();
+    } else {
+        PhysicalInterfaceKey key(agent_->fabric_interface_name());
+        Interface *eth = static_cast<Interface *>
+            (agent_->interface_table()->FindActiveEntry(&key));
+        ifr.ifr_addr = eth->mac();
+        ifr.ifr_addr.sa_len = eth->mac().size();
+    }
 
     assert(ioctl(s, SIOCSIFLLADDR, &ifr) != -1);
 
