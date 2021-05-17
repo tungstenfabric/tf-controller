@@ -97,6 +97,16 @@ TEST_F(FlowTest, FlowStickiness_1) {
     EXPECT_TRUE(fe->data().underlay_gw_index_ == 0);
     EXPECT_TRUE(fe->reverse_flow_entry()->data().underlay_gw_index_ == 0);
     get_flow_proto()->VnFlowCounters(vn, &in_count, &out_count);
+    DelArp(fabric_gw_ip_1_.to_string().c_str(), "0a:0b:0c:0d:0e:0f",
+            eth_name_1_.c_str());
+    client->WaitForIdle();
+
+    // On l3mh compute delete of arp route for gw of physical interface triggers flow delete
+    // verify flow is marked short flow
+    EXPECT_TRUE(fe->IsShortFlow());
+    EXPECT_EQ(fe->short_flow_reason(), FlowEntry::SHORT_L3MH_PHY_INTF_DOWN);
+    EXPECT_TRUE(fe->reverse_flow_entry()->IsShortFlow());
+    EXPECT_EQ(fe->reverse_flow_entry()->short_flow_reason(), FlowEntry::SHORT_L3MH_PHY_INTF_DOWN);
     EXPECT_EQ(2U, in_count);
     EXPECT_EQ(2U, out_count);
 
@@ -109,6 +119,17 @@ TEST_F(FlowTest, FlowStickiness_1) {
 //Egress flow test to verify flow stickines (IP fabric to VMport - Different VNs)
 //Flow creation using GRE packets
 TEST_F(FlowTest, FlowStickiness_2) {
+
+    Ip4Address fabric_gw_ip_1_ = agent_->vhost_default_gateway()[0];
+    Ip4Address fabric_gw_ip_2_ = agent_->vhost_default_gateway()[1];
+    std::string eth_name_1_ = agent_->fabric_interface_name_list()[0];
+    std::string eth_name_2_ = agent_->fabric_interface_name_list()[1];
+    AddArp(fabric_gw_ip_1_.to_string().c_str(), "0a:0b:0c:0d:0e:0f",
+           eth_name_1_.c_str());
+    client->WaitForIdle();
+    AddArp(fabric_gw_ip_2_.to_string().c_str(), "0f:0e:0d:0c:0b:0a",
+           eth_name_2_.c_str());
+    client->WaitForIdle();
     /* Add remote VN route to vrf5 */
     CreateRemoteRoute("vrf5", remote_vm4_ip, remote_router_ip_address, 8, "vn3");
 
@@ -170,6 +191,16 @@ TEST_F(FlowTest, FlowStickiness_2) {
     EXPECT_TRUE(fe->data().underlay_gw_index_ == 1);
     EXPECT_TRUE(fe->reverse_flow_entry()->data().underlay_gw_index_ == 1);
 
+    DelArp(fabric_gw_ip_2_.to_string().c_str(), "0f:0e:0d:0c:0b:0a",
+            eth_name_2_.c_str());
+    client->WaitForIdle();
+
+    // On l3mh compute delete of arp route for gw of physical interface triggers flow delete
+    // verify flow is marked short flow
+    EXPECT_TRUE(fe->IsShortFlow());
+    EXPECT_EQ(fe->short_flow_reason(), FlowEntry::SHORT_L3MH_PHY_INTF_DOWN);
+    EXPECT_TRUE(fe->reverse_flow_entry()->IsShortFlow());
+    EXPECT_EQ(fe->reverse_flow_entry()->short_flow_reason(), FlowEntry::SHORT_L3MH_PHY_INTF_DOWN);
     //1. Remove remote VM routes
     DeleteRemoteRoute("vrf5", remote_vm4_ip);
     client->WaitForIdle();

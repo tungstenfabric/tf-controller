@@ -30,6 +30,7 @@
 #include <oper/vrf.h>
 #include <oper/vm.h>
 #include <oper/sg.h>
+#include <oper/tunnel_nh.h>
 
 #include <filter/packet_header.h>
 #include <filter/acl.h>
@@ -595,6 +596,28 @@ void FlowTable::HandleRevaluateDBEntry(const DBEntry *entry, FlowEntry *flow,
         flow->MakeShortFlow(FlowEntry::SHORT_NO_DST_ROUTE);
     }
 
+    // On a l3mh compute, when physical interfaces state is down on host
+    // make all flows with underlay_gw_index same as phy intf encap index short
+    if (flow->data().underlay_gw_index_ != -1 && agent()->is_l3mh()) {
+        InetUnicastRouteEntry *rt = NULL;
+        if (flow->is_flags_set(FlowEntry::IngressDir)) {
+            rt = static_cast<InetUnicastRouteEntry *>
+            (FlowEntry::GetUcRoute(flow->GetDestinationVrf(), flow->key().dst_addr));
+        } else if (rflow->is_flags_set(FlowEntry::IngressDir)) {
+            rt = static_cast<InetUnicastRouteEntry *>
+            (FlowEntry::GetUcRoute(rflow->GetDestinationVrf(), rflow->key().dst_addr));
+        }
+        if (rt != NULL) {
+            const TunnelNH *tunnel_nh =
+                dynamic_cast<const TunnelNH *>(rt->GetActiveNextHop());
+            if (tunnel_nh != NULL) {
+                TunnelNH::EncapDataList encap_list = tunnel_nh->GetEncapDataList();
+                if (encap_list[flow->data().underlay_gw_index_].get()->valid_ == false) {
+                    flow->MakeShortFlow(FlowEntry::SHORT_L3MH_PHY_INTF_DOWN);
+                }
+            }
+        }
+    }
     flow->UpdateL2RouteInfo();
     rflow->UpdateL2RouteInfo();
 

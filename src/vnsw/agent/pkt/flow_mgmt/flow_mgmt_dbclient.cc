@@ -2,6 +2,7 @@
 #include "pkt/flow_mgmt.h"
 #include "oper/ecmp_load_balance.h"
 #include "oper/ecmp.h"
+#include <oper/tunnel_nh.h>
 
 void FlowMgmtDbClient::Init() {
     acl_listener_id_ = agent_->acl_table()->Register
@@ -328,6 +329,22 @@ void FlowMgmtDbClient::NhNotify(DBTablePartBase *part, DBEntryBase *e) {
     NhFlowHandlerState *state =
         static_cast<NhFlowHandlerState *>(e->GetState(part->parent(),
                                                       nh_listener_id_));
+    bool is_tunnel_nh = false;
+    bool changed = false;
+    uint8_t curr_valid_encap_size = 0;
+    uint8_t new_valid_encap_size = 0;
+    if (nh->GetType() == NextHop::TUNNEL && agent_->is_l3mh()) {
+        const TunnelNH *tunnel_nh =
+            dynamic_cast<const TunnelNH *>(nh);
+        if (tunnel_nh) {
+            is_tunnel_nh = true;
+            TunnelNH::EncapDataList encap_list = tunnel_nh->GetEncapDataList();
+            for (uint8_t i = 0; i < tunnel_nh->GetEncapDataList().size(); i++) {
+                if (encap_list[i].get()->valid_)
+                  new_valid_encap_size++;
+            }
+        }
+    }
 
     if (nh->IsDeleted()) {
         if (state) {
@@ -336,13 +353,29 @@ void FlowMgmtDbClient::NhNotify(DBTablePartBase *part, DBEntryBase *e) {
         return;
     }
 
-    if (!state) {
-        state = new NhFlowHandlerState();
-        nh->SetState(part->parent(), nh_listener_id_, state);
+    if (state != NULL && is_tunnel_nh && agent_->is_l3mh() ) {
+        curr_valid_encap_size = state->valid_encap_size_;
     }
-    state->deleted_ = false;
-    AddEvent(nh, state);
-    return;
+
+    if (!state) {
+        state = new NhFlowHandlerState(new_valid_encap_size);
+        nh->SetState(part->parent(), nh_listener_id_, state);
+        changed = true;
+    }
+
+    if (is_tunnel_nh && agent_->is_l3mh() && new_valid_encap_size != curr_valid_encap_size ) {
+        state->valid_encap_size_ = new_valid_encap_size;
+        changed = true;
+    }
+
+    if (state->deleted_) {
+        state->deleted_ = false;
+        changed = true;
+    }
+
+    if (changed) {
+        AddEvent(nh, state);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////

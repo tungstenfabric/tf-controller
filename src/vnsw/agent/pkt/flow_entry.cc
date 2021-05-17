@@ -103,7 +103,8 @@ const std::map<uint16_t, const char*>
         ((uint16_t)DROP_FWAAS_POLICY,     "Flow drop FWAAS Policy")
         ((uint16_t)DROP_FWAAS_OUT_POLICY, "Flow drop OUT FWAAS Policy")
         ((uint16_t)DROP_FWAAS_REVERSE_POLICY,     "Flow drop REVERSE FWAAS Policy")
-        ((uint16_t)DROP_FWAAS_REVERSE_OUT_POLICY, "Flow drop REVERSE OUT FWAAS Policy");
+        ((uint16_t)DROP_FWAAS_REVERSE_OUT_POLICY, "Flow drop REVERSE OUT FWAAS Policy")
+        ((uint16_t)SHORT_L3MH_PHY_INTF_DOWN, "Short flow l3mh compute physical interface flap");
 
 tbb::atomic<int> FlowEntry::alloc_count_;
 SecurityGroupList FlowEntry::default_sg_list_;
