@@ -1311,6 +1311,8 @@ class VirtualNetworkST(ResourceBaseST):
             for rp in old_rp_set - new_rp_set:
                 rp_obj = ResourceBaseST.get_obj_type_map().get(
                     'routing_policy').get(rp)
+                if not rp_obj:
+                    continue
                 rp_obj.delete_routing_instance(primary_ri)
                 del primary_ri.routing_policys[rp]
 
