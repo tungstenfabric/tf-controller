@@ -79,6 +79,8 @@ class L3GatewayFeature(FeatureBase):
             # Refererence: CEM-20163
             if erb_pr_role and not lr:
                 irb.set_comment("PR External IRB")
+            elif lr and lr.is_master:
+                irb.set_comment("Master LR IRB")
 
         vlan = Vlan(name=DMUtils.make_bridge_name(vxlan_id), vxlan_id=vxlan_id)
         vlan.set_description(desc)
