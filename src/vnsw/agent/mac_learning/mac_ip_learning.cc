@@ -270,8 +270,8 @@ bool MacIpLearningEntry::Add() {
 }
 
 void MacIpLearningEntry::Delete() {
-    if (hc_instance_) {
-        hc_instance_->StopTask(hc_service_);
+    if (hc_instance_ && hc_service_) {
+        hc_service_->StopHealthCheckService(hc_instance_);
         hc_instance_ = NULL;
         hc_service_ = NULL;
     }
@@ -301,7 +301,9 @@ void MacIpLearningEntry::UpdateHealthCheckService() {
         if (hc_service_ == NULL) {
             AddHealthCheckService(hc_service);
         } else {
-            hc_instance_->StopTask(hc_service_);
+            if (hc_instance_) {
+                hc_service_->StopHealthCheckService(hc_instance_);
+            }
             hc_instance_ = NULL;
             hc_service_= NULL;
             if (hc_service) {
