@@ -281,6 +281,7 @@ public:
     AgentPath *FindLocalPath() const;
     AgentPath *FindInetEvpnPath() const;
     AgentPath *FindLocalVmPortPath() const;
+    AgentPath *GetLocalVmPortPath() const;
     const AgentPath *GetActivePath() const;
     const NextHop *GetActiveNextHop() const;
     const std::string &dest_vn_name() const;
