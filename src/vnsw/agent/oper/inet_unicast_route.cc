@@ -822,59 +822,6 @@ InetEvpnRoutePath::InetEvpnRoutePath(const Peer *peer,
     AgentPath(peer, rt), mac_(mac), parent_(parent) {
 }
 
-const AgentPath *InetEvpnRoutePath::UsablePath() const {
-    //In InetEvpnRoutePath nexthop will always be NULL.
-    //Valid NH is dependant on parent route(subnet).
-    if (dependant_rt()) {
-        const AgentPath *path = dependant_rt()->GetActivePath();
-        if (path != NULL)
-            return path;
-    }
-    return this;
-}
-
-bool InetEvpnRoutePath::SyncDependantRoute(const AgentRoute *sync_route) {
-    const InetUnicastRouteEntry *dependant_route =
-        dynamic_cast<const InetUnicastRouteEntry *>(dependant_rt());
-    InetUnicastAgentRouteTable *table =
-        static_cast<InetUnicastAgentRouteTable *>(sync_route->get_table());
-    InetUnicastRouteEntry *parent_subnet_route =
-        table->GetSuperNetRoute(dynamic_cast<const InetUnicastRouteEntry *>
-                                (sync_route)->addr());
-
-    if (parent_subnet_route != dependant_route) {
-        set_gw_ip(parent_subnet_route ? parent_subnet_route->addr() :
-                  IpAddress());
-        if (parent_subnet_route) {
-            ResetDependantRoute(parent_subnet_route);
-            set_unresolved(false);
-        } else {
-            //Clear old dependant route
-            ClearDependantRoute();
-            set_unresolved(true);
-        }
-        return true;
-    }
-    return false;
-}
-
-bool InetEvpnRoutePath::Sync(AgentRoute *sync_route) {
-    return SyncDependantRoute(sync_route);
-}
-
-const NextHop* InetEvpnRoutePath::ComputeNextHop(Agent *agent) const {
-    //InetEvpnRoutePath is deleted when parent evpn route is going off.
-    //Now it may happen that supernet route which was used as dependant_rt in
-    //this path has been deleted.
-    if ((dependant_rt() == NULL) ||
-        (dependant_rt()->GetActiveNextHop() == NULL)) {
-        DiscardNH key;
-        return static_cast<NextHop *>
-            (agent->nexthop_table()->FindActiveEntry(&key));
-    }
-
-    return AgentPath::ComputeNextHop(agent);
-}
 bool InetEvpnRoutePath::IsLess(const AgentPath &r_path) const {
     const InetEvpnRoutePath *r_evpn_path =
         dynamic_cast<const InetEvpnRoutePath *>(&r_path);
@@ -889,6 +836,8 @@ bool InetEvpnRoutePath::IsLess(const AgentPath &r_path) const {
 InetEvpnRouteData::InetEvpnRouteData(const EvpnRouteEntry *evpn_rt):
     AgentRouteData(AgentRouteData::ADD_DEL_CHANGE,
                  evpn_rt->is_multicast(), 0),
+    ethernet_tag_(evpn_rt->ethernet_tag()), ip_addr_(evpn_rt->ip_addr()),
+    reference_path_(evpn_rt->GetActivePath()), ecmp_suppressed_(false),
     mac_(evpn_rt->mac()) {
     std::stringstream s;
     s << evpn_rt->ToString();
@@ -901,10 +850,86 @@ AgentPath *InetEvpnRouteData::CreateAgentPath(const Peer *peer,
     return (new InetEvpnRoutePath(peer, mac_, parent_, rt));
 }
 
+/*
+ * We are deriving inet-evpn path parameters from evpn route to fix CEM-21083.
+ * Inet route is derived from even type 2 route,
+ * but NH was not picked from EVPN route for this path.
+ * LPM search was done on the inet route prefix and whatever was the supernet route,
+ * NH was picked from there which was not correct and ping failed.
+ */
 bool InetEvpnRouteData::AddChangePathExtended(Agent *agent,
                                               AgentPath *path,
                                               const AgentRoute *route) {
-    return dynamic_cast<InetEvpnRoutePath *>(path)->SyncDependantRoute(route);
+    bool ret = false;
+    InetEvpnRoutePath *evpn_path = dynamic_cast<InetEvpnRoutePath *>(path);
+    assert(evpn_path != NULL);
+
+    evpn_path->set_tunnel_dest(reference_path_->tunnel_dest());
+    uint32_t label = reference_path_->label();
+    if (evpn_path->label() != label) {
+        evpn_path->set_label(label);
+        ret = true;
+    }
+
+    uint32_t vxlan_id = reference_path_->vxlan_id();
+    if (evpn_path->vxlan_id() != vxlan_id) {
+        evpn_path->set_vxlan_id(vxlan_id);
+        ret = true;
+    }
+
+    uint32_t tunnel_bmap = reference_path_->tunnel_bmap();
+    if (evpn_path->tunnel_bmap() != tunnel_bmap) {
+        evpn_path->set_tunnel_bmap(tunnel_bmap);
+        ret = true;
+    }
+
+    TunnelType::Type tunnel_type = reference_path_->tunnel_type();
+    if (evpn_path->tunnel_type() != tunnel_type) {
+        evpn_path->set_tunnel_type(tunnel_type);
+        ret = true;
+    }
+
+    if (evpn_path->nexthop() !=
+        reference_path_->nexthop()) {
+        evpn_path->set_nexthop(reference_path_->nexthop());
+        ret = true;
+    }
+
+    const SecurityGroupList &sg_list = reference_path_->sg_list();
+    if (evpn_path->sg_list() != sg_list) {
+        evpn_path->set_sg_list(sg_list);
+        ret = true;
+    }
+
+    const TagList &tag_list = reference_path_->tag_list();
+    if (evpn_path->tag_list() != tag_list) {
+        evpn_path->set_tag_list(tag_list);
+        ret = true;
+    }
+
+    const VnListType &dest_vn_list = reference_path_->dest_vn_list();
+    if (evpn_path->dest_vn_list() != dest_vn_list) {
+        evpn_path->set_dest_vn_list(dest_vn_list);
+        ret = true;
+    }
+
+    if (evpn_path->ecmp_suppressed() != ecmp_suppressed_) {
+        evpn_path->set_ecmp_suppressed(ecmp_suppressed_);
+        ret = true;
+    }
+
+    if (evpn_path->etree_leaf() != reference_path_->etree_leaf()) {
+        evpn_path->set_etree_leaf(reference_path_->etree_leaf());
+        ret = true;
+    }
+
+    if (evpn_path->ResyncControlWord(route)) {
+        ret = true;
+    }
+
+    evpn_path->set_unresolved(false);
+
+    return ret;
 }
 
 bool InetEvpnRouteData::CanDeletePath(Agent *agent, AgentPath *path,

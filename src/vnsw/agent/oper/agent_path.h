@@ -1117,10 +1117,8 @@ private:
  * InetEvpnRoute is derived from evpn route.
  * Installation of evpn route initiates addition of inet route as well.
  * This is done inline and request contains parent evpn route.
- * Nexthop derivation: NH is not picked from EVPN route for this path.
- * LPM search is done on the inet route prefix and whatever is the supernet
- * route, NH is picked from there. In case host route is available the path from
- * same takes higher precedence than InetEvpnRoute path.
+ * Nexthop derivation: NH is picked from EVPN route for this path
+ * to fix issue CEM-21083
  */
 class InetEvpnRoutePath : public AgentPath {
 public:
@@ -1130,11 +1128,6 @@ public:
             AgentRoute *rt);
     virtual ~InetEvpnRoutePath() { }
     virtual std::string ToString() const { return "InetEvpnRoutePath"; }
-    virtual const AgentPath *UsablePath() const;
-    virtual const NextHop *ComputeNextHop(Agent *agent) const;
-    //Syncs path parameters. Parent route is used for setting dependant rt.
-    virtual bool Sync(AgentRoute *sync_route);
-    bool SyncDependantRoute(const AgentRoute *sync_route);
     virtual bool IsLess(const AgentPath &rhs) const;
 
     const MacAddress &MacAddr() const {return mac_;}
@@ -1158,13 +1151,21 @@ public:
                                        const AgentRoute *rt);
     virtual std::string ToString() const {return "Derived Inet route from Evpn";}
     const MacAddress &MacAddr() const {return mac_;}
+    const IpAddress &ip_addr() const {return ip_addr_;}
     const std::string &parent() const {return parent_;}
     virtual bool CanDeletePath(Agent *agent, AgentPath *path,
                                const AgentRoute *rt) const;
+    void set_ethernet_tag(uint32_t ethernet_tag) {ethernet_tag_ = ethernet_tag;}
+    uint32_t ethernet_tag() const {return ethernet_tag_;}
+    const AgentPath *reference_path() const {return reference_path_;}
 
 private:
-    const MacAddress mac_;
+    uint32_t ethernet_tag_;
+    IpAddress ip_addr_;
     std::string parent_;
+    const AgentPath *reference_path_;
+    bool ecmp_suppressed_;
+    const MacAddress mac_;
     DISALLOW_COPY_AND_ASSIGN(InetEvpnRouteData);
 };
 
