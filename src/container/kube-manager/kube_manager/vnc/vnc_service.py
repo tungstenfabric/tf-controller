@@ -697,6 +697,13 @@ class VncService(VncCommon):
                 % (self._name, service_namespace, service_name, service_id))
             return
 
+        # We dont need to do anything for Service type ExternalName
+        if (service_type == 'ExternalName'):
+            self.logger.warning(
+                "%s - External Name Service %s:%s:%s"
+                % (self._name, service_namespace, service_name, service_id))
+            return
+
         if event['type'] == 'ADDED' or event['type'] == 'MODIFIED':
             # Add a service label for this service.
             labels = self._labels.get_service_label(service_name)
