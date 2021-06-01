@@ -19,7 +19,9 @@ class NetworkMonitor(KubeMonitor):
             api_group='apis/k8s.cni.cncf.io', api_version='v1')
 
     def init_monitor(self):
-        self._create_crds()
+        if not self.resource_version:
+            # create crds first init
+            self._create_crds()
         super(NetworkMonitor, self).init_monitor()
 
     def _create_crds(self):
@@ -97,11 +99,13 @@ class NetworkMonitor(KubeMonitor):
         return True
 
     def process_event(self, event):
-        nw_data = event['object']
+        data = event['object']
         event_type = event['type']
+        metadata = data['metadata']
+
         kind = event['object'].get('kind')
-        namespace = event['object']['metadata'].get('namespace')
-        name = event['object']['metadata'].get('name')
+        namespace = metadata.get('namespace')
+        name = metadata.get('name')
 
         # if network is not designated to contrail-k8s-cni, dont process
         nested_keys = ['object', 'spec', 'config']
@@ -119,19 +123,15 @@ class NetworkMonitor(KubeMonitor):
             return
 
         if self.db:
-            nw_uuid = self.db.get_uuid(nw_data)
+            uuid = self.db.get_uuid(data)
             if event_type != 'DELETED':
                 # Update Network DB.
-                nw = self.db.locate(nw_uuid)
-                nw.update(nw_data)
+                obj = self.db.locate(uuid)
+                obj.update(data)
             else:
                 # Remove the entry from Network DB.
-                self.db.delete(nw_uuid)
+                self.db.delete(uuid)
         else:
-            nw_uuid = event['object']['metadata'].get('uid')
+            uuid = metadata.get('uid')
 
-        msg = "%s - Got %s %s %s:%s:%s" \
-              % (self.name, event_type, kind, namespace, name, nw_uuid)
-        print(msg)
-        self.logger.debug(msg)
-        self.q.put(event)
+        self.register_event(uuid, event)

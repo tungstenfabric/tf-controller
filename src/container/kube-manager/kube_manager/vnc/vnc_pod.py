@@ -45,7 +45,6 @@ class VncPod(VncCommon):
         self._labels = XLabelCache('Pod')
         self._service_mgr = service_mgr
         self._network_policy_mgr = network_policy_mgr
-        self._queue = vnc_kube_config.queue()
         self._args = vnc_kube_config.args()
         self._logger = vnc_kube_config.logger()
         self._kube = vnc_kube_config.kube()
@@ -660,7 +659,7 @@ class VncPod(VncCommon):
         if event_type == 'delete':
             event['type'] = 'DELETED'
             event['object'] = object_
-            self._queue.put(event)
+            self.schedule_event(event)
         return
 
     def _sync_pod_vm(self):

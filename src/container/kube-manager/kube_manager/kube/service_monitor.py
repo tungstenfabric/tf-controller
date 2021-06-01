@@ -15,32 +15,30 @@ class ServiceMonitor(KubeMonitor):
             args, logger, q, ServiceKM, resource_type='service')
 
     def process_event(self, event):
-        service_data = event['object']
+        data = event['object']
         event_type = event['type']
-        kind = event['object'].get('kind')
+        metadata = data['metadata']
 
-        namespace = service_data['metadata'].get('namespace')
-        service_name = service_data['metadata'].get('name')
-        if not namespace or not service_name:
-            self.logger.debug(
-                "%s - Skipped %s %s ns=%s sn=%s(ns or sn is empty)"
-                % (self.name, event_type, kind, namespace, service_name))
-            return
+        if event_type != 'DELETED':
+            kind = data.get('kind')
+            namespace = metadata.get('namespace')
+            name = metadata.get('name')
+            if not namespace or not name:
+                self.logger.debug(
+                    "%s - Skipped %s %s ns=%s sn=%s(ns or sn is empty)"
+                    % (self.name, event_type, kind, namespace, name))
+                return
 
         if self.db:
-            service_uuid = self.db.get_uuid(event['object'])
+            uuid = self.db.get_uuid(event['object'])
             if event_type != 'DELETED':
                 # Update Service DB.
-                service = self.db.locate(service_uuid)
-                service.update(service_data)
+                obj = self.db.locate(uuid)
+                obj.update(data)
             else:
                 # Remove the entry from Service DB.
-                self.db.delete(service_uuid)
+                self.db.delete(uuid)
         else:
-            service_uuid = service_data['metadata'].get('uid')
+            uuid = metadata.get('uid')
 
-        msg = "%s - Got %s %s %s:%s:%s" \
-              % (self.name, event_type, kind, namespace, service_name, service_uuid)
-        print(msg)
-        self.logger.debug(msg)
-        self.q.put(event)
+        self.register_event(uuid, event)

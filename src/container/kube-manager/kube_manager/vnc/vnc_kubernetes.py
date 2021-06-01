@@ -11,6 +11,7 @@ from builtins import str
 from six import StringIO
 import gevent
 import time
+import sys
 import requests
 import socket
 
@@ -47,11 +48,25 @@ from kube_manager.vnc.vnc_security_policy import VncSecurityPolicy
 from kube_manager.vnc import flow_aging_manager
 
 
+class UnknownObjectKind(Exception):
+    pass
+
+
+class VncKubernetesEventException(Exception):
+    def __init__(self, msg, origin=None):
+        self.origin = origin
+        super(VncKubernetesEventException, self).__init__(msg)
+
+    def __str__(self):
+        msg = super(VncKubernetesEventException, self).__str__()
+        return "%s\norigin error: %s" % (msg, self.origin)
+
+
 class VncKubernetes(vnc_common.VncCommon):
 
     _vnc_kubernetes = None
 
-    def __init__(self, args=None, logger=None, q=None, kube=None,
+    def __init__(self, args=None, logger=None, q=None, callbacks=None, kube=None,
                  vnc_kubernetes_config_dict=None):
         self._name = type(self).__name__
         self.args = args
@@ -67,7 +82,7 @@ class VncKubernetes(vnc_common.VncCommon):
         # Cache common config.
         self.vnc_kube_config = vnc_kube_config(
             logger=self.logger,
-            vnc_lib=self.vnc_lib, args=self.args, queue=self.q, kube=kube)
+            vnc_lib=self.vnc_lib, args=self.args, queue=self.q, callbacks=callbacks, kube=kube)
 
         #
         # In nested mode, kube-manager connects to contrail components running
@@ -592,33 +607,48 @@ class VncKubernetes(vnc_common.VncCommon):
                 requests.exceptions.ChunkedEncodingError) as e:
             self.logger.error("%s  - %s - %s" % (self.name, func.__name__, e))
 
-    def vnc_timer(self):
-        tfuncs = [
-            self.network_policy_mgr.network_policy_timer,
-            self.ingress_mgr.ingress_timer,
-            self.service_mgr.service_timer,
-            self.pod_mgr.pod_timer,
-            self.namespace_mgr.namespace_timer,
-        ]
-        for f in tfuncs:
-            self._call_safe(f)
+    def _vnc_sync(self, kind):
+        msg = "%s - vnc_sync - %s" % (self._name, kind)
+        tfuncs = {
+            'NetworkPolicy': self.network_policy_mgr.network_policy_timer,
+            'Ingress': self.ingress_mgr.ingress_timer,
+            'Service': self.service_mgr.service_timer,
+            'Pod': self.pod_mgr.pod_timer,
+            'Namespace': self.namespace_mgr.namespace_timer,
+        }
+        f = tfuncs.get(kind)
+        if not f:
+            print(msg + " - no handler - skip")
+            self.logger.debug(msg + "- no handler - skip")
+            return
+        print(msg + " start")
+        self.logger.debug(msg + " start")
+        self._call_safe(f)
+        print(msg + " done")
+        self.logger.debug(msg + " done")
 
     def vnc_process(self):
         while True:
+            callback = None
+            event = None
+            err = None
             try:
-                msg = "%s - start wait event (qsize=%s timeout=%s)" % \
-                      (self._name, self.q.qsize(), self.args.kube_timer_interval)
-                print(msg)
-                self.logger.info(msg)
                 t = int(self.args.kube_timer_interval)
+                msg = "%s - wait event (qsize=%s timeout=%s)" % \
+                      (self._name, self.q.qsize(), t)
+                print(msg)
+                self.logger.debug(msg)
                 timeout = t if t > 0 else None
-                event = self.q.get(timeout=timeout)
+                event, callback = self.q.get(timeout=timeout)
                 event_type = event['type']
-                kind = event['object'].get('kind')
-                metadata = event['object']['metadata']
+                obj = event.get('object', {})
+                kind = obj.get('kind', 'UNKNOWN')
+                metadata = obj.get('metadata', {})
                 namespace = metadata.get('namespace')
                 name = metadata.get('name')
                 uid = metadata.get('uid')
+                if event_type == 'TF_VNC_SYNC':
+                    self._vnc_sync(kind)
                 if kind == 'Pod':
                     self.pod_mgr.process(event)
                 elif kind == 'Service':
@@ -636,17 +666,31 @@ class VncKubernetes(vnc_common.VncCommon):
                 else:
                     msg = "%s - Event %s %s %s:%s:%s not handled" % \
                           (self._name, event_type, kind, namespace, name, uid)
-                    print(msg)
                     self.logger.error(msg)
+                    err = UnknownObjectKind(msg)
             except gevent.queue.Empty:
                 gevent.sleep(0)
                 pass
-            except Exception:
+            except Exception as e:
                 gevent.sleep(0)
                 string_buf = StringIO()
                 cgitb_hook(file=string_buf, format="text")
                 err_msg = string_buf.getvalue()
                 self.logger.error("%s - %s" % (self._name, err_msg))
+                err = VncKubernetesEventException(err_msg, origin=e)
+            try:
+                if callback is not None and event is not None:
+                    callback(event, err)
+            except Exception:
+                gevent.sleep(0)
+                string_buf = StringIO()
+                cgitb_hook(file=string_buf, format="text")
+                err_msg = string_buf.getvalue()
+                self.logger.error(
+                    "%s - Internal error (callback=%s event=%s err=%s) - %s" %
+                    (self._name, callback, event, err, err_msg))
+                # callabck cannot raise exception - if it happens - internal error
+                sys.exit(1)
 
     @classmethod
     def get_instance(cls):

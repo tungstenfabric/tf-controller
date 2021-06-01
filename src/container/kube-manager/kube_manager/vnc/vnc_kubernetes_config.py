@@ -46,6 +46,20 @@ class VncKubernetesConfig(object):
         return cls.vnc_kubernetes_config.get("queue", None)
 
     @classmethod
+    def callbacks(cls):
+        return cls.vnc_kubernetes_config.get("callbacks", {})
+
+    @classmethod
+    def schedule_event(cls, event):
+        logger = cls.logger()
+        if logger:
+            msg = "schedule_event: %s" % (event)
+            print(msg)
+            logger.debug(msg)
+        c = cls.callbacks().get(event.get('kind'))
+        cls.queue().put((event, c))
+
+    @classmethod
     def kube(cls):
         return cls.vnc_kubernetes_config.get("kube", None)
 

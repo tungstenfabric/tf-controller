@@ -42,7 +42,6 @@ class VncNamespace(VncCommon):
         self._label_cache = vnc_kube_config.label_cache()
         self._args = vnc_kube_config.args()
         self._logger = vnc_kube_config.logger()
-        self._queue = vnc_kube_config.queue()
         self._labels = XLabelCache(self._k8s_event_type)
         ip_fabric_fq_name = vnc_kube_config. \
             cluster_ip_fabric_network_fq_name()
@@ -618,6 +617,7 @@ class VncNamespace(VncCommon):
         so the vnc project can be cleaned up.
         """
         for project in ProjectKM.objects():
+            # TODO: strange condition with hardcoded k8s name???
             if project.owner != 'k8s' or project.cluster != vnc_kube_config.cluster_name():
                 continue
             k8s_namespace_uuid = project.get_k8s_namespace_uuid()
@@ -632,7 +632,7 @@ class VncNamespace(VncCommon):
 
                 event['type'] = 'DELETED'
                 event['object'] = dict_object
-                self._queue.put(event)
+                self.schedule_event(event)
 
     def namespace_timer(self):
         self._sync_namespace_project()

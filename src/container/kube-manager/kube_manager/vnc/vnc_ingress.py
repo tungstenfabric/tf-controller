@@ -41,7 +41,6 @@ class VncIngress(VncCommon):
         super(VncIngress, self).__init__(self._k8s_event_type)
         self._name = type(self).__name__
         self._args = vnc_kube_config.args()
-        self._queue = vnc_kube_config.queue()
         self._vnc_lib = vnc_kube_config.vnc_lib()
         self._logger = vnc_kube_config.logger()
         self._kube = vnc_kube_config.kube()
@@ -851,7 +850,7 @@ class VncIngress(VncCommon):
         if event_type == 'delete':
             event['type'] = 'DELETED'
             event['object'] = object_
-            self._queue.put(event)
+            self.schedule_event(event)
         return
 
     def _sync_ingress_lb(self):

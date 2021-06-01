@@ -4,6 +4,8 @@
 
 from builtins import str
 
+from kube_manager.vnc.vnc_kubernetes_config import VncKubernetesConfig as vnc_kube_config
+
 
 class VncCommon(object):
     """VNC kubernetes common functionality.
@@ -22,3 +24,6 @@ class VncCommon(object):
     @staticmethod
     def make_display_name(*args):
         return "__".join(str(i) for i in args)
+
+    def schedule_event(self, event):
+        vnc_kube_config.schedule_event(event)

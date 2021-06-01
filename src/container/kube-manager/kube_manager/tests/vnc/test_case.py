@@ -126,7 +126,8 @@ class KMTestCase(test_common.TestCase):
         super(KMTestCase, self).tearDown()
 
     def enqueue_event(self, event):
-        self.event_queue.put(event)
+        callback = None
+        self.event_queue.put((event, callback))
 
     def wait_for_all_tasks_done(self, sleep_interval=1):
         self.enqueue_idle_event()
@@ -144,7 +145,8 @@ class KMTestCase(test_common.TestCase):
                 }
             }
         }
-        self.event_queue.put(idle_event)
+        callback = None
+        self.event_queue.put((idle_event, callback))
 
     def generate_kube_args(self):
         kube_config = [
