@@ -2759,15 +2759,51 @@ class DBInterface(object):
                 KeyValuePairs([KeyValuePair(k, v)
                                for k, v in vmi_binding_kvps.items()]))
         elif oper == UPDATE:
-            for k, v in vmi_binding_kvps.items():
-                port_obj.add_virtual_machine_interface_bindings(
-                    KeyValuePair(key=k, value=v))
+            vnic_type = None
+            pb_kvps_db = None
+            if port_obj:
+                port_bindings_db = \
+                    port_obj.get_virtual_machine_interface_bindings()
+                if port_bindings_db:
+                    pb_kvps_db = port_bindings_db.get_key_value_pair()
+                    kvp_db_dict = {}
+                    for kvp in pb_kvps_db:
+                        kvp_db_dict[kvp.key] = kvp.value
+                    if 'vnic_type' in kvp_db_dict:
+                        vnic_type = kvp_db_dict.get('vnic_type')
 
-            # Ironic may switch the mac address on a give port
+            # Port update needs to be handled differently for baremetal
+            if vnic_type == 'baremetal':
+                update_kvp_list = []
+                # concat vmi bindings kvps from both port_q and port_obj
+                # and use set_virtual_machine_interface_bindings so
+                # prop collection params are put directly in object to be
+                # updated
+                if vmi_binding_kvps:
+                    update_kvp_list += (KeyValuePair(key=k, value=v)
+                                        for k, v in vmi_binding_kvps.items())
+                kvp_dict = {}
+                for kvp in update_kvp_list:
+                    kvp_dict[kvp.key] = kvp.value
+
+                # Iterate over vmi bindings in port_q,
+                # If KV pair exists in port_obj do not add - CEM-21992
+                for k_db, v_db in kvp_db_dict.items():
+                    if k_db not in kvp_dict:
+                        update_kvp_list.append(KeyValuePair(key=k_db,
+                                               value=v_db))
+                port_obj.set_virtual_machine_interface_bindings(
+                    KeyValuePairs(update_kvp_list))
+            else:
+                for k, v in vmi_binding_kvps.items():
+                    port_obj.add_virtual_machine_interface_bindings(
+                        KeyValuePair(key=k, value=v))
+
+            # Ironic may switch the mac address on a given port
             net_id = (port_q.get('network_id') or
                       port_obj.get_virtual_network_refs()[0]['uuid'])
 
-            # Allow updating of mac addres for baremetal deployments or
+            # Allow updating of mac address for baremetal deployments or
             # when port is not attached to any VM
             allowed_port = ('binding:vnic_type' in port_q and port_q[
                             'binding:vnic_type'] == 'baremetal')
@@ -2780,6 +2816,11 @@ class DBInterface(object):
                     kvps = []
                 for kvp in kvps:
                     if kvp.key == 'host_id' and kvp.value == "null":
+                        allowed_port = True
+                        break
+                    # For Ironic user set allowed_port to 'True' to update
+                    # mac address - CEM-21992
+                    if kvp.key == 'vnic_type' and kvp.value == "baremetal":
                         allowed_port = True
                         break
             if 'mac_address' in port_q and allowed_port:

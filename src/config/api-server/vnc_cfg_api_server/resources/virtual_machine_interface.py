@@ -422,6 +422,17 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
         else:
             mac_addr = cls.addr_mgmt.mac_alloc(obj_dict)
             mac_addrs_obj = MacAddressesType([mac_addr])
+            # Handling CEM-21992 START
+            if 'virtual_machine_interface_bindings' in obj_dict:
+                bindings = obj_dict['virtual_machine_interface_bindings']
+                kvps = bindings['key_value_pair']
+                kvp_dict = cls._kvp_to_dict(kvps)
+                vnic_type = kvp_dict.get('vnic_type')
+                if vnic_type == 'baremetal':
+                    # During the port-create, use all Zero Mac address as
+                    # VMI's MAC
+                    mac_addrs_obj = MacAddressesType([u'00:00:00:00:00:00'])
+                    # Handling CEM-21992 END
         mac_addrs_json = json.dumps(
             mac_addrs_obj,
             default=lambda o: dict((k, v)
@@ -544,6 +555,18 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 vlan_id = vlan_tag
             links = []
             if vnic_type == 'baremetal':
+                # Use cases:
+                # 1. UI user can attach PI to VPG before VMI creation
+                #    - If payload doesn't have link_local_info then retrieve it
+                #      from DB and call _manage_vpg_association
+                # 2. UI user sends PI during VMI creation
+                #    - call _manage_vpg_association
+                # 3. Ironic user doesn't have PI info at the time of VMI create
+                #    - PI info won't be present in the DB or payload
+                #    - Do not call _manage_vpg_association
+                # 4. Non-Ironic or Non-UI/Api-client user can send VMI creation
+                #    a. Without attaching PI info in the payload AND
+                #    b. Without attaching PI to VPG before VMI creation
                 if kvp_dict.get('profile'):
                     # Process only if port profile exists and physical links
                     # specified
@@ -553,6 +576,16 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 # manage_vpg function needs to be called regardless of
                 # phy_links
                 vpg_refs = obj_dict.get('virtual_port_group_refs') or None
+                # For Ironic user with OpenStack Ussuri release,
+                # During port create, there won't be vpg_refs or binding
+                # profile. _manage_vpg_association will fail further in
+                # fabric validations. If no 'vpg' key in bindings, vpg object
+                # cannot be retrieved.
+                # Skip invoking _manage_vpg_association in all the above cases
+                # CEM-21992
+                if ((not vpg_name) and (not kvp_dict.get('profile') and
+                   (not vpg_refs))):
+                    return True, ""
                 vpg_uuid, ret_dict = cls._manage_vpg_association(
                     obj_dict['uuid'], cls.server, db_conn, links,
                     vpg_refs, vpg_name, vn_uuid, vlan_id, is_untagged_vlan)
@@ -596,7 +629,7 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
         attr_as_dict = attr.__dict__
         api_server.internal_request_ref_update(
             'virtual-machine-interface', obj_dict['uuid'], 'ADD',
-            'routing-instance', ri_uuid,
+            'routing-instance', ri_uuid, ri_fq_name,
             attr=attr_as_dict)
 
         return True, ''
@@ -701,13 +734,17 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
 
             # Manage the bindings for baremetal servers
             vnic_type = kvp_dict.get('vnic_type')
-            vpg_name = kvp_dict.get('vpg')
             links = []
+            vpg_name_db = None
             if read_result.get('virtual_port_group_back_refs'):
                 vpg_name_db = (read_result.get(
                     'virtual_port_group_back_refs')[0]['to'][-1])
                 obj_dict['virtual_port_group_name'] = vpg_name_db
 
+            # For Ironic user, port update does not include 'vpg' info
+            # in bindings. Retrieve vpg_name from db if not coming in the
+            # payload. CEM-21992
+            vpg_name = kvp_dict.get('vpg') or vpg_name_db
             is_untagged_vlan = False
             if tor_port_vlan_id:
                 vlan_id = tor_port_vlan_id
@@ -722,9 +759,21 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                     phy_links = json.loads(kvp_dict.get('profile'))
                     if phy_links and phy_links.get('local_link_information'):
                         links = phy_links['local_link_information']
+                        # if profile = "'{}'", then assume its from coming from
+                        # ironic user, conveying to remove PIs from VPG
+                        if (not links and
+                           (kvp_dict.get('profile') != '{}')):
+                            links = read_result.get('local_link_information')
+
                 # manage_vpg function needs to be called regardless
                 # of phy_links
                 vpg_refs = obj_dict.get('virtual_port_group_refs') or None
+                # For Ironic user, port update does not include vpg_refs.
+                # vpg_refs are required in _manage_vpg_association for
+                # retreiving fabric name for running fabric validations
+                # CEM-21992
+                if not vpg_refs:
+                    vpg_refs = read_result.get('virtual_port_group_back_refs')
                 vpg_uuid, ret_dict = cls._manage_vpg_association(
                     id, cls.server, db_conn, links, vpg_refs, vpg_name,
                     vn_uuid, vlan_id, is_untagged_vlan)
@@ -823,8 +872,10 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                             'value': vif_type,
                             'position': 'vif_type',
                         }
-                        prop_collection_updates.append(vif_details_prop)
-                        prop_collection_updates.append(vif_type_prop)
+                        if vif_details_prop is not None:
+                            prop_collection_updates.append(vif_details_prop)
+                        if vif_type_prop is not None:
+                            prop_collection_updates.append(vif_type_prop)
 
         ok, result = cls._check_port_security_and_address_pairs(obj_dict,
                                                                 read_result)
@@ -1600,6 +1651,19 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
 
             if not ok:
                 return (ok, 400, vpg_dict)
+            # Two Use cases:
+            # 1. Ironic Use case: When there is change in PI info, old PI needs
+            #    to be removed from db and new ones should be updated. In case
+            #    of empty profile, all PIs from db needs to be removed
+            # 2. Non-Ironic Use case: It sends whole set of PIs that needs to
+            #    be associated with VPG. The PIs which are not in this set
+            #    should be removed from db.
+            # Change in Ironic workflow caused this change: CEM-21992
+            if (not phy_interface_uuids and
+               (vpg_dict.get('virtual_port_group_user_created') is not False)):
+                phy_interface_uuids = \
+                    [pi['uuid']
+                     for pi in vpg_dict.get('physical_interface_refs')]
 
         else:  # create vpg object
             fabric_fq_name = [
@@ -1692,17 +1756,15 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                     return ok, result
 
         old_phy_interface_uuids = []
-        if phy_interface_uuids:
-            old_phy_interface_refs = vpg_dict.get('physical_interface_refs')
-            old_phy_interface_uuids = [ref['uuid'] for ref in
-                                       old_phy_interface_refs or []]
+        old_phy_interface_refs = vpg_dict.get('physical_interface_refs')
+        old_phy_interface_uuids = [ref['uuid'] for ref in
+                                   old_phy_interface_refs or []]
         ret_dict = {}
 
         # delete old physical interfaces to the vpg
         delete_pi_uuids = []
-        if phy_interface_uuids:
-            delete_pi_uuids = (set(old_phy_interface_uuids) -
-                               set(phy_interface_uuids))
+        delete_pi_uuids = (set(old_phy_interface_uuids) -
+                           set(phy_interface_uuids))
 
         for uuid in delete_pi_uuids:
             try:

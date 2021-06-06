@@ -683,15 +683,23 @@ class TestBasic(test_case.NeutronBackendTestCase):
         vnic_type = 'baremetal'
         data = {'resource': {'network_id': vn_obj.uuid,
                              'tenant_id': proj_uuid,
-                             'binding:profile': binding_profile,
                              'binding:vnic_type': vnic_type,
                              'binding:host_id': 'myhost'}}
         body = {'context': context, 'data': data}
         resp = self._api_svr_app.post_json('/neutron/port', body)
         port_dict = json.loads(resp.text)
-        # Make sure that the binding profile for baremetal is set correctly
-        match = port_dict['binding:profile'] == binding_profile
-        self.assertTrue(match)
+
+        # Make sure if VMI mac-address is all-zeroes
+        self.assertEqual(port_dict.get('mac_address'), '00:00:00:00:00:00')
+
+        # create baremetal bindings with another VMI and the
+        # existing vpg through http_update() api call
+        data2 = {'binding:profile': binding_profile}
+        self.update_resource(
+            'port',
+            port_dict['id'],
+            proj_uuid,
+            extra_res_fields=data2)
 
         # CREATE:  Make sure LAG is created
         vpg_found = False
@@ -713,8 +721,20 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self.assertEqual(mock_zk.get_vpg_from_id(vpg_zk_index),
                          vpg_zk_element_fq_name_str)
 
-        # DELETE: Make sure VPG obj. gets deleted after port delete
+        # Make sure VPG has VMI associated
+        vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg_obj.uuid)
+        vmi_refs = vpg_obj.get_virtual_machine_interface_refs()
+        self.assertEqual(len(vmi_refs), 1)
 
+        data3 = {'binding:profile': {},
+                 'binding:host_id': ''}
+        self.update_resource(
+            'port',
+            port_dict['id'],
+            proj_uuid,
+            extra_res_fields=data3)
+
+        # DELETE: Make sure VPG obj. gets deleted after port delete
         self.delete_resource('port', proj_uuid, port_dict['id'])
 
         # Ensure that VPG interface is deleted
@@ -734,7 +754,277 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self._vnc_lib.virtual_router_delete(id=vr_obj)
         self._vnc_lib.virtual_network_delete(id=vn_obj.uuid)
         self._vnc_lib.virtual_network_delete(id=vn2_obj.uuid)
+        self._vnc_lib.fabric_delete(id=fabric_uuid)
     # end test_virtual_port_group_physical_interface_vpg_id_association
+
+    def test_virtual_port_group_ironic_workflow(self):
+        """UT to verify Ironic Workflow - CEM-21992.
+
+        Step 1: Create VMI without binding profile
+        VMI create should be successful with zero mac-address
+        Step 2: Update VMI with binding profile
+        VMI update will create internal VPG and associate the PIs
+        Step 3: Update VMI with empty binding profile
+        Detach PIs from VPG and VPG still exists
+        Step 4: Rerun Step 3
+        Step 5: Create new VMI with same PIs when old VMI exists
+        VMI create should be successful.
+        Make sure new internal VPG gets created.
+        Step 6: Delete both VMIs
+        It should trigger internal VPGs deletion
+        """
+        mock_zk = self._api_server._db_conn._zk_db
+        vn_obj = vnc_api.VirtualNetwork(self.id())
+        vn_obj.add_network_ipam(vnc_api.NetworkIpam(),
+                                vnc_api.VnSubnetsType(
+                                    [vnc_api.IpamSubnetType(
+                                        vnc_api.SubnetType('1.1.1.0', 24))]))
+        self._vnc_lib.virtual_network_create(vn_obj)
+
+        vn2_obj = vnc_api.VirtualNetwork(self.id() + 'vn2')
+        vn2_obj.add_network_ipam(vnc_api.NetworkIpam(),
+                                 vnc_api.VnSubnetsType(
+                                     [vnc_api.IpamSubnetType(
+                                         vnc_api.SubnetType('2.2.2.0', 24))]))
+        self._vnc_lib.virtual_network_create(vn2_obj)
+
+        vr_obj = vnc_api.VirtualRouter("myhost")
+        vr_obj = self._vnc_lib.virtual_router_create(vr_obj)
+
+        sg_obj = vnc_api.SecurityGroup('default')
+        try:
+            self._vnc_lib.security_group_create(sg_obj)
+        except vnc_api.RefsExistError:
+            pass
+
+        pr_name = self.id() + '_physical_router'
+        pr = vnc_api.PhysicalRouter(pr_name)
+        pr_uuid = self._vnc_lib.physical_router_create(pr)
+        pr_obj = self._vnc_lib.physical_router_read(id=pr_uuid)
+
+        fabric_name = self.id() + '_fabric'
+        fabric = vnc_api.Fabric(fabric_name)
+        fabric_uuid = self._vnc_lib.fabric_create(fabric)
+        fabric_obj = self._vnc_lib.fabric_read(id=fabric_uuid)
+        fabric_fq_name = fabric_obj.get_fq_name()
+
+        pr_obj.set_fabric(fabric_obj)
+        self._vnc_lib.physical_router_update(pr_obj)
+
+        num_phy_interfaces = 2
+        pi_uuid = []
+        pi_fq_name = []
+        binding_profile = {'local_link_information': []}
+        binding_profile_update = {'local_link_information': []}
+        for i in range(num_phy_interfaces + 1):
+            pi_name = self.id() + 'ge-0/0/%s' % i
+            mac = vnc_api.MacAddressesType(
+                mac_address=['00:01:00:00:0f:c' + str(i)])
+            pi = vnc_api.PhysicalInterface(
+                name=pi_name,
+                parent_obj=pr_obj,
+                physical_interface_mac_addresses=mac)
+            pi_uuid.append(self._vnc_lib.physical_interface_create(pi))
+            pi_obj = self._vnc_lib.physical_interface_read(id=pi_uuid[i])
+            pi_fq_name.append(pi_obj.get_fq_name())
+            profile = {
+                'port_id': pi_fq_name[i][2],
+                'switch_id': pi_fq_name[i][2],
+                'switch_info': pi_fq_name[i][1],
+                'fabric': fabric_fq_name[1]}
+            if i == num_phy_interfaces:
+                binding_profile_update['local_link_information'].append(
+                    profile)
+            else:
+                binding_profile['local_link_information'].append(profile)
+
+        proj_uuid = self._vnc_lib.fq_name_to_id(
+            'project', fq_name=['default-domain', 'default-project'])
+
+        # Case 1:
+        # Create a VMI without a binding profile
+        # Expectation:
+        # API-server should allow creating VMI without
+        # profile (link local info) but No VPGs are created
+        context = {'operation': 'CREATE',
+                   'user_id': '',
+                   'is_admin': True,
+                   'roles': ''}
+        vnic_type = 'baremetal'
+        data = {'resource': {'network_id': vn_obj.uuid,
+                             'tenant_id': proj_uuid,
+                             'binding:vnic_type': vnic_type,
+                             'binding:host_id': 'myhost'}}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/port', body)
+        port_1_dict = json.loads(resp.text)
+
+        # Make sure if VMI mac-address is all-zeroes
+        self.assertEqual(port_1_dict.get('mac_address'), '00:00:00:00:00:00')
+
+        # Make sure VPG is not created
+        vpg_dict = self._vnc_lib.virtual_port_groups_list()
+        vpgs = vpg_dict.get('virtual-port-groups')
+        self.assertTrue(len(vpgs) == 0)
+
+        # vpg zk element fq name should match vpg_id fq name
+        vpg_zk_element_fq_name = ['default-global-system-config',
+                                  fabric_name,
+                                  pi_uuid[0]]
+        vpg_zk_index = 0
+        self.assertEqual(mock_zk.get_vpg_from_id(vpg_zk_index), None)
+
+        # Case 2:
+        # Update VMI with binding profile
+        # Expectation:
+        # API-server would consume profile and create VPG
+        # and associate PIs to it
+        # update port with binding profile
+        self.update_resource(
+            'port', port_1_dict['id'], proj_uuid,
+            extra_res_fields={'binding:profile': binding_profile})
+
+        # make sure LAG is created
+        vpg_dict = self._vnc_lib.virtual_port_groups_list()
+        vpgs = vpg_dict.get('virtual-port-groups')
+        self.assertTrue(len(vpgs) == 1)
+        self.assertTrue(vpgs[0]['fq_name'][-1] == 'vpg-internal-0')
+
+        # vpg zk element fq name should match vpg_id fq name
+        vpg_zk_element_fq_name = ['default-global-system-config',
+                                  fabric_name,
+                                  pi_uuid[0]]
+        vpg_zk_element_fq_name_str = ':'.join(vpg_zk_element_fq_name)
+        self.assertEqual(mock_zk.get_vpg_from_id(vpg_zk_index),
+                         vpg_zk_element_fq_name_str)
+
+        # verify PIs are added
+        vpg_data = self._vnc_lib.virtual_port_group_read(id=vpgs[0]['uuid'])
+        self.assertTrue(len(vpg_data.get_physical_interface_refs()) == 2)
+
+        # Case 3:
+        # Update VMI with an empty profile
+        # This simulates ironic behavior where it conveys API-server
+        # to de-associate PIs from VPG so it create new VMI with those
+        # PIs
+        # Expectation:
+        # API-server will handle the empty profile and remove existing
+        # PIs from VPG. but VPG will be deleted only when VMI is removed
+
+        # update port with profile = '{}'
+        empty_profile = '{}'
+        self.update_resource(
+            'port', port_1_dict['id'], proj_uuid,
+            extra_res_fields={'binding:profile': empty_profile})
+
+        # make sure LAG exists, but all PIs are removed
+        vpg_dict = self._vnc_lib.virtual_port_groups_list()
+        vpgs = vpg_dict.get('virtual-port-groups')
+        self.assertTrue(len(vpgs) == 1)
+
+        # verify PIs are removed
+        vpg_data = self._vnc_lib.virtual_port_group_read(id=vpgs[0]['uuid'])
+        self.assertTrue(vpg_data.get_physical_interface_refs() is None)
+
+        # Case 3: Rerun
+        # Update VMI with an empty profile
+        # This simulates ironic behavior where it conveys API-server
+        # to de-associate PIs from VPG so it create new VMI with those
+        # PIs
+        # Expectation:
+        # API-server will handle the empty profile and remove existing
+        # PIs from VPG. but VPG will be deleted only when VMI is removed
+
+        # update port with profile = '{}'
+        empty_profile = '{}'
+        self.update_resource(
+            'port', port_1_dict['id'], proj_uuid,
+            extra_res_fields={'binding:profile': empty_profile})
+
+        # make sure LAG exists, but all PIs are removed
+        vpg_dict = self._vnc_lib.virtual_port_groups_list()
+        vpgs = vpg_dict.get('virtual-port-groups')
+        self.assertTrue(len(vpgs) == 1)
+
+        # verify PIs are removed
+        vpg_data = self._vnc_lib.virtual_port_group_read(id=vpgs[0]['uuid'])
+        self.assertTrue(vpg_data.get_physical_interface_refs() is None)
+
+        # Case 4:
+        # Create a new VMI with same PIs when old VMI exists
+        # Expectation:
+        # API-server will creating new VMI with same PIs, create
+        # another internal VPG, associate PIs to VPG
+
+        # create second VMI with same PI, ensure VPG is created
+        context = {'operation': 'CREATE',
+                   'user_id': '',
+                   'is_admin': True,
+                   'roles': ''}
+        vnic_type = 'baremetal'
+        data = {'resource': {'network_id': vn_obj.uuid,
+                             'tenant_id': proj_uuid,
+                             'binding:profile': binding_profile,
+                             'binding:vnic_type': vnic_type,
+                             'binding:host_id': 'myhost'}}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/port', body)
+        port_2_dict = json.loads(resp.text)
+
+        # ensure new VPG created and PIs are attached
+        vpg_dict = self._vnc_lib.virtual_port_groups_list()
+        vpgs = vpg_dict.get('virtual-port-groups')
+        self.assertTrue(len(vpgs) == 2)
+        vpg_names = sorted([vpg['fq_name'][-1] for vpg in vpgs])
+        self.assertEqual(vpg_names, ['vpg-internal-0', 'vpg-internal-1'])
+
+        # verify PIs are attached to new VMI
+        for vpg in vpgs:
+            vpg_obj = self._vnc_lib.virtual_port_group_read(id=vpg['uuid'])
+            if vpg_obj.fq_name[-1] == 'vpg-internal-1':
+                pis = vpg_obj.get_physical_interface_refs()
+                self.assertEqual(len(pis), 2)
+
+        # Case 5
+        # Delete VMI removes VPG
+        # Expectation:
+        # API-server will allow deleting first VMI and it also
+        # deletes internal VPG-0.
+
+        # delete first port
+        self.delete_resource('port', proj_uuid, port_1_dict['id'])
+
+        # ensure first VPG gets deleted
+        vpg_dict = self._vnc_lib.virtual_port_groups_list()
+        vpgs = vpg_dict['virtual-port-groups']
+        self.assertEqual(len(vpgs), 1)
+        self.assertEqual(vpgs[0]['fq_name'][-1], 'vpg-internal-1')
+
+        # vpg zk element fq name should get freed from zookeeper
+        vpg_zk_pi_1_fq_name = ['default-global-system-config',
+                               fabric_name,
+                               pi_uuid[0]]
+        vpg_zk_pi_1_fq_name_str = ':'.join(vpg_zk_pi_1_fq_name)
+        self.assertTrue(mock_zk.get_vpg_from_id(0) is None)
+        self.assertEqual(mock_zk.get_vpg_from_id(1), vpg_zk_pi_1_fq_name_str)
+
+        # delete second port
+        self.delete_resource('port', proj_uuid, port_2_dict['id'])
+
+        # ensure first VPG gets deleted
+        vpg_dict = self._vnc_lib.virtual_port_groups_list()
+        vpgs = vpg_dict['virtual-port-groups']
+        self.assertEqual(len(vpgs), 0)
+
+        # Clean up the resources
+        for i in range(num_phy_interfaces + 1):
+            self._vnc_lib.physical_interface_delete(id=pi_uuid[i])
+        self._vnc_lib.physical_router_delete(id=pr_uuid)
+        self._vnc_lib.security_group_delete(id=sg_obj.uuid)
+        self._vnc_lib.virtual_router_delete(id=vr_obj)
+        self._vnc_lib.virtual_network_delete(id=vn_obj.uuid)
+        self._vnc_lib.virtual_network_delete(id=vn2_obj.uuid)
+    # end test_virtual_port_group_ironic_workflow
 
     @unittest.skip("Flaky test in CI")
     def test_baremetal_logical_interface_bindings_with_multi_homing(self):

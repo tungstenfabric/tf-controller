@@ -6955,7 +6955,7 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         VMI_CLASS_ORG_PRE_DBE_UPDATE = self._api_server.get_resource_class(
             'virtual-machine-interface').pre_dbe_update
 
-        def mock_pre_dbe_create(id, fq_name, obj_dict, db_conn,
+        def mock_pre_dbe_update(id, fq_name, obj_dict, db_conn,
                                 prop_collection_updates=None, **kwargs):
             if not obj_dict.get('virtual-port-group-refs'):
                 obj_dict.update(VPG_REF)
@@ -6980,7 +6980,7 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
             'is_untagged': True}
         vmi_infos.append(info)
         with mock.patch.object(VMI_CLASS, 'pre_dbe_update',
-                               side_effect=mock_pre_dbe_create):
+                               side_effect=mock_pre_dbe_update):
             vmi_objs = self._update_vmis(vmi_infos)
 
         # Now ensure no change in AE-IDs
