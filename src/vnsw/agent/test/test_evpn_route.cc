@@ -251,14 +251,13 @@ TEST_F(RouteTest, LocalVmRoute_with_ipam) {
     EXPECT_TRUE(inet_rt->GetPathList().size() == 2);
     AgentPath *evpn_inet_path = inet_rt->FindPath(agent_->inet_evpn_peer());
     EXPECT_TRUE(evpn_inet_path != NULL);
-    EXPECT_TRUE(evpn_inet_path->nexthop() == NULL);
     EXPECT_TRUE(inet_rt->GetActivePath() != evpn_inet_path);
-
-    //Take out subnet route
-    InetUnicastRouteEntry *subnet_rt = RouteGet("vrf1", ipam_subnet_ip4_, 24);
-    EXPECT_TRUE(subnet_rt->GetActiveNextHop() ==
+    // After fixing CEM-21083 NH for inet-evpn path will not be NULL
+    // It will be derived from evpn route.
+    EXPECT_TRUE(evpn_inet_path->nexthop() != NULL);
+    EXPECT_TRUE(evpn_rt->GetActiveNextHop() ==
                 evpn_inet_path->ComputeNextHop(agent_));
-    EXPECT_TRUE(subnet_rt->GetActiveLabel() ==
+    EXPECT_TRUE(evpn_rt->GetActiveLabel() ==
                 evpn_inet_path->label());
 
     DeleteVmportEnv(input, 1, true);
@@ -339,27 +338,25 @@ TEST_F(RouteTest, RemoteVmRoute_with_ipam) {
                          Ip4Address::from_string("1.1.1.99"), 32);
     client->WaitForIdle();
 
-    InetUnicastRouteEntry *ipam_subnet_rt = RouteGet("vrf1",
-                                            Ip4Address::from_string("1.1.1.0"),
-                                            24);
+    EvpnRouteEntry *evpn_rt = EvpnRouteGet("vrf1", remote_vm_mac_,
+                                           Ip4Address::from_string("1.1.1.99"),
+                                           0);
     InetUnicastRouteEntry *remote_subnet_rt = RouteGet("vrf1",
                                               Ip4Address::from_string("1.1.1.100"),
                                               26);
     InetUnicastRouteEntry *remote_host_rt = RouteGet("vrf1",
                                                    Ip4Address::from_string("1.1.1.99"),
                                                    32);
+    EXPECT_TRUE(evpn_rt != NULL);
     EXPECT_TRUE(remote_subnet_rt != NULL);
     EXPECT_TRUE(remote_host_rt != NULL);
-    EXPECT_TRUE(remote_host_rt->GetActivePath() ==
-                remote_subnet_rt->GetActivePath());
+    EXPECT_TRUE(remote_host_rt->GetActiveNextHop() ==
+                evpn_rt->GetActiveNextHop());
 
     DeleteRoute(vrf_name_.c_str(), "1.1.1.100", 26,
                 bgp_peer);
     client->WaitForIdle();
 
-    ipam_subnet_rt = RouteGet("vrf1",
-                              Ip4Address::from_string("1.1.1.0"),
-                              24);
     remote_subnet_rt = RouteGet("vrf1",
                                 Ip4Address::from_string("1.1.1.100"),
                                 26);
@@ -368,8 +365,8 @@ TEST_F(RouteTest, RemoteVmRoute_with_ipam) {
                               32);
     EXPECT_TRUE(remote_subnet_rt == NULL);
     EXPECT_TRUE(remote_host_rt != NULL);
-    EXPECT_TRUE(remote_host_rt->GetActivePath() ==
-                ipam_subnet_rt->GetActivePath());
+    EXPECT_TRUE(remote_host_rt->GetActiveNextHop() ==
+                evpn_rt->GetActiveNextHop());
 
     EvpnAgentRouteTable::DeleteReq(bgp_peer, vrf_name_,
                                    remote_vm_mac_,
@@ -407,9 +404,9 @@ TEST_F(RouteTest, RemoteVmRoute_with_ipam_2) {
                          Ip4Address::from_string("1.1.1.99"), 32);
     client->WaitForIdle();
 
-    InetUnicastRouteEntry *ipam_subnet_rt = RouteGet("vrf1",
-                                            Ip4Address::from_string("1.1.1.0"),
-                                            24);
+    EvpnRouteEntry *evpn_rt = EvpnRouteGet("vrf1", remote_vm_mac_,
+                                           Ip4Address::from_string("1.1.1.99"),
+                                           0);
     InetUnicastRouteEntry *remote_subnet_rt = RouteGet("vrf1",
                                               Ip4Address::from_string("1.1.1.100"),
                                               26);
@@ -418,8 +415,8 @@ TEST_F(RouteTest, RemoteVmRoute_with_ipam_2) {
                                                    32);
     EXPECT_TRUE(remote_subnet_rt == NULL);
     EXPECT_TRUE(remote_host_rt != NULL);
-    EXPECT_TRUE(remote_host_rt->GetActivePath() ==
-                ipam_subnet_rt->GetActivePath());
+    EXPECT_TRUE(remote_host_rt->GetActiveNextHop() ==
+                evpn_rt->GetActiveNextHop());
 
     Inet4TunnelRouteAdd(bgp_peer, vrf_name_,
                         Ip4Address::from_string("1.1.1.100"),
@@ -430,9 +427,9 @@ TEST_F(RouteTest, RemoteVmRoute_with_ipam_2) {
                         TagList(), PathPreference());
     client->WaitForIdle();
 
-    ipam_subnet_rt = RouteGet("vrf1",
-                              Ip4Address::from_string("1.1.1.0"),
-                              24);
+    evpn_rt = EvpnRouteGet("vrf1", remote_vm_mac_,
+                            Ip4Address::from_string("1.1.1.99"),
+                            0);
     remote_subnet_rt = RouteGet("vrf1",
                                 Ip4Address::from_string("1.1.1.100"),
                                 26);
@@ -441,9 +438,8 @@ TEST_F(RouteTest, RemoteVmRoute_with_ipam_2) {
                               32);
     EXPECT_TRUE(remote_subnet_rt != NULL);
     EXPECT_TRUE(remote_host_rt != NULL);
-    EXPECT_TRUE(remote_host_rt->GetActivePath() ==
-                remote_subnet_rt->GetActivePath());
-
+    EXPECT_TRUE(remote_host_rt->GetActiveNextHop() ==
+                evpn_rt->GetActiveNextHop());
 
     EvpnAgentRouteTable::DeleteReq(bgp_peer, vrf_name_,
                                    remote_vm_mac_,
@@ -485,14 +481,16 @@ TEST_F(RouteTest, LocalVmRoute_with_ipam_2) {
     EXPECT_TRUE(inet_rt->GetPathList().size() == 2);
     AgentPath *evpn_inet_path = inet_rt->FindPath(agent_->inet_evpn_peer());
     EXPECT_TRUE(evpn_inet_path != NULL);
-    EXPECT_TRUE(evpn_inet_path->nexthop() == NULL);
+    // After fixing CEM-21083 NH for inet-evpn path will not be NULL
+    // It will be derived from evpn route.
+    EXPECT_TRUE(evpn_inet_path->nexthop() != NULL);
     EXPECT_TRUE(inet_rt->GetActivePath() != evpn_inet_path);
 
     //Take out subnet route
     InetUnicastRouteEntry *subnet_rt = RouteGet("vrf1", ipam_subnet_ip4_, 24);
-    EXPECT_TRUE(subnet_rt->GetActiveNextHop() ==
+    EXPECT_TRUE(evpn_rt->GetActiveNextHop() ==
                 evpn_inet_path->ComputeNextHop(agent_));
-    EXPECT_TRUE(subnet_rt->GetActiveLabel() ==
+    EXPECT_TRUE(evpn_rt->GetActiveLabel() ==
                 evpn_inet_path->label());
 
     //Delete IPAM and verify
@@ -511,14 +509,16 @@ TEST_F(RouteTest, LocalVmRoute_with_ipam_2) {
     EXPECT_TRUE(subnet_rt != NULL);
     inet_rt = RouteGet("vrf1", local_vm_ip4_, 32);
     EXPECT_TRUE(inet_rt != NULL);
+    evpn_rt = EvpnRouteGet("vrf1", local_vm_mac_, local_vm_ip4_, 0);
+    EXPECT_TRUE(evpn_rt != NULL);
     evpn_inet_path = inet_rt->FindPath(agent_->inet_evpn_peer());
     EXPECT_TRUE(evpn_inet_path != NULL);
-    EXPECT_TRUE(evpn_inet_path->nexthop() == NULL);
+    EXPECT_TRUE(evpn_inet_path->nexthop() != NULL);
     EXPECT_TRUE(inet_rt->GetActivePath() != evpn_inet_path);
     EXPECT_TRUE(evpn_inet_path->unresolved() == false);
-    EXPECT_TRUE(subnet_rt->GetActiveNextHop() ==
+    EXPECT_TRUE(evpn_rt->GetActiveNextHop() ==
                 evpn_inet_path->ComputeNextHop(agent_));
-    EXPECT_TRUE(subnet_rt->GetActiveLabel() ==
+    EXPECT_TRUE(evpn_rt->GetActiveLabel() ==
                 evpn_inet_path->label());
 
     DeleteVmportEnv(input, 1, true);
@@ -550,7 +550,9 @@ TEST_F(RouteTest, LocalVmRoute_with_ipam_and_external_subnet_route) {
     EXPECT_TRUE(inet_rt->GetPathList().size() == 2);
     AgentPath *evpn_inet_path = inet_rt->FindPath(agent_->inet_evpn_peer());
     EXPECT_TRUE(evpn_inet_path != NULL);
-    EXPECT_TRUE(evpn_inet_path->nexthop() == NULL);
+    // After fixing CEM-21083 NH for inet-evpn path will not be NULL
+    // It will be derived from evpn route.
+    EXPECT_TRUE(evpn_inet_path->nexthop() != NULL);
     EXPECT_TRUE(inet_rt->GetActivePath() != evpn_inet_path);
 
     //Add non-ipam subnet route
@@ -561,10 +563,6 @@ TEST_F(RouteTest, LocalVmRoute_with_ipam_and_external_subnet_route) {
                         TagList(), PathPreference());
     client->WaitForIdle();
 
-    //Take out subnet route
-    InetUnicastRouteEntry *subnet_rt = RouteGet("vrf1", ipam_subnet_ip4_, 24);
-    EXPECT_TRUE(subnet_rt->GetActiveNextHop() ==
-                evpn_inet_path->ComputeNextHop(agent_));
 
     //Remove local_vm_peer path from inet route 1.1.1.10/32
     InetUnicastAgentRouteTable::DeleteReq(inet_rt->GetActivePath()->peer(),
@@ -572,24 +570,11 @@ TEST_F(RouteTest, LocalVmRoute_with_ipam_and_external_subnet_route) {
     client->WaitForIdle();
 
     //Now evpn_inet_route should be active path.
-    EXPECT_TRUE(subnet_rt->GetActiveNextHop() ==
+    EXPECT_TRUE(evpn_rt->GetActiveNextHop() ==
                 inet_rt->GetActiveNextHop());
-    EXPECT_TRUE(inet_rt->GetActivePath()->label() == MplsTable::kStartLabel);
-    EXPECT_TRUE(subnet_rt->GetActiveLabel() ==
+    EXPECT_TRUE(evpn_rt->GetActiveLabel() ==
                 inet_rt->GetActiveLabel());
-
-    //Change the label of subnet_route
-    Inet4TunnelRouteAdd(bgp_peer, vrf_name_,
-                        ipam_subnet_ip4_, 24, server1_ip_,
-                        TunnelType::MplsType(), (MplsTable::kStartLabel + 1),
-                        vrf_name_, SecurityGroupList(),
-                        TagList(), PathPreference());
-    client->WaitForIdle();
-    EXPECT_TRUE(subnet_rt->GetActiveNextHop() ==
-                evpn_inet_path->ComputeNextHop(agent_));
-    EXPECT_TRUE(inet_rt->GetActiveLabel() == (MplsTable::kStartLabel + 1));
-    EXPECT_TRUE(subnet_rt->GetActiveLabel() ==
-                inet_rt->GetActiveLabel());
+    EXPECT_TRUE(inet_rt->GetActivePath()->peer()->GetType() == Peer::INET_EVPN_PEER);
 
     DeleteRoute(vrf_name_.c_str(), ipam_subnet_str_, 24, bgp_peer);
     client->WaitForIdle();
@@ -631,16 +616,21 @@ TEST_F(RouteTest, RemoteVmRoute_with_non_ipam_subnet) {
                          Ip4Address::from_string("2.2.2.99"), 32);
     client->WaitForIdle();
 
+    EvpnRouteEntry *evpn_rt = EvpnRouteGet("vrf1", remote_vm_mac_,
+                                           Ip4Address::from_string("2.2.2.99"),
+                                           0);
     InetUnicastRouteEntry *remote_subnet_rt = RouteGet("vrf1",
                                               Ip4Address::from_string("2.2.2.100"),
                                               26);
     InetUnicastRouteEntry *remote_host_rt = RouteGet("vrf1",
                                                    Ip4Address::from_string("2.2.2.99"),
                                                    32);
+    EXPECT_TRUE(evpn_rt != NULL);
     EXPECT_TRUE(remote_subnet_rt != NULL);
     EXPECT_TRUE(remote_host_rt != NULL);
-    EXPECT_TRUE(remote_host_rt->GetActivePath() ==
-                remote_subnet_rt->GetActivePath());
+    // After fixing CEM-21083 NH for inet-evpn path will be derived from evpn route.
+    EXPECT_TRUE(remote_host_rt->GetActiveNextHop() ==
+                evpn_rt->GetActiveNextHop());
 
     DelVrf("vrf1");
     //DeleteRoute(vrf_name_.c_str(), "2.2.2.100", 26,
