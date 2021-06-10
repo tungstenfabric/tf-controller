@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2018 Juniper Networks, Inc. All rights reserved.
 #
-
+from cfgm_common.exceptions import ResourceExistsError
 from sandesh_common.vns.constants import TagTypeNameToId
 from vnc_api.gen.resource_common import TagType
 
@@ -10,23 +10,39 @@ from vnc_cfg_api_server.resources._resource_base import ResourceMixin
 
 
 class TagTypeServer(ResourceMixin, TagType):
+
     @classmethod
     def pre_dbe_create(cls, tenant_name, obj_dict, db_conn):
         type_str = obj_dict['fq_name'][-1]
         obj_dict['name'] = type_str
         obj_dict['display_name'] = type_str
-
-        if obj_dict.get('tag_type_id') is not None:
-            msg = "Tag Type ID is not setable"
+        tag_type_id = obj_dict.get('tag_type_id') or None
+        if tag_type_id:
+            tag_type_id = int(tag_type_id, 16)
+        # if tag-type set as input and its value is less than 0x7FFF
+        # return error. Tag type set is only supported for user defined
+        # tag types.
+        if tag_type_id is not None and \
+           not cls.vnc_zk_client.user_def_tag(tag_type_id):
+            msg = "Tag type can be set only with user defined id in range\
+                    32768-65535"
             return False, (400, msg)
-
         # Allocate ID for tag-type
-        type_id = cls.vnc_zk_client.alloc_tag_type_id(type_str)
+        try:
+            type_id = cls.vnc_zk_client.alloc_tag_type_id(type_str,
+                                                          tag_type_id)
+        except ResourceExistsError:
+            return False, (400, "Tag Type with same Id already exists")
 
         def undo_type_id():
             cls.vnc_zk_client.free_tag_type_id(type_id, obj_dict['fq_name'])
             return True, ""
         get_context().push_undo(undo_type_id)
+
+        # type_id is None for failure case and in range 0 to 65535 for success
+        # case
+        if type_id is None:
+            return False, (400, "Failed to allocate tag type Id")
 
         obj_dict['tag_type_id'] = "0x{:04x}".format(type_id)
 
@@ -61,7 +77,6 @@ class TagTypeServer(ResourceMixin, TagType):
         cls.vnc_zk_client.free_tag_type_id(int(obj_dict['tag_type_id'], 0),
                                            obj_dict['fq_name'][-1],
                                            notify=True)
-
         return True, ''
 
     @classmethod

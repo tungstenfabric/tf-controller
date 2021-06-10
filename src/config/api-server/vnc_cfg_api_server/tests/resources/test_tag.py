@@ -120,12 +120,102 @@ class TestTag(TestTagBase):
         tag.tag_value = 'new_fake_type-%s' % self.id()
         self.assertRaises(BadRequest, self.api.tag_update, tag)
 
-    def test_tag_id_cannot_be_set(self):
+    def test_auto_tag_id_cannot_be_set(self):
+        tag_type = 'fake_type-%s' % self.id()
+        tag_value = 'fake_value-%s' % self.id()
+        tag = Tag(tag_type_name=tag_type, tag_value=tag_value,
+                  tag_id='0x0EAD0EEF')
+        self.assertRaises(BadRequest, self.api.tag_create, tag)
+
+    # test to create user define tag-type and tag
+    def test_ud_tag_and_ud_tag_type(self):
         tag_type = 'fake_type-%s' % self.id()
         tag_value = 'fake_value-%s' % self.id()
         tag = Tag(tag_type_name=tag_type, tag_value=tag_value,
                   tag_id='0xDEADBEEF')
+        tag_uuid = self.api.tag_create(tag)
+        tag_obj = self.api.tag_read(id=tag_uuid)
+        tag_type_uuid = tag_obj.get_tag_type_refs()[0]['uuid']
+        with mock.patch.object(self._api_server, 'is_admin_request',
+                               return_value=True):
+            tag_type_read = self.api.tag_type_read(id=tag_type_uuid)
+        # validate if user defined tag type is created
+        self.assertEqual(tag_type_uuid, tag_type_read.uuid)
+        # validate if tag type id is 0xDEAD
+        self.assertEqual("0xdead", tag_type_read.tag_type_id.lower())
+        # validate complete tag_id
+        self.assertEqual("0xdeadbeef", tag_obj.tag_id.lower())
+
+        # Negative test check if recreating of tag with different
+        # fq-name but same ID fails
+        tag_value = 'fake_value-ud%s' % self.id()
+        tag = Tag(tag_type_name=tag_type, tag_value=tag_value,
+                  tag_id='0xDEADBEEF')
         self.assertRaises(BadRequest, self.api.tag_create, tag)
+
+        # Validate user defined tag delete.
+        tag_obj = self.api.tag_read(id=tag_uuid)
+        self.assertIsNotNone(tag_uuid)
+        self.api.tag_delete(id=tag_uuid)
+        self.assertRaises(NoIdError, self.api.tag_read,
+                          id=tag_uuid)
+
+        # validate release tag ID can be re-allocated to be sure
+        # IDs are reserved and freed properly
+        tag_value = 'fake_value%s' % self.id()
+        tag = Tag(tag_type_name=tag_type, tag_value=tag_value,
+                  tag_id='0xDEADBEEF')
+        tag_uuid = self.api.tag_create(tag)
+        tag_obj = self.api.tag_read(id=tag_uuid)
+        self.assertIsNotNone(tag_uuid)
+        self.assertEqual("0xdeadbeef", tag_obj.tag_id.lower())
+
+    def test_ud_tag_type_auto_tag_value_not_set(self):
+        tag_type = 'fake_type-%s' % self.id()
+        tag_value = 'fake_value-%s' % self.id()
+        # Create auto tag and ud tag-type
+        tag = Tag(tag_type_name=tag_type, tag_value=tag_value,
+                  tag_id='0xDEAD0001')
+        self.assertRaises(BadRequest, self.api.tag_create, tag)
+
+    def test_ud_tag_type_ud_tag_invalid_value(self):
+        tag_type = 'fake_type-%s' % self.id()
+        tag_value = 'fake_value-%s' % self.id()
+        # Create auto tag and ud tag-type
+        tag = Tag(tag_type_name=tag_type, tag_value=tag_value,
+                  tag_id='0xDEAD00wq')
+        self.assertRaises(BadRequest, self.api.tag_create, tag)
+
+    def test_ud_tag_type_ud_tag_value_exceeds(self):
+        tag_type = 'fake_type-%s' % self.id()
+        tag_value = 'fake_value-%s' % self.id()
+        # Create auto tag and ud tag-type
+        tag = Tag(tag_type_name=tag_type, tag_value=tag_value,
+                  tag_id='0xDEAD00011')
+        self.assertRaises(BadRequest, self.api.tag_create, tag)
+
+    # test to create user defined tag with predefined tag-types
+    def test_ud_tag_predef_tag_type(self):
+        tag_type = 'fake_type-%s' % self.id()
+        tag_value = 'fake_value-%s' % self.id()
+        # Create auto tag and tag-type
+        tag = Tag(tag_type_name=tag_type, tag_value=tag_value)
+        tag_uuid = self.api.tag_create(tag)
+        tag_obj = self.api.tag_read(id=tag_uuid)
+        # validate if Tag created properly
+        self.assertIsNotNone(tag_uuid)
+        tag_type_uuid = tag_obj.get_tag_type_refs()[0]['uuid']
+        with mock.patch.object(self._api_server, 'is_admin_request',
+                               return_value=True):
+            tag_type_read = self.api.tag_type_read(id=tag_type_uuid)
+        ud_tag_id = tag_type_read.tag_type_id + "8001"
+        # create user defined tag with pre-def tag-type
+        ud_tag_value = 'fake_value-ud-%s' % self.id()
+        ud_tag = Tag(tag_type_name=tag_type, tag_value=ud_tag_value,
+                     tag_id=ud_tag_id)
+        ud_tag_uuid = self.api.tag_create(ud_tag)
+        ud_tag_obj = self.api.tag_read(id=ud_tag_uuid)
+        self.assertEqual(ud_tag_id, ud_tag_obj.tag_id.lower())
 
     def test_tag_id_cannot_be_updated(self):
         tag_type = 'fake_type-%s' % self.id()
@@ -134,7 +224,7 @@ class TestTag(TestTagBase):
         tag_uuid = self.api.tag_create(tag)
         tag = self.api.tag_read(id=tag_uuid)
 
-        tag.tag_id = '0xdeadbeef'
+        tag.tag_id = '0x0ead0eef'
         self.assertRaises(BadRequest, self.api.tag_update, tag)
 
     def test_tag_type_reference_cannot_be_set(self):
