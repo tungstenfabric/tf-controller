@@ -162,7 +162,7 @@ class CassandraManager(object):
         return int(pending_count_val[1].strip())
     # end get_pending_compaction_count
 
-    def database_periodic(self, event_mgr):
+    def database_periodic(self, event_mgr, retry=3):
         try:
             cassandra_data_dirs = self._get_cassandra_config_option("data_file_directories")
             cassandra_data_dir_exists = False
@@ -205,9 +205,14 @@ class CassandraManager(object):
                 usage_stat = DatabaseUsage(table=self.table, data=db_info)
                 usage_stat.send()
         except Exception as e:
-            msg = "Failed to get database usage: " + str(e)
-            event_mgr.msg_log(msg, level=SandeshLevel.SYS_ERR)
-            event_mgr.fail_status_bits |= event_mgr.FAIL_STATUS_DISK_SPACE_NA
+            if retry:
+                msg = "Failed to get database usage, will retry: " + str(e)
+                event_mgr.msg_log(msg, level=SandeshLevel.SYS_ERR)
+                return self.database_periodic(event_mgr, retry - 1)
+            else:
+                msg = "Failed to get database usage, giving up: " + str(e)
+                event_mgr.msg_log(msg, level=SandeshLevel.SYS_ERR)
+                event_mgr.fail_status_bits |= event_mgr.FAIL_STATUS_DISK_SPACE_NA
 
         # just check connectivity
         cqlsh_cmd = "cqlsh"
