@@ -165,4 +165,33 @@ class KubeMonitorTest(unittest.TestCase):
 
     # end test_kube_monitor_beta_url_construction
 
+    def test_kube_monitor_entry_url_construction(self):
+        # Validate url for resource outside of namespace
+        resource_type = "namespace"
+        entry_name = "test-namespace"
+        namespace_obj_url = "{}/api/v1/namespaces/{}".format(self.base_url,
+                                                             entry_name)
+        namespace_monitor = kube_monitor.KubeMonitor(
+            self.args,
+            logger=mock.Mock(),
+            resource_type=resource_type
+        )
+        entry = {'metadata': {'name': entry_name}}
+        self.assertEqual(namespace_monitor.get_entry_url(entry),
+                         namespace_obj_url)
+
+        # Validate url for namespaced resource
+        resource_type = "pod"
+        entry_name = "test-pod"
+        entry_namespace = "test-namespace"
+        pod_obj_url = "{}/api/v1/namespaces/{}/pods/{}".format(self.base_url,
+                                                               entry_namespace,
+                                                               entry_name)
+        pod_monitor = kube_monitor.KubeMonitor(self.args,
+                                               logger=mock.Mock(),
+                                               resource_type=resource_type)
+        entry = {'metadata': {'name': entry_name, 'namespace': entry_namespace}}
+        self.assertEqual(pod_monitor.get_entry_url(entry), pod_obj_url)
+
+    # end test_kube_monitor_entry_url_construction
 # end KubeMonitorTest(unittest.TestCase):

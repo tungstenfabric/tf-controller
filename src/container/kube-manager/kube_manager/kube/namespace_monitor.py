@@ -14,16 +14,6 @@ class NamespaceMonitor(KubeMonitor):
         super(NamespaceMonitor, self).__init__(
             args, logger, q, NamespaceKM, resource_type='namespace')
 
-    def get_entry_url(self, base_url, entry):
-        """Get URL to an entry.
-        NOTE: This method overrides a generic implementation provided by
-        KubeMonitor base class. This is to workaround a bug in Kuberneters
-        config stored in its api server where the 'selfLink' is not correctly
-        populated for namespace entries. Once that bug is fixed, this method
-        should be removed.
-        """
-        return self.base_url + "/namespaces/" + entry['metadata']['name']
-
     def process_event(self, event):
         data = event['object']
         event_type = event['type']

@@ -211,12 +211,14 @@ class KubeMonitor(object):
         """
         return "%s/%s" % (self.base_url, self.k8s_url_resource)
 
-    @staticmethod
-    def get_entry_url(base_url, entry):
+    def get_entry_url(self, entry):
         """URL to an entry of this component.
         This method returns a URL to a specific entry of this component.
         """
-        return base_url + entry['metadata']['selfLink']
+        namespace = entry['metadata'].get('namespace')
+        url_namespace = ("/namespaces/" + namespace) if namespace else ""
+        return "%s%s/%s/%s" % (self.base_url, url_namespace,
+                               self.k8s_url_resource, entry['metadata']['name'])
 
     def init_monitor(self):
         """Initialize/sync a monitor component.
@@ -243,7 +245,7 @@ class KubeMonitor(object):
         finally:
             resp.close()
         for entry in initial_entries:
-            entry_url = self.get_entry_url(self.url, entry)
+            entry_url = self.get_entry_url(entry)
             resp = requests.get(entry_url, headers=self.headers,
                                 verify=self.verify)
             try:
