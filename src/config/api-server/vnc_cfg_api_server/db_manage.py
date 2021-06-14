@@ -84,12 +84,15 @@ except ImportError:
     from vnc_cfg_ifmap import VncServerCassandraClient
 
 
-__version__ = "1.39"
+__version__ = "1.40"
 """
 NOTE: As that script is not self contained in a python package and as it
 supports multiple Contrail releases, it brings its own version that needs to be
 manually updated each time it is modified. We also maintain a change log list
 in that header:
+* 1.40:
+  - Fix CEM-22443. Update default apiserver config file path and
+    add a verification
 * 1.39:
   - Fix CEM-21530. Added check for verifying missing key in cols and
     continue.
@@ -425,7 +428,7 @@ def _parse_args(args_str):
     help = ("Path to contrail-api conf file, "
             "default /etc/contrail/contrail-api.conf")
     parser.add_argument(
-        "--api-conf", help=help, default="/etc/contrail/contrail-api.conf")
+        "--api-conf", help=help, default="/etc/contrail/contrail-api-0.conf")
     parser.add_argument(
         "--execute", help="Apply database modifications",
         action='store_true', default=False)
