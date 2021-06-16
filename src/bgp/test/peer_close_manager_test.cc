@@ -38,6 +38,9 @@ public:
     virtual void GetGracefulRestartFamilies(Families *families) const {
         families->insert(Address::INET);
     }
+    virtual void GetLongLivedGracefulRestartFamilies(Families *families) const {
+        families->insert(Address::INET);
+    }
     virtual void MembershipRequestCallbackComplete() {
         membership_request_complete_result_ = true;
     }
@@ -169,7 +172,7 @@ public:
                 peer_close_->GetGracefulRestartFamilies(families());
                 break;
             case LLGR_TIMER:
-                peer_close_->GetGracefulRestartFamilies(families());
+                peer_close_->GetLongLivedGracefulRestartFamilies(families());
                 break;
             case SWEEP:
                 break;

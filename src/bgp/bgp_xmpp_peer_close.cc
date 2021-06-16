@@ -86,6 +86,10 @@ void BgpXmppPeerClose::GetGracefulRestartFamilies(Families *families) const {
     families->insert(Address::UNSPEC);
 }
 
+void BgpXmppPeerClose::GetLongLivedGracefulRestartFamilies(Families *families) const {
+    families->insert(Address::UNSPEC);
+}
+
 void BgpXmppPeerClose::ReceiveEndOfRIB(Address::Family family) {
     channel_->ReceiveEndOfRIB(family);
 }
