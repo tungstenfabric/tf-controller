@@ -73,7 +73,7 @@ VmInterfaceConfigData::VmInterfaceConfigData(Agent *agent, IFMapNode *node) :
     cfg_name_(""), vm_uuid_(), vm_name_(), vn_uuid_(), vrf_name_(""),
     fabric_port_(true), need_linklocal_ip_(false), bridging_(true),
     layer3_forwarding_(true), mirror_enable_(false), ecmp_(false),
-    ecmp6_(false), dhcp_enable_(true),
+    ecmp6_(false), dhcp_enable_(true), dhcp_enable_v6_(true),
     proxy_arp_mode_(VmInterface::PROXY_ARP_NONE), admin_state_(true),
     disable_policy_(false), analyzer_name_(""),
     local_preference_(0), oper_dhcp_options_(),
@@ -487,6 +487,11 @@ bool VmInterface::CopyConfig(const InterfaceTable *table,
 
     if (dhcp_enable_ != data->dhcp_enable_) {
         dhcp_enable_ = data->dhcp_enable_;
+        ret = true;
+    }
+
+    if (dhcp_enable_v6_ != data->dhcp_enable_v6_){
+        dhcp_enable_v6_ = data->dhcp_enable_v6_;
         ret = true;
     }
 

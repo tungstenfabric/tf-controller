@@ -33,6 +33,7 @@ struct VnIpam {
     IpAddress dns_server;
     bool       installed;    // is the route to send pkts to host installed
     bool       dhcp_enable;
+    bool       dhcp_enable_v6;
     std::string ipam_name;
     OperDhcpOptions oper_dhcp_options;
     uint32_t alloc_unit;

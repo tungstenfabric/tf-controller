@@ -395,6 +395,7 @@ public:
             {"1.2.3.128", 27, "1.2.3.129", true},
             {"7.8.9.0", 24, "7.8.9.12", false},
         };
+
         char vdns_attr[] = "<virtual-DNS-data>\n <domain-name>test.contrail.juniper.net</domain-name>\n <dynamic-records-from-client>true</dynamic-records-from-client>\n <record-order>fixed</record-order>\n <default-ttl-seconds>120</default-ttl-seconds>\n </virtual-DNS-data>\n";
         char ipam_attr[] = "<network-ipam-mgmt>\n <ipam-dns-method>virtual-dns-server</ipam-dns-method>\n <ipam-dns-server><virtual-dns-server-name>vdns1</virtual-dns-server-name></ipam-dns-server>\n </network-ipam-mgmt>\n";
 
@@ -466,6 +467,101 @@ public:
         client->WaitForIdle();
 
         Agent::GetInstance()->GetDhcpProto()->ClearStats();
+    }
+
+
+    void DhcpEnablev6Test(bool order) {
+        struct PortInfo input[] = { 
+            {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1, "fd15::2"},
+            {"vnet2", 2, "7.8.9.2", "00:00:00:02:02:02", 1, 2, "1234::2"},
+        };  
+
+        uint8_t options[] = {
+            DHCP_OPTION_MSG_TYPE,
+            DHCP_OPTION_HOST_NAME,
+            DHCP_OPTION_DOMAIN_NAME,
+            DHCP_OPTION_END
+        };
+        DhcpProto::DhcpStats stats;
+
+
+        IpamInfo ipam_info[] = {
+            {"fd15::", 120, "fd15::1", true},
+            {"1234::", 64, "1234::1", true},
+        };
+
+        char vdns_attr[] = "<virtual-DNS-data>\n <domain-name>test.contrail.juniper.net</domain-name>\n <dynamic-records-from-client>true</dynamic-records-from-client>\n <record-order>fixed</record-order>\n <default-ttl-seconds>120</default-ttl-seconds>\n </virtual-DNS-data>\n";
+        char ipam_attr[] = "<network-ipam-mgmt>\n <ipam-dns-method>virtual-dns-server</ipam-dns-method>\n <ipam-dns-server><virtual-dns-server-name>vdns1</virtual-dns-server-name></ipam-dns-server>\n </network-ipam-mgmt>\n";
+
+        if (order) {
+            CreateVmportEnv(input, 2, 0);
+            client->WaitForIdle();
+            client->Reset();
+            AddVDNS("vdns1", vdns_attr);
+            client->WaitForIdle();
+            AddIPAM("vn1", ipam_info, 2, ipam_attr, "vdns1");
+            client->WaitForIdle();
+        } else {
+            client->Reset();
+            AddVDNS("vdns1", vdns_attr);
+            client->WaitForIdle();
+            AddIPAM("vn1", ipam_info, 2, ipam_attr, "vdns1");
+            client->WaitForIdle();
+            CreateVmportEnv(input, 2, 0);
+            client->WaitForIdle();
+        }
+
+        // Check the dhcp_enable_v6 flag
+        VnEntry *vn = VnGet(1);
+        std::vector<VnIpam> vn_ipam = vn->GetVnIpam();
+        for (uint32_t i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
+            EXPECT_TRUE(vn_ipam[i].dhcp_enable_v6 == ipam_info[i].dhcp_enable);
+        }
+
+
+        MacAddress src_mac(0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        SendDhcp(GetItfId(0), 0x8000, DHCP_DISCOVER, options, 4, input[0].mac);
+        SendDhcp(GetItfId(0), 0x8000, DHCP_REQUEST, options, 4, input[0].mac);
+        int count = 0;
+        DHCP_CHECK (stats.acks < 1);
+        EXPECT_EQ(1U, stats.discover);
+        EXPECT_EQ(1U, stats.request);
+        EXPECT_EQ(1U, stats.offers);
+        EXPECT_EQ(1U, stats.acks);
+
+        VmInterface *vmi_0 = VmInterfaceGet(1);
+        vmi_0->set_dhcp_enable_v6_config(ipam_info[0].dhcp_enable);
+        bool ret = vmi_0->dhcp_enable_v6_config();
+        EXPECT_EQ(ret, true);
+
+        // modify IPAM dhcp_enable_v6
+        for (uint32_t i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
+            ipam_info[i].dhcp_enable = !ipam_info[i].dhcp_enable;
+        }
+        AddIPAM("vn1", ipam_info, 2, ipam_attr, "vdns1");
+        client->WaitForIdle();
+        vn_ipam = vn->GetVnIpam();
+        for (uint32_t i = 0; i < sizeof(ipam_info) / sizeof(IpamInfo); ++i) {
+            EXPECT_TRUE(vn_ipam[i].dhcp_enable_v6 == ipam_info[i].dhcp_enable);
+        }
+
+        VmInterface *vmi_1 = VmInterfaceGet(1);
+        vmi_1->set_dhcp_enable_v6_config(ipam_info[0].dhcp_enable);
+        ret = vmi_1->dhcp_enable_v6_config();
+        EXPECT_EQ(ret, false);
+
+        client->Reset();
+        DelIPAM("vn1", "vdns1");
+        client->WaitForIdle();
+        DelVDNS("vdns1");
+        client->WaitForIdle();
+
+        client->Reset();
+        DeleteVmportEnv(input, 2, 1, 0);
+        client->WaitForIdle();
+
+        Agent::GetInstance()->GetDhcpProto()->ClearStats(); 
+
     }
 
     void DhcpOptionCategoryTest(char *vm_interface_attr,
@@ -1505,10 +1601,12 @@ TEST_F(DhcpTest, DhcpTorRequestTest) {
 
 TEST_F(DhcpTest, DhcpEnableTestForward) {
     DhcpEnableTest(true);
+    DhcpEnablev6Test(true);
 }
 
 TEST_F(DhcpTest, DhcpEnableTestReverse) {
     DhcpEnableTest(false);
+    DhcpEnablev6Test(false);
 }
 
 // Check dhcp options - different categories

@@ -228,6 +228,8 @@ struct ItfSandeshData {
    53: optional string health_check_active;
     /** Boolean value which indicates if dhcp service is enabled */
     6: string dhcp_service;
+    /** Boolean value which indicates if dhcp service for v6 is enabled */
+    72: string dhcp_service_v6;
     /** Boolean value which indicates if dns service is enabled */
     7: string dns_service;
     /** Type of the interface which can be eth/vport/host */
@@ -369,6 +371,8 @@ struct VnIpamData {
     5: string dhcp_enable;
     /** Ip address of dns server for virtual-network ipam */
     6: string dns_server;
+    /** Field which indicates if dhcp is enabled for virtual-network ipam for v6 */
+    7: string dhcp_enable_v6;
 }
 
 /**
@@ -2115,6 +2119,8 @@ struct VnObjectLogIpam {
     5: string dhcp_enable;
     /** Ip address of dns server for virtual-network ipam */
     6: string dns_server;
+    /** Field which indicates if dhcp is enabled for virtual-network ipam for v6 */
+    7: string dhcp_enable_v6;
 }
 
 /**
