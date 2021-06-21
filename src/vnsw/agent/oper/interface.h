@@ -122,6 +122,7 @@ public:
     bool l2_active() const {return l2_active_;}
     const uint32_t id() const {return id_;}
     bool dhcp_enabled() const {return dhcp_enabled_;}
+    bool dhcp_enabled_v6() const {return dhcp_enabled_v6_;}
     bool dns_enabled() const {return dns_enabled_;}
     uint32_t label() const {return label_;}
     uint32_t l2_label() const {return l2_label_;}
@@ -172,6 +173,7 @@ protected:
     bool l2_active_;
     size_t id_;
     bool dhcp_enabled_;
+    bool dhcp_enabled_v6_;
     bool dns_enabled_;
     bool admin_state_;
     // Used only for test code

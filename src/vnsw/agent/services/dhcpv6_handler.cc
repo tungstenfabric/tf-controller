@@ -269,7 +269,7 @@ bool Dhcpv6Handler::Run() {
         return true;
     }
     vm_itf_ = static_cast<VmInterface *>(itf);
-    if (!vm_itf_->dhcp_enable_config()) {
+    if (!vm_itf_->dhcp_enable_v6_config()) {
         dhcp_proto->IncrStatsError();
         DHCPV6_TRACE(Error, "DHCP request on VM port with dhcp services disabled: "
                      << GetInterfaceIndex());

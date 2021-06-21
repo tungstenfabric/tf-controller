@@ -67,6 +67,7 @@ public:
     void FillObjectLog(sandesh_op::type op, KSyncIntfInfo &info) const;
     bool drop_new_flows() const {return drop_new_flows_;}
     bool dhcp_enable() const {return dhcp_enable_;}
+    bool dhcp_enable_v6() const {return dhcp_enable_v6_;}
     bool layer3_forwarding() const {return layer3_forwarding_;}
     bool bridging() const {return bridging_;}
     bool pbb_interface() const {return pbb_interface_;}
@@ -83,6 +84,7 @@ private:
     string analyzer_name_;
     bool drop_new_flows_;
     bool dhcp_enable_;
+    bool dhcp_enable_v6_;
     uint32_t fd_;       // FD opened for this
     uint32_t flow_key_nh_id_;
     bool has_service_vlan_;

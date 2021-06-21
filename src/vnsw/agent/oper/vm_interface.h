@@ -234,6 +234,7 @@ struct MacVmBindingState : public VmInterfaceState {
 
     mutable const VrfEntry *vrf_;
     mutable bool dhcp_enabled_;
+    mutable bool dhcp_enabled_v6_;
 };
 
 struct VrfTableLabelState : public VmInterfaceState {
@@ -1325,6 +1326,8 @@ public:
     }
     bool dhcp_enable_config() const { return dhcp_enable_; }
     void set_dhcp_enable_config(bool dhcp_enable) {dhcp_enable_= dhcp_enable;}
+    bool dhcp_enable_v6_config() const { return dhcp_enable_v6_; }
+    void set_dhcp_enable_v6_config(bool dhcp_enable_v6) {dhcp_enable_v6_= dhcp_enable_v6;}
     bool do_dhcp_relay() const { return do_dhcp_relay_; }
 
     bool cfg_igmp_enable() const { return cfg_igmp_enable_; }
@@ -1677,6 +1680,7 @@ private:
     // It controls whether the vrouter sends the DHCP requests from VM interface
     // to agent or if it would flood the request in the VN.
     bool dhcp_enable_;
+    bool dhcp_enable_v6_;
     // true if IP is to be obtained from DHCP Relay and not learnt from fabric
     bool do_dhcp_relay_;
     // Proxy ARP mode for interface
@@ -1918,6 +1922,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     bool ecmp_;
     bool ecmp6_;
     bool dhcp_enable_; // is DHCP enabled for the interface (from subnet config)
+    bool dhcp_enable_v6_; 
     VmInterface::ProxyArpMode proxy_arp_mode_;
     bool admin_state_;
     bool disable_policy_;

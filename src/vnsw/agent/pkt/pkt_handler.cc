@@ -313,6 +313,8 @@ PktHandler::PktModuleName PktHandler::ParsePacket(const AgentHdr &hdr,
                              pkt_info->sport == DHCP_CLIENT_PORT)) {
             return DHCP;
         }
+    }
+    if (!is_flow_packet && intf->dhcp_enabled_v6() && (pkt_type == PktType::UDP)) {
         if (pkt_info->ip6 && (pkt_info->dport == DHCPV6_SERVER_PORT ||
                               pkt_info->sport == DHCPV6_CLIENT_PORT)) {
             return DHCPV6;

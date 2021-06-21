@@ -50,7 +50,7 @@ VnIpam::VnIpam(const std::string& ip, uint32_t len, const std::string& gw,
                const std::vector<autogen::DhcpOptionType> &dhcp_options,
                const std::vector<autogen::RouteType> &host_routes,
                uint32_t alloc)
-        : plen(len), installed(false), dhcp_enable(dhcp), ipam_name(name),
+        : plen(len), installed(false), dhcp_enable(dhcp), dhcp_enable_v6(dhcp), ipam_name(name),
           alloc_unit(alloc) {
     boost::system::error_code ec;
     ip_prefix = IpAddress::from_string(ip, ec);
@@ -506,6 +506,10 @@ bool VnEntry::HandleIpamChange(Agent *agent, VnIpam *old_ipam,
     old_ipam->oper_dhcp_options = new_ipam->oper_dhcp_options;
 
     if (old_ipam->dhcp_enable != new_ipam->dhcp_enable) {
+        changed = true;
+    }
+
+    if (old_ipam->dhcp_enable_v6 != new_ipam->dhcp_enable_v6) {
         changed = true;
     }
 
@@ -1276,6 +1280,7 @@ bool VnEntry::DBEntrySandesh(Sandesh *sresp, std::string &name)  const {
         entry.set_gateway(vn_ipam[i].default_gw.to_string());
         entry.set_ipam_name(vn_ipam[i].ipam_name);
         entry.set_dhcp_enable(vn_ipam[i].dhcp_enable ? "true" : "false");
+        entry.set_dhcp_enable_v6(vn_ipam[i].dhcp_enable_v6 ? "true" : "false");
         entry.set_dns_server(vn_ipam[i].dns_server.to_string());
         vn_subnet_sandesh_list.push_back(entry);
     }
@@ -1389,6 +1394,7 @@ void VnEntry::SendObjectLog(AgentLogEvent::type event) const {
         sandesh_ipam.set_gateway_ip(ipam.default_gw.to_string());
         sandesh_ipam.set_ipam_name(ipam.ipam_name);
         sandesh_ipam.set_dhcp_enable(ipam.dhcp_enable ? "true" : "false");
+        sandesh_ipam.set_dhcp_enable_v6(ipam.dhcp_enable_v6 ? "true" : "false");
         sandesh_ipam.set_dns_server(ipam.dns_server.to_string());
         ipam_list.push_back(sandesh_ipam);
         ++it;

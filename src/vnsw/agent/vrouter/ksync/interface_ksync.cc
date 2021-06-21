@@ -48,6 +48,7 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     KSyncNetlinkDBEntry(index), analyzer_name_(entry->analyzer_name_),
     drop_new_flows_(entry->drop_new_flows_),
     dhcp_enable_(entry->dhcp_enable_),
+    dhcp_enable_v6_(entry->dhcp_enable_v6_),
     fd_(kInvalidIndex),
     flow_key_nh_id_(entry->flow_key_nh_id_),
     has_service_vlan_(entry->has_service_vlan_),
@@ -102,6 +103,7 @@ InterfaceKSyncEntry::InterfaceKSyncEntry(InterfaceKSyncObject *obj,
     analyzer_name_(),
     drop_new_flows_(false),
     dhcp_enable_(true),
+    dhcp_enable_v6_(true),
     fd_(-1),
     flow_key_nh_id_(0),
     has_service_vlan_(false),
@@ -273,6 +275,11 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
 
         if (dhcp_enable_ != vm_port->dhcp_enabled()) {
             dhcp_enable_ = vm_port->dhcp_enabled();
+            ret = true;
+        }
+
+        if (dhcp_enable_v6_ != vm_port->dhcp_enabled_v6()) {
+            dhcp_enable_v6_ = vm_port->dhcp_enabled_v6();
             ret = true;
         }
 
@@ -706,7 +713,7 @@ int InterfaceKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
         if (drop_new_flows_) {
             flags |= VIF_FLAG_DROP_NEW_FLOWS;
         }
-        if (dhcp_enable_) {
+        if (dhcp_enable_ || dhcp_enable_v6_) {
             flags |= VIF_FLAG_DHCP_ENABLED;
         }
         if (bridging_) {
