@@ -806,6 +806,11 @@ bool AclDBEntry::PacketMatch(const PacketHeader &packet_header,
     for (iter = acl_entries_.begin();
          iter != acl_entries_.end();
          ++iter) {
+        /* Check  if packet and acl_entry address_family match */
+        if (iter->family() != Address::UNSPEC &&
+            packet_header.family != iter->family()) {
+            continue;
+        }
         const AclEntry::ActionList &al = iter->PacketMatch(packet_header, info);
     AclEntry::ActionList::const_iterator al_it;
     for (al_it = al.begin(); al_it != al.end(); ++al_it) {
@@ -1322,6 +1327,15 @@ bool AclEntrySpec::Populate(const MatchConditionType *match_condition) {
         rs.max = rs.min;
     }
     protocol.push_back(rs);
+
+    // Update AddressFamily based on ethertype in  match_condition
+    if (match_condition->ethertype.compare("IPv6") == 0) {
+        family = Address::INET6;
+    } else if (match_condition->ethertype.compare("IPv4") == 0) {
+        family = Address::INET;
+    } else {
+        family = Address::UNSPEC;
+    }
 
     // check for not icmp/icmpv6
     if ((match_condition->protocol.compare("1") != 0) &&

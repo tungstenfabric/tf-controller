@@ -2305,6 +2305,7 @@ void FlowEntry::SetPacketHeader(PacketHeader *hdr) {
     hdr->dst_sg_id_l = &(data_.dest_sg_id_l);
     hdr->src_tags_ = data_.source_tag_id_l;
     hdr->dst_tags_ = data_.dest_tag_id_l;
+    hdr->family =  key_.family;
 }
 
 // In case of NAT flows, the key fields can change.

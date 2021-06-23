@@ -95,11 +95,11 @@ public:
     static ActionList kEmptyActionList;
     AclEntry() :
         id_(0), type_(TERMINAL), matches_(), actions_(), mirror_entry_(NULL),
-        uuid_() {}
+        uuid_(), family_(Address::UNSPEC) {}
 
     AclEntry(AclType type) :
         id_(0), type_(type), matches_(), actions_(), mirror_entry_(NULL),
-        uuid_() {}
+        uuid_(), family_(Address::UNSPEC) {}
 
     ~AclEntry();
 
@@ -128,6 +128,7 @@ public:
     const AclEntryMatch* Get(uint32_t index) const {
         return matches_[index];
     }
+    const Address::Family& family() const { return family_ ;}
 
 private:
     AclEntryID id_;
@@ -136,6 +137,7 @@ private:
     ActionList actions_;
     MirrorEntryRef mirror_entry_;
     std::string uuid_;
+    Address::Family family_;
     DISALLOW_COPY_AND_ASSIGN(AclEntry);
 };
 

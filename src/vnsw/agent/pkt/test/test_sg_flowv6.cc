@@ -200,7 +200,7 @@ static string AddSgIdAclXmlString(const char *node_name, const char *name, int i
 
 static void AddSgIdAcl(const char *name, int id, int proto,
                        int src_sg_id, int dest_sg_id, const char *action,
-                       AclDirection direction) {
+                       AclDirection direction, const string ethertype = "IPv6") {
     char acl_name[1024];
     uint16_t max_len = sizeof(acl_name) - 1;
     strncpy(acl_name, name, max_len);
@@ -210,7 +210,10 @@ static void AddSgIdAcl(const char *name, int id, int proto,
         strncat(acl_name, "ingress-access-control-list", max_len);
     }
     std::string s = AddSgIdAclXmlString("access-control-list", acl_name, id, proto,
-                                        src_sg_id, dest_sg_id, action);
+            src_sg_id, dest_sg_id, action);
+    if (ethertype.compare("IPv4") == 0)  {
+        boost::replace_all(s, "IPv6", "IPv4");
+    }
     pugi::xml_document xdoc_;
     pugi::xml_parse_result result = xdoc_.load(s.c_str());
     EXPECT_TRUE(result);
@@ -220,7 +223,8 @@ static void AddSgIdAcl(const char *name, int id, int proto,
 
 static void AddSgEntry(const char *sg_name, const char *name, int id,
                        int proto, const char *action, uint32_t sg_id,
-                       uint32_t dest_sg_id, AclDirection direction) {
+                       uint32_t dest_sg_id, AclDirection direction,
+                       const string ethertype = "IPv6") {
     std::stringstream str;
     str << "<security-group-id>" << sg_id << "</security-group-id>" << endl;
     AddNode("security-group", sg_name, id, str.str().c_str());
@@ -229,7 +233,7 @@ static void AddSgEntry(const char *sg_name, const char *name, int id,
     strncpy(acl_name, name, max_len);
     switch (direction) {
         case INGRESS:
-            AddSgIdAcl(name, id, proto, sg_id, dest_sg_id, action, direction);
+            AddSgIdAcl(name, id, proto, sg_id, dest_sg_id, action, direction, ethertype);
             strncat(acl_name, "ingress-access-control-list", max_len);
             AddLink("security-group", sg_name, "access-control-list", acl_name);
             break;
@@ -485,6 +489,52 @@ TEST_F(SgTestV6, Flow_Allow_1) {
                            IPPROTO_ICMPV6, 0, 0, vnet[1]->flow_key_nh()->id()));
     client->WaitForIdle();
     DeleteSG();
+}
+
+// Create SG for v6 but set ethertype as IPv4. Traffic should be deny
+TEST_F(SgTestV6, Flow_Deny_Ethertype_Mismatch) {
+    AddSgEntry("sg2", "ag2", 20, IPPROTO_ICMPV6, "pass", 1, 2, INGRESS, "IPv4");
+    AddLink("virtual-machine-interface", "vnet1", "security-group", "sg2");
+
+    SecurityGroupList sg_id_list;
+    sg_id_list.push_back(2);
+    //Add a remote route pointing to SG id 2
+    boost::system::error_code ec;
+    Ip6Address addr6 = Ip6Address::from_string("::11.1.1.0", ec);
+    Inet6TunnelRouteAdd(bgp_peer_, "vrf1", addr6, 120,
+                        Ip4Address::from_string("10.10.10.10", ec),
+                        TunnelType::AllType(),
+                        vnet[1]->label(), "vn1", sg_id_list,
+                        TagList(), PathPreference());
+    client->WaitForIdle();
+    WAIT_FOR(500, 1000, (RouteFindV6("vrf1", addr6, 120) == true));
+
+    char remote_ip[] = "::11.1.1.10";
+    PhysicalInterface *eth = EthInterfaceGet("vnet0");
+    EXPECT_TRUE(eth != NULL);
+    TxIp6MplsPacket(eth->id(), "10.1.1.10",
+                   Agent::GetInstance()->router_id().to_string().c_str(),
+                   vnet[1]->label(), remote_ip, vnet_addr[1], IPPROTO_ICMPV6);
+    client->WaitForIdle();
+
+    EXPECT_TRUE(ValidateAction(vnet[1]->vrf()->vrf_id(), remote_ip,
+                               vnet_addr[1], IPPROTO_ICMPV6, 0, 0,
+                               TrafficAction::DENY,
+                               vnet[1]->flow_key_nh()->id()));
+    client->WaitForIdle();
+
+    EXPECT_TRUE(FlowDelete(vnet[1]->vrf()->GetName(), vnet_addr[1],
+                           remote_ip, IPPROTO_ICMPV6, 0, 0,
+                           vnet[1]->flow_key_nh()->id()));
+
+    DelLink("virtual-machine-interface", "vnet1", "security-group", "sg2");
+    DelNode("security-group", "sg2");
+    DelSgAclLink("sg2", "ag2");
+    DelSgAcl("ag2");
+    InetUnicastAgentRouteTable::DeleteReq(bgp_peer_,
+            "vrf1", Ip6Address::from_string("::11.1.1.0", ec), 120, NULL);
+    client->WaitForIdle();
+    WAIT_FOR(500, 1000, (RouteFindV6("vrf1", addr6, 120) == false));
 }
 
 // Deny in both forward and reverse directions
