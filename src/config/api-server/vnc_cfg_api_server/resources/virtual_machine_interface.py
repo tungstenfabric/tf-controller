@@ -427,8 +427,13 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 bindings = obj_dict['virtual_machine_interface_bindings']
                 kvps = bindings['key_value_pair']
                 kvp_dict = cls._kvp_to_dict(kvps)
+                profile_str = kvp_dict.get('profile')
+                profile_dict = {}
+                if profile_str:
+                    profile_dict = json.loads(kvp_dict.get('profile'))
                 vnic_type = kvp_dict.get('vnic_type')
-                if vnic_type == 'baremetal':
+                if vnic_type == 'baremetal' and \
+                        profile_dict.get('local_link_information') is None:
                     # During the port-create, use all Zero Mac address as
                     # VMI's MAC
                     mac_addrs_obj = MacAddressesType([u'00:00:00:00:00:00'])
