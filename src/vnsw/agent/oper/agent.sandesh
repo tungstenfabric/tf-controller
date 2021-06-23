@@ -1412,6 +1412,8 @@ struct AclEntrySandeshData {
     11: string uuid;
     /** Match condition for new firewall rules */
     12: optional string match_condition;
+    /** Acl Ethertype */
+    13: string ether_type;
 }
 
 /**

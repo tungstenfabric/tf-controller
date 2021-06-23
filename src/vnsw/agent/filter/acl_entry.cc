@@ -47,6 +47,7 @@ void AclEntry::PopulateAclEntry(const AclEntrySpec &acl_entry_spec)
 {
     id_ = acl_entry_spec.id;
     uuid_ = acl_entry_spec.rule_uuid;
+    family_ = acl_entry_spec.family;
 
     if (acl_entry_spec.match_tags.size()) {
         TagsMatch *tags_match = new TagsMatch(acl_entry_spec.match_tags);
@@ -276,6 +277,12 @@ void AclEntry::SetAclEntrySandeshData(AclEntrySandeshData &data) const {
     }
     // UUID
     data.uuid = uuid_;
+
+    // Setting ether_type based on AclEntry address_family
+    data.ether_type = "IPv4";
+    if (family_ == Address::INET6) {
+        data.ether_type = "IPv6";
+    }
 }
 
 bool AclEntry::IsTerminal() const
