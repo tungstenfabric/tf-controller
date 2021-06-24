@@ -10,7 +10,7 @@ lr(logical routers marked as public) workflow for DC-gateway. Later interfaces i
 are checked against irb_interface list for match. If there is a match, it implies that lr workflow is followed and no
 configs is generated from this template. If the interface is not found in the list, it implies that old workflow is followed
 and this template generates configs to extend VN to the box.#}
-{%     for ri in device_abstract_config.features.get('dc-gateway').get('routing_instances', []) %}
+{%     for ri in device_abstract_config.get('features', {}).get('dc-gateway', {}).get('routing_instances', []) %}
 {%         if 'nat' in ri.get('name', '') %}
 {%             continue %}
 {%         endif %}
@@ -30,7 +30,7 @@ and this template generates configs to extend VN to the box.#}
 {%         if 'evpn' in families %}
 {%             set route_distinguisher = bgp_elem.get('ip_address') %}
 {%             set as_number = bgp_elem.get('autonomous_system') %}
-{%             for ri in device_abstract_config.features.get('dc-gateway').get('routing_instances', []) %}
+{%             for ri in device_abstract_config.features.get('dc-gateway', {}).get('routing_instances', []) %}
 {%                 if 'nat' in ri.get('name', '') %}
 {%                     continue %}
 {%                 endif %}
