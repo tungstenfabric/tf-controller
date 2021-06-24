@@ -117,7 +117,7 @@ public:
     //XXX Any field addition update Reverse API also
     //so that bidirectionaly ACL spec can be update
     AclEntrySpec(): type(NOT_USED), id(0), src_addr_type(AddressMatch::UNKNOWN_TYPE),
-        dst_addr_type(AddressMatch::UNKNOWN_TYPE), terminal(true) { }
+        dst_addr_type(AddressMatch::UNKNOWN_TYPE), terminal(true), family(Address::UNSPEC) { }
     //AclEntrySpec(const AclEntrySpec &rhs);
     typedef boost::uuids::uuid uuid;
     AclTypeSpecT type;
@@ -154,6 +154,9 @@ public:
 
     // Action
     std::vector<ActionSpec> action_l;
+
+    // AddressFamily based on EtherType
+    Address::Family family;
 
     //XXX Any field addition update Reverse API also
     //so that bidirectionaly ACL spec can be update

@@ -14,7 +14,7 @@ struct PacketHeader {
     //typedef std::vector<uint32_t> sgl;
   PacketHeader() : vrf(-1), src_ip(), src_policy_id(),
         dst_ip(), dst_policy_id(),
-        protocol(0), src_port(0), dst_port(0) {};
+        protocol(0), src_port(0), dst_port(0) , family(Address::INET) {};
     uint32_t vrf;
     IpAddress src_ip;
     const VnListType *src_policy_id;
@@ -28,6 +28,7 @@ struct PacketHeader {
     uint8_t protocol;
     uint16_t src_port;
     uint16_t dst_port;
+    Address::Family family;
 };
 
 #endif
