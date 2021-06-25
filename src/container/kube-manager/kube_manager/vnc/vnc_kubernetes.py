@@ -649,7 +649,7 @@ class VncKubernetes(vnc_common.VncCommon):
                 uid = metadata.get('uid')
                 if event_type == 'TF_VNC_SYNC':
                     self._vnc_sync(kind)
-                if kind == 'Pod':
+                elif kind == 'Pod':
                     self.pod_mgr.process(event)
                 elif kind == 'Service':
                     self.service_mgr.process(event)
