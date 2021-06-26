@@ -84,6 +84,8 @@ class KubeMonitor(object):
         self.kube_api_resp = None
         self.kube_api_stream_handle = None
 
+        self._last_schedule_time = time.time()
+
         # Use Kube DB if kube object caching is enabled in config.
         if args.kube_object_cache == 'True':
             self.db = db
@@ -399,7 +401,8 @@ class KubeMonitor(object):
         return resp.iter_lines(chunk_size=10, delimiter='\n')
 
     def _schedule_vnc_sync(self):
-        self._log("%s - _schedule_vnc_sync: schedule" % (self.name))
+        self._last_schedule_time = time.time()
+        self._log("%s - _schedule_vnc_sync" % (self.name))
         # artificial internal event to sync objects periodically
         self.q.put(({'type': 'TF_VNC_SYNC', "object": {"kind": self.kind}}, None))
 
@@ -418,6 +421,11 @@ class KubeMonitor(object):
                       % (self.name, self.resource_version_valid, self.resource_version)
                 self._log(msg)
                 self.register_monitor()
+            else:
+                # check if long time (2 timeouts) there were no sync because of events in pipe
+                tm = 2.0 * (self.timeout if self.timeout is not None else 0)
+                if tm > 0 and time.time() - self._last_schedule_time > tm:
+                    self._schedule_vnc_sync()
 
             line = next(self.kube_api_stream_handle)
             if line:

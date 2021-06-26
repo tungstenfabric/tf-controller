@@ -336,6 +336,8 @@ class VncPod(VncCommon):
             self._logger.debug(
                 "%s - Vrouter %s (pod_node=%s) Not Found for Pod %s: routers=%s"
                 % (self._name, node_ip, pod_node, vm_obj.uuid, vr_names))
+            # pod cannot be linked to vitrual router right now,
+            # it will happens next time on call pod_timer
             return
 
         try:
@@ -675,6 +677,9 @@ class VncPod(VncCommon):
                vm.cluster != vnc_kube_config.cluster_name():
                 continue
             self._create_pod_event('delete', pod_uuid, vm)
+        self._sync_pod2node_links_impl(pod_uuid_set)
+
+    def _sync_pod2node_links_impl(self, pod_uuid_set):
         for uuid_ in pod_uuid_set:
             vm = VirtualMachineKM.get(uuid_)
             if not vm or\
@@ -686,7 +691,10 @@ class VncPod(VncCommon):
                 if not pod:
                     continue
                 self._link_vm_to_node(vm, pod.nodename, pod.host_ip)
-        return
+
+    def _sync_pod2node_links(self):
+        pod_uuid_set = set(PodKM.keys())
+        self._sync_pod2node_links_impl(pod_uuid_set)
 
     def pod_timer(self):
         self._sync_pod_vm()
