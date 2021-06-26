@@ -277,8 +277,11 @@ class KubeMonitor(object):
         # init monitor and assign resourceVersion
         if not self.resource_version:
             self.init_monitor()
-            # schedule tasks for cleanups after alll objects read from kube
-            self._schedule_vnc_sync()
+
+        # schedule tasks for cleanups after all objects read from kube
+        # and before to read new objects from kube
+        # (this sync update PODs that were created before node is up (vrouter is registered))
+        self._schedule_vnc_sync()
 
         url = self.get_component_url()
         params = {

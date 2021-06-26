@@ -326,22 +326,24 @@ class VncPod(VncCommon):
             vm.node_ip = node_ip
 
         vr_uuid = VirtualRouterKM.get_ip_addr_to_uuid(node_ip)
+        vr_names = []
         if vr_uuid is None:
             for vr in list(VirtualRouterKM.values()):
-                if vr.name.lower() == pod_node:
+                vr_names.append(vr.name.lower())
+                if vr.name.lower() == pod_node.lower():
                     vr_uuid = vr.uuid
         if vr_uuid is None:
             self._logger.debug(
-                "%s - Vrouter %s Not Found for Pod %s"
-                % (self._name, node_ip, vm_obj.uuid))
+                "%s - Vrouter %s (pod_node=%s) Not Found for Pod %s: routers=%s"
+                % (self._name, node_ip, pod_node, vm_obj.uuid, vr_names))
             return
 
         try:
             vrouter_obj = self._vnc_lib.virtual_router_read(id=vr_uuid)
         except Exception:
             self._logger.debug(
-                "%s - Vrouter %s Not Found for Pod %s"
-                % (self._name, node_ip, vm_obj.uuid))
+                "%s - Vrouter %s(pod_node=%s) Not Found for Pod %s"
+                % (self._name, node_ip, pod_node, vm_obj.uuid))
             string_buf = StringIO()
             cgitb_hook(file=string_buf, format="text")
             err_msg = string_buf.getvalue()
