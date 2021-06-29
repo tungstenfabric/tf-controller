@@ -1,0 +1,13 @@
+control:
+  node1:
+    ip: 10.84.13.59
+    ssh_user: root
+    ssh_pwd: c0ntrail123
+  node2:
+    ip : <control-node:ip>
+    ssh_user: <username>
+    ssh_pwd: <password>
+  control-3:
+    ip : <control-node:ip3>
+    ssh_user: <username>
+    ssh_pwd: <password>
