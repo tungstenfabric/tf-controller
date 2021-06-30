@@ -48,7 +48,6 @@ from vnc_cfg_api_server.resources.policy_management import\
 from vnc_cfg_api_server.resources.project import ProjectServer
 from vnc_cfg_api_server.resources.qos_config import QosConfigServer
 from vnc_cfg_api_server.resources.route_aggregate import RouteAggregateServer
-from vnc_cfg_api_server.resources.route_table import RouteTableServer
 from vnc_cfg_api_server.resources.route_target import RouteTargetServer
 from vnc_cfg_api_server.resources.routing_instance import RoutingInstanceServer
 from vnc_cfg_api_server.resources.routing_policy import RoutingPolicyServer
