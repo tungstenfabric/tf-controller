@@ -308,6 +308,12 @@ class TestLogicalRouter(test_case.ApiServerTestCase):
         self._vnc_lib.domain_delete(id=domain.uuid)
 
     def test_route_table_prefixes(self):
+        """
+        UT to verify CEM-22625.
+
+        API server to allow applying two network routes (same prefix,
+        different next-hops) to the same Virtual Network.
+        """
         rt = RouteTable("rt1")
         routes = RouteTableType()
         route1 = RouteType(prefix="1.1.1.1/0", next_hop="10.10.10.10",
@@ -317,31 +323,17 @@ class TestLogicalRouter(test_case.ApiServerTestCase):
         routes.add_route(route1)
         routes.add_route(route2)
         rt.set_routes(routes)
-        try:
-            self._vnc_lib.route_table_create(rt)
-            self.fail("Create succeeded unexpectedly: duplicate prefixes "
-                      "routes")
-        except BadRequest:
-            pass
+        self._vnc_lib.route_table_create(rt)
 
         routes.delete_route(route2)
         route2 = RouteType(prefix="1.1.1.2/0", next_hop="20.20.20.20",
                            next_hop_type="ip-address")
         routes.add_route(route2)
         rt.set_routes(routes)
-        self._vnc_lib.route_table_create(rt)
+        self._vnc_lib.route_table_update(rt)
 
+        routes.delete_route(route1)
         routes.delete_route(route2)
-        route2 = RouteType(prefix="1.1.1.1/0", next_hop="20.20.20.20",
-                           next_hop_type="ip-address")
-        routes.add_route(route2)
-        rt.set_routes(routes)
-        try:
-            self._vnc_lib.route_table_update(rt)
-            self.failt("Update succeeded unexpectedly - duplicate prefixe"
-                       "routes")
-        except BadRequest:
-            pass
 
     def test_vm_port_not_added_to_lr(self):
         project = self._vnc_lib.project_read(
