@@ -42,11 +42,7 @@ set groups {{cfg_group}} vlans {{vlan_name}} description "{{vlan.get('descriptio
 {%             endif %}
 set groups {{cfg_group}} vlans {{vlan_name}} l3-interface {{int_name}}
 {%         endfor %}
-{%         if device_model.startswith('qfx51') and vni != '' and (vni|int) < 4095 %}
-set groups {{cfg_group}} vlans {{vlan_name}} vlan-id {{vni}}
-{%         else %}
 set groups {{cfg_group}} vlans {{vlan_name}} vlan-id none
-{%         endif %}
 {%         if vni != '' and descr.startswith("Routed Master LR") == False %}
 set groups {{cfg_group}} vlans {{vlan_name}} vxlan vni {{vni}}
 {%         endif %}
