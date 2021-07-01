@@ -383,11 +383,11 @@ void VnswInterfaceListenerBase::HandleInterfaceEvent(const Event *event) {
         ResetSeen(event->interface_, false);
     } else {
         bool up = (event->flags_ & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING);
+        std::vector<std::string> interface_info;
         if (agent_->is_l3mh() == false &&
             ((event->type_ == VnswInterfaceListenerBase::VR_FABRIC) ||
              (event->type_ == VnswInterfaceListenerBase::VR_BOND_SLAVES)))
         {
-            std::vector<std::string> interface_info;
             std::istringstream iss(event->interface_);
             for(std::string s; iss >> s; )
                 interface_info.push_back(s);
@@ -432,16 +432,32 @@ void VnswInterfaceListenerBase::HandleInterfaceEvent(const Event *event) {
         } else if (agent_->is_l3mh() &&
                    event->type_ == VnswInterfaceListenerBase::VR_FABRIC) {
             InterfaceTable *table = agent_->interface_table();
-            PhysicalInterfaceKey key(event->interface_);
-            PhysicalInterface *intf = static_cast<PhysicalInterface *>(
+            if (table && IsHostLinkStateUp(event->interface_) != up &&
+                !agent_->vrouter_on_host_dpdk()) {
+                PhysicalInterfaceKey key(event->interface_);
+                PhysicalInterface *intf = static_cast<PhysicalInterface *>(
                     table->FindActiveEntry(&key));
-            if (intf && IsHostLinkStateUp(event->interface_) != up) {
-                DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
-                req.key.reset(new PhysicalInterfaceKey(event->interface_));
-                req.data.reset(new PhysicalInterfaceOsOperStateData(event->type_,
-                                   event->interface_, event->interface_, up));
-                if (table) {
+                if (intf) {
+                    DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+                    req.key.reset(new PhysicalInterfaceKey(event->interface_));
+                    req.data.reset(new PhysicalInterfaceOsOperStateData(event->type_,
+                                    event->interface_, event->interface_, up));
                     table->Enqueue(&req);
+                }
+            }
+            if (table && agent_->vrouter_on_host_dpdk()) {
+                boost::split(interface_info, event->interface_, boost::is_any_of(" "));
+                if (interface_info.size() == NL_MSG_PARAMS) {
+                    const char *index = interface_info[INDEX_INTERFACE_ID].c_str();
+                    PhysicalInterface *intf = static_cast<PhysicalInterface *>(
+                        table->FindInterface(atoi(index)));
+                    if (intf) {
+                        DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+                        req.key.reset(new PhysicalInterfaceKey(intf->display_name()));
+                        req.data.reset(new PhysicalInterfaceOsOperStateData(event->type_,
+                                   interface_info[INDEX_INTERFACE_NAME], interface_info[INDEX_INTERFACE_DRV_NAME], up));
+                       table->Enqueue(&req);
+                    }
                 }
             }
         }
