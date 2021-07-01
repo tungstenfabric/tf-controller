@@ -279,7 +279,6 @@ public:
     }
 
     AgentPath *FindLocalPath() const;
-    AgentPath *FindInetEvpnPath() const;
     AgentPath *FindLocalVmPortPath() const;
     AgentPath *GetLocalVmPortPath() const;
     const AgentPath *GetActivePath() const;
