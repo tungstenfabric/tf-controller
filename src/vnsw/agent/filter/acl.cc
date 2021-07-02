@@ -808,6 +808,7 @@ bool AclDBEntry::PacketMatch(const PacketHeader &packet_header,
          ++iter) {
         /* Check  if packet and acl_entry address_family match */
         if (iter->family() != Address::UNSPEC &&
+            packet_header.family != Address::UNSPEC &&
             packet_header.family != iter->family()) {
             continue;
         }
