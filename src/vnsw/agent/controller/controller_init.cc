@@ -525,9 +525,13 @@ const string VNController::MakeConnectionPrefix(bool is_dns) const {
 
 void VNController::DeleteConnectionInfo(const std::string &addr, bool is_dns)
                                         const {
+    boost::asio::ip::tcp::endpoint ep;
+    boost::system::error_code ec;
+    ep.address(AddressFromString(addr, &ec));
+    const string name =  ep.address().to_string();
     const string &name_prefix = MakeConnectionPrefix(is_dns);
     agent_->connection_state()->Delete(process::ConnectionType::XMPP,
-                                           name_prefix + addr);
+                                           name_prefix + name);
 }
 
 void VNController::DelPeerWalkDone(AgentXmppChannel* ptr) {
