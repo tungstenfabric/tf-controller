@@ -2301,6 +2301,7 @@ void FlowEntry::SetOutPacketHeader(PacketHeader *hdr) {
     hdr->dst_sg_id_l = &(rflow->data().source_sg_id_l);
     hdr->src_tags_ = rflow->data_.dest_tag_id_l;
     hdr->dst_tags_ = rflow->data_.source_tag_id_l;
+    hdr->family = key_.family;
 }
 
 void FlowEntry::SetAclInfo(SessionPolicy *sp, SessionPolicy *rsp,
