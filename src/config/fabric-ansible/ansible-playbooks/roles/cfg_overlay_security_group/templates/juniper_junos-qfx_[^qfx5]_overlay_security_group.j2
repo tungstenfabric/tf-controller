@@ -60,6 +60,8 @@ set groups {{cfg_group}} firewall family ethernet-switching filter {{filter_name
 {%             endfor %}{# /* for each terms under firewall filter */ #}
 {%         endfor %}{# /* for each firewall filter */ #}
 {%         if ns_deny_filterlist|length > 0 %}
+set groups {{cfg_group}} firewall family ethernet-switching filter denyall term tallowlacp from ether-type 0x8809
+set groups {{cfg_group}} firewall family ethernet-switching filter denyall term tallowlacp then accept
 set groups {{cfg_group}} firewall family ethernet-switching filter denyall term tdenyall then discard
 {%         endif %}
 {%     endif %}{# /* firewall valid */ #}
