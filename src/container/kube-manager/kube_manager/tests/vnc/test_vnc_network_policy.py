@@ -1144,3 +1144,21 @@ class VncNetworkPolicyTest(KMTestCase):
         self._validate_network_policy_resources(np_name, np_uuid, np_spec,
                                                 validate_delete=True,
                                                 namespace=self.ns_name)
+
+    def test_add_match_expression_in_podselector(self):
+        # Create namespace.
+        self._create_namespace(self.ns_name, None, True)
+
+        np_name = unittest.TestCase.id(self)
+        np_spec = {
+            'ingress': [{'from': [{'podSelector': {'matchExpressions': [{'key': 'tier', 'operator': 'In', 'values': 'app'}]}}]}],
+            'podSelector': {'matchLabels': {'tier': 'web'}},
+            'policyTypes': ['Ingress', 'Egress']
+        }
+
+        np_uuid = self._add_update_network_policy(np_name, np_spec)
+        self._validate_network_policy_resources(np_name, np_uuid, np_spec)
+
+        self._delete_network_policy(np_name, np_uuid, np_spec)
+        self._validate_network_policy_resources(np_name, np_uuid, np_spec,
+                                                validate_delete=True)

@@ -151,6 +151,7 @@ class FWRule(object):
     @classmethod
     def _get_tags(cls, nps_selector, namespace=None):
         tags = []
+        selector_expression_dict = {}
         selector_labels_dict =\
             dict(nps_selector.get('matchLabels', {}))
         if selector_labels_dict:
@@ -159,6 +160,18 @@ class FWRule(object):
                     XLabelCache.get_namespace_label(namespace))
             tags = VncSecurityPolicy.get_tags_fn(
                 selector_labels_dict, True)
+        expressions_list = nps_selector.get('matchExpressions', {})
+        if expressions_list:
+            for expression in expressions_list:
+                if expression.get('operator') == 'In':
+                    for values in expression.get('values', []):
+                        selector_expression_dict[expression.get('key')] = values
+        if selector_expression_dict:
+            if namespace:
+                selector_expression_dict.update(
+                    XLabelCache.get_namespace_label(namespace))
+            tags = VncSecurityPolicy.get_tags_fn(
+                selector_expression_dict, True)
         return tags
 
     @classmethod
