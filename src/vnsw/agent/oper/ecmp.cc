@@ -240,16 +240,24 @@ void EcmpData::AppendEcmpPath(AgentRoute *rt, AgentPath *path) {
     component_nh_key_list = comp_nh->AddComponentNHKey(comp_nh_key_ptr,
                                                        composite_nh_policy);
     // Form the request for Inet4UnicastEcmpRoute and invoke AddChangePath
+    // Get the existing comp_nh key and do a resync
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    nh_req.key.reset(new CompositeNHKey(Composite::LOCAL_ECMP,
-                                        composite_nh_policy,
-                                        component_nh_key_list,
-                                        vrf_name_));
-    nh_req.data.reset(new CompositeNHData());
+    DBEntryBase::KeyPtr comp_nh_key = comp_nh->GetDBRequestKey();
+    NextHopKey *cnh_key = static_cast<NextHopKey *>(comp_nh_key.get());
+    cnh_key->sub_op_ = AgentKey::RESYNC;
+    CompositeNHKey *composite_nh_key = new CompositeNHKey(Composite::LOCAL_ECMP,
+                                                          composite_nh_policy,
+                                                          component_nh_key_list,
+                                                          vrf_name_);
+    nh_req.key = comp_nh_key;
+    nh_req.data.reset(new CompositeNHData(component_nh_key_list));
     nh_req_.Swap(&nh_req);
 
     label_ = ecmp_path_->label();
-    ModifyEcmpPath();
+    ModifyEcmpPath(composite_nh_key);
+    comp_nh =
+        static_cast<const CompositeNH *>(ecmp_path_->ComputeNextHop(agent_));
+    path->SyncRoute(true);
 
     RouteInfo rt_info;
     rt->FillTrace(rt_info, AgentRoute::CHANGE_PATH, path);
@@ -307,19 +315,22 @@ bool EcmpData::EcmpDeletePath(AgentRoute *rt) {
     return true;
 }
 
-bool EcmpData::UpdateNh() {
+bool EcmpData::UpdateNh(CompositeNHKey *composite_nh_key) {
     NextHop *nh = NULL;
     bool ret = false;
 
     agent_->nexthop_table()->Process(nh_req_);
     NextHopKey *key = static_cast<NextHopKey *>(nh_req_.key.get());
+    if (composite_nh_key) {
+        key = static_cast<NextHopKey *>(composite_nh_key);
+    }
     // Create MPLS label and point it to Composite NH
     if (alloc_label_) {
         label_ = agent_->mpls_table()->CreateRouteLabel(label_, key, vrf_name_,
                                                         route_str_);
     }
     nh = static_cast<NextHop *>(agent_->nexthop_table()->
-                                FindActiveEntry(nh_req_.key.get()));
+                                FindActiveEntry(key));
     if (nh == NULL) {
         VrfEntry *vrf = agent_->vrf_table()->FindVrfFromName(vrf_name_);
         if (vrf->IsDeleted())
@@ -382,10 +393,10 @@ bool EcmpData::SyncParams() {
     return ret;
 }
 
-bool EcmpData::ModifyEcmpPath() {
+bool EcmpData::ModifyEcmpPath(CompositeNHKey *composite_nh_key) {
     bool ret = false;
 
-    if (UpdateNh()) {
+    if (UpdateNh(composite_nh_key)) {
         ret = true;
     }
 
@@ -465,13 +476,17 @@ void EcmpData::DeleteComponentNH(AgentRoute *rt, AgentPath *path) {
 
     // Form the request for Inet4UnicastEcmpRoute and invoke AddChangePath
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    nh_req.key.reset(new CompositeNHKey(Composite::LOCAL_ECMP,
-                                        comp_nh_policy, component_nh_key_list,
-                                        vrf_name_));
-    nh_req.data.reset(new CompositeNHData());
+    DBEntryBase::KeyPtr comp_nh_key = comp_nh->GetDBRequestKey();
+    NextHopKey *cnh_key = static_cast<NextHopKey *>(comp_nh_key.get());
+    cnh_key->sub_op_ = AgentKey::RESYNC;
+    CompositeNHKey *composite_nh_key = new CompositeNHKey(Composite::LOCAL_ECMP,
+            comp_nh_policy, component_nh_key_list,
+            vrf_name_);
+    nh_req.key = comp_nh_key;
+    nh_req.data.reset(new CompositeNHData(component_nh_key_list));
     nh_req_.Swap(&nh_req);
     label_ = ecmp_path_->label();
-    UpdateNh();
+    UpdateNh(composite_nh_key);
 
     RouteInfo rt_info;
     rt->FillTrace(rt_info, AgentRoute::CHANGE_PATH, path);

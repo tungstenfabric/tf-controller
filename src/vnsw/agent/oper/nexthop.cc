@@ -1908,6 +1908,7 @@ void CompositeNHKey::ChangeTunnelType(TunnelType::Type tunnel_type) {
 bool CompositeNH::ChangeEntry(const DBRequest* req) {
     bool changed = false;
     CompositeNHData *data = static_cast<CompositeNHData *>(req->data.get());
+    NextHopKey *key =  static_cast <NextHopKey *>(req->key.get());
     if (data && data->pbb_nh_ != pbb_nh_) {
         pbb_nh_ = data->pbb_nh_;
         changed = true;
@@ -1920,6 +1921,14 @@ bool CompositeNH::ChangeEntry(const DBRequest* req) {
 
     if (data && layer2_control_word_ != data->layer2_control_word_) {
         layer2_control_word_ = data->layer2_control_word_;
+        changed = true;
+    }
+
+    if (key->sub_op_ == AgentKey::RESYNC  &&
+       (data && data->component_nh_key_list_.empty() == false)) {
+            //component_nh_key_list_ != data->component_nh_key_list_) {
+        /* PRADEEP: Should this be modified at the end ? */
+        component_nh_key_list_ = data->component_nh_key_list_;
         changed = true;
     }
 

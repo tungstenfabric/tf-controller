@@ -37,6 +37,7 @@ struct PortInfo input10[] = {
     {"vif11", 11, "1.1.1.10", "00:01:01:01:01:11", 1, 11},
     {"vif12", 12, "1.1.1.10", "00:01:01:01:01:12", 1, 12},
     {"vif13", 13, "1.1.1.10", "00:01:01:01:01:13", 1, 13},
+    {"vif100", 100, "1.1.1.10", "00:01:01:01:01:64", 1, 100},
 };
 
 // ECMP Ports-2 - All members are local
@@ -65,6 +66,15 @@ struct PortInfo input22[] = {
     {"vif111", 111, "2.1.1.10", "00:02:01:01:01:11", 2, 111},
     {"vif112", 112, "2.1.1.10", "00:02:01:01:01:12", 2, 112},
     {"vif113", 113, "2.1.1.10", "00:02:01:01:01:13", 2, 113},
+};
+
+struct PortInfo input40_1[] = {
+    {"vif41", 41, "1.1.1.41", "00:01:01:01:01:41", 1, 41},
+};
+
+struct PortInfo input40_2[] = {
+    {"vif42", 42, "1.1.1.41", "00:01:01:01:01:42", 1, 42},
+    {"vif43", 43, "1.1.1.41", "00:01:01:01:01:43", 1, 43},
 };
 
 class EcmpTest : public ::testing::Test {
@@ -134,9 +144,11 @@ public:
         client->WaitForIdle();
 
         DeleteVmportEnv(input1, 2, false);
-        DeleteVmportEnv(input10, 3, false);
+        DeleteVmportEnv(input10, 4, false);
         DeleteVmportEnv(input11, 3, false);
         DeleteVmportEnv(input13, 3, true);
+        DeleteVmportEnv(input40_1, 1, false);
+        DeleteVmportEnv(input40_2, 2, false);
         client->WaitForIdle();
 
         DelIPAM("vn1");

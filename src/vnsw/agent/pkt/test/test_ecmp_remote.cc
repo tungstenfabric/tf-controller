@@ -15,6 +15,7 @@ struct PortInfo input2[] = {
     {"vnet2", 2, "2.1.1.1", "00:00:00:01:01:01", 2, 2},
     {"vnet3", 3, "2.1.1.1", "00:00:00:02:02:01", 2, 3},
     {"vnet4", 4, "2.1.1.1", "00:00:00:02:02:01", 2, 4},
+    {"vnet100", 100, "2.1.1.1", "00:00:00:02:02:02", 2, 100},
 };
 
 struct PortInfo input3[] = {
@@ -156,7 +157,7 @@ class RemoteEcmpTest : public ::testing::Test {
                 "default-project:vn4");
         client->WaitForIdle();
         DeleteVmportEnv(input1, 1, false);
-        DeleteVmportEnv(input2, 3, true);
+        DeleteVmportEnv(input2, 4, true);
         DeleteVmportFIpEnv(input3, 3, true);
         DeleteVmportFIpEnv(input4, 1, true);
         agent_->fabric_inet4_unicast_table()->DeleteReq(bgp_peer,
@@ -183,6 +184,25 @@ class RemoteEcmpTest : public ::testing::Test {
     }
 
 public:
+    const VmInterface *GetOutVmi(const FlowEntry *flow) {
+        const VrfEntry *vrf = VrfGet(flow->data().flow_dest_vrf);
+        const AgentRoute *rt =
+            FlowEntry::GetUcRoute(vrf, flow->key().dst_addr);
+        const NextHop *nh = rt->GetActiveNextHop();
+
+        if (dynamic_cast<const CompositeNH *>(nh)) {
+            const CompositeNH *cnh = dynamic_cast<const CompositeNH *>(nh);
+            nh = cnh->GetNH(flow->GetEcmpIndex());
+        }
+
+        if (dynamic_cast<const InterfaceNH *>(nh)) {
+            const InterfaceNH *intf_nh = dynamic_cast<const InterfaceNH *>(nh);
+            return dynamic_cast<const VmInterface *>(intf_nh->GetInterface());
+        }
+
+        return NULL;
+    }
+
     FlowProto *get_flow_proto() const { return flow_proto_; }
     uint32_t GetServiceVlanNH(uint32_t intf_id, std::string vrf_name) const {
         const VmInterface *vm_intf = VmInterfaceGet(intf_id);
@@ -1220,6 +1240,214 @@ TEST_F(RemoteEcmpTest, DISABLED_EcmpTest_2) {
     sleep(1);
     client->WaitForIdle();
     WAIT_FOR(1000, 1000, (get_flow_proto()->FlowCount() == 0));
+}
+
+//Member NH list change from n to n+1, where n > 1.
+//Composite NH and its id should remain same.
+TEST_F(RemoteEcmpTest, IncreamentComponentNH) {
+    //VIP of vrf2 interfaces
+    char vm_ip[80] = "2.1.1.1";
+    char router_id[80];
+    char remote_server_ip[80];
+    char remote_vm_ip[80];
+
+    strcpy(router_id, agent_->router_id().to_string().c_str());
+    strcpy(remote_server_ip, remote_server_ip_.to_string().c_str());
+    strcpy(remote_vm_ip, remote_vm_ip1_.to_string().c_str());
+
+    Ip4Address ip = Ip4Address::from_string("2.1.1.1");
+    InetUnicastRouteEntry *rt = RouteGet("vrf2", ip, 32);
+    EXPECT_TRUE(rt != NULL);
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    const CompositeNH *cnh = dynamic_cast<const CompositeNH *>(rt->GetActiveNextHop());
+    uint32_t cnh_id = cnh->id();
+    uint32_t component_nh_count = cnh->ActiveComponentNHCount();
+
+    // Create 1 more VMI with same VIP,
+    CreateVmportWithEcmp(input2+3, 1);
+    client->WaitForIdle();
+    EXPECT_TRUE(VmPortActive(100));
+    rt = RouteGet("vrf2", ip, 32);
+    const CompositeNH *cnh1 = dynamic_cast<const CompositeNH *>(rt->GetActiveNextHop());
+    EXPECT_TRUE(rt != NULL);
+    // Composite NH and its id should remain same.
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    EXPECT_TRUE(cnh1 == cnh);
+    EXPECT_TRUE(cnh1->id() == cnh_id);
+    EXPECT_TRUE(cnh1->ActiveComponentNHCount() == component_nh_count+1);
+}
+
+//Member NH list change from n+1 to n, where n > 1.
+//Composite NH and its id should remain same.
+TEST_F(RemoteEcmpTest, DecrementComponentNH) {
+    //VIP of vrf2 interfaces
+    char vm_ip[80] = "2.1.1.1";
+    char router_id[80];
+    char remote_server_ip[80];
+    char remote_vm_ip[80];
+
+    strcpy(router_id, agent_->router_id().to_string().c_str());
+    strcpy(remote_server_ip, remote_server_ip_.to_string().c_str());
+    strcpy(remote_vm_ip, remote_vm_ip1_.to_string().c_str());
+
+    Ip4Address ip = Ip4Address::from_string("2.1.1.1");
+    InetUnicastRouteEntry *rt = RouteGet("vrf2", ip, 32);
+    EXPECT_TRUE(rt != NULL);
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    const CompositeNH *cnh = dynamic_cast<const CompositeNH *>(rt->GetActiveNextHop());
+    uint32_t cnh_id = cnh->id();
+    uint32_t component_nh_count = cnh->ActiveComponentNHCount();
+
+    // Delete one VMI
+    DeleteVmportEnv(input2, 1, false);
+    client->WaitForIdle();
+
+    rt = RouteGet("vrf2", ip, 32);
+    const CompositeNH *cnh1 = dynamic_cast<const CompositeNH *>(rt->GetActiveNextHop());
+    EXPECT_TRUE(rt != NULL);
+    // Composite NH and its id should remain same.
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    //EXPECT_TRUE(cnh1 == cnh);
+    //EXPECT_TRUE(cnh1->id() == cnh_id);
+    EXPECT_TRUE(cnh1->ActiveComponentNHCount() == component_nh_count-1);
+}
+
+// Ping from fabric to VIP with ECMP route.
+// Delete interface not being used in ECMP. Flow must be revaluated
+// Verify that flow ecmp index remains same
+TEST_F(RemoteEcmpTest, FabricToEcmp_DeleteMember) {
+    //VIP of vrf2 interfaces
+    char vm_ip[80] = "2.1.1.1";
+    char router_id[80];
+    char remote_server_ip[80];
+    char remote_vm_ip[80];
+
+    strcpy(router_id, agent_->router_id().to_string().c_str());
+    strcpy(remote_server_ip, remote_server_ip_.to_string().c_str());
+    strcpy(remote_vm_ip, remote_vm_ip1_.to_string().c_str());
+
+    Ip4Address ip = Ip4Address::from_string("2.1.1.1");
+    InetUnicastRouteEntry *rt = RouteGet("vrf2", ip, 32);
+    EXPECT_TRUE(rt != NULL);
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    int mpls_label = rt->GetActiveLabel();
+    int nh_id = GetActiveLabel(mpls_label)->nexthop()->id();
+
+    TxIpMplsPacket(eth_intf_id_, remote_server_ip, router_id, mpls_label,
+                   remote_vm_ip, vm_ip, 1, 10);
+    client->WaitForIdle();
+
+    FlowEntry *flow = FlowGet(VrfGet("vrf2")->vrf_id(),
+                               remote_vm_ip, vm_ip, 1, 0, 0,  nh_id);
+    EXPECT_TRUE(flow != NULL);
+    uint32_t  ecmp_idx = flow->data().component_nh_idx;
+    EXPECT_TRUE(ecmp_idx != CompositeNH::kInvalidComponentNHIdx);
+
+    const VmInterface *out_vmi = GetOutVmi(flow);
+    FlowEntry *rflow = flow->reverse_flow_entry();
+    EXPECT_TRUE(rflow->data().component_nh_idx ==
+                CompositeNH::kInvalidComponentNHIdx);
+    EXPECT_TRUE(rflow->rpf_nh() == out_vmi->flow_key_nh());
+
+    struct PortInfo input2_2[] = {
+        {"vnet2", 2, "2.1.1.1", "00:00:00:01:01:01", 2, 2},
+    };
+    struct PortInfo input2_3[] = {
+        {"vnet3", 3, "2.1.1.1", "00:00:00:02:02:01", 2, 3},
+    };
+    struct PortInfo input2_4[] = {
+        {"vnet4", 4, "2.1.1.1", "00:00:00:02:02:01", 2, 4},
+    };
+    // Delete interface other than one being used
+    if (out_vmi->name() == "vnet2") {
+        DeleteVmportEnv(input2_3, 1, false);
+    }
+    if (out_vmi->name() == "vnet3") {
+        DeleteVmportEnv(input2_4, 1, false);
+    }
+    if (out_vmi->name() == "vnet4") {
+        DeleteVmportEnv(input2_2,  1, false);
+    }
+
+    rt = RouteGet("vrf2", ip, 32);
+    EXPECT_TRUE(rt != NULL);
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    const CompositeNH *cnh = dynamic_cast<const CompositeNH *>(rt->GetActiveNextHop());
+    // Verify that there should be 2 component NH in composite NH
+    EXPECT_TRUE(cnh->ActiveComponentNHCount() == 2);
+
+    flow = FlowGet(VrfGet("vrf2")->vrf_id(),
+                               remote_vm_ip, vm_ip, 1, 0, 0,  nh_id);
+    // ECMP index should change.
+    EXPECT_EQ(ecmp_idx, flow->data().component_nh_idx);
+    EXPECT_TRUE(flow->IsEcmpFlow());
+    //Reverse flow should be set and should also be ECMP
+    rflow = flow->reverse_flow_entry();
+    EXPECT_TRUE(rflow->data().component_nh_idx ==
+                CompositeNH::kInvalidComponentNHIdx);
+    // out-vmi and rpf-nh must not change for reverse flow
+    EXPECT_TRUE(rflow->intf_entry() == out_vmi);
+    EXPECT_TRUE(rflow->rpf_nh() == out_vmi->flow_key_nh());
+}
+
+// Ping from from fabric to VMI with ECMP route.
+// Increase number of component members in composite NH
+// Ecmp index should not change.
+// Mpls label should not change
+TEST_F(RemoteEcmpTest, FabricToEcmp_AddMember) {
+    //VIP of vrf2 interfaces
+    char vm_ip[80] = "2.1.1.1";
+    char router_id[80];
+    char remote_server_ip[80];
+    char remote_vm_ip[80];
+
+    strcpy(router_id, agent_->router_id().to_string().c_str());
+    strcpy(remote_server_ip, remote_server_ip_.to_string().c_str());
+    strcpy(remote_vm_ip, remote_vm_ip1_.to_string().c_str());
+
+    Ip4Address ip = Ip4Address::from_string("2.1.1.1");
+    InetUnicastRouteEntry *rt = RouteGet("vrf2", ip, 32);
+    EXPECT_TRUE(rt != NULL);
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    int mpls_label = rt->GetActiveLabel();
+    int nh_id = GetActiveLabel(mpls_label)->nexthop()->id();
+
+    TxIpMplsPacket(eth_intf_id_, remote_server_ip, router_id, mpls_label,
+                   remote_vm_ip, vm_ip, 1, 10);
+    client->WaitForIdle();
+
+    FlowEntry *flow = FlowGet(VrfGet("vrf2")->vrf_id(),
+                               remote_vm_ip, vm_ip, 1, 0, 0,  nh_id);
+    EXPECT_TRUE(flow != NULL);
+    uint32_t  ecmp_idx = flow->data().component_nh_idx;
+    EXPECT_TRUE(ecmp_idx != CompositeNH::kInvalidComponentNHIdx);
+
+    const VmInterface *out_vmi = GetOutVmi(flow);
+    FlowEntry *rflow = flow->reverse_flow_entry();
+    //Reverse flow should be set and should also be ECMP
+    EXPECT_TRUE(rflow->data().component_nh_idx ==
+                CompositeNH::kInvalidComponentNHIdx);
+    EXPECT_TRUE(rflow->rpf_nh() == out_vmi->flow_key_nh());
+
+    // Create 1 more VMI with same VIP,
+    // Verify that there should be 4 component NH in composite NH
+    CreateVmportWithEcmp(input2+3, 1);
+    client->WaitForIdle();
+    EXPECT_TRUE(VmPortActive(100));
+
+    rt = RouteGet("vrf2", ip, 32);
+    int mpls_label_new = rt->GetActiveLabel();
+    EXPECT_TRUE(rt != NULL);
+    //Mpls label should not change
+    EXPECT_TRUE(mpls_label_new == mpls_label);
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+    const CompositeNH *cnh = dynamic_cast<const CompositeNH *>(rt->GetActiveNextHop());
+    EXPECT_TRUE(cnh->ActiveComponentNHCount() == 4);
+
+    EXPECT_TRUE(flow != NULL);
+    //Ecmp index should not change
+    EXPECT_TRUE(flow->data().component_nh_idx == ecmp_idx);
+
 }
 
 int main(int argc, char *argv[]) {

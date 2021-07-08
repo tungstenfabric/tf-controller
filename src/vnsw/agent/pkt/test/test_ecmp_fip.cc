@@ -70,7 +70,7 @@ public:
 
         DeleteVmportEnv(input21, 1, false);
         DeleteVmportEnv(input22, 3, true);
-        DelIPAM("vn2");
+        //DelIPAM("vn2"); /* PRADEEP */
         client->WaitForIdle();
 
         EcmpTest::TearDown();
@@ -343,7 +343,7 @@ TEST_F(EcmpFipTest, Local_Src_Fip_EcmpToNonEcmp_3) {
     FlushFlowTable();
     client->WaitForIdle();
 
-    DelIPAM("vn3");
+    //DelIPAM("vn3"); /* PRADEEP */
     DeleteVmportEnv(input, 3, true);
     client->WaitForIdle();
 }
