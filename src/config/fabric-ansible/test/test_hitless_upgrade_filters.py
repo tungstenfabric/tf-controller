@@ -28,6 +28,7 @@ from hitless_upgrade_filters import FilterModule
 sys.path.append('../fabric-ansible/ansible-playbooks/module_utils')
 
 from job_manager import job_utils
+from job_manager.job_utils import JobVncApi
 from vnc_api.vnc_api import VncApi
 
 from vnc_api.vnc_api import (
@@ -62,6 +63,10 @@ from vnc_api.vnc_api import (
     DeviceCredential,
     VpgInterfaceParametersType
 )
+
+mock_prs=dict()
+mock_images=dict()
+mock_vpgs=dict()
 
 DGSC = "default-global-system-config"
 
@@ -1469,6 +1474,292 @@ mock_validate_result_failure = {
     'status': "failure"
 }
 
+mock_physical_router_list={
+  "physical-routers": [
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_1"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "spine"
+          ],
+          "attr": None,
+          "uuid": "a67f3ed3-2c87-47c5-ad44-c78b7081509d"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e511",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "DC-Gateway"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e511"
+    },
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_2"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "leaf"
+          ],
+          "attr": None,
+          "uuid": "daf602a1-8514-436f-a4c6-36fc50450e44"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e512",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "CRB-Access"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e512"
+    },
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_3"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "leaf"
+          ],
+          "attr": None,
+          "uuid": "daf602a1-8514-436f-a4c6-36fc50450e44"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e513",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "CRB-Access"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e513"
+    },
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_4"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "spine"
+          ],
+          "attr": None,
+          "uuid": "a67f3ed3-2c87-47c5-ad44-c78b7081509d"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e514",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "DC-Gateway"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e514"
+    },
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_5"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "leaf"
+          ],
+          "attr": None,
+          "uuid": "daf602a1-8514-436f-a4c6-36fc50450e44"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e515",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "CRB-Access"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e515"
+    },
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_6"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "leaf"
+          ],
+          "attr": None,
+          "uuid": "daf602a1-8514-436f-a4c6-36fc50450e44"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e516",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "CRB-Access"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e516"
+    },
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_7"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "leaf"
+          ],
+          "attr": None,
+          "uuid": "daf602a1-8514-436f-a4c6-36fc50450e44"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e517",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "CRB-Access"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e517"
+    },
+    {
+      "fq_name": [
+        "default-global-system-config",
+        "device_8"
+      ],
+      "physical_role_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "leaf"
+          ],
+          "attr": None,
+          "uuid": "daf602a1-8514-436f-a4c6-36fc50450e44"
+        }
+      ],
+      "fabric_refs": [
+        {
+          "to": [
+            "default-global-system-config",
+            "fab01"
+          ],
+          "attr": None,
+          "uuid": "dfb0cd32-46ca-4996-b155-806878d4e500"
+        }
+      ],
+      "parent_type": "global-system-config",
+      "uuid": "dfb0cd32-46ca-4996-b155-806878d4e518",
+      "parent_uuid": "9cf6c71a-0788-4285-bafa-6336cece2ef7",
+      "routing_bridging_roles": {
+        "rb_roles": [
+          "CRB-Access"
+        ]
+      },
+      "href": "http://172.17.0.4:34337/physical-router/dfb0cd32-46ca-4996-b155-806878d4e518"
+    }
+  ]
+}
+
+mock_vpg_list={'virtual-port-groups': [{'uuid': 'dfb0cd32-46ca-4996-b155-806878d4e521', 'fq_name': ['default-global-system-config', 'fab01', 'vpg_1'], 'href': 'http://172.17.0.4:54199/virtual-port-group/dfb0cd32-46ca-4996-b155-806878d4e521'}, {'uuid': 'dfb0cd32-46ca-4996-b155-806878d4e522', 'fq_name': ['default-global-system-config', 'fab01', 'vpg_2'], 'href': 'http://172.17.0.4:54199/virtual-port-group/dfb0cd32-46ca-4996-b155-806878d4e522'}]}
 
 class TestHitlessUpgradeFilters(test_case.JobTestCase):
     fake_zk_client = FakeKazooClient()
@@ -1493,9 +1784,7 @@ class TestHitlessUpgradeFilters(test_case.JobTestCase):
         return
 
     def tearDown(self):
-        self._newMock.reset()
         self._initMock.reset()
-        self._readMock.reset()
         super(TestHitlessUpgradeFilters, self).tearDown()
 
     def init_test(self):
@@ -1511,11 +1800,107 @@ class TestHitlessUpgradeFilters(test_case.JobTestCase):
             self.mockVirtualPortGroup(id)
         flexmock(job_utils.random).should_receive('shuffle').and_return()
         self._initMock = flexmock(VncApi).should_receive('__init__')
-        self._newMock = flexmock(VncApi).should_receive('__new__'). \
-            and_return(self._vnc_lib)
-        self._readMock = flexmock(self._vnc_lib). \
-            should_receive('job_template_read').\
-            and_return(self.mockJobTemplate("hitless_upgrade_strategy_template"))
+
+        fake_vnc_lib = flexmock()
+        flexmock(JobVncApi).should_receive('vnc_init').and_return(fake_vnc_lib)
+        fake_vnc_lib.should_receive('__init__')
+        flexmock(fake_vnc_lib).should_receive(
+            'job_template_read').and_return(self.mockJobTemplate("hitless_upgrade_strategy_template"))
+        flexmock(fake_vnc_lib).should_receive(
+            'fabric_read').and_return(
+            self.mockFabricObj())
+        flexmock(fake_vnc_lib).should_receive(
+            'fabric_update')
+
+        flexmock(fake_vnc_lib).should_receive(
+            'physical_routers_list'
+        ).and_return(mock_physical_router_list)
+
+        for id, val in list(mock_device_image_db.items()):
+            flexmock(fake_vnc_lib).should_receive(
+                'device_image_read'
+            ).with_args(id=id).and_return(mock_images[id])
+
+        for id, val in list(mock_physical_router_db.items()):
+            flexmock(fake_vnc_lib).should_receive(
+                'physical_router_read'
+            ).with_args(id=id).and_return(mock_prs[id])
+
+        flexmock(JobVncApi).should_receive(
+            'decrypt_password'
+        ).and_return(b'c0ntrail123')
+
+        flexmock(fake_vnc_lib).should_receive(
+            'virtual_port_groups_list'
+        ).and_return(mock_vpg_list)
+
+        vpg_obj_1=flexmock(
+            fq_name = ['default-global-system-config', 'fab01', 'vpg_1'],
+            get_physical_interface_refs = lambda:[{'to': ['default-global-system-config', 'device_2', 'pi_1'], 'uuid': 'dfb0cd32-46ca-4996-b155-806878d4e531', 'href': 'http://172.17.0.4:43827/physical-interface/dfb0cd32-46ca-4996-b155-806878d4e531'}, {'to': ['default-global-system-config', 'device_3', 'pi_2'], 'uuid': 'dfb0cd32-46ca-4996-b155-806878d4e532', 'href': 'http://172.17.0.4:43827/physical-interface/dfb0cd32-46ca-4996-b155-806878d4e532'}]
+        )
+        vpg_obj_2=flexmock(
+            fq_name= ['default-global-system-config', 'fab01', 'vpg_2'],
+            get_physical_interface_refs= lambda:[{'to': ['default-global-system-config', 'device_5', 'pi_3'], 'uuid': 'dfb0cd32-46ca-4996-b155-806878d4e533', 'href': 'http://172.17.0.4:43827/physical-interface/dfb0cd32-46ca-4996-b155-806878d4e533'}, {'to': ['default-global-system-config', 'device_6', 'pi_4'], 'uuid': 'dfb0cd32-46ca-4996-b155-806878d4e534', 'href': 'http://172.17.0.4:43827/physical-interface/dfb0cd32-46ca-4996-b155-806878d4e534'}]
+        )
+
+        flexmock(fake_vnc_lib).should_receive(
+            'virtual_port_group_read'
+        ).with_args(id=VPG_UUID1).and_return(vpg_obj_1)
+
+        flexmock(fake_vnc_lib).should_receive(
+            'virtual_port_group_read'
+        ).with_args(id=VPG_UUID2).and_return(vpg_obj_2)
+
+        pi_1_mock=flexmock(
+        fq_name= ['default-global-system-config', 'device_2', 'pi_1'],
+        parent_uuid = DEV_UUID2,
+        uuid = PI_UUID1
+        )
+        pi_2_mock=flexmock(
+        fq_name= ['default-global-system-config', 'device_3', 'pi_2'],
+        parent_uuid= DEV_UUID3,
+        uuid= PI_UUID2
+        )
+
+        pi_3_mock=flexmock(
+        uuid= PI_UUID3,
+        fq_name= ['default-global-system-config', 'device_5', 'pi_3'],
+        parent_uuid= DEV_UUID5
+        )
+        pi_4_mock=flexmock(
+        uuid= PI_UUID4,
+        parent_uuid= DEV_UUID6,
+        fq_name= ['default-global-system-config', 'device_6', 'pi_4']
+        )
+
+        flexmock(fake_vnc_lib).should_receive(
+            'physical_interface_read'
+        ).with_args(id=PI_UUID1).and_return(pi_1_mock)
+        flexmock(fake_vnc_lib).should_receive(
+            'physical_interface_read'
+        ).with_args(id=PI_UUID2).and_return(pi_2_mock)
+        flexmock(fake_vnc_lib).should_receive(
+            'physical_interface_read'
+        ).with_args(id=PI_UUID3).and_return(pi_3_mock)
+        flexmock(fake_vnc_lib).should_receive(
+            'physical_interface_read'
+        ).with_args(id=PI_UUID4).and_return(pi_4_mock)
+
+    def mockFabricObj(self):
+        fabric_obj = Fabric(name='fab01')
+        fabric_obj.uuid = FAB_UUID1
+        fabric_obj.fq_name = [DGSC, 'fab01']
+        cred = UserCredentials(username='root',
+                               password='c0ntrail123')
+        credentials = DeviceCredential(credential=cred)
+        fabric_credentials = DeviceCredentialList(
+            device_credential=[credentials])
+        fabric_obj.set_fabric_credentials(fabric_credentials)
+        fabric_obj.set_annotations(KeyValuePairs([
+            KeyValuePair(key='hitless_upgrade_input',
+                         value=mock_job_template_input_schema)]))
+        return fabric_obj
+    #end mockFabricObj
 
     def test_get_hitless_upgrade_plan(self):
         hitless_filter = FilterModule()
@@ -1620,6 +2005,7 @@ class TestHitlessUpgradeFilters(test_case.JobTestCase):
                 device_image_device_family = image['device_image_device_family']
             )
             image_obj.uuid = id
+            mock_images[id]=image_obj
             self._vnc_lib.device_image_create(image_obj)
         except RefsExistError:
             logger.info("Device image {} already exists".format(id))
@@ -1648,6 +2034,7 @@ class TestHitlessUpgradeFilters(test_case.JobTestCase):
             device_obj.add_fabric(self.fabric_obj)
             phy_role = self._vnc_lib.physical_role_read(fq_name=['default-global-system-config',device["physical_router_role"]])
             device_obj.set_physical_role(phy_role)
+            mock_prs[id]=device_obj
             self._vnc_lib.physical_router_create(device_obj)
         except RefsExistError:
             logger.info("Physical router {} already exists".format(id))

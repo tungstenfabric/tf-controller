@@ -19,6 +19,8 @@ and this template generates configs to extend VN to the box.#}
 {%             for routing_interface in ri_routing_interfaces %}
 {# adding all routing interfaces from the internal virtual networks which are marked public #}
 {%                 if routing_interface.name not in ns.irb_interface_list %}
+{#                     Setting the public_network = true, as we need to set default-term only once, that is we are skipping from type5 and setting from here #}
+{%                     set ns.public_network = 'yes' %}
 {%                     do ns.irb_interface_list.append(routing_interface.name) %}
 {%                 endif %}
 {%             endfor %}
@@ -94,9 +96,9 @@ set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filt
 set groups {{cfg_group}} routing-instances {{contrail_l3_ri}} routing-options static route 0.0.0.0/0 next-table inet.0
 {%                 endif %}
 {%             endfor%}
-{%             if ns.public_network == 'yes' %}
-set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term default-term then accept
-{%             endif %}
 {%         endif %}
 {%     endfor %}
+{%     if ns.public_network == 'yes' %}
+set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term default-term then accept
+{%     endif %}
 {% endif  %}

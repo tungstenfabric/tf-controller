@@ -395,9 +395,10 @@ set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filt
 {%                 endif %}
 {%             endif %}{# /* virtual_network_is_internal */ #}
 {%         endfor %}
-{%    if ns.public_network == true %}
+{# Skippking this default-term setting from type5 and using the one from networking template - this is only for the 2011 branch as it is using the monolithic way of code. #}
+{#    if ns.public_network == true %}
 set groups {{cfg_group}} firewall family inet filter redirect_to_public_vrf_filter term default-term then accept
-{%    endif %}
+{%    endif #}
 {%     for rp in device_abstract_config.get('routing_protocols', []) %}
 {%         for igmp_snoop in rp.get('igmp_snooping', []) %}
 {%             for vlan in igmp_snoop.get('vlans', []) %}

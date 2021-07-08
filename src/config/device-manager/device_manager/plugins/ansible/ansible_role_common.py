@@ -253,15 +253,15 @@ class AnsibleRoleCommon(AnsibleConf):
             pr = self.physical_router
             service_port_ids = DMUtils.get_service_ports(network_id)
             ms_interfaces = []
-            service_ports = pr.junos_service_ports. \
-                get('service_port')
+            ms_enabled, ms_ifc = self.is_service_interface_enabled(
+                ifc_prefix="ms")
             ms_interfaces.append(
                 JunosInterface(
-                    service_ports[0] + "." + str(service_port_ids[0]),
+                    ms_ifc + "." + str(service_port_ids[0]),
                     'l3', 0))
             ms_interfaces.append(
                 JunosInterface(
-                    service_ports[0] + "." + str(service_port_ids[1]),
+                    ms_ifc + "." + str(service_port_ids[1]),
                     'l3', 0))
             self.add_ref_to_list(ri.get_ingress_interfaces(),
                                  ms_interfaces[0].name)
@@ -541,8 +541,6 @@ class AnsibleRoleCommon(AnsibleConf):
                                                    network_id)
                 intf_unit.set_comment(DMUtils.vn_irb_fip_inet_comment(vn))
                 intf_unit.set_family("inet")
-                intf_unit.add_firewall_filters(
-                    DMUtils.make_private_vrf_filter_name(ri_name))
                 self.add_ref_to_list(ri.get_routing_interfaces(), intf_name)
 
                 subnet_list = self._get_subnets_in_vn(private_vn_obj)
@@ -750,12 +748,12 @@ class AnsibleRoleCommon(AnsibleConf):
                 # So for junos family, we need to check for the CGNAT VN.
                 if pr.device_family == 'junos':
                     if lr.cgnat_vn:
+                        ms_enabled, ms_ifc = self.is_service_interface_enabled(
+                            ifc_prefix="ms")
                         cgnat_vn_obj = VirtualNetworkDM.get(lr.cgnat_vn)
-                        if pr.is_junos_service_ports_enabled() and \
-                                pr.junos_service_ports.get('service_port') and \
-                                str(pr.junos_service_ports.get('service_port')[
-                                        0]).strip().startswith("ms-"):
-                            self.construct_cgnat_config(lr, cgnat_vn_obj)
+                        if ms_enabled:
+                            self.construct_cgnat_config(lr, cgnat_vn_obj,
+                                                        ms_ifc)
             vn_list += lr.get_connected_networks(include_internal=True,
                                                  pr_uuid=pr.uuid)
 
@@ -803,12 +801,12 @@ class AnsibleRoleCommon(AnsibleConf):
         return vn_dict
     # end
 
-    def construct_cgnat_config(self, lr, cgnat_vn):
+    def construct_cgnat_config(self, lr, cgnat_vn, ms_ifc):
         vn_obj = cgnat_vn
         pr = self.physical_router
         private_vns = lr.get_connected_networks(include_internal=False,
                                                  pr_uuid=pr.uuid)
-        if pr.is_junos_service_ports_enabled():
+        if ms_ifc:
             internal_vn = lr.virtual_network
             internal_vn_obj = VirtualNetworkDM.get(internal_vn)
             service_port_ids = DMUtils.get_service_ports(
@@ -824,15 +822,13 @@ class AnsibleRoleCommon(AnsibleConf):
                                                  internal_vn_obj.vn_network_id,
                                                  'l3', True)
                 interfaces = []
-                service_ports = pr.junos_service_ports. \
-                    get('service_port')
                 interfaces.append(
                     JunosInterface(
-                        service_ports[0] + "." + str(service_port_ids[0]),
+                        ms_ifc + "." + str(service_port_ids[0]),
                         'l3', 0))
                 interfaces.append(
                     JunosInterface(
-                        service_ports[0] + "." + str(service_port_ids[1]),
+                        ms_ifc + "." + str(service_port_ids[1]),
                         'l3', 0))
                 ex_rt, im_rt = vn_obj.get_route_targets()
                 ri_conf = {'ri_name': vrf_name, 'vn': vn_obj,
@@ -1191,7 +1187,8 @@ class AnsibleRoleCommon(AnsibleConf):
                                     if lr.cgnat_vn:
                                         lr_vns.append(lr.cgnat_vn)
                                         # Add the service interface to the RI
-                                        ms_enabled, ms_ifc = self.is_ms_interface_enabled()
+                                        ms_enabled, ms_ifc = \
+                                            self.is_service_interface_enabled(ifc_prefix="ms")
                                         if ms_enabled:
                                             ri_conf['service_ifc'] = ms_ifc
                                             ri_conf['cgnat_vn'] = lr.cgnat_vn
@@ -1218,13 +1215,10 @@ class AnsibleRoleCommon(AnsibleConf):
                                             ri_conf['export_targets'] |= exports
                         self.add_routing_instance(ri_conf)
                     break
-            pr = self.physical_router
+            si_enabled, si_ifc = self.is_service_interface_enabled(ifc_prefix="si")
             if export_set and\
                     self.physical_router.is_junos_service_ports_enabled() and\
-                    len(vn_obj.instance_ip_map) > 0 and \
-                    pr.junos_service_ports.get('service_port') and str(\
-                    pr.junos_service_ports.get('service_port')[
-                        0]).strip().startswith("si-"):
+                    len(vn_obj.instance_ip_map) > 0 and si_enabled:
                 service_port_ids = DMUtils.get_service_ports(
                     vn_obj.vn_network_id)
                 if not self.physical_router \
@@ -1242,11 +1236,11 @@ class AnsibleRoleCommon(AnsibleConf):
                         get('service_port')
                     interfaces.append(
                         JunosInterface(
-                            service_ports[0] + "." + str(service_port_ids[0]),
+                            si_ifc + "." + str(service_port_ids[0]),
                             'l3', 0))
                     interfaces.append(
                         JunosInterface(
-                            service_ports[0] + "." + str(service_port_ids[1]),
+                            si_ifc + "." + str(service_port_ids[1]),
                             'l3', 0))
                     ri_conf = {'ri_name': vrf_name, 'vn': vn_obj,
                                'import_targets': import_set,
@@ -1376,12 +1370,15 @@ class AnsibleRoleCommon(AnsibleConf):
                     for target in ri.get_export_targets():
                         self.add_to_list(vni_ri_right.get_export_targets(), target)
 
-    def is_ms_interface_enabled(self):
+    def is_service_interface_enabled(self, ifc_prefix="si"):
         pr = self.physical_router
         if pr.is_junos_service_ports_enabled():
-            sp = pr.junos_service_ports.get('service_port')
-            if sp and type(sp) is list and len(sp) > 0:
-                return str(sp[0]).strip().startswith("ms-"), str(sp[0]).strip()
+            sps = pr.junos_service_ports.get('service_port')
+            if sps and type(sps) is list:
+                for sp in sps:
+                    if sp and str(sp).strip().startswith("{}-".format(
+                            ifc_prefix)):
+                        return True, str(sp).strip()
         return False, None
 
     def build_service_chain_irb_bd_config(self, svc_app_obj, left_right_params):
