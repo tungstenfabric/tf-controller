@@ -2,23 +2,26 @@
   block:
     - name: check to see if the ansible file for the vendor and family exists
       stat:
-        path: "{{role_path}}/templates/{{prouter_vendor}}_{{prouter_family}}.j2"
+        path: "../tasks/{{prouter_vendor}}_{{prouter_family}}.yml"
       register: p
 
-    - name: Use vendor and family specific template
+    - name: Execute commands on device
       block:
+        - include_tasks: "{{prouter_vendor}}_{{prouter_family}}.yml"
         - name: set the jinja template file path
           set_fact:
             jinja_file_path: "../templates/{{prouter_vendor}}_{{prouter_family}}.j2"
       when: p.stat.exists == True
 
     # this is assuming device family does not matter
-    - name: Use vendor specific template
+    - name: Execute commands on device from default location
       block:
+        - include_tasks: "{{prouter_vendor}}.yml"
         - name: set the jinja template file path
           set_fact:
             jinja_file_path: "../templates/{{prouter_vendor}}.j2"
       when: p.stat.exists == False
+
 
     # validate schema including to check if the device_info is set as part of the ansible file
     - name: Validate Input Schema -- device_info
@@ -89,3 +92,4 @@
 
     # this is when the playbook has to end for other unhandled failures
     - meta: end_play
+
