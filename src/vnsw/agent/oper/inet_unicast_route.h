@@ -125,6 +125,8 @@ public:
     bool proxy_arp() const {return proxy_arp_;}
     virtual AgentPath *FindPathUsingKeyData(const AgentRouteKey *key,
                                             const AgentRouteData *data) const;
+    bool IsVrfGatewayRoute() const;
+    bool IsVrfDnsRoute() const;
 
 protected:
     friend class InetUnicastAgentRouteTable;

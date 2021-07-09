@@ -920,6 +920,32 @@ bool InetUnicastRouteEntry::DBEntrySandesh(Sandesh *sresp, IpAddress addr,
     return false;
 }
 
+bool InetUnicastRouteEntry::IsVrfGatewayRoute() const {
+    VnEntry *vn = vrf()->vn();
+    if (!vn) {
+        return false;
+    }
+
+    IpAddress gw_ip = vn->GetGatewayFromIpam(addr());
+    if (gw_ip == addr()) {
+        return true;
+    }
+    return false;
+}
+
+bool InetUnicastRouteEntry::IsVrfDnsRoute() const {
+    VnEntry *vn = vrf()->vn();
+    if (!vn) {
+        return false;
+    }
+
+    IpAddress dns_ip = vn->GetDnsFromIpam(addr());
+    if (dns_ip == addr()) {
+        return true;
+    }
+    return false;
+}
+
 void UnresolvedRoute::HandleRequest() const {
     VrfEntry *vrf = Agent::GetInstance()->vrf_table()->FindVrfFromId(0);
     if (!vrf) {
