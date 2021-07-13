@@ -39,12 +39,34 @@
 #include <cmn/agent_factory.h>
 
 #include "contrail_agent_init.h"
+#define MAX_RETRY 60
 namespace opt = boost::program_options;
 
 void RouterIdDepInit(Agent *agent) {
     // Parse config and then connect
     Agent::GetInstance()->controller()->Connect();
     LOG(DEBUG, "Router ID Dependent modules (Nova and BGP) INITIALIZED");
+}
+
+bool is_vhost_interface_up() {
+    struct ifreq ifr;
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    memset(&ifr, 0, sizeof(ifr));
+    strcpy(ifr.ifr_name, "vhost0");
+    int err = ioctl(sock, SIOCGIFFLAGS, &ifr);
+    if (err < 0 || !(ifr.ifr_flags & IFF_UP)) {
+        close(sock);
+        LOG(DEBUG, "vhost is down");
+        return false;
+    }
+    err = ioctl(sock, SIOCGIFADDR, &ifr);
+    if (err < 0) {
+        close(sock);
+        LOG(DEBUG, "vhost is up, but ip is not set");
+        return false;
+    }
+    close(sock);
+    return true;
 }
 
 bool GetBuildInfo(std::string &build_info_str) {
@@ -88,6 +110,27 @@ int main(int argc, char *argv[]) {
 
     // Read agent parameters from config file and arguments
     params.Init(init_file, argv[0]);
+
+    if (!params.cat_is_agent_mocked() &&
+         params.loopback_ip() == Ip4Address(0)) {
+
+        uint16_t i;
+
+        for (i = 0; i < MAX_RETRY; i++) {
+            std::cout << "INFO: wait vhost0 to be initilaized... "
+                << i << "/" << MAX_RETRY << std::endl;
+            if (is_vhost_interface_up()) {
+                std::cout << "INFO: vhost0 is ready." << std::endl;
+                break;
+            }
+            usleep(5000000); //sleep for 5 seconds
+        }
+
+        if (i == MAX_RETRY) {
+            std::cout << "INFO: vhost0 is not ready." << std::endl;
+            exit(0);
+        }
+    }
 
     // Initialize TBB
     // Call to GetScheduler::GetInstance() will also create Task Scheduler
