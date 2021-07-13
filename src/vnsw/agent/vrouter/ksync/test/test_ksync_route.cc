@@ -17,7 +17,7 @@ struct PortInfo input[] = {
 };
 
 IpamInfo ipam_info[] = {
-    {"1.1.1.0", 24, "1.1.1.10", true, 1, "1.1.1.20"},
+    {"1.1.1.0", 24, "1.1.1.10", true},
 };
 
 class TestKSyncRoute : public ::testing::Test {
@@ -239,89 +239,6 @@ TEST_F(TestKSyncRoute, remote_evpn_route_1) {
     client->WaitForIdle();
     EXPECT_TRUE(vrf1_obj_->GetIpMacBinding(vrf1_, addr, NULL)
                 == MacAddress::ZeroMac());
-}
-
-// IP-MAC binding should happen for inet evpn routes
-TEST_F(TestKSyncRoute, remote_evpn_route_2) {
-    uint32_t ethernet_tag = 1000;
-    MacAddress mac("00:01:02:03:04:05");
-    IpAddress addr = IpAddress(Ip4Address::from_string("1.1.1.100"));
-    AddRemoteEvpnRoute(bgp_peer_, mac, addr, ethernet_tag, "vn1");
-
-    BridgeRouteEntry *rt = vrf1_bridge_table_->FindRoute(mac);
-    EXPECT_TRUE(rt != NULL);
-
-    InetUnicastRouteEntry *uc_rt = vrf1_uc_table_->FindLPM(addr);
-    EXPECT_TRUE(uc_rt != NULL);
-
-    const AgentPath *path = uc_rt->FindInetEvpnPath();
-    EXPECT_TRUE(path != NULL);
-    EXPECT_TRUE(path->peer()->GetType() == Peer::INET_EVPN_PEER);
-
-    EXPECT_TRUE(vrf1_obj_->RouteNeedsMacBinding(uc_rt));
-    EXPECT_TRUE(vrf1_obj_->GetIpMacBinding(vrf1_, addr, NULL) == mac);
-
-    vrf1_evpn_table_->DeleteReq(bgp_peer_, "vrf1", mac, addr, 32, ethernet_tag,
-                                (new ControllerVmRoute(bgp_peer_)));
-    client->WaitForIdle();
-    EXPECT_TRUE(vrf1_obj_->GetIpMacBinding(vrf1_, addr, NULL)
-                == MacAddress::ZeroMac());
-}
-
-// Add a evpn type-2 gateway route
-// Verify that mac binding doesn't happen for this route
-TEST_F(TestKSyncRoute, remote_evpn_type2_gateway_route) {
-    uint32_t ethernet_tag = 1000;
-    MacAddress mac("00:01:02:03:04:10");
-    // 1.1.1.10 is the gateway ip for ipam(ipam_info) 1.1.1.0/24 subnet
-    IpAddress addr = IpAddress(Ip4Address::from_string("1.1.1.10"));
-    AddRemoteEvpnRoute(bgp_peer_, mac, addr, ethernet_tag, "vn1");
-
-    BridgeRouteEntry *rt = vrf1_bridge_table_->FindRoute(mac);
-    EXPECT_TRUE(rt != NULL);
-
-    InetUnicastRouteEntry *uc_rt = vrf1_uc_table_->FindLPM(addr);
-    EXPECT_TRUE(uc_rt != NULL);
-    // Verify its a vrf's gateway route
-    EXPECT_TRUE(uc_rt->IsVrfGatewayRoute());
-
-    const AgentPath *path = uc_rt->FindInetEvpnPath();
-    EXPECT_TRUE(path != NULL);
-    EXPECT_TRUE(path->peer()->GetType() == Peer::INET_EVPN_PEER);
-
-    // Mac binding should not happen
-    EXPECT_FALSE(vrf1_obj_->RouteNeedsMacBinding(uc_rt));
-
-    vrf1_evpn_table_->DeleteReq(bgp_peer_, "vrf1", mac, addr, 32, ethernet_tag,
-                                (new ControllerVmRoute(bgp_peer_)));
-}
-
-// Add a evpn type-2 dns route
-// Verify that mac binding doesn't happen for this route
-TEST_F(TestKSyncRoute, remote_evpn_type2_dns_route) {
-    uint32_t ethernet_tag = 1000;
-    MacAddress mac("00:01:02:03:04:20");
-    // 1.1.1.20 is the dns ip for ipam(ipam_info) 1.1.1.0/24 subnet
-    IpAddress addr = IpAddress(Ip4Address::from_string("1.1.1.20"));
-    AddRemoteEvpnRoute(bgp_peer_, mac, addr, ethernet_tag, "vn1");
-
-    BridgeRouteEntry *rt = vrf1_bridge_table_->FindRoute(mac);
-    EXPECT_TRUE(rt != NULL);
-
-    InetUnicastRouteEntry *uc_rt = vrf1_uc_table_->FindLPM(addr);
-    EXPECT_TRUE(uc_rt != NULL);
-    // Verify its a vrf's dns route
-    EXPECT_TRUE(uc_rt->IsVrfDnsRoute());
-
-    const AgentPath *path = uc_rt->FindInetEvpnPath();
-    EXPECT_TRUE(path != NULL);
-    EXPECT_TRUE(path->peer()->GetType() == Peer::INET_EVPN_PEER);
-
-    // Mac binding should not happen
-    EXPECT_FALSE(vrf1_obj_->RouteNeedsMacBinding(uc_rt));
-
-    vrf1_evpn_table_->DeleteReq(bgp_peer_, "vrf1", mac, addr, 32, ethernet_tag,
-                                (new ControllerVmRoute(bgp_peer_)));
 }
 
 // proxy_arp_ and flood_ flags for route with different VNs
