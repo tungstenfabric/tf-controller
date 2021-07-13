@@ -592,6 +592,7 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 # manage_vpg function needs to be called regardless of
                 # phy_links
                 vpg_refs = obj_dict.get('virtual_port_group_refs') or None
+
                 # For Ironic user with OpenStack Ussuri release,
                 # During port create, there won't be vpg_refs or binding
                 # profile. _manage_vpg_association will fail further in
@@ -808,12 +809,44 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 # manage_vpg function needs to be called regardless
                 # of phy_links
                 vpg_refs = obj_dict.get('virtual_port_group_refs') or None
+
                 # For Ironic user, port update does not include vpg_refs.
                 # vpg_refs are required in _manage_vpg_association for
                 # retreiving fabric name for running fabric validations
                 # CEM-21992
                 if not vpg_refs:
                     vpg_refs = read_result.get('virtual_port_group_back_refs')
+
+                # check if any of the phy_links has ref to VPG
+                # if yes, retrive that vpg ref - CEM-22753
+                if links and not vpg_refs:
+                    for link in links:
+                        # retrieving one PI is good enough
+                        pi_name = link['port_id']
+                        pr_name = link['switch_info']
+                        pi_fq_name = ['default-global-system-config',
+                                      pr_name, pi_name]
+                        try:
+                            pi_uuid = db_conn.fq_name_to_uuid(
+                                'physical_interface',
+                                pi_fq_name)
+                        except NoIdError:
+                            msg = ('Retrive physical_interface (%s) failed '
+                                   'while trying to read vpg refs'
+                                   % pi_fq_name)
+                            return (False, (404, msg))
+                        ok, pi_db_result = db_conn.dbe_read(
+                            obj_type='physical_interface',
+                            obj_id=pi_uuid,
+                            obj_fields=['virtual_port_group_back_refs'])
+                        if not ok:
+                            return ok, pi_db_result
+                        vpg_refs = pi_db_result.get(
+                            'virtual_port_group_back_refs')
+                        if vpg_refs:
+                            vpg_name = vpg_refs[0]['to'][-1]
+                        break
+
                 vpg_uuid, ret_dict, zk_update_kwargs = \
                     cls._manage_vpg_association(
                         id, cls.server, db_conn, links,
@@ -822,6 +855,7 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                         vlan_id=vlan_id,
                         is_untagged_vlan=is_untagged_vlan,
                         db_is_untagged_vlan=db_is_untagged_vlan)
+
                 if not vpg_uuid:
                     return vpg_uuid, ret_dict, zk_update_kwargs
                 obj_dict['port_virtual_port_group_id'] = vpg_uuid
@@ -925,10 +959,12 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                             'value': vif_type,
                             'position': 'vif_type',
                         }
-                        if vif_details_prop is not None:
-                            prop_collection_updates.append(vif_details_prop)
-                        if vif_type_prop is not None:
-                            prop_collection_updates.append(vif_type_prop)
+                        if prop_collection_updates is not None:
+                            if vif_details_prop is not None:
+                                prop_collection_updates.append(
+                                    vif_details_prop)
+                            if vif_type_prop is not None:
+                                prop_collection_updates.append(vif_type_prop)
 
         ok, result = cls._check_port_security_and_address_pairs(obj_dict,
                                                                 read_result)
@@ -1559,6 +1595,9 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                 fabric_name = link['fabric']
             else:  # use default fabric if it's not in link local information
                 fabric_name = 'default-fabric'
+                # Use from vpg_refs_dict if any - CEM-22753
+                if vpg_refs_dict:
+                    fabric_name = vpg_refs_dict[0]['to'][-2]
 
             phy_interface_name = link['port_id']
             prouter_name = link['switch_info']
