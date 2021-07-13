@@ -135,14 +135,8 @@ class DataCenterInterconnectServer(ResourceMixin, DataCenterInterconnect):
         : On error, return True, http error code and http error message
         : On success, returns True and error message is empty.
         """
-        if read_dci is not None:
-            dci_rps = dci.get('routing_policy_refs') or \
-                read_dci.get('routing_policy_refs') or []
-            dci_vns = dci.get('virtual_network_refs') or \
-                read_dci.get('virtual_network_refs') or []
-        else:
-            dci_rps = dci.get('routing_policy_refs') or []
-            dci_vns = dci.get('virtual_network_refs') or []
+        dci_rps = dci.get('routing_policy_refs') or []
+        dci_vns = dci.get('virtual_network_refs') or []
         if len(dci_rps) > 0 and len(dci_vns) > 0:
             return False, (
                 400, "Provide either routing_policy_refs or "
