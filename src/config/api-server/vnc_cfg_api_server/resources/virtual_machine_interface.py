@@ -310,7 +310,7 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
     @classmethod
     def _kvps_prop_update(cls, obj_dict, kvps, prop_collection_updates,
                           vif_type, vif_details, prop_set):
-        if obj_dict:
+        if 'virtual_machine_interface_bindings' in obj_dict:
             cls._kvps_update(kvps, vif_type)
             cls._kvps_update(kvps, vif_details)
         else:
