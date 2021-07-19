@@ -514,6 +514,12 @@ bool ControllerVmRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
     //Interpret label sent by control node
     if (tunnel_bmap_ == TunnelType::VxlanType()) {
         //Only VXLAN encap is sent, so label is VXLAN
+        // For vxlan routing vn external route label can change , add path change, for non
+        // vxlan routing vn vxlan id in route update for vmi rt prefix is not expected to change
+        if (rt->vrf() && rt->vrf()->vn() &&
+            rt->vrf()->vn()->vxlan_routing_vn() && path->vxlan_id() != label_) {
+            ret = true;
+        }
         path->set_vxlan_id(label_);
         if (path->label() != MplsTable::kInvalidLabel) {
             path->set_label(MplsTable::kInvalidLabel);

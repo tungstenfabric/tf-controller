@@ -598,6 +598,7 @@ TEST_F(VxlanRoutingTest, Lrvrf_Evpn_Type5_RouteAdd) {
     nh.af = Address::INET;
     nh.address = "10.10.10.10";;
     nh.label = routing_vrf->vxlan_id();
+    nh.tunnel_encapsulation_list.tunnel_encapsulation.push_back("vxlan");
     item.entry.next_hops.next_hop.push_back(nh);
     item.entry.med = 0;
 
@@ -607,11 +608,30 @@ TEST_F(VxlanRoutingTest, Lrvrf_Evpn_Type5_RouteAdd) {
             Ip4Address::from_string("4.4.4.0"),
             24, &item);
     client->WaitForIdle();
-
     // Validate route is copied to bridge vrf
     InetUnicastRouteEntry *rt1 =
         RouteGet(VrfGet("vrf1")->GetName(), Ip4Address::from_string("4.4.4.0"), 24);
     EXPECT_TRUE( rt1 != NULL);
+
+    // Validate external rt gets installed in lr vrf with lr vn vxlan id
+    InetUnicastRouteEntry *lr_vrf_rt =
+        RouteGet(VrfGet(routing_vrf_name)->GetName(), Ip4Address::from_string("4.4.4.0"), 24);
+    EXPECT_TRUE( lr_vrf_rt != NULL);
+    EXPECT_TRUE(lr_vrf_rt->GetActivePath()->vxlan_id() == routing_vrf->vxlan_id());
+
+    // Change label in external rt and verify rt path vxlan id is set to new label
+    nh.label = 8282;
+    item.entry.next_hops.next_hop[0] = nh;
+
+    bgp_peer_->GetAgentXmppChannel()->AddEvpnRoute(routing_vrf_name,
+            "00:00:00:00:00:00",
+            Ip4Address::from_string("4.4.4.0"),
+            24, &item);
+    client->WaitForIdle();
+    InetUnicastRouteEntry *lr_vrf_rt1 =
+        RouteGet(VrfGet(routing_vrf_name)->GetName(), Ip4Address::from_string("4.4.4.0"), 24);
+    EXPECT_TRUE( lr_vrf_rt1 != NULL);
+    EXPECT_TRUE(lr_vrf_rt1->GetActivePath()->vxlan_id() == 8282);
 
     // Verify route for local vm port is still present
     ValidateBridge("vrf1", routing_vrf_name,
