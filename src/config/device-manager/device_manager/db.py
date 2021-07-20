@@ -2497,6 +2497,7 @@ class LogicalRouterDM(DBBaseDM):
         self.dhcp_relay_servers = set()
         # internal virtual-network
         self.virtual_network = None
+        self.cgnat_vn = None
         self.is_master = False
         self.loopback_pr_ip_map = {}
         self.loopback_vn_uuid = None
@@ -2540,6 +2541,14 @@ class LogicalRouterDM(DBBaseDM):
                     self.lr_route_target_for_dci = rt
                     break
             if self.lr_route_target_for_dci is not None:
+                break
+
+        for vn_ref in obj.get('virtual_network_refs', []):
+            attr = vn_ref.get('attr', {})
+            if not attr or attr.get('logical_router_virtual_network_type',
+                                    '') == \
+                    'NAPTSourcePool':
+                self.cgnat_vn = vn_ref.get('uuid')
                 break
     # end update
 

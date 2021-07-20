@@ -421,6 +421,17 @@ class DcGatewayFeature(FeatureBase):
                 not lr.virtual_network or \
                     not self._is_valid_vn(lr.virtual_network, 'l3'):
                 continue
+            if lr.logical_router_gateway_external is True:
+                # Here means the vn_obj is internal network and its a public LR
+                # So for junos family, we need to check for the CGNAT VN.
+                if pr.device_family == 'junos':
+                    if lr.cgnat_vn:
+                        ms_enabled, ms_ifc = self.is_service_interface_enabled(
+                            ifc_prefix="ms")
+                        cgnat_vn_obj = VirtualNetworkDM.get(lr.cgnat_vn)
+                        if ms_enabled:
+                            self.construct_cgnat_config(lr, cgnat_vn_obj,
+                                                        ms_ifc)
             vn_obj = VirtualNetworkDM.get(lr.virtual_network)
             if '_contrail_lr_internal_vn_' not in vn_obj.name:
                 continue
@@ -539,10 +550,11 @@ class DcGatewayFeature(FeatureBase):
                     self._add_routing_instance(ri_conf)
                 break
             # end for ri_id in vn_obj.routing_instances:
-
+            si_enabled, si_ifc = self.is_service_interface_enabled(
+                ifc_prefix="si")
             if export_set and \
                     pr.is_junos_service_ports_enabled() and \
-                    len(vn_obj.instance_ip_map) > 0:
+                    len(vn_obj.instance_ip_map) > 0 and si_enabled:
                 service_port_ids = DMUtils.get_service_ports(
                     vn_obj.vn_network_id)
                 if not pr \
@@ -556,15 +568,13 @@ class DcGatewayFeature(FeatureBase):
                                                      vn_obj.vn_network_id,
                                                      'l3', True)
                     interfaces = []
-                    service_ports = pr.junos_service_ports. \
-                        get('service_port')
                     interfaces.append(
                         JunosInterface(
-                            service_ports[0] + "." + str(service_port_ids[0]),
+                            si_ifc + "." + str(service_port_ids[0]),
                             'l3', 0))
                     interfaces.append(
                         JunosInterface(
-                            service_ports[0] + "." + str(service_port_ids[1]),
+                            si_ifc + "." + str(service_port_ids[1]),
                             'l3', 0))
                     ri_conf = {'ri_name': vrf_name, 'vn': vn_obj,
                                'import_targets': import_set,
@@ -575,6 +585,57 @@ class DcGatewayFeature(FeatureBase):
                     self._add_routing_instance(ri_conf)
 
     # end _build_ri_config_for_dc
+
+    def is_service_interface_enabled(self, ifc_prefix="si"):
+        pr = self._physical_router
+        if pr.is_junos_service_ports_enabled():
+            sps = pr.junos_service_ports.get('service_port')
+            if sps and type(sps) is list:
+                for sp in sps:
+                    if sp and str(sp).strip().startswith("{}-".format(
+                            ifc_prefix)):
+                        return True, str(sp).strip()
+        return False, None
+
+    def construct_cgnat_config(self, lr, cgnat_vn, ms_ifc):
+        vn_obj = cgnat_vn
+        pr = self._physical_router
+        private_vns = lr.get_connected_networks(include_internal=False,
+                                                pr_uuid=pr.uuid)
+        if ms_ifc:
+            internal_vn = lr.virtual_network
+            internal_vn_obj = VirtualNetworkDM.get(internal_vn)
+            service_port_ids = DMUtils.get_service_ports(
+                internal_vn_obj.vn_network_id)
+            if not pr \
+                    .is_service_port_id_valid(service_port_ids[0]):
+                self._logger.error("DM can't allocate service interfaces"
+                                   " for (vn, vn-id)=(%s,%s)" %
+                                   (internal_vn_obj.fq_name,
+                                    internal_vn_obj.vn_network_id))
+            else:
+                vrf_name = DMUtils.make_vrf_name(internal_vn_obj.fq_name[-1],
+                                                 internal_vn_obj.vn_network_id,
+                                                 'l3', True)
+                interfaces = []
+                interfaces.append(
+                    JunosInterface(
+                        ms_ifc + "." + str(service_port_ids[0]),
+                        'l3', 0))
+                interfaces.append(
+                    JunosInterface(
+                        ms_ifc + "." + str(service_port_ids[1]),
+                        'l3', 0))
+                ex_rt, im_rt = vn_obj.get_route_targets()
+                ri_conf = {'ri_name': vrf_name, 'vn': vn_obj,
+                           'import_targets': im_rt,
+                           'interfaces': interfaces,
+                           'fip_map': vn_obj.instance_ip_map,
+                           'network_id': vn_obj.vn_network_id,
+                           'restrict_proxy_arp': vn_obj.router_external,
+                           'is_cgnat_vrf': True,
+                           'private_vns': private_vns}
+                self.add_routing_instance(ri_conf)
 
     def feature_config(self, **kwargs):
         self.ri_map = {}

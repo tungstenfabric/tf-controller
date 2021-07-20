@@ -573,6 +573,7 @@
         <xsd:element name="destination-addresses" type="dac:Subnet" maxOccurs="unbounded"/>
         <xsd:element name="destination-prefixes" type="dac:Subnet" maxOccurs="unbounded"/>
         <xsd:element name="translation-type" type="xsd:string"/>
+        <xsd:element name="source-pool" type="xsd:string"/>"
     </xsd:all>
 </xsd:complexType>
 
@@ -584,6 +585,15 @@
         <xsd:element name="rules" type="dac:NatRule"  maxOccurs="unbounded"/>
         <xsd:element name="inside-interface" type="xsd:string"/>
         <xsd:element name="outside-interface" type="xsd:string"/>
+        <xsd:element name="address-pool" type="dac:AddressPool"/>
+    </xsd:all>
+</xsd:complexType>
+
+<xsd:complexType name="AddressPool">
+    <xsd:all>
+        <xsd:element name="name" type="xsd:string"/>
+        <xsd:element name="comment" type="xsd:string"/>
+        <xsd:element name="address" type="xsd:string"/>
     </xsd:all>
 </xsd:complexType>
 

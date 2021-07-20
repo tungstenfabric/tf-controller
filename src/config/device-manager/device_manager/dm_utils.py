@@ -227,6 +227,13 @@ class DMUtils(object):
     # end make_private_vrf_filter_name
 
     @staticmethod
+    def make_ip_pool_name(ip):
+        if '/' in ip:
+            ip = ip.split("/")[0]
+        return 'pool_' + ip.replace('.', '_')
+    # end make_ip_pool_name
+
+    @staticmethod
     def make_public_vrf_filter_name(inet_type):
         if inet_type == 'inet':
             inet_type = 'inet4'
