@@ -191,6 +191,10 @@ class FWRule(object):
             pod_selector = from_rule.get('podSelector')
             if pod_selector:
                 tagsps = cls._get_tags(pod_selector, namespace)
+            elif namespace:
+                # if pod_selector is empty, Deny traffic ingress from other namespace
+                tag1 = 'namespace=' + namespace
+                tagsps = [tag1]
 
         if ps_or_ns:
             tags = tagsns + tagsps
