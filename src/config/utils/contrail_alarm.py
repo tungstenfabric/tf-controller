@@ -877,4 +877,36 @@ alarm_list = [
             ]
         }
     },
+    {
+        "alarm_rules": {
+            "or_list": [
+                {
+                    "and_list": [
+                        {
+                            "operand1": "VrouterAgent.l3mh_phy_interface_down",
+                            "operation": "==",
+                            "operand2": {
+                                "json_value": "true"
+                            },
+                            "variables": ["VrouterAgent.vr_l3mh_intf_list"]
+                        }
+                    ]
+                }
+            ]
+        },
+        "alarm_severity": 0,
+        "fq_name": [
+            "default-global-system-config",
+            "system-defined-vrouter-l3mh-physical-interface-link-down"
+        ],
+        "id_perms": {
+            "description": "On l3 multihomed compute one or more physical interfaces are Inactive."
+        },
+        "parent_type": "global-system-config",
+        "uve_keys": {
+            "uve_key": [
+                "vrouter"
+            ]
+        }
+    },
 ]
