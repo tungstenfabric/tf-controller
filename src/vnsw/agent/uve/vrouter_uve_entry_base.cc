@@ -826,6 +826,30 @@ bool VrouterUveEntryBase::SendVrouterMsg() {
         changed = true;
     }
 
+    if (agent_->is_l3mh()) {
+        std::vector<L3mhPhysicalInterfaceStatus> vr_l3mh_intf_list;
+        bool l3mh_phy_interface_down = false;
+        PhysicalInterfaceSet::iterator it = phy_intf_set_.begin();
+        while (it != phy_intf_set_.end()) {
+            L3mhPhysicalInterfaceStatus l3mh_interface_status;
+            const Interface *intf = *it;
+            l3mh_interface_status.set_name(intf->name());
+            l3mh_interface_status.set_active(intf->os_oper_state());
+            vr_l3mh_intf_list.push_back(l3mh_interface_status);
+            if (!intf->os_oper_state())
+                l3mh_phy_interface_down = true;
+            ++it;
+        }
+
+        if (!prev_vrouter_.__isset.vr_l3mh_intf_list ||
+            prev_vrouter_.get_vr_l3mh_intf_list() != vr_l3mh_intf_list) {
+            vrouter_agent.set_vr_l3mh_intf_list(vr_l3mh_intf_list);
+            prev_vrouter_.set_vr_l3mh_intf_list(vr_l3mh_intf_list);
+            vrouter_agent.set_l3mh_phy_interface_down(l3mh_phy_interface_down);
+            changed = true;
+        }
+
+    }
     if (changed) {
         DispatchVrouterMsg(vrouter_agent);
     }

@@ -1197,6 +1197,17 @@ TEST_F(UveVrouterUveTest, VrLimits) {
     EXPECT_EQ(new_vr_limits.get_max_labels(), 100);
 }
 
+TEST_F(UveVrouterUveTest, L3mhAlarmDefaults) {
+    VrouterUveEntryTest *vr = static_cast<VrouterUveEntryTest *>
+        (agent_->uve()->vrouter_uve_entry());
+    // Build and send agent uve
+    vr->SendVrouterMsg();
+
+    // Verify l3mh_phy_interface_down is false by default
+    EXPECT_EQ(0U, vr->prev_vrouter().get_vr_l3mh_intf_list().size());
+    EXPECT_EQ(false, vr->prev_vrouter().get_l3mh_phy_interface_down());
+}
+
 int main(int argc, char **argv) {
     GETUSERARGS();
     client = TestInit("controller/src/vnsw/agent/uve/test/vnswa_cfg.ini",

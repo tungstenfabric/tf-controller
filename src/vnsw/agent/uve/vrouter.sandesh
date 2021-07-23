@@ -105,6 +105,17 @@ struct VrouterAgentResUsage {
 }
 
 /**
+* Structure definition for mulihomed physical interface
+* name and status (Active or Inactive)
+*/
+struct L3mhPhysicalInterfaceStatus {
+    /** Name of physical interface */
+    1: string name;
+    /** active flag is set to true for Active and false for Inactive */
+    2: bool active;
+}
+
+/**
  * Structure definition for vrouter-agent information
  */
 struct VrouterAgent {
@@ -259,6 +270,10 @@ struct VrouterAgent {
    62: optional string loopback_ip;
    /** List of gateway */
    63: optional list<string> gateway_list;
+   /** List of l3mh physical interfaces and its link state on compute */
+   64: optional list<L3mhPhysicalInterfaceStatus> vr_l3mh_intf_list;
+   /** Flag is set when a l3mh physical interface is Inactive ,alam is raised */
+   65: optional bool l3mh_phy_interface_down;
 }
 
 /**
