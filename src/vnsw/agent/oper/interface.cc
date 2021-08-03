@@ -463,7 +463,7 @@ Interface::Interface(Type type, const uuid &uuid, const string &name,
     l2_label_(MplsTable::kInvalidLabel), ipv4_active_(true),
     ipv6_active_(false), is_hc_active_(true),
     metadata_ip_active_(true), metadata_l2_active_(true),
-    l2_active_(true), id_(kInvalidIndex), dhcp_enabled_(true),
+    l2_active_(true), id_(kInvalidIndex), dhcp_enabled_(true), dhcp_enabled_v6_(true),
     dns_enabled_(true),
     admin_state_(true), test_oper_state_(true), transport_(TRANSPORT_INVALID),
     os_params_(name, kInvalidIndex, state),
@@ -842,6 +842,13 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
     } else {
         data.set_dhcp_service("Disable");
     }
+
+    if (dhcp_enabled_v6_) {
+        data.set_dhcp_service_v6("Enable");
+    } else {
+        data.set_dhcp_service_v6("Disable");
+    }
+
 
     if (dns_enabled_) {
         data.set_dns_service("Enable");

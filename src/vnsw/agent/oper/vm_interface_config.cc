@@ -1334,12 +1334,20 @@ static void ReadDhcpEnable(Agent *agent, VmInterfaceConfigData *data,
                             subnets.ipam_subnets[i].subnet.ip_prefix, ec),
                         subnets.ipam_subnets[i].subnet.ip_prefix_len)) {
                     data->dhcp_enable_ = subnets.ipam_subnets[i].enable_dhcp;
-                    return;
                 }
+                else if (IsIp6SubnetMember(data->ip6_addr_,
+                        (Ip6Address::from_string(
+                            subnets.ipam_subnets[i].subnet.ip_prefix, ec)),
+                        subnets.ipam_subnets[i].subnet.ip_prefix_len)) {
+                    data->dhcp_enable_v6_ = subnets.ipam_subnets[i].enable_dhcp;
+                }
+
             }
         }
     }
 }
+
+
 
 // Builds parent for VMI (not to be confused with parent ifmap-node)
 // Possible values are,
@@ -1868,9 +1876,10 @@ bool InterfaceTable::VmiProcessConfig(IFMapNode *node, DBRequest &req,
     BuildFatFlowTable(agent_, u, data, node);
 
     // Get DHCP enable flag from subnet
-    if (vn_node && data->addr_.to_ulong()) {
+    if ((vn_node && data->addr_.to_ulong()) || (vn_node && !(data->ip6_addr_.is_unspecified()))) {
         ReadDhcpEnable(agent_, data, vn_node);
     }
+
 
     PhysicalRouter *prouter = NULL;
     // Build parent for the virtual-machine-interface
