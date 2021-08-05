@@ -7,6 +7,7 @@ import re
 
 from cfgm_common.exceptions import NoIdError
 from cfgm_common.exceptions import VncError
+from netaddr import IPNetwork
 from vnc_api.gen.resource_common import RoutingPolicy
 
 from vnc_cfg_api_server.resources._resource_base import ResourceMixin
@@ -117,6 +118,10 @@ class RoutingPolicyServer(ResourceMixin, RoutingPolicy):
                                "'%s' should be non-empty "
                                "string." % route_type)
                     return False, (400, msg)
+            try:
+                IPNetwork(route_filter.get('route'))
+            except Exception as e:
+                return False, (400, str(e))
         return True, ""
     # end _check_rp_term_route_filter
 
