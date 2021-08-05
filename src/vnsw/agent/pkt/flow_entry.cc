@@ -3675,6 +3675,12 @@ uint8_t FlowEntry::GetUnderlayGwIndex(uint32_t intf_in, const IpAddress &sip,
     }
     const TunnelNH *tunnel_nh =
         dynamic_cast<const TunnelNH *>(rt->GetActiveNextHop());
+
+    if (!tunnel_nh && is_flags_set(FlowEntry::EcmpFlow) &&
+        data_.component_nh_idx != CompositeNH::kInvalidComponentNHIdx) {
+        // For composite nh set underlay gw index to component_nh_idx (same hash is used)
+        return (data_.component_nh_idx % (flow_table()->agent()->fabric_interface_name_list().size()));
+    }
     if ( !(tunnel_nh && (tunnel_nh->IsValid()))) {
          return -1;
     }
