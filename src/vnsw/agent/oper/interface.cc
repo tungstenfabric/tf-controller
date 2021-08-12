@@ -572,11 +572,12 @@ void Interface::SetKey(const DBRequestKey *key) {
 }
 
 uint32_t Interface::vrf_id() const {
-    if (vrf_ == NULL) {
+    VrfEntryRef p = vrf_;
+    if (p == NULL) {
         return VrfEntry::kInvalidIndex;
     }
 
-    return vrf_->vrf_id();
+    return p->vrf_id();
 }
 
 void InterfaceTable::set_update_floatingip_cb(UpdateFloatingIpFn fn) {
