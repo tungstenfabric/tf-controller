@@ -1,0 +1,37 @@
+- import_role:
+    name: Juniper.junos
+- name: set chassis loopback
+  juniper_junos_config:
+      load: "set"
+      lines: "set chassis loopback-dynamic-tunnel"
+      comment: "Contrail execution ID: {{ job_ctx.job_execution_id }}"
+      ignore_warning: "True"
+      format: "set"
+      config_mode: private
+      provider:
+        host: "{{ prouter_dynamic_ip }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        port: 22
+        timeout: "{{ timeout }}"
+  register: junos_response
+
+- name: Reboot the Device
+  juniper_junos_system:
+      action: "reboot"
+      provider:
+        host: "{{prouter_dynamic_ip}}"
+        username: "{{username}}"
+        password: "{{password}}"
+        port: 22
+  ignore_errors: yes
+
+- name: Wait 300 seconds, to establish the connection after reboot of device.
+  wait_for:
+    host: "{{prouter_dynamic_ip}}"
+    port: 22
+    delay: 90
+    sleep: 10
+    timeout: 300
+
+
