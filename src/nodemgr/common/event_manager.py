@@ -125,10 +125,10 @@ class EventManager(object):
                 strategy = DockerContainersInterface()
             elif utils.is_running_in_podman():
                 strategy = PodmanContainersInterface()
+            elif not os.path.exists('/run/.containerenv'):
+                strategy = CriContainersInterface.craft_containerd_peer()
             elif utils.is_running_in_kubepod():
                 strategy = CriContainersInterface.craft_crio_peer()
-            elif utils.is_running_in_containerd():
-                strategy = CriContainersInterface.craft_containerd_peer()
 
             if strategy:
                 self.process_info_manager = ContainerProcessInfoManager(
