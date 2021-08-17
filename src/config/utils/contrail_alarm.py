@@ -11,7 +11,7 @@ alarm_list = [
                     "and_list": [
                         {
                             "operand1": "ContrailConfig.elements",
-                            "operation": "size!=",
+                            "operation": "size==",
                             "operand2": {
                                 "json_value": "1"
                             }
