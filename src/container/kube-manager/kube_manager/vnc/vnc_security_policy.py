@@ -76,6 +76,7 @@ class FWDefaultProtoPort(Enum):
 
 FWProtoMap = {
     "TCP": "tcp",
+    "SCTP": "sctp",
     "UDP": "udp",
     "any": "any"
 }
