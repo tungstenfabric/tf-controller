@@ -40,6 +40,21 @@ set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} type {{bgp_group
 {%             if cluster_id != None %}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} cluster {{cluster_id}}
 {%             endif %}
+{# These changes are required for the TCS DCI use case and no harm for others #}
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-l3vpn-routes term local from family inet-vpn
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-l3vpn-routes term local from tag 1000
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-l3vpn-routes term local then reject
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-l3vpn-routes term local_v6 from family inet6-vpn
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-l3vpn-routes term local_v6 from tag 1000
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-l3vpn-routes term local_v6 then reject
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-routes term local from tag 1000
+set groups {{cfg_group}} policy-options policy-statement dont-adver-local-routes term local then reject
+{%             if bgp_group_name.endswith('-rr') %}
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} export dont-adver-local-routes
+{%             else %}
+set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} export dont-adver-local-l3vpn-routes
+{%             endif %}
+{# END of changes for the TCS DCI use case. #}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} local-as {{bgp.autonomous_system}} loops 2
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} hold-time {{hold_time}}
 set groups {{cfg_group}} protocols bgp group {{bgp_group_name}} multipath
