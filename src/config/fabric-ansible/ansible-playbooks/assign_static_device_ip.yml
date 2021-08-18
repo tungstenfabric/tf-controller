@@ -46,6 +46,11 @@
     - import_role:
         name: check_n_set_network_services_mode
       when: "prouter_family == 'junos'"
+    # For MX - CEM-22632 and https://gnats.juniper.net/web/default/1605610
+    # adding additional role to set chassis loopback-dynamic-tunnel for MX
+    - import_role:
+        name: set_chassis_loopback_dynamic_tunnel
+      when: "prouter_family == 'junos'"
     - import_role:
         name: wait_for_fpc_online
     - import_role:
