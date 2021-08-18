@@ -137,7 +137,11 @@ class BgpProvisioner(object):
                    " already exists " + str(e))
             cur_obj = vnc_lib.bgp_router_read(
                     fq_name=bgp_router_fq_name,
-                    fields=['global_system_config_back_refs'])
+                    fields=['global_system_config_back_refs',
+                    'bgp_router_parameters'])
+            local_asn = cur_obj.get_bgp_router_parameters() \
+                .local_autonomous_system
+            router_params.set_local_autonomous_system(local_asn)
             changed = False
             if cur_obj.bgp_router_parameters != router_params:
                 cur_obj.set_bgp_router_parameters(router_params)
