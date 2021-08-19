@@ -1741,14 +1741,20 @@ private:
 class CompositeNHData : public NextHopData {
 public:
     CompositeNHData() : NextHopData(), pbb_nh_(false),
-        layer2_control_word_(false) {}
+        layer2_control_word_(false),
+        component_nh_key_list_(ComponentNHKeyList()) {}
     CompositeNHData(bool pbb_nh, bool learning_enabled, bool layer2_control_word) :
         NextHopData(learning_enabled, true), pbb_nh_(pbb_nh),
-        layer2_control_word_(layer2_control_word) {}
+        layer2_control_word_(layer2_control_word),
+        component_nh_key_list_(ComponentNHKeyList()) {}
+    CompositeNHData(const ComponentNHKeyList &component_nh_key_list) :
+        NextHopData(), pbb_nh_(false), layer2_control_word_(false),
+        component_nh_key_list_(component_nh_key_list) {}
 private:
     friend class CompositeNH;
     bool pbb_nh_;
     bool layer2_control_word_;
+    ComponentNHKeyList component_nh_key_list_;
     DISALLOW_COPY_AND_ASSIGN(CompositeNHData);
 };
 

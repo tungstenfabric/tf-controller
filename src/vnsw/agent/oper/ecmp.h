@@ -40,8 +40,8 @@ private:
     //Helper routines
     bool EcmpAddPath(AgentRoute *rt);
     bool EcmpDeletePath(AgentRoute *rt);
-    bool ModifyEcmpPath();
-    bool UpdateNh();
+    bool ModifyEcmpPath(CompositeNHKey *composite_nh_key = NULL);
+    bool UpdateNh(CompositeNHKey *composite_nh_key = NULL);
     bool SyncParams();
     //Allocate or append
     void AllocateEcmpPath(AgentRoute *rt, const AgentPath *path2);

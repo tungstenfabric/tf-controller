@@ -1554,9 +1554,11 @@ void PktFlowInfo::EgressProcess(const PktInfo *pkt, PktControlInfo *in,
     if (out->rt_) {
         if (ecmp && out->rt_->GetActivePath()) {
             const CompositeNH *comp_nh = static_cast<const CompositeNH *>(nh);
-            out_component_nh_idx = comp_nh->hash(pkt->
-                                   hash(agent, out->rt_->GetActivePath()->
-                                        ecmp_load_balance()), ingress);
+            if (out_component_nh_idx == CompositeNH::kInvalidComponentNHIdx) {
+                out_component_nh_idx = comp_nh->hash(pkt->
+                        hash(agent, out->rt_->GetActivePath()->
+                            ecmp_load_balance()), ingress);
+            }
         }
         if (out->rt_->GetActiveNextHop()->GetType() == NextHop::ARP ||
             out->rt_->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
