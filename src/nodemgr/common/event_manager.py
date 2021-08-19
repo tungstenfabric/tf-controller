@@ -120,16 +120,7 @@ class EventManager(object):
         gevent.signal(signal.SIGHUP, self.nodemgr_sighup_handler)
         self.system_data = LinuxSysData(self.msg_log, self.config.corefile_path)
         if ContainerProcessInfoManager:
-            strategy = None
-            if utils.is_running_in_docker():
-                strategy = DockerContainersInterface()
-            elif utils.is_running_in_podman():
-                strategy = PodmanContainersInterface()
-            elif not os.path.exists('/run/.containerenv'):
-                strategy = CriContainersInterface.craft_containerd_peer()
-            elif utils.is_running_in_kubepod():
-                strategy = CriContainersInterface.craft_crio_peer()
-
+            strategy = self.container_strategy()
             if strategy:
                 self.process_info_manager = ContainerProcessInfoManager(
                     type_info._module_type, unit_names, event_handlers,
@@ -143,6 +134,28 @@ class EventManager(object):
         self.process_state_db = self._get_current_processes()
         for group in self.process_state_db:
             self._send_init_info(group)
+
+    def container_strategy(self):
+        if utils.is_running_in_docker():
+            return DockerContainersInterface()
+
+        # NB. CRIO is not fast enough when it comes to creating
+        # the mark file after container start.
+        # anyway let's try to connect to containerd first when
+        # the mark is absent and if it fails because of the socket
+        # absence make another attempt after the timeout to detect
+        # a ct engine hoping CRIO has created the file finally.
+        for i in range(1, 3):
+            if os.path.exists('/run/.containerenv'):
+                break
+            try:
+                return CriContainersInterface.craft_containerd_peer()
+            except LookupError:
+                time.sleep(1)
+        try:
+            return CriContainersInterface.craft_crio_peer()
+        except LookupError:
+            return PodmanContainersInterface()
 
     def msg_log(self, msg, level):
         self.logger.log(SandeshLogger.get_py_logger_level(level), msg)
