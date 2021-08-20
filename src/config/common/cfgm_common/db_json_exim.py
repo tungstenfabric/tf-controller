@@ -15,9 +15,13 @@ from __future__ import unicode_literals
 # python db_json_exim.py --export-to <filename>
 
 
-from builtins import str
-from builtins import object
-from future.utils import native_str
+try:
+    from builtins import str
+    from builtins import object
+    from future.utils import native_str
+except ImportError as exc:
+    pass
+
 import sys
 if sys.version_info[0] < 3:
     reload(sys)
