@@ -2828,6 +2828,8 @@ class VirtualNetworkDM(DBBaseDM):
                     lr_uuid = vmi.logical_router
                     break
         if lr_uuid is None:
+            # Reset the cached values, if any.
+            self.logical_router = None
             return
         lr_obj = LogicalRouterDM.get(lr_uuid)
         if lr_obj:

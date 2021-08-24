@@ -76,7 +76,8 @@ set groups {{cfg_group}} policy-options community {{community_target}} members {
 set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} term t1 then accept
 set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_import}} then reject
 set groups {{cfg_group}} policy-options policy-statement {{nat_ingress_export}} term t1 then reject
-{%             endif %}{# /* For loop RI ingress_interfaces */ #}
+{%             endif %}
+{%         endfor %}{# /* For loop RI ingress_interfaces */ #}
 {%         for intf in ri.get('egress_interfaces', []) %}
 {%             set intf_name = intf.get('name') %}
 {%             set phy_intf = intf_name.split(".")[0] %}
