@@ -933,7 +933,7 @@ class PhysicalRouterDM(DBBaseDM):
         asn = self.fabric_obj.static_asn_by_pr(self.name)
         if asn:
             self.allocated_asn = asn
-            self._object_db.add_asn(self.uuid, asn)
+            self._object_db.add_asn(self.uuid, self.fabric_obj.uuid, asn)
             self._logger.debug(
                 "physical router: static asn %d for %s" %
                 (self.allocated_asn, self.uuid))
@@ -944,10 +944,12 @@ class PhysicalRouterDM(DBBaseDM):
         # due to deleted PRs
         for asn_range in asn_ranges:
             for asn in range(asn_range[0], asn_range[1] + 1):
-                if self._object_db.get_pr_for_asn(asn) is None \
-                        and self.fabric_obj.static_asn_rsvd(asn) is None:
+                if self._object_db.get_pr_for_asn(asn, self.fabric_obj.uuid)\
+                        is None and self.fabric_obj.static_asn_rsvd(asn) is \
+                        None:
                     self.allocated_asn = asn
-                    self._object_db.add_asn(self.uuid, asn)
+                    self._object_db.add_asn(self.uuid, self.fabric_obj.uuid,
+                                            asn)
                     self._logger.debug(
                         "physical router: allocated asn %d for %s" %
                         (self.allocated_asn, self.uuid))
@@ -5644,7 +5646,7 @@ class DMCassandraDB(VncObjectDBClient):
         pr_entries = dict(cf.get_range())
         for pr_uuid in list(pr_entries.keys()):
             pr_entry = pr_entries[pr_uuid] or {}
-            asn = int(pr_entry.get('asn'))
+            asn = pr_entry.get('asn')
             if asn:
                 if pr_uuid not in self.pr_asn_map:
                     self.pr_asn_map[pr_uuid] = asn
@@ -5670,11 +5672,20 @@ class DMCassandraDB(VncObjectDBClient):
     # end
 
     def get_asn_for_pr(self, pr_uuid):
-        return self.pr_asn_map.get(pr_uuid)
+        fabric_uuid_asn = self.pr_asn_map.get(pr_uuid)
+        if fabric_uuid_asn and ":" in str(fabric_uuid_asn):
+            return fabric_uuid_asn.split(":")[1]
+        return fabric_uuid_asn
     # end get_asn_for_pr
 
-    def get_pr_for_asn(self, asn):
-        return self.asn_pr_map.get(asn)
+    def get_pr_for_asn(self, fabric_uuid, asn):
+        # This is required for the existing devices.
+        # dictionary is - "pr_uuid":"asn_number"
+        if self.asn_pr_map.get(str(asn)):
+            return self.asn_pr_map.get(str(asn))
+        # This is for the new devices
+        # dictionary is - "pr_uuid":"fabric_uuid:asn_number"
+        return self.asn_pr_map.get("{}:{}".format(fabric_uuid, asn))
     # end get_pr_for_asn
 
     def add_ip(self, key, ip_used_for, ip):
@@ -5682,10 +5693,11 @@ class DMCassandraDB(VncObjectDBClient):
                  {DMUtils.get_ip_cs_column_name(ip_used_for): ip})
     # end
 
-    def add_asn(self, pr_uuid, asn):
-        self.add(self._PR_ASN_CF, pr_uuid, {'asn': str(asn)})
-        self.pr_asn_map[pr_uuid] = asn
-        self.asn_pr_map[asn] = pr_uuid
+    def add_asn(self, pr_uuid, fabric_uuid, asn):
+        fabric_uuid_asn = "{}:{}".format(fabric_uuid, asn)
+        self.add(self._PR_ASN_CF, pr_uuid, {'asn': fabric_uuid_asn})
+        self.pr_asn_map[pr_uuid] = fabric_uuid_asn
+        self.asn_pr_map[fabric_uuid_asn] = pr_uuid
     # end add_asn
 
     def get_ipv6_ll_subnet(self, key):
