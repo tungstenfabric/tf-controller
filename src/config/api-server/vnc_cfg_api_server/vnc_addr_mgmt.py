@@ -815,6 +815,10 @@ class AddrMgmt(object):
                             new_dns_addr = str(IPAddress(network.last - 2))
                     else:
                         new_dns_addr = ipam_subnet['dns_server_address']
+                        # retain existing dns address if new address is empty
+                        # string during update
+                        if str(new_dns_addr) == '':
+                            new_dns_addr = old_dns_addr
                         if old_dns_addr != new_dns_addr:
                             if subnet_obj.ip_belongs(new_dns_addr):
                                 read_ip_addr = subnet_obj.is_ip_allocated(
