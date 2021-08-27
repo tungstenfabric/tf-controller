@@ -2229,12 +2229,12 @@ class VncApiServer(object):
         if self.is_auth_needed():
             self._generate_obj_view_links()
 
-        if os.path.exists('/usr/bin/contrail-version'):
+        if os.path.exists('/opt/contrail/utils/contrail-version'):
             cfgm_cpu_uve = ModuleCpuState()
             cfgm_cpu_uve.name = socket.getfqdn(self._args.listen_ip_addr)
             cfgm_cpu_uve.config_node_ip = self.get_server_ip()
 
-            command = "contrail-version contrail-config | grep 'contrail-config'"
+            command = "/opt/contrail/utils/contrail-version contrail-config | grep 'contrail-config'"
             version = os.popen(command).read()
             if version:
                 version = version.split()
