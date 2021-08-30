@@ -3,10 +3,8 @@
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
 
-from __future__ import print_function
 from future import standard_library
 standard_library.install_aliases()
-from builtins import object
 import sys
 import time
 import argparse
@@ -38,7 +36,8 @@ class DatabaseNodeProvisioner(object):
                     auth_host=self._args.openstack_ip,
                     api_server_use_ssl=self._args.api_server_use_ssl)
                 connected = True
-            except ResourceExhaustionError: # haproxy throws 503
+            except ResourceExhaustionError:
+                # haproxy throws 503
                 if tries < 10:
                     tries += 1
                     time.sleep(3)
@@ -54,8 +53,8 @@ class DatabaseNodeProvisioner(object):
         elif self._args.oper == 'del':
             self.del_database_node()
         else:
-            print("Unknown operation %s. Only 'add' and 'del' supported"\
-                % (self._args.oper))
+            print("Unknown operation %s. Only 'add' and 'del' supported"
+                  % (self._args.oper))
 
     # end __init__
 
@@ -114,7 +113,7 @@ class DatabaseNodeProvisioner(object):
         parser.add_argument("--host_ip", help="IP address of database node", required=True)
         parser.add_argument("--api_server_port", help="Port of api server")
         parser.add_argument("--api_server_use_ssl",
-                        help="Use SSL to connect with API server")
+                            help="Use SSL to connect with API server")
         parser.add_argument(
             "--oper", default='add',
             help="Provision operation to be done(add or del)")
@@ -131,9 +130,9 @@ class DatabaseNodeProvisioner(object):
             "--api_server_ip", help="IP address of api server",
             nargs='+', type=str)
         group.add_argument("--use_admin_api",
-                            default=False,
-                            help = "Connect to local api-server on admin port",
-                            action="store_true")
+                           default=False,
+                           help="Connect to local api-server on admin port",
+                           action="store_true")
 
         self._args = parser.parse_args(remaining_argv)
 
@@ -175,6 +174,7 @@ class DatabaseNodeProvisioner(object):
 def main(args_str=None):
     DatabaseNodeProvisioner(args_str)
 # end main
+
 
 if __name__ == "__main__":
     main()

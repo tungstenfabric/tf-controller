@@ -3,11 +3,7 @@
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
 
-from __future__ import print_function
-from builtins import str
-from builtins import object
-import json
-import copy
+import argparse
 from netaddr import IPNetwork
 from pprint import pformat
 
@@ -84,14 +80,15 @@ class BgpProvisioner(object):
         else:
             vendor = 'unknown'
 
-        router_params = BgpRouterParams(router_type=router_type,
+        router_params = BgpRouterParams(
+            router_type=router_type,
             vendor=vendor, autonomous_system=int(router_asn),
             identifier=get_ip(router_ip),
             address=get_ip(router_ip),
             port=port, address_families=bgp_addr_fams)
 
         if md5:
-            md5 = {'key_items': [ { 'key': md5 ,"key_id":0 } ], "key_type":"md5"}
+            md5 = {'key_items': [{'key': md5, "key_id": 0}], "key_type": "md5"}
             router_params.set_auth_data(md5)
 
         if local_asn:
@@ -113,7 +110,7 @@ class BgpProvisioner(object):
                 peer_router_obj = BgpRouter(peer, rt_inst_obj)
                 try:
                     vnc_lib.bgp_router_create(peer_router_obj)
-                except RefsExistError as e:
+                except RefsExistError:
                     pass
                 finally:
                     fqname_peer_list.append(peer_router_obj.get_fq_name())
@@ -124,17 +121,18 @@ class BgpProvisioner(object):
                 sub_cluster_obj = SubCluster(self._sub_cluster_name)
                 try:
                     sub_cluster_obj = self._vnc_lib.sub_cluster_read(
-                    fq_name=sub_cluster_obj.get_fq_name())
+                        fq_name=sub_cluster_obj.get_fq_name())
                 except NoIdError:
                     raise RuntimeError("Sub cluster to be provisioned first")
                 bgp_router_obj.add_sub_cluster(sub_cluster_obj)
             if fqname_peer_list:
-                bgp_router_obj.set_bgp_router_list(fqname_peer_list,
-                    [bgp_peering_attrs]*len(fqname_peer_list))
+                bgp_router_obj.set_bgp_router_list(
+                    fqname_peer_list,
+                    [bgp_peering_attrs] * len(fqname_peer_list))
             vnc_lib.bgp_router_create(bgp_router_obj)
         except RefsExistError as e:
-            print ("BGP Router " + pformat(bgp_router_fq_name) +
-                   " already exists " + str(e))
+            print("BGP Router " + pformat(bgp_router_fq_name) +
+                  " already exists " + str(e))
             cur_obj = vnc_lib.bgp_router_read(
                     fq_name=bgp_router_fq_name,
                     fields=['global_system_config_back_refs',
@@ -147,10 +145,11 @@ class BgpProvisioner(object):
                 cur_obj.set_bgp_router_parameters(router_params)
                 changed = True
             cur_bgp_router_set = {tuple(x['to'])
-                                   for x in cur_obj.get_bgp_router_refs() or []}
+                                  for x in cur_obj.get_bgp_router_refs() or []}
             if peer_list is not None and fqname_peer_set != cur_bgp_router_set:
-                cur_obj.set_bgp_router_list(fqname_peer_list,
-                    [bgp_peering_attrs]*len(fqname_peer_list))
+                cur_obj.set_bgp_router_list(
+                    fqname_peer_list,
+                    [bgp_peering_attrs] * len(fqname_peer_list))
                 changed = True
             if self._sub_cluster_name and not cur_obj.get_sub_cluster_refs():
                 cur_obj.add_sub_cluster(sub_cluster_obj)
@@ -162,7 +161,7 @@ class BgpProvisioner(object):
         if (router_type == 'control-node' and
                 not bgp_router_obj.get_global_system_config_back_refs()):
             gsc_obj = vnc_lib.global_system_config_read(
-                        fq_name=['default-global-system-config'])
+                fq_name=['default-global-system-config'])
             gsc_obj.add_bgp_router(bgp_router_obj)
             vnc_lib.ref_relax_for_delete(gsc_obj.uuid, bgp_router_obj.uuid)
             vnc_lib.global_system_config_update(gsc_obj)
