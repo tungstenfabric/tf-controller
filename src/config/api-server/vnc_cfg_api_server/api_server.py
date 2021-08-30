@@ -903,7 +903,14 @@ class VncApiServer(object):
 
         return True, ''
 
-    def _validate_perms_in_request(self, resource_class, obj_type, obj_dict):
+    def _validate_perms_in_request(self, resource_class, obj_type, obj_dict, req_ref_uuid=None):
+        if req_ref_uuid :
+            (ok, status) = self._permissions.check_perms_link(
+                get_request(), req_ref_uuid)
+            if not ok:
+                (code, err_msg) = status
+                raise cfgm_common.exceptions.HttpError(code, err_msg)
+            return
         for ref_name in resource_class.ref_fields:
             for ref in obj_dict.get(ref_name) or []:
                 try:
@@ -4433,8 +4440,11 @@ class VncApiServer(object):
         # Validate perms on references
         if req_obj_dict is not None:
             try:
+                req_ref_uuid = None
+                if ref_args :
+                    req_ref_uuid = ref_args.get('ref_uuid')
                 self._validate_perms_in_request(
-                    r_class, obj_type, req_obj_dict)
+                    r_class, obj_type, req_obj_dict, req_ref_uuid)
             except NoIdError:
                 raise cfgm_common.exceptions.HttpError(400,
                     'Unknown reference in resource update %s %s.'
