@@ -311,7 +311,7 @@ class CmdContrailVersion(Command):
 
     def take_action(self, parsed_args):
         self.app.stdout.write('Option to check contrail version\n')
-        os.system("/usr/bin/contrail-version")
+        os.system("/opt/contrail/utils/contrail-version")
 
 
 class CmdCreateFloatingIPPool(Command):
