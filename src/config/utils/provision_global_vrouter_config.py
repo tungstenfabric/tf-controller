@@ -58,6 +58,8 @@ class GlobalVrouterConfigProvisioner(object):
             current_config=self._vnc_lib.global_vrouter_config_read(
                                 fq_name=['default-global-system-config',
                                          'default-global-vrouter-config'])
+            self._args.flow_export_rate = current_config \
+                .get_flow_export_rate()
         except Exception as e:
             try:
                 if self._args.oper == "add":
