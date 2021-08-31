@@ -155,6 +155,18 @@ class FWRule(object):
         selector_labels_dict =\
             dict(nps_selector.get('matchLabels', {}))
         if selector_labels_dict:
+            # check that selector_labels_dict doesn't contain '/'
+            keys = list(selector_labels_dict.keys())
+            for k in keys:
+                v = selector_labels_dict[k]
+                if '/' in k or '/' in v:
+                    selector_labels_dict.pop(k)
+                    if '/' in k:
+                        k = k.replace("/", "__slash__")
+                    if '/' in v:
+                        v = v.replace("/", "__slash__")
+                    selector_labels_dict[k] = v
+
             if namespace:
                 selector_labels_dict.update(
                     XLabelCache.get_namespace_label(namespace))
