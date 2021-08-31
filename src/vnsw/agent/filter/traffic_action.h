@@ -39,6 +39,7 @@ public:
         MIRROR = 7,
         VRF_TRANSLATE = 8,
         APPLY_QOS = 9,
+	TRAP = 28,
         HBS = 10,
         IMPLICIT_DENY = 29,
         RESERVED = 30,
