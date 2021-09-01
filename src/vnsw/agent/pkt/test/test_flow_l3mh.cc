@@ -262,6 +262,60 @@ TEST_F(FlowTest, FlowStickiness_3) {
    EXPECT_TRUE(fe1->reverse_flow_entry()->data().underlay_gw_index_ == 255);
 }
 
+// For ecmp flow underlay_gw_index_ is set to component_nh_idx on local compute
+TEST_F(FlowTest, FlowStickiness_CompNh) {
+    EXPECT_EQ(0U, get_flow_proto()->FlowCount());
+
+    Ip4Address fabric_gw_ip_1_ = agent_->vhost_default_gateway()[0];
+    Ip4Address fabric_gw_ip_2_ = agent_->vhost_default_gateway()[1];
+    std::string eth_name_1_ = agent_->fabric_interface_name_list()[0];
+    std::string eth_name_2_ = agent_->fabric_interface_name_list()[1];
+    AddArp(fabric_gw_ip_1_.to_string().c_str(), "0a:0b:0c:0d:0e:0f",
+           eth_name_1_.c_str());
+    client->WaitForIdle();
+    AddArp(fabric_gw_ip_2_.to_string().c_str(), "0f:0e:0d:0c:0b:0a",
+           eth_name_2_.c_str());
+    client->WaitForIdle();
+
+    //Create remote VM route. This will be used to figure out destination VN for flow
+    CreateRemoteRoute("vrf5", remote_vm1_ip, remote_router_ip_address, 30, "vn5");
+    client->WaitForIdle();
+
+    struct PortInfo port_input[] = {
+        {"flow10", 100, "11.1.1.5", "00:00:00:01:01:10", 5, 100},
+        {"flow11", 110, "11.1.1.5", "00:00:00:01:01:11", 5, 110},
+    };
+
+    // create local ecmp interfaces for 11.1.1.5/32
+    CreateVmportWithEcmp(port_input, 3);
+    client->WaitForIdle();
+    Ip4Address ip = Ip4Address::from_string("11.1.1.5");
+    InetUnicastRouteEntry *rt = RouteGet("vrf5", ip, 32);
+    EXPECT_TRUE(rt != NULL);
+    // Very composite nh for 11.1.1.5
+    EXPECT_TRUE(rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE);
+
+    char vm_ip[80] = "11.1.1.5";
+    uint32_t mpls_label_2 = rt->GetActiveLabel();
+    uint32_t eth_intf_id_ = EthInterfaceGet("vnet1")->id();
+    TxIpMplsPacket(eth_intf_id_, remote_router_ip_address,
+                   agent_->router_id().to_string().c_str(),
+                   mpls_label_2, remote_vm1_ip, vm_ip, 1, 10);
+
+    client->WaitForIdle();
+    int nh_id = GetActiveLabel(mpls_label_2)->nexthop()->id();
+    FlowEntry *entry = FlowGet(VrfGet("vrf3")->vrf_id(),
+                               remote_vm1_ip, vm_ip, 1, 0, 0,  nh_id);
+    EXPECT_TRUE(entry != NULL);
+    EXPECT_TRUE(entry->data().component_nh_idx !=
+            CompositeNH::kInvalidComponentNHIdx);
+    // For ecmp flow underlay_gw_index_ is set to component_nh_idx
+    EXPECT_TRUE(entry->data().component_nh_idx == entry->data().underlay_gw_index_);
+    DeleteVmportEnv(port_input, 3, true);
+    DeleteRemoteRoute("vrf5", remote_vm1_ip);
+    client->WaitForIdle();
+    }
+
 int main(int argc, char *argv[]) {
     GETUSERARGS();
 
