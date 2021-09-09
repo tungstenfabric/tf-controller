@@ -730,3 +730,128 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
         self.assertEqual((100, "physnet1"),
                          (segmentation_id, physical_network))
     # end test_update_in_use_provider_vn
+
+    def test_allocate_mtu_value_range(self):
+        # enable MTU value on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        self._vnc_lib.project_update(proj)
+
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_mtu(8000)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+        self.api.virtual_network_create(vn_obj)
+
+        # VN created, now read back the VN data to check if MTU_id is set
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_obj_properties = vn_obj.get_virtual_network_properties()
+        if not vn_obj_properties:
+            self.fail("VN properties are not set")
+        mtu_id = vn_obj_properties.get_mtu()
+        if mtu_id in range(1500, 9000):
+            self.assertEqual(mtu_id, 8000)
+            logger.debug('PASS - test_allocate_mtu_range_value')
+        else:
+            logger.debug('FAIL -test allocate_mtu_range_value')
+        self.api.virtual_network_delete(id=vn_obj.uuid)
+
+    def test_update_mtu(self):
+        # enable mtu on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        self._vnc_lib.project_update(proj)
+
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_mtu(3000)
+        vn_obj_properties.set_forwarding_mode('l2_l3')
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+
+        self.api.virtual_network_create(vn_obj)
+
+        # VN created, now read back the VN data to check if mtu_id is set
+        vn_obj_read = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_obj_properties_read = vn_obj_read.get_virtual_network_properties()
+        if not vn_obj_properties_read:
+            self.fail("VN properties are not set")
+        mtu_id = vn_obj_properties_read.get_mtu()
+        self.assertEqual(mtu_id, 3000)
+
+        # Created VN. Now Update it with a different mtu_id
+        vn_obj_properties.set_mtu(8000)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+        self.api.virtual_network_update(vn_obj)
+
+        vn_obj_read = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_obj_properties_read = vn_obj_read.get_virtual_network_properties()
+        if not vn_obj_properties_read:
+            self.fail("VN properties are not set")
+        mtu_id = vn_obj_properties_read.get_mtu()
+
+        self.assertEqual(mtu_id, 8000)
+        self.api.virtual_network_delete(id=vn_obj.uuid)
+        logger.debug('PASS - test_update_mtu_value')
+
+    def test_deallocate_mtu_value_to_none_range(self):
+        # enable MTU value on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        self._vnc_lib.project_update(proj)
+
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_mtu(2000)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+        self.api.virtual_network_create(vn_obj)
+
+        # VN created, now read back the VN data to check if MTU_id is set
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_obj_properties = vn_obj.get_virtual_network_properties()
+        if not vn_obj_properties:
+            self.fail("VN properties are not set")
+        mtu_id = vn_obj_properties.get_mtu()
+        self.assertEqual(mtu_id, 2000)
+        # Created VN. Now Update it with a different mtu_id
+        vn_obj_properties.set_mtu(None)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+        self.api.virtual_network_update(vn_obj)
+
+        vn_obj_read = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_obj_properties_read = vn_obj_read.get_virtual_network_properties()
+        if not vn_obj_properties_read:
+            self.fail("VN properties are not set")
+        mtu_id = vn_obj_properties_read.get_mtu()
+
+        self.assertEqual(mtu_id, None)
+        self.api.virtual_network_delete(id=vn_obj.uuid)
+        logger.debug('PASS - test_update_mtu_none_value')
+
+    def test_default_mtu_value_range(self):
+        # enable MTU value on project
+        proj = self._vnc_lib.project_read(
+            fq_name=["default-domain", "default-project"])
+        self._vnc_lib.project_update(proj)
+
+        vn_obj = VirtualNetwork('%s-vn' % self.id())
+
+        vn_obj_properties = VirtualNetworkType(forwarding_mode='l3')
+        vn_obj_properties.set_mtu(None)
+        vn_obj.set_virtual_network_properties(vn_obj_properties)
+        self.api.virtual_network_create(vn_obj)
+
+        # VN created, now read back the VN data to check if MTU_id is set
+        vn_obj = self.api.virtual_network_read(id=vn_obj.uuid)
+        vn_obj_properties = vn_obj.get_virtual_network_properties()
+        if not vn_obj_properties:
+            self.fail("VN properties are not set")
+        mtu_id = vn_obj_properties.get_mtu()
+        if mtu_id in range(1500, 9000) or None:
+            self.assertEqual(mtu_id, None)
+            logger.debug('PASS - test_allocate_mtu_range_value')
+        else:
+            logger.debug('FAIL -test allocate_mtu_range_value')
+        self.api.virtual_network_delete(id=vn_obj.uuid)
