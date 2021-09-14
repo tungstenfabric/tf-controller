@@ -330,6 +330,7 @@ feature_apply_order:
   - overlay_evpn_mcast_gateway
   - overlay_evpn_type5
   - overlay_dhcp_relay
+  - overlay_port_profile
   - overlay_security_group
   - overlay_lag
   - overlay_multi_homing
@@ -338,7 +339,6 @@ feature_apply_order:
   - overlay_service_chain
   - overlay_assisted_replicator
   - overlay_assisted_replicator_client
-  - overlay_port_profile
   - overlay_telemetry
   - overlay_evpn_collapsed_gateway
 
