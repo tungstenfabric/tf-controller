@@ -1845,6 +1845,10 @@ class DBInterface(object):
         if 'name' in network_q and network_q['name']:
             net_obj.display_name = network_q['name']
 
+        # CEM-23123:VNC openstack changes for adding MTU attribute to VN
+        if 'mtu' in network_q and network_q['mtu']:
+            net_obj.mtu = network_q['mtu']
+
         phys_net = network_q.get('provider:physical_network')
         seg_id = network_q.get('provider:segmentation_id')
 
@@ -1946,6 +1950,10 @@ class DBInterface(object):
             net_q_dict['router:external'] = True
         else:
             net_q_dict['router:external'] = False
+
+        # CEM-23123:VNC Openstack changes for adding MTU attribute to VN
+        if net_obj.mtu:
+            net_q_dict['mtu'] = net_obj.mtu
 
         if net_obj.provider_properties:
             net_q_dict[
