@@ -89,6 +89,32 @@ committers:
       company: 'Juniper'
       id: 'vaidyasd'
       timezone: 'America/Los_Angeles'
+#Added commitors from B&R Team
+    - name: 'Chandra Mohan G'
+      email: 'cmohan@juniper.net'
+      company: 'Juniper'
+      Juniper id: 'cmohan'
+      timezone: ‘Asia/Kolkata’
+    - name: 'Minakshi'
+      email: 'mlnu@juniper.net'
+      company: 'Juniper'
+      Juniper id: ‘mlnu’
+      timezone: 'Asia/Kolkata'
+    - name: 'Lakshmi Harika Pappu'
+      email: 'lpappu@juniper.net'
+      company: 'Juniper'
+      Juniper id: 'lpappu'
+      timezone: 'Asia/Kolkata'
+    - name: 'Sarathkumar Pandurangan'
+      email: 'spandurangan@juniper.net'
+      company: 'Juniper'
+      Juniper id: 'spandurangan'
+      timezone: 'Asia/Kolkata'
+    - name: 'Sravya madugula'
+      email: 'smadugula@juniper.net'
+      company: 'Juniper'
+      Juniper id: 'smadugula'
+      timezone: ‘Asia/Kolkata’
 tsc:
     # yamllint disable rule:line-length
     approval: 'https://wiki.tungsten.io/display/TUN/Projects'
