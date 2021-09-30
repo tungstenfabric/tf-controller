@@ -3411,6 +3411,85 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self.delete_resource('network', new_proj_obj.uuid, vn1_obj['id'])
         self._vnc_lib.project_delete(id=new_proj_obj.uuid)
         # end test_network_mtu_update
+
+    def test_network_mtu_delete(self):
+        # Creation of MTU attribute for VN & fetch the MTU value
+        # Deletion of MTU attribute as part of VN (DELETE)
+        # Fetch the updated MTU value (READ)
+        proj_obj = self._vnc_lib.project_create(
+            vnc_api.Project('project-%s' % self.id()))
+        new_proj_obj = self._vnc_lib.project_read(id=proj_obj)
+        vn1_obj = self.create_resource(
+            'network',
+            new_proj_obj.uuid,
+            extra_res_fields={'mtu': 1600})
+
+        context = {'operation': 'READALL',
+                   'user_id': '',
+                   'tenant': new_proj_obj.uuid,
+                   'roles': '',
+                   'is_admin': False}
+        data = {'filters': {
+            'tenant_id': [new_proj_obj.uuid]}}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/network', body)
+        list_neutron = json.loads(resp.text)
+        for vn_obj in list_neutron:
+            if vn_obj['mtu'] > 0 and vn_obj['mtu'] <= 9216:
+                self.assertEqual(vn_obj['mtu'], 1600)
+        vn1_obj = self.update_resource(
+            'network', vn1_obj['id'],
+            new_proj_obj.uuid,
+            extra_res_fields={'mtu': None}
+        )
+        context = {'operation': 'READALL',
+                   'user_id': '',
+                   'tenant': new_proj_obj.uuid,
+                   'roles': '',
+                   'is_admin': False}
+
+        data = {'filters': {
+            'tenant_id': [new_proj_obj.uuid]}}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/network', body)
+        list_neutron = json.loads(resp.text)
+
+        for vn_obj in list_neutron:
+            if 'mtu' in vn_obj:
+                logger.info('FAIL - MTU attribute not yet deleted')
+            else:
+                logger.info('PASS - MTU attribute deletion success')
+        self.delete_resource('network', new_proj_obj.uuid, vn1_obj['id'])
+        self._vnc_lib.project_delete(id=new_proj_obj.uuid)
+        # end test_network_mtu_delete
+
+    def test_network_mtu_out_of_range(self):
+        # Create MTU value in out of range (0-9216) CREATE
+        # Test case passes if exception is raised, else FAILS
+
+        proj_obj = self._vnc_lib.project_create(
+            vnc_api.Project('project-%s' % self.id()))
+        new_proj_obj = self._vnc_lib.project_read(id=proj_obj)
+        with ExpectedException(webtest.app.AppError):
+            self.create_resource(
+                'network',
+                new_proj_obj.uuid,
+                extra_res_fields={'mtu': 10000})
+            self.fail('Value out of bound, range is 0-9216')
+        with ExpectedException(webtest.app.AppError):
+            self.create_resource(
+                'network',
+                new_proj_obj.uuid,
+                extra_res_fields={'mtu': 9217})
+            self.fail('Value out of bound, range is 0-9216')
+        with ExpectedException(webtest.app.AppError):
+            self.create_resource(
+                'network',
+                new_proj_obj.uuid,
+                extra_res_fields={'mtu': -1})
+            self.fail('Value out of bound, range is 0-9216')
+        self._vnc_lib.project_delete(id=new_proj_obj.uuid)
+        # end test_network_mtu_out_of_range
 # end class TestBasic
 
 
