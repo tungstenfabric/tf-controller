@@ -750,7 +750,7 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
         if not vn_obj_properties:
             self.fail("VN properties are not set")
         mtu_id = vn_obj_properties.get_mtu()
-        if mtu_id in range(1500, 9000):
+        if mtu_id in range(0, 9216):
             self.assertEqual(mtu_id, 8000)
             logger.debug('PASS - test_allocate_mtu_range_value')
         else:
@@ -849,7 +849,7 @@ class TestVirtualNetwork(test_case.ApiServerTestCase):
         if not vn_obj_properties:
             self.fail("VN properties are not set")
         mtu_id = vn_obj_properties.get_mtu()
-        if mtu_id in range(1500, 9000) or None:
+        if mtu_id in range(0, 9216) or None:
             self.assertEqual(mtu_id, None)
             logger.debug('PASS - test_allocate_mtu_range_value')
         else:
