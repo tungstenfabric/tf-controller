@@ -6,6 +6,7 @@ from builtins import str
 import copy
 from datetime import datetime
 import json
+import logging
 import re
 import unittest
 import uuid
@@ -30,6 +31,8 @@ except ImportError:
     from neutron.common import constants
 
 _IFACE_ROUTE_TABLE_NAME_PREFIX = 'NEUTRON_IFACE_RT'
+
+logger = logging.getLogger(__name__)
 
 
 class TestBasic(test_case.NeutronBackendTestCase):
@@ -3325,6 +3328,89 @@ class TestBasic(test_case.NeutronBackendTestCase):
         self._vnc_lib.virtual_machine_delete(id=vm.uuid)
         self._vnc_lib.project_delete(id=proj_obj.uuid)
         # end test_port_status
+
+    def test_network_mtu_allocate(self):
+        # Enable configuring MTU attribute as part of VN creation (CREATE)
+        # Fetch the configured MTU value (READ)
+        proj_obj = self._vnc_lib.project_create(
+            vnc_api.Project('project-%s' % self.id()))
+        new_proj_obj = self._vnc_lib.project_read(id=proj_obj)
+        vn1_obj = self.create_resource(
+            'network',
+            new_proj_obj.uuid,
+            extra_res_fields={'mtu': 1600})
+
+        context = {'operation': 'READALL',
+                   'user_id': '',
+                   'tenant': new_proj_obj.uuid,
+                   'roles': '',
+                   'is_admin': False}
+        data = {'filters': {
+            'tenant_id': [new_proj_obj.uuid]}}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/network', body)
+        list_neutron = json.loads(resp.text)
+        for vn_obj in list_neutron:
+            if vn_obj['mtu'] > 0 and vn_obj['mtu'] <= 9216:
+                self.assertEqual(vn_obj['mtu'], 1600)
+                logger.info('PASS - test_allocate_mtu_range_value')
+            else:
+                logger.info('FAIL - test_allocate_mtu_range_value')
+        self.delete_resource('network', new_proj_obj.uuid, vn1_obj['id'])
+        self._vnc_lib.project_delete(id=new_proj_obj.uuid)
+        # end test_network_mtu_allocate_and_fetch
+
+    def test_network_mtu_update(self):
+        # Creation of MTU attribute for VN & fetch the MTU value
+        # Enable updation of MTU attribute as part of VN (UPDATE)
+        # Fetch the updated MTU value (READ)
+
+        proj_obj = self._vnc_lib.project_create(
+            vnc_api.Project('project-%s' % self.id()))
+        new_proj_obj = self._vnc_lib.project_read(id=proj_obj)
+        vn1_obj = self.create_resource(
+            'network',
+            new_proj_obj.uuid,
+            extra_res_fields={'mtu': 1600})
+
+        context = {'operation': 'READALL',
+                   'user_id': '',
+                   'tenant': new_proj_obj.uuid,
+                   'roles': '',
+                   'is_admin': False}
+        data = {'filters': {
+            'tenant_id': [new_proj_obj.uuid]}}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/network', body)
+        list_neutron = json.loads(resp.text)
+        for vn_obj in list_neutron:
+            self.assertEqual(vn_obj['mtu'], 1600)
+
+        vn1_obj = self.update_resource(
+            'network', vn1_obj['id'],
+            new_proj_obj.uuid,
+            extra_res_fields={'mtu': 2000})
+
+        context = {'operation': 'READALL',
+                   'user_id': '',
+                   'tenant': new_proj_obj.uuid,
+                   'roles': '',
+                   'is_admin': False}
+        data = {'filters': {
+            'tenant_id': [new_proj_obj.uuid]}}
+        body = {'context': context, 'data': data}
+        resp = self._api_svr_app.post_json('/neutron/network', body)
+        list_neutron = json.loads(resp.text)
+
+        for vn_obj in list_neutron:
+            if vn_obj['mtu'] > 0 and vn_obj['mtu'] <= 9216:
+                self.assertEqual(vn_obj['mtu'], 2000)
+                logger.info('PASS - test_update_mtu_range_value')
+            else:
+                logger.info('FAIL - test_update_mtu_range_value')
+        self.delete_resource('network', new_proj_obj.uuid, vn1_obj['id'])
+        self._vnc_lib.project_delete(id=new_proj_obj.uuid)
+        # end test_network_mtu_update
 # end class TestBasic
 
 
