@@ -52,7 +52,7 @@ int CreateTap(const char *name) {
 
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-    strncpy(ifr.ifr_name, name, IF_NAMESIZE);
+    strncpy(ifr.ifr_name, name, IF_NAMESIZE-1);
     if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
         LOG(ERROR, "Error <" << errno << ": " << strerror(errno) <<
             "> creating " << name << "tap-device");
@@ -92,7 +92,7 @@ void CreateTapInterfaces(const char *name, int count, int *fd) {
         }
 
         memset(&ifr, 0, sizeof(ifr));
-        strncpy(ifr.ifr_name, ifname, IF_NAMESIZE);
+        strncpy(ifr.ifr_name, ifname, IF_NAMESIZE-1);
         if (ioctl(raw, SIOCGIFINDEX, (void *)&ifr) < 0) {
                 LOG(ERROR, "Error <" << errno << ": " << strerror(errno) <<
                                 "> getting ifindex of the tap interface");
@@ -111,7 +111,7 @@ void CreateTapInterfaces(const char *name, int count, int *fd) {
         }
 
         memset(&ifr, 0, sizeof(ifr));
-        strncpy(ifr.ifr_name, ifname, IF_NAMESIZE);
+        strncpy(ifr.ifr_name, ifname, IF_NAMESIZE-1);
         if (ioctl(raw, SIOCGIFFLAGS, (void *)&ifr) < 0) {
                 LOG(ERROR, "Error <" << errno << ": " << strerror(errno) <<
                                 "> getting socket flags");

@@ -44,6 +44,14 @@ class InstanceManager {
     };
 
     struct InstanceManagerChildEvent {
+        InstanceManagerChildEvent()
+          : type(0)
+          , task(NULL)
+          , errors()
+          , error_val(0)
+          , task_queue(NULL)
+        {}
+
         int type;
 
         /*

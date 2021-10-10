@@ -14,12 +14,12 @@
 
 using namespace std;
 
-const MacAddress MacAddress::kZeroMac;
+const MacAddress MacAddress::kZeroMac(0x0, 0x0, 0x0, 0x0, 0x0, 0x0);
 const MacAddress MacAddress::kBroadcastMac(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
 const MacAddress MacAddress::kMulticastMac(0x01, 0x00, 0x5E, 0, 0, 0);
 
 MacAddress::MacAddress() {
-    addr_ = kZeroMac;
+    memset(&addr_, 0, sizeof(addr_));
 }
 
 MacAddress::MacAddress(const uint8_t *data) {

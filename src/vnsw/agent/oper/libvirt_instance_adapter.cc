@@ -51,7 +51,7 @@ static bool alloc_tap_interface(const char *devname, int flags) {
 
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_flags = flags;
-    strncpy(ifr.ifr_name, devname, IFNAMSIZ);
+    strncpy(ifr.ifr_name, devname, IFNAMSIZ-1);
 
     if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
         close_descriptor(fd);
@@ -92,7 +92,7 @@ static bool destroy_tap_interface(const char *devname) {
 
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_flags = IFF_TAP;
-    strncpy(ifr.ifr_name, devname, IFNAMSIZ);
+    strncpy(ifr.ifr_name, devname, IFNAMSIZ-1);
 
     if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
         close_descriptor(fd);

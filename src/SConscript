@@ -54,9 +54,17 @@ common.Prepend(LIBS = libs)
 
 common.Append(CXXFLAGS = '-Wall -Werror -Wsign-compare')
 
-if subprocess.check_output("g++ --version | grep g++ | awk '{print $3}'",
-                          shell=True).rstrip() == "4.8.5":
-        common.Append(CCFLAGS = '-Wno-narrowing -Wno-conversion-null')
+gpp_version = subprocess.check_output(
+    "g++ --version | grep g++ | awk '{print $3}'",
+    shell=True).rstrip()
+gpp_version_major = int(gpp_version.split(".")[0])
+if gpp_version == "4.8.5" or gpp_version_major >= 8:
+    common.Append(CCFLAGS =['-Wno-narrowing', '-Wno-conversion-null'])
+    if gpp_version_major >= 8:
+        # auto_ptr is depricated - dont error on deprication warnings
+        common.Append(CCFLAGS = ['-Wno-error=deprecated-declarations', '-Wno-deprecated-declarations'])
+        # nonull this is compared with NULL
+        common.Append(CCFLAGS = ['-Wno-error=nonnull-compare', '-Wno-nonnull-compare'])
 
 if platform.system() == 'Linux':
     if not platform.linux_distribution()[0].startswith('XenServer'):

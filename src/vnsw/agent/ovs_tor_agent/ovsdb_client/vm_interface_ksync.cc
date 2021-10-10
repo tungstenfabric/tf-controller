@@ -20,7 +20,7 @@ using OVSDB::VMInterfaceKSyncEntry;
 using OVSDB::VMInterfaceKSyncObject;
 
 VMInterfaceKSyncEntry::VMInterfaceKSyncEntry(VMInterfaceKSyncObject *table,
-        const VmInterface *entry) : OvsdbDBEntry(table_),
+        const VmInterface *entry) : OvsdbDBEntry(table),
     uuid_(entry->GetUuid()) {
 }
 

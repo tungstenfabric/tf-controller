@@ -370,7 +370,7 @@ bool DiagPktHandler::Run() {
     if (isoverlay_packet) {
         // Process Overlay packet
         // papulate diag data AgentDiagPktData here
-        memset(&tempdata, 0, sizeof(AgentDiagPktData));
+        memset((void*)&tempdata, 0, sizeof(AgentDiagPktData));
         ad = &tempdata;
         OverlayOamPktData *oamdata = (OverlayOamPktData *) pkt_info_->data;
         if (oamdata->msg_type_ == OverlayOamPktData::OVERLAY_ECHO_REQUEST) {

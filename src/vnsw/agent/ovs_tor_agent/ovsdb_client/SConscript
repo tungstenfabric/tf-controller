@@ -10,7 +10,7 @@ env = AgentEnv.Clone()
 env.CppEnableExceptions()
 
 env.Append(CPPPATH = './')
-env.Append(CPPPATH = '#/build/include/openvswitch/include')
+env.Append(CCFLAGS = '-iquote build/include/openvswitch/include')
 env.Append(CPPPATH = '#/build/include/openvswitch/lib')
 env.Append(LIBPATH = '#/build/lib')
 env.Append(LIBS = 'openvswitch')

@@ -371,7 +371,7 @@ bool PeerCloseManager::AssertSweepState(bool do_assert) {
 
 bool PeerCloseManager::AssertMembershipManagerInUse(bool do_assert) {
     bool check = false;
-    check |= (state_ == STALE || LLGR_STALE || state_ == SWEEP ||
+    check |= (state_ == STALE || state_ == LLGR_STALE || state_ == SWEEP ||
               state_ == DELETE);
     check |= (membership_state_ == MEMBERSHIP_IN_USE);
     check |= (membership_req_pending_ > 0);

@@ -271,6 +271,7 @@ void ExtCommunity::Append(const ExtCommunityValue &value) {
 ExtCommunity::ExtCommunityValue ExtCommunity::FromHexString(
         const string &comm, boost::system::error_code *errorp) {
     ExtCommunityValue data;
+    put_value(&data[0], 8, 0);
     char *end;
     uint64_t value = strtoull(comm.c_str(), &end, 16);
     if (value == 0 || *end) {

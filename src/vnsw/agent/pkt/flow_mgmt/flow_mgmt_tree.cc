@@ -637,7 +637,7 @@ bool BridgeRouteFlowMgmtTree::HasVrfFlows(uint32_t vrf,
     BridgeRouteFlowMgmtKey key(vrf, MacAddress::ZeroMac());
     BridgeRouteFlowMgmtKey *next_key = static_cast<BridgeRouteFlowMgmtKey *>
         (LowerBound(&key));
-    if (next_key == false)
+    if (next_key == NULL)
         return false;
 
     if (next_key->vrf_id() != vrf)

@@ -415,7 +415,7 @@ MetadataProxy::ErrorClose(HttpSession *session, uint16_t error) {
                                  " <title>%s</title>\n"
                                  "</head>\n"
                                  "</html>\n", message.c_str());
-    char response[512];
+    char response[1024];
     snprintf(response, sizeof(response),
              "HTTP/1.1 %s\n"
              "Content-Type: text/html; charset=UTF-8\n"

@@ -60,7 +60,7 @@ bool ControlNode::ControlNodeInfoLogger(const BgpServer *server,
         BGPRouterInfo::Send(state);
 
         // Reset changed flags in the uve structure.
-        memset(&state.__isset, 0, sizeof(state.__isset));
+        memset(static_cast<void*>(&state.__isset), 0, sizeof(state.__isset));
     }
 
     /* Release process free memory to back to system */

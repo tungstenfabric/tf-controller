@@ -155,7 +155,7 @@ void PhysicalInterface::PostAdd() {
 
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, interface_name.c_str(), IF_NAMESIZE);
+    strncpy(ifr.ifr_name, interface_name.c_str(), IF_NAMESIZE-1);
 
     if (ioctl(fd, SIOCGIFFLAGS, (void *)&ifr) < 0) {
         LOG(ERROR, "Error <" << errno << ": " << strerror(errno) <<

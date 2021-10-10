@@ -599,7 +599,7 @@ bool VmInterface::WaitForTraffic() const {
          return false;
      }
 
-     if (rt->FindPath(peer_.get()) == false) {
+     if (rt->FindPath(peer_.get()) == NULL) {
          return false;
      }
 

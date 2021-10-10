@@ -608,7 +608,7 @@ void Icmpv6Handler::SendNeighborSolicit(const Ip6Address &sip,
     MacAddress dmac;
     memcpy(source_ip_bytes, sip.to_bytes().data(), sizeof(source_ip_bytes));
     if (send_unicast)
-        memcpy(solicited_mcast_ip, tip.to_bytes().data(), sizeof(tip));
+        memcpy(solicited_mcast_ip, tip.to_bytes().data(), sizeof(solicited_mcast_ip));
     else
         SolicitedMulticastIpAndMac(tip, solicited_mcast_ip, dmac);
     uint16_t len = FillNeighborSolicit((uint8_t *)icmp_, tip, source_ip_bytes,

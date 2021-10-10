@@ -165,7 +165,8 @@ void DBGraph::IterateEdges(DBGraphVertex *current_vertex,
                    OutEdgeIterator &iter_begin, OutEdgeIterator &iter_end,
                    VertexVisitor vertex_visit_fn, EdgeVisitor edge_visit_fn,
                    EdgePredicate &edge_test, VertexPredicate &vertex_test,
-                   uint64_t curr_walk, VisitQ &visit_q,
+                   ::uint64_t curr_walk, /* ::uint64_t because using namespace boost above */
+                   VisitQ &visit_q,
                    bool match_name, const std::string &allowed_edge) {
     for (; iter_begin != iter_end; ++iter_begin) {
         const DBGraph::EdgeProperties &e_prop = get(edge_bundle, *iter_begin);
@@ -186,7 +187,7 @@ void DBGraph::IterateEdges(DBGraphVertex *current_vertex,
 void DBGraph::Visit(DBGraphVertex *start, VertexVisitor vertex_visit_fn,
                     EdgeVisitor edge_visit_fn, const VisitorFilter &filter) {
     // uint64_t t = ClockMonotonicUsec();
-    uint64_t curr_walk = get_graph_walk_num();
+    ::uint64_t curr_walk = get_graph_walk_num(); /* ::uint64_t because using namespace boost above */
     EdgePredicate edge_test(this, filter);
     VertexPredicate vertex_test(this, filter);
 

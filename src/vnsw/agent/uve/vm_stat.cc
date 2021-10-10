@@ -76,7 +76,8 @@ void VmStat::ExecCmd(std::string cmd, DoneCb cb) {
     char shell[80] = "/bin/sh";
     char option[80] = "-c";
     char ccmd[256];
-    strncpy(ccmd, cmd.c_str(), sizeof(ccmd));
+    memset(ccmd, 0, sizeof(ccmd));
+    strncpy(ccmd, cmd.c_str(), sizeof(ccmd)-1);
 
     argv[0] = shell;
     argv[1] = option;

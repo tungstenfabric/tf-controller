@@ -43,20 +43,23 @@ bool ConnectionStateEntry::IsConnectionActive() {
     return false;
 }
 
-void OVSDB::intrusive_ptr_add_ref(ConnectionStateEntry *p) {
-    assert(p->device_entry_ != NULL || !p->idl_list_.empty());
-    p->refcount_++;
-}
-
-void OVSDB::intrusive_ptr_release(ConnectionStateEntry *p) {
-    int count = --p->refcount_;
-    if (count == 0 && p->idl_list_.empty() && p->device_entry_ == NULL) {
-        // delete the entry and free the state
-        p->table_->UpdateConnectionInfo(p, true);
-        p->table_->entry_map_.erase(p->device_name_);
-        delete p;
+namespace OVSDB
+{
+    void intrusive_ptr_add_ref(ConnectionStateEntry *p) {
+        assert(p->device_entry_ != NULL || !p->idl_list_.empty());
+        p->refcount_++;
     }
-}
+
+    void intrusive_ptr_release(ConnectionStateEntry *p) {
+        int count = --p->refcount_;
+        if (count == 0 && p->idl_list_.empty() && p->device_entry_ == NULL) {
+            // delete the entry and free the state
+            p->table_->UpdateConnectionInfo(p, true);
+            p->table_->entry_map_.erase(p->device_name_);
+            delete p;
+        }
+    }
+} // namespace OVSDB
 
 ConnectionStateTable::ConnectionStateTable(Agent *agent,
                                            OvsPeerManager *manager)
