@@ -66,7 +66,9 @@ sdist_depends = []
 sdist_depends.extend(setup_sources_rules)
 sdist_depends.extend(local_sources_rules)
 sdist_depends.extend(job_pkg)
-sdist_gen = env.Command('dist/fabric_ansible-0.1dev.tar.gz', 'setup.py', cd_cmd + 'python setup.py sdist')
+pyver = env.GetPyVersion()
+sdist_gen = env.Command('dist/fabric_ansible-%s.tar.gz' % pyver,
+                        'setup.py', cd_cmd + 'python setup.py sdist')
 
 env.Depends(sdist_gen, sdist_depends)
 env.Default(sdist_gen)
@@ -88,7 +90,9 @@ env.Alias('install', env.Install(env['INSTALL_CONF'],
 env.Alias('install', env.Install(
     env['INSTALL_MESSAGE_DOC'] + '/contrail-fabric-ansible/', doc_files))
 
-test_target = env.SetupPyTestSuite(sdist_gen,
-                                   '/config/api-server/dist/contrail-api-server-0.1dev.tar.gz', use_tox=True)
+test_target = env.SetupPyTestSuite(
+    sdist_gen,
+    '/config/api-server/dist/contrail-api-server-%s.tar.gz' % pyver,
+    use_tox=True)
 
 CfgmEnv.SConscript(dirs=subdirs, exports='CfgmEnv', duplicate = 0)

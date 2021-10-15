@@ -79,8 +79,10 @@ sdist_depends.extend(process_info_pkg)
 sdist_depends.extend(build_info_rules)
 
 cd_cmd = 'cd ' + Dir('.').path + ' && '
-sdist_gen = env.Command('dist/contrail-config-common-0.1dev.tar.gz',
-                        'setup.py', cd_cmd + 'python setup.py sdist')
+sdist_gen = env.Command(
+    'dist/contrail-config-common-%s.tar.gz' % env.GetPyVersion(),
+    'setup.py',
+    cd_cmd + 'python setup.py sdist')
 
 # Add the dependency between contrail-config-common tarball and its dependencies.
 # That lets others depend only on contrail-config-common without having to also

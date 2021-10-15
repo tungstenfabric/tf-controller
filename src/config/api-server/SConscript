@@ -29,8 +29,10 @@ sandesh_trace_pkg = env.SandeshGenPy(
 
 sdist_depends = setup_sources_rules + sandesh_trace_pkg
 cd_cmd = 'cd ' + Dir('.').path + ' && '
-sdist_gen = env.Command('dist/contrail-api-server-0.1dev.tar.gz', 'setup.py',
-                        cd_cmd + 'python setup.py sdist')
+sdist_gen = env.Command(
+    'dist/contrail-api-server-%s.tar.gz' % env.GetPyVersion(),
+    'setup.py',
+    cd_cmd + 'python setup.py sdist')
 
 env.Depends(sdist_gen, sdist_depends)
 env.Default(sdist_gen)

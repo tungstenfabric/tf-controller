@@ -77,7 +77,8 @@ sources += env.SandeshGenPy('snat_agent.sandesh',
                             'svc_monitor/sandesh/', False)
 
 cd_cmd = 'cd ' + Dir('.').path + ' && '
-sdist_gen = env.Command('dist/svc_monitor-0.1dev.tar.gz',
+pyver = env.GetPyVersion()
+sdist_gen = env.Command('dist/svc_monitor-%s.tar.gz' % pyver,
                         sources,
                         cd_cmd + 'python setup.py sdist')
 env.Alias(Dir('.').srcnode().path + ':sdist', sdist_gen)
@@ -101,7 +102,10 @@ env.Alias('install', env.Install(env['INSTALL_CONF'], 'contrail-svc-monitor.conf
 env.Alias('install', env.Install(
     env['INSTALL_MESSAGE_DOC'] + '/contrail-svc-monitor/', doc_files))
 
-test_target = env.SetupPyTestSuite(sdist_gen, '/config/api-server/dist/contrail-api-server-0.1dev.tar.gz', use_tox=True)
+test_target = env.SetupPyTestSuite(
+    sdist_gen,
+    '/config/api-server/dist/contrail-api-server-%s.tar.gz' % pyver,
+    use_tox=True)
 
 # SetupPyTestSuite* methods don't return any targets (see review 40381)
 # so until it's merged we add the broken target here directly, by referencing

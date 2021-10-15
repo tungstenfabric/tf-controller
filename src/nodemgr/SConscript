@@ -60,8 +60,10 @@ sdist_depends = [
 ]
 
 cd_cmd = 'cd ' + Dir('.').path + ' && '
-sdist_gen = OpEnv.Command('dist/nodemgr-0.1dev.tar.gz', 'setup.py',
-                          cd_cmd + 'python setup.py sdist')
+sdist_gen = OpEnv.Command(
+    'dist/nodemgr-%s.tar.gz' % OpEnv.GetPyVersion(),
+    'setup.py',
+    cd_cmd + 'python setup.py sdist')
 
 OpEnv.Depends(sdist_gen, sdist_depends)
 OpEnv.Default(sdist_gen)

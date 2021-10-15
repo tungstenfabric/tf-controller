@@ -28,9 +28,10 @@ for file in local_sources:
 cli_sdist_depends = [cli_setup_sources_rules, local_sources_rules]
 
 cd_cmd = 'cd ' + Dir('.').path + ' && '
-cli_sdist_gen = env.Command('dist/contrail_config_cli-0.1dev.tar.gz',
-                                'setup.py',
-                                cd_cmd + 'python setup.py sdist')
+cli_sdist_gen = env.Command(
+    'dist/contrail_config_cli-%s.tar.gz' % env.GetPyVersion(),
+    'setup.py',
+    cd_cmd + 'python setup.py sdist')
 # install everything before building distribution
 env.Depends(cli_sdist_gen, cli_sdist_depends)
 

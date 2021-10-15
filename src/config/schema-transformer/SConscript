@@ -30,7 +30,9 @@ cd_cmd = 'cd ' + Dir('.').path + ' && '
 sdist_depends = []
 sdist_depends.extend(setup_sources_rules)
 sdist_depends.extend(st_introspect_pkg)
-sdist_gen = env.Command('dist/schema_transformer-0.1dev.tar.gz', 'setup.py',
+pyver = env.GetPyVersion()
+sdist_gen = env.Command('dist/schema_transformer-%s.tar.gz' % pyver,
+                        'setup.py',
                         cd_cmd + 'python setup.py sdist')
 
 env.Depends(sdist_gen, sdist_depends)
@@ -53,10 +55,11 @@ env.Alias('install', env.Install(env['INSTALL_CONF'],
 env.Alias('install', env.Install(
     env['INSTALL_MESSAGE_DOC'] + '/contrail-schema/', doc_files))
 
-env.SetupPyTestSuite(sdist_gen,
-                     '/config/api-server/dist/contrail-api-server-0.1dev.tar.gz',
-                     '/../noarch/config/svc-monitor/dist/svc_monitor-0.1dev.tar.gz',
-                     use_tox=True)
+env.SetupPyTestSuite(
+    sdist_gen,
+    '/config/api-server/dist/contrail-api-server-%s.tar.gz' % pyver,
+    '/../noarch/config/svc-monitor/dist/svc_monitor-%s.tar.gz' % pyver,
+    use_tox=True)
 
 # Local Variables:
 # mode: python

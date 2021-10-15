@@ -123,7 +123,10 @@ sdist_depends = [generated_rule, generateds_rule, abstract_generated_rule, abstr
 sdist_depends.extend(setup_sources_rules)
 sdist_depends.extend(local_sources_rules)
 sdist_depends.extend(dm_introspect_pkg)
-sdist_gen = env.Command('dist/device_manager-0.1dev.tar.gz', 'setup.py', cd_cmd + 'python setup.py sdist')
+pyver = env.GetPyVersion()
+sdist_gen = env.Command(
+    'dist/device_manager-%s.tar.gz' % pyver,
+    'setup.py', cd_cmd + 'python setup.py sdist')
 
 env.Depends(generated_rule, [autogen_infra_sources, autogen_sources])
 env.Depends(abstract_generated_rule, [autogen_infra_sources, abstract_autogen_sources])
@@ -150,11 +153,12 @@ env.Alias('install', env.Install(
 # XXX We may need to extend SetupPyTestSuite() to handle
 #     override of default ':test' target, and/or add additional
 #     targets to be specified
-test_target = env.SetupPyTestSuite(sdist_gen,
-                                   '/config/fabric-ansible/dist/fabric_ansible-0.1dev.tar.gz',
-                                   '/config/api-server/dist/contrail-api-server-0.1dev.tar.gz',
-                                   '/config/schema-transformer/dist/schema_transformer-0.1dev.tar.gz',
-                                   use_tox=True)
+test_target = env.SetupPyTestSuite(
+    sdist_gen,
+    '/config/fabric-ansible/dist/fabric_ansible-%s.tar.gz' % pyver,
+    '/config/api-server/dist/contrail-api-server-%s.tar.gz' % pyver,
+    '/config/schema-transformer/dist/schema_transformer-%s.tar.gz' % pyver,
+    use_tox=True)
 
 env.Alias('flaky-test', test_target)
 env.Alias('controller/src/config/device-manager:flaky-test', test_target)
