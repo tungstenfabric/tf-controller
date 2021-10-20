@@ -17,7 +17,7 @@ class VrouterEventManager(EventManager):
         type_info = EventManagerTypeInfo(
             module_type=Module.COMPUTE_NODE_MGR,
             object_table='ObjectVRouter',
-            sandesh_packages=['vrouter.loadbalancer'])
+            sandesh_packages=[])
         super(VrouterEventManager, self).__init__(
             config, type_info, unit_names, update_process_list=True)
         self.host_ip = config.hostip
