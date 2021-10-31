@@ -25,3 +25,4 @@ mock<=4.0.2
 vine==1.1.3
 keystonemiddleware>=5.0.0,<7.0.0
 SQLAlchemy<1.4.0
+ovs<2.14
