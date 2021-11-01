@@ -63,6 +63,33 @@ PROTO_NUM_TCP = 6
 PROTO_NUM_UDP = 17
 PROTO_NUM_UDPLITE = 136
 PROTO_NUM_VRRP = 112
+
+DEVICE_OWNER_NETWORK_PREFIX = "network:"
+DEVICE_OWNER_DVR_INTERFACE = (DEVICE_OWNER_NETWORK_PREFIX +
+                              "router_interface_distributed")
+DEVICE_OWNER_ROUTER_GW = DEVICE_OWNER_NETWORK_PREFIX + "router_gateway"
+DEVICE_OWNER_ROUTER_INTF = DEVICE_OWNER_NETWORK_PREFIX + "router_interface"
+DEVICE_OWNER_HA_REPLICATED_INT = (DEVICE_OWNER_NETWORK_PREFIX +
+                                  "ha_router_replicated_interface")
+DEVICE_OWNER_ROUTER_SNAT = (DEVICE_OWNER_NETWORK_PREFIX +
+                            "router_centralized_snat")
+
+ROUTER_INTERFACE_OWNERS_SNAT = (DEVICE_OWNER_ROUTER_INTF,
+                                DEVICE_OWNER_HA_REPLICATED_INT,
+                                DEVICE_OWNER_DVR_INTERFACE,
+                                DEVICE_OWNER_ROUTER_SNAT)
+
+ACTIVE = "ACTIVE"
+DOWN = "DOWN"
+INACTIVE = "INACTIVE"
+
+PORT_STATUS_ACTIVE = 'ACTIVE'
+PORT_STATUS_DOWN = 'DOWN'
+
+NET_STATUS_ACTIVE = 'ACTIVE'
+NET_STATUS_DOWN = 'DOWN'
+NET_STATUS_ERROR = 'ERROR'
+
 # Contrail specific
 PROTO_NUM_ICMP6 = 58
 PROTO_NUM_ANY = 'any'

@@ -17,10 +17,10 @@ from builtins import range
 from builtins import str
 import uuid
 
+from cfgm_common import protocols as constants
 from gevent import monkey
 monkey.patch_all()
 from mock import patch
-from neutron_lib import constants
 from tests import test_case
 from vnc_api.exceptions import BadRequest
 from vnc_api.exceptions import NoIdError

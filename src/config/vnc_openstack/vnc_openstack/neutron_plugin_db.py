@@ -19,6 +19,7 @@ from cfgm_common import exceptions as vnc_exc
 from cfgm_common import is_uuid_like
 from cfgm_common import jsonutils as json
 from cfgm_common import PERMS_RWX, PERMS_RX
+from cfgm_common import protocols as constants
 from cfgm_common import rest
 from cfgm_common import SG_NO_RULE_FQ_NAME, UUID_PATTERN
 from cfgm_common.utils import _DEFAULT_ZK_LOCK_PATH_PREFIX
@@ -57,10 +58,6 @@ from .context import get_context, use_context
 
 standard_library.install_aliases()
 
-try:
-    from neutron_lib import constants
-except ImportError:
-    from neutron.common import constants
 
 operations = ['NOOP', 'CREATE', 'READ', 'UPDATE', 'DELETE']
 oper = ['NOOP', 'POST', 'GET', 'PUT', 'DELETE']

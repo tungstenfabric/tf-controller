@@ -12,6 +12,7 @@ import unittest
 import uuid
 
 from cfgm_common import PERMS_NONE, PERMS_RWX, PERMS_RX
+from cfgm_common import protocols as constants
 from cfgm_common.exceptions import NoIdError
 from cfgm_common.tests import test_common
 from keystonemiddleware import auth_token
@@ -24,11 +25,6 @@ from vnc_openstack import neutron_plugin_db
 import webtest.app
 
 from . import test_case
-
-try:
-    from neutron_lib import constants
-except ImportError:
-    from neutron.common import constants
 
 _IFACE_ROUTE_TABLE_NAME_PREFIX = 'NEUTRON_IFACE_RT'
 
