@@ -1,5 +1,3 @@
-from builtins import object
-from builtins import str
 import uuid
 
 import bottle
