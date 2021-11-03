@@ -2,6 +2,8 @@
 # Copyright (c) 2015 Juniper Networks, Inc. All rights reserved.
 #
 
+import binascii
+import string
 import time
 import os
 
@@ -161,7 +163,16 @@ class ContainerProcessInfoManager(object):
                                    container)
         info['name'] = name
         info['group'] = name
-        info['pid'] = int(cid, 16)
+        if all(c in set(string.hexdigits) for c in cid):
+            info['pid'] = int(cid, 16)
+        else:
+            # containerd uses names as id
+            # we're encoding string to int
+            # it would be decoded in
+            # containerd_containers.ContainerdContainersInterface.query_usage
+            bytes_id = container['Id'].encode("utf-8")
+            hex_id = binascii.hexlify(bytes_id)
+            info['pid'] = int(hex_id, 16)
         start_time = self._get_start_time(full_info) if full_info else None
         info['start'] = str(int(start_time * 1000000)) if start_time else None
         info['statename'] = _convert_to_process_state(container['State'])

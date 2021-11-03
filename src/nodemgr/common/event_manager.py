@@ -34,6 +34,7 @@ from nodemgr.common import utils
 import os
 try:
     from nodemgr.common.cri_containers import CriContainersInterface
+    from nodemgr.common.containerd_containers import ContainerdContainersInterface
     from nodemgr.common.docker_containers import DockerContainersInterface
     from nodemgr.common.podman_containers import PodmanContainersInterface
     from nodemgr.common.container_process_manager import ContainerProcessInfoManager
@@ -149,7 +150,7 @@ class EventManager(object):
             if os.path.exists('/run/.containerenv'):
                 break
             try:
-                return CriContainersInterface.craft_containerd_peer()
+                return ContainerdContainersInterface.craft_containerd_peer()
             except LookupError:
                 time.sleep(1)
         try:

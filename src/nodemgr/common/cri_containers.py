@@ -159,10 +159,6 @@ class CriContainersInterface:
     def craft_crio_peer():
         return CriContainersInterface()._set_channel('/var/run/crio/crio.sock')
 
-    @staticmethod
-    def craft_containerd_peer():
-        return CriContainersInterface()._set_channel('/run/containerd/containerd.sock')
-
     def _set_channel(self, value_):
         if not os.path.exists(value_):
             raise LookupError(value_)

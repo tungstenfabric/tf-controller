@@ -6,5 +6,6 @@ psutil>=0.6.0,!=5.5.0,!=5.5.1
 sandesh==0.1dev
 sandesh-common
 grpcio==1.29.0
-protobuf
+protobuf==3.17.3
 docker<3.0.0
+containerd==1.5.2
