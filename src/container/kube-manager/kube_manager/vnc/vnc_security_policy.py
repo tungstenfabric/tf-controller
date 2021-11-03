@@ -175,7 +175,8 @@ class FWRule(object):
         expressions_list = nps_selector.get('matchExpressions', {})
         if expressions_list:
             for expression in expressions_list:
-                if expression.get('operator') == 'In':
+                if expression.get('operator') == 'In' or\
+                   expression.get('operator') == 'NotIn':
                     for values in expression.get('values', []):
                         selector_expression_dict[expression.get('key')] = values
         if selector_expression_dict:
@@ -207,11 +208,27 @@ class FWRule(object):
 
         if 'namespaceSelector' in from_rule:
             ns_present = True
-            ps_or_ns = True
             ns_ps_name = 'namespaceSelector'
             ns_selector = from_rule.get('namespaceSelector')
             if ns_selector:
                 tagsns = cls._get_tags(ns_selector)
+                rule_selector = ns_selector.get('matchExpressions')
+                if 'matchExpressions' in ns_selector and\
+                   rule_selector[0].get('operator') == 'NotIn':
+                    rule_name = '-'.join([rule_name_prefix,
+                                          ns_ps_name, str(from_rule_index),
+                                          tagsns])
+                    ep_list.append([rule_name,
+                                    FWRuleEndpoint.get(tagsns),
+                                    FWSimpleAction.DENY.value])
+                    rule_name = cls._create_rule_name(
+                        rule_name_prefix, ns_ps_name,
+                        from_rule_index)
+                    ep_list.append([rule_name,
+                                    FWRuleEndpoint.get(tags),
+                                    FWSimpleAction.PASS.value])
+                else:
+                    ps_or_ns = True
 
         if 'podSelector' in from_rule:
             ps_or_ns = True
