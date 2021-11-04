@@ -1704,6 +1704,7 @@ class DBInterface(object):
 
         sgr_q_dict['created_at'] = sg_rule.get_created()
         sgr_q_dict['updated_at'] = sg_rule.get_last_modified()
+        sgr_q_dict['description'] = sg_rule.get_description()
 
         return sgr_q_dict
     # end _security_group_rule_vnc_to_neutron
@@ -1796,6 +1797,9 @@ class DBInterface(object):
             # Added timestamp for tempest test case
             timestamp_at_create = datetime.datetime.utcnow().isoformat()
 
+            sgr_description = '' if 'description' not in sgr_q \
+                              else sgr_q['description']
+
             rule = PolicyRuleType(rule_uuid=sgr_uuid, direction='>',
                                   protocol=sgr_q['protocol'],
                                   src_addresses=local,
@@ -1804,7 +1808,8 @@ class DBInterface(object):
                                   dst_ports=[PortType(port_min, port_max)],
                                   ethertype=sgr_q['ethertype'],
                                   created=timestamp_at_create,
-                                  last_modified=timestamp_at_create)
+                                  last_modified=timestamp_at_create,
+                                  description=sgr_description)
             return rule
     # end _security_group_rule_neutron_to_vnc
 
