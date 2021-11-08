@@ -944,7 +944,7 @@ class PhysicalRouterDM(DBBaseDM):
         # due to deleted PRs
         for asn_range in asn_ranges:
             for asn in range(asn_range[0], asn_range[1] + 1):
-                if self._object_db.get_pr_for_asn(asn, self.fabric_obj.uuid)\
+                if self._object_db.get_pr_for_asn(self.fabric_obj.uuid, asn)\
                         is None and self.fabric_obj.static_asn_rsvd(asn) is \
                         None:
                     self.allocated_asn = asn
@@ -4394,7 +4394,7 @@ class FabricDM(DBBaseDM):
         self.ip_fabric_ipam_subnet = None
         self.device_to_ztp = []
         self.underlay_managed = True
-        self.static_asn_pr_map = {}
+        self.static_fabric_asn_pr_map = {}
         self.static_pr_asn_map = {}
         self.trans_id = None
         self.trans_descr = ''
@@ -4444,10 +4444,10 @@ class FabricDM(DBBaseDM):
                 dev_name = dev.get('hostname')
                 if dev_name:
                     self.static_pr_asn_map[dev_name] = asn
-                    self.static_asn_pr_map[asn] = dev_name
+                    self.static_fabric_asn_pr_map[asn] = dev_name
 
     def static_asn_rsvd(self, asn):
-        return self.static_asn_pr_map.get(asn)
+        return self.static_fabric_asn_pr_map.get(asn)
 
     def static_asn_by_pr(self, pr_name):
         return self.static_pr_asn_map.get(pr_name)
@@ -5511,11 +5511,11 @@ class DMCassandraDB(VncObjectDBClient):
             ca_certs=self._args.cassandra_ca_certs)
 
         self.pr_vn_ip_map = {}
-        self.pr_asn_map = {}
-        self.asn_pr_map = {}
+        self.pr_fabric_asn_map = {}
+        self.fabric_asn_pr_map = {}
         self.ni_ipv6_ll_map = {}
         self.init_pr_map()
-        self.init_pr_asn_map()
+        self.init_pr_fabric_asn_map()
         self.init_ipv6_ll_map()
         self.pnf_vlan_allocator_map = {}
         self.pnf_unit_allocator_map = {}
@@ -5641,18 +5641,18 @@ class DMCassandraDB(VncObjectDBClient):
                 self.add_to_pr_map(pr_uuid, vn_subnet_uuid, ip_used_for)
     # end
 
-    def init_pr_asn_map(self):
+    def init_pr_fabric_asn_map(self):
         cf = self._cassandra_driver.get_cf(self._PR_ASN_CF)
         pr_entries = dict(cf.get_range())
         for pr_uuid in list(pr_entries.keys()):
             pr_entry = pr_entries[pr_uuid] or {}
             asn = pr_entry.get('asn')
             if asn:
-                if pr_uuid not in self.pr_asn_map:
-                    self.pr_asn_map[pr_uuid] = asn
-                if asn not in self.asn_pr_map:
-                    self.asn_pr_map[asn] = pr_uuid
-    # end init_pr_asn_map
+                if pr_uuid not in self.pr_fabric_asn_map:
+                    self.pr_fabric_asn_map[pr_uuid] = asn
+                if asn not in self.fabric_asn_pr_map:
+                    self.fabric_asn_pr_map[asn] = pr_uuid
+    # end init_pr_fabric_asn_map
 
     def init_ipv6_ll_map(self):
         cf = self._cassandra_driver.get_cf(self._NI_IPV6_LL_CF)
@@ -5672,7 +5672,7 @@ class DMCassandraDB(VncObjectDBClient):
     # end
 
     def get_asn_for_pr(self, pr_uuid):
-        fabric_uuid_asn = self.pr_asn_map.get(pr_uuid)
+        fabric_uuid_asn = self.pr_fabric_asn_map.get(pr_uuid)
         if fabric_uuid_asn and ":" in str(fabric_uuid_asn):
             return fabric_uuid_asn.split(":")[1]
         return fabric_uuid_asn
@@ -5680,12 +5680,12 @@ class DMCassandraDB(VncObjectDBClient):
 
     def get_pr_for_asn(self, fabric_uuid, asn):
         # This is required for the existing devices.
-        # dictionary is - "pr_uuid":"asn_number"
-        if self.asn_pr_map.get(str(asn)):
-            return self.asn_pr_map.get(str(asn))
+        # dictionary is - "asn_number"="pr_uuid"
+        if self.fabric_asn_pr_map.get(str(asn)):
+            return self.fabric_asn_pr_map.get(str(asn))
         # This is for the new devices
-        # dictionary is - "pr_uuid":"fabric_uuid:asn_number"
-        return self.asn_pr_map.get("{}:{}".format(fabric_uuid, asn))
+        # dictionary is - "fabric_uuid:asn_number="pr_uuid""
+        return self.fabric_asn_pr_map.get("{}:{}".format(fabric_uuid, asn))
     # end get_pr_for_asn
 
     def add_ip(self, key, ip_used_for, ip):
@@ -5696,8 +5696,8 @@ class DMCassandraDB(VncObjectDBClient):
     def add_asn(self, pr_uuid, fabric_uuid, asn):
         fabric_uuid_asn = "{}:{}".format(fabric_uuid, asn)
         self.add(self._PR_ASN_CF, pr_uuid, {'asn': fabric_uuid_asn})
-        self.pr_asn_map[pr_uuid] = fabric_uuid_asn
-        self.asn_pr_map[fabric_uuid_asn] = pr_uuid
+        self.pr_fabric_asn_map[pr_uuid] = fabric_uuid_asn
+        self.fabric_asn_pr_map[fabric_uuid_asn] = pr_uuid
     # end add_asn
 
     def get_ipv6_ll_subnet(self, key):
@@ -5754,9 +5754,11 @@ class DMCassandraDB(VncObjectDBClient):
                 self._logger.error(
                     "Unable to free ip from db for vn/pr/subnet/ip_used_for "
                     "(%s/%s/%s)" % (pr_uuid, vn_subnet, ip_used_for))
-        asn = self.pr_asn_map.pop(pr_uuid, None)
-        if asn is not None:
-            self.asn_pr_map.pop(asn, None)
+        # For readability, changed from asn to fabric_uuid_asn, as the key
+        # is a combination of fabric_uuid, asn
+        fabric_uuid_asn = self.pr_fabric_asn_map.pop(pr_uuid, None)
+        if fabric_uuid_asn is not None:
+            self.fabric_asn_pr_map.pop(fabric_uuid_asn, None)
             ret = self.delete(self._PR_ASN_CF, pr_uuid)
             if not ret:
                 self._logger.error("Unable to free asn from db for pr %s" %
