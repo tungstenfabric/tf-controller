@@ -3846,7 +3846,6 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.physical_router_delete(id=pr_obj.uuid)
         self.api.fabric_delete(id=fabric_obj.uuid)
 
-    @skip('disable_vlan_vn_uniqueness_check is deprecated')
     def test_disable_different_vn_on_same_vlan_across_vpgs_in_enterprise(self):
         """Verify disable_vlan_vn_uniqueness_check is True.
 
