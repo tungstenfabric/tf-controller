@@ -208,12 +208,19 @@ def parse_args():
     return parser.parse_args()
 
 
+def _read4mfile(file_name):
+    with open(file_name, "r") as infile:
+        return infile.read()
+
+
 if __name__ == "__main__":
 
     playbook_input_json = None
     try:
         playbook_params = parse_args()
-        playbook_input_json = json.loads(playbook_params.playbook_input[0])
+        file_name = playbook_params.playbook_input[0]
+        playbook_input_json = json.loads(_read4mfile(file_name))
+
         if playbook_input_json is None:
             sys.exit(MsgBundle.getMessage(MsgBundle.NO_PLAYBOOK_INPUT_DATA))
     except Exception as exp:
