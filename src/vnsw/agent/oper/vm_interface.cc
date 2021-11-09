@@ -55,7 +55,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     primary_ip6_addr_(), vm_mac_(MacAddress::kZeroMac), policy_enabled_(false),
     mirror_entry_(NULL), mirror_direction_(MIRROR_RX_TX), cfg_name_(""),
     fabric_port_(true), need_linklocal_ip_(false), drop_new_flows_(false),
-    dhcp_enable_(true), dhcp_enable_v6_(true), do_dhcp_relay_(false), proxy_arp_mode_(PROXY_ARP_NONE),
+    dhcp_enable_(true), dhcp_enable_v6_(false), do_dhcp_relay_(false), proxy_arp_mode_(PROXY_ARP_NONE),
     vm_name_(), vm_project_uuid_(nil_uuid()), vxlan_id_(0), bridging_(false),
     layer3_forwarding_(true), flood_unknown_unicast_(false),
     mac_set_(false), ecmp_(false), ecmp6_(false), disable_policy_(false),
@@ -110,7 +110,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     primary_ip6_addr_(a6), vm_mac_(mac), policy_enabled_(false),
     mirror_entry_(NULL), mirror_direction_(MIRROR_RX_TX), cfg_name_(""),
     fabric_port_(true), need_linklocal_ip_(false), drop_new_flows_(false),
-    dhcp_enable_(true), dhcp_enable_v6_(true), do_dhcp_relay_(false), proxy_arp_mode_(PROXY_ARP_NONE),
+    dhcp_enable_(true), dhcp_enable_v6_(false), do_dhcp_relay_(false), proxy_arp_mode_(PROXY_ARP_NONE),
     vm_name_(vm_name), vm_project_uuid_(vm_project_uuid), vxlan_id_(0),
     bridging_(false), layer3_forwarding_(true),
     flood_unknown_unicast_(false), mac_set_(false),
@@ -298,20 +298,21 @@ bool VmInterface::Resync(const InterfaceTable *table,
     //Update DHCP and DNS flag in Interface Class.
     if (dhcp_enable_) {
         dhcp_enabled_ = true;
-        dns_enabled_ = true;
     } else {
         dhcp_enabled_ = false;
-        dns_enabled_ = false;
     }
 
     //Update DHCP and DNS flag for v6 in Interface Class.
     if (dhcp_enable_v6_) {
         dhcp_enabled_v6_ = true;
-        dns_enabled_ = true;
     }else {
         dhcp_enabled_v6_ = false;
-        dns_enabled_ = false;
     }
+
+    if (dhcp_enabled_ || dhcp_enable_v6_)
+        dns_enabled_ = true;
+    else
+        dns_enabled_ = false;
 
     // Compute service-ip for the interface
     vm_ip_service_addr_ = GetServiceIp(primary_ip_addr()).to_v4();
