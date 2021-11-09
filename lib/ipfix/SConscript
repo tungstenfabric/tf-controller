@@ -29,7 +29,7 @@ config_opts = '--prefix=' + str(Dir('#/build')) + ' --includedir=' + str(Dir('#/
 
 cmd = ('(rm -rf ' + str(Dir('#/build')) + '/third_party/ipfix' +
          '; cp -r ' + str(Dir(vpath)) + ' ' + str(Dir('#/build')) + '/third_party/ipfix/' +
-         '; cd ' + Dir('.').abspath + '; ' + Dir('.').abspath +
+         '; cd ' + Dir('.').abspath + '; ac_cv_lib_mysqlclient_mysql_init=true ' + Dir('.').abspath +
          '/configure' + ' ' + config_opts + '; make clean; make; make install)')
 
 libipfix_cfg = env.Command(products, str(Dir(vpath)), cmd)
