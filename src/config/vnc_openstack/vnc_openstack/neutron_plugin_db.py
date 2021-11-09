@@ -383,7 +383,7 @@ class DBInterface(object):
                 return_project_ids.append(str(uuid.UUID(project_id)))
             except ValueError:
                 continue
-
+        return_project_ids = list(set(return_project_ids))
         return return_project_ids or None
 
     def _obj_to_dict(self, obj):
