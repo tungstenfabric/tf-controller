@@ -1702,6 +1702,8 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
             # be set. In such cases, consider the flag to be false
             fabric_enterprise_style = (fabric.get('fabric_enterprise_style') or
                                        False)
+            disable_vlan_vn_uniqueness_check = (fabric.get(
+                'disable_vlan_vn_uniqueness_check') or False)
 
             # VLAN-ID sanitizer
             def vlanid_sanitizer(vlanid):
@@ -1714,21 +1716,23 @@ class VirtualMachineInterfaceServer(ResourceMixin, VirtualMachineInterface):
                     return vlanid
             vlan_id = vlanid_sanitizer(vlan_id)
 
-            if fabric_enterprise_style:
-                ok, result, zk_update_kwargs = cls._check_enterprise_fabric(
-                    db_conn, api_server, db_vlan_id, vpg_uuid, fabric_uuid,
-                    vn_uuid, vlan_id, vmi_id, is_untagged_vlan,
-                    db_is_untagged_vlan)
-                if not ok:
-                    return ok, result, zk_update_kwargs
-            else:
-                ok, result, zk_update_kwargs = \
-                    cls._check_serviceprovider_fabric(
-                        db_conn, api_server, db_vlan_id, vpg_uuid,
-                        vn_uuid, vlan_id, vmi_id, is_untagged_vlan,
-                        db_is_untagged_vlan)
-                if not ok:
-                    return ok, result, zk_update_kwargs
+            if not disable_vlan_vn_uniqueness_check:
+                if fabric_enterprise_style:
+                    ok, result, zk_update_kwargs = \
+                        cls._check_enterprise_fabric(
+                            db_conn, api_server, db_vlan_id, vpg_uuid,
+                            fabric_uuid, vn_uuid, vlan_id, vmi_id,
+                            is_untagged_vlan, db_is_untagged_vlan)
+                    if not ok:
+                        return ok, result, zk_update_kwargs
+                else:
+                    ok, result, zk_update_kwargs = \
+                        cls._check_serviceprovider_fabric(
+                            db_conn, api_server, db_vlan_id, vpg_uuid,
+                            vn_uuid, vlan_id, vmi_id, is_untagged_vlan,
+                            db_is_untagged_vlan)
+                    if not ok:
+                        return ok, result, zk_update_kwargs
 
         old_phy_interface_uuids = []
         old_phy_interface_refs = vpg_dict.get('physical_interface_refs')
