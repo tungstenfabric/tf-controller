@@ -50,6 +50,19 @@ provider_config:
     .
     .
     noden:
+  config:
+    node1:
+      ip: <ip-address>
+      ssh_user: <username>
+      ssh_pwd: <password>
+      db_manage: <true/false>
+      object_port: port-number  #config object port
+      cache_count: number       #object cache count
+    node2:
+    .
+    .
+    .
+    noden:
 
 sample_input.yaml
 -----------------
@@ -82,6 +95,22 @@ provider_config:
       ssh_user: heat-admin
       ssh_key_file: '/home/stack/.ssh/id_rsa'
       gcore_needed: true
+  config:
+    node1:
+      ip: 192.168.24.10
+      ssh_user: heat-admin
+      ssh_key_file: '/home/stack/.ssh/id_rsa'
+      db_manage: true/false
+      object_port: 8082
+      cache_count: 10000
+    node2:
+      ip: 192.168.24.11
+      ssh_user: heat-admin
+      ssh_key_file: '/home/stack/.ssh/id_rsa'
+      db_manage: true
+      object_port: 8082
+      cache_count: 10000
+
 """
 from __future__ import print_function
 
@@ -103,6 +132,7 @@ import yaml
 import xml.etree.ElementTree as ET
 import stat
 import itertools
+import json
 
 sudo_prefix = 'sudo '
 deployment_map = {
@@ -124,6 +154,9 @@ deployment_map = {
                     'gcore_container_name': ['contrail_analytics_collector', 'contrail_analytics_queryengine'],
                     'kafka_container_name': 'contrail_analytics_kafka',
                     'contrail_stats_container_name': 'contrail_analytics_api'
+                    },
+                'config': {
+                    'container_name': ['config_api','config_nodemgr','config_devicemgr','config_schema','config_svcmonitor','config_provisioner','config_dnsmasq','config_database_nodemgr','config_database_provisioner','config_database_zookeeper', 'config_database_rabbitmq','config_database_cassandra'],
                     },
                 'lib_path': '/usr/lib64/',
                 'log_path': '/var/log/containers/contrail/'
@@ -148,6 +181,9 @@ deployment_map = {
                     'kafka_container_name': 'analytics_alarm_kafka_1',
                     'contrail_stats_container_name': 'analytics_api_1'
                     },
+                'config': {
+                    'container_name': ['config_api_1','config_nodemgr_1','config_devicemgr_1','config_schema_1','config_svcmonitor_1','config_provisioner_1','config_dnsmasq_1','config_database_nodemgr_1','config_database_provisioner_1','config_database_zookeeper_1','config_database_rabbitmq_1','config_database_cassandra_1'],
+                    },
                 'lib_path': '/usr/lib64/',
                 'log_path': '/var/log/contrail/'
                 },
@@ -167,6 +203,9 @@ deployment_map = {
                     'container_name': ['analytics_collector_1', 'analytics_database_query-engine_1', 'analytics_database_nodemgr_1', 'analytics_database_provisioner_1', 'analytics_database_cassandra_1', 'analytics_nodemgr_1', 'analytics_provisioner_1', 'analytics_api_1', 'analytics_snmp_provisioner_1', 'analytics_snmp_topology_1', 'analytics_snmp_snmp-collector_1', 'analytics_snmp_nodemgr_1', 'analytics_alarm_alarm-gen_1', 'analytics_alarm_provisioner_1', 'analytics_alarm_nodemgr_1', 'analytics_alarm_kafka_1'],
                     'gcore_container_name': ['analytics_collector_1', 'analytics_database_query-engine_1'],
                     'kafka_container_name': 'analytics_alarm_kafka_1'
+                    },
+                'config': {
+                    'container_name': ['config_api_1','config_nodemgr_1','config_devicemgr_1','config_schema_1','config_svcmonitor_1','config_provisioner_1','config_dnsmasq_1','config_database_nodemgr_1','config_database_provisioner_1','config_database_zookeeper_1','config_database_rabbitmq_1','config_database_cassandra_1'],
                     },
                 'lib_path': '/usr/lib64/',
                 'log_path': '/var/log/contrail/'
@@ -481,6 +520,100 @@ class Debug(object):
         print('\nCopying introspect logs : Success')
     # end copy_introspect
 
+    def copy_nested_hyperlink_info(self, linkLists):
+        print('\nTASK : Copy config nested hyperlinks with "detail=true"')
+
+        # create temp file
+        dest_path = '%s/introspect/configNestedHyperLinkFile.txt' \
+                    % (self._parent_dir)
+
+        with open(dest_path, 'a') as f:
+            for ll in linkLists[1:]:
+                f.write(ll['link']['href'])
+                f.write("\n")
+                myCmd = 'curl -udamin:%s %s?detail=true | python -m json.tool' %(self._pwd,ll['link']['href'])
+                cmd_op = self.get_ssh_cmd_output(myCmd)
+                f.write(cmd_op)
+                f.write("\n")
+            f.close()
+        print('\nCopying config nested hyperlinks to file: Success')
+    # end copy_nested_hyperlink_info
+
+    def copy_config_object_info(self,port):
+        print('\nTASK : Copy config object hyperlinks port: %d' %port)
+        myCmd = 'curl -udamin:%s %s:%s | python -m json.tool' %(self._pwd,self._host,str(port))
+        print(myCmd)
+        cmd_op = self.get_ssh_cmd_output(myCmd)
+
+        if not cmd_op:
+            print('\nNo output for command %s' % myCmd)
+            print('\nCopying config object hyperlinks: Failed')
+            return
+
+        # create temp file
+        dest_path = '%s/introspect/configHyperLinkFile.txt' \
+                    % (self._parent_dir)
+
+        with open(dest_path, 'a') as f:
+            f.write(cmd_op)
+            f.close()
+        print('\nCopying config object hyperlinks to file: Success')
+
+        allLinks = json.loads(cmd_op)
+        self.copy_nested_hyperlink_info(allLinks['links'])
+    # end copy_config_object_info
+
+    def copy_cached_object_info(self,port,count):
+        print('\nTASK : Copy cached object of API-SERVER')
+
+        myCmd = 'curl -udamin:%s -q -g -X POST http://%s:%s/obj-cache -H "Content-Type: application/json" -d \'{"count": %s}\' | python -m json.tool' %(self._pwd,self._host,str(port),str(count))
+        print(myCmd)
+        cmd_op = self.get_ssh_cmd_output(myCmd)
+
+        if not cmd_op:
+            print('\nNo output for command %s' % myCmd)
+            print('\nCopying cached object of API-SERVERs: Failed')
+            return
+
+        # create temp file
+        dest_path = '%s/logs/configCachedObjectDump.txt' \
+                    % (self._parent_dir)
+
+        with open(dest_path, 'a') as f:
+            f.write(cmd_op)
+            f.close()
+        print('\nCopying cached object of API-SERVER: Success')
+    # end copy_cached_object_info
+
+    def copy_db_manage_dry_run(self,str):
+        print('\nTASK : Copy db_manage %s dry run'%(str))
+
+        container = self._container[0]
+        myCmd = sudo_prefix + 'docker exec %s /bin/sh -c " find -name db_manage.py"'%(container)
+        find_db = self.get_ssh_cmd_output(myCmd)
+
+        if not find_db:
+            print('\nNo output for command %s' % myCmd)
+            return
+
+        myCmd = sudo_prefix + 'docker exec %s /bin/sh -c " find /etc/contrail/ -name contrail-api* "'%(container)
+        conf_api = self.get_ssh_cmd_output(myCmd)
+
+        if not conf_api:
+            print('\nNo output for command %s' % myCmd)
+            return
+
+        myCmd = sudo_prefix + 'docker exec %s /bin/sh -c " python %s %s --api-conf %s --log_file dbManage%s.txt" '%(container,find_db,str,conf_api,str)
+        print(myCmd)
+        cmd_op = self.get_ssh_cmd_output(myCmd)
+
+        myCmd = sudo_prefix + 'docker cp %s:dbManage%s.txt %s/logs/' %(container,str,self._parent_dir)
+        print(myCmd)
+        cmd_op = self.get_ssh_cmd_output(myCmd)
+
+        print('\nCopying db_manage %s dry run: Success' %(str))
+    # end copy_db_manage_dry_run
+
     def copy_sandesh_traces(self, path):
         print('\nTASK : copy sandesh traces')
         if self._introspect.get(path) == 0:
@@ -535,6 +668,27 @@ class Debug(object):
         f.close()
         print('\nCopying analytics Cassandra DB volumes storage space: Success')
     # end copy_analytics_node_cassandra_db_storage_space
+
+    def copy_config_node_cassandra_db(self):
+        print('\nTASK : config Cassandra DB volumes storage space')
+        myCmd = sudo_prefix + 'du -sh \
+                /var/lib/docker/volumes/config_database_config_cassandra/_data/*'
+        cmd_op = self.get_ssh_cmd_output(myCmd)
+
+        if not cmd_op:
+            print('\nNo output for command %s' % myCmd)
+            print('\nCopying config Cassandra DB volumes storage space: Failed')
+            return
+
+        # create temp file
+        dest_path = '%s/logs/ContrailConfigCassandraData_File.txt' \
+                    % (self._parent_dir)
+        with open(dest_path, 'a') as f:
+            f.write(cmd_op)
+            f.close()
+
+        print('\nCopying config Cassandra DB volumes storage space: Success')
+    # end copy_config_node_cassandra_db
 
     def copy_analytics_node_contrail_stats(self):
         print('\nTASK : contrail-stats SandeshMessageStat')
@@ -1224,6 +1378,81 @@ def collect_analytics_node_logs(data):
         obj.delete_tmp_dir()
 # end collect_analytics_node_logs
 
+
+def collect_config_node_logs(data):
+    deployment_method = data['provider_config']['deployment_method']
+    vim_type = data['provider_config']['vim']
+    sub_dirs = ['docker_logs', 'docker_inspect', 'logs', 'introspect']
+    container_type = 'config'
+    for item in data['provider_config'][container_type]:
+        try:
+            dbmanage = data['provider_config'][container_type][item]['db_manage']
+        except Exception as e:
+            dbmanage = False
+        host = data['provider_config'][container_type][item]['ip']
+        user = data['provider_config'][container_type][item]['ssh_user']
+        ssh_key_file = data['provider_config'][container_type][item].get('ssh_key_file')
+        pw = data['provider_config'][container_type][item].get('ssh_pwd')
+        object_port = data['provider_config'][container_type][item]['object_port']
+        object_cache = data['provider_config'][container_type][item]['cache_count']
+        print('\nCollecting config logs for node : %s' % host)
+        obj = Debug(dir_name='config',
+                    sub_dirs=sub_dirs,
+                    process_name=None,
+                    container_name=deployment_map[deployment_method][vim_type][container_type]['container_name'],
+                    gcore_container_name=None,
+                    kafka_container_name=None,
+                    contrail_stats_container_name=None,
+                    log_path=deployment_map[deployment_method][vim_type]['log_path'],
+                    lib_path=None,
+                    cli=None,
+                    host=host,
+                    port=None,
+                    user=user,
+                    pw=pw,
+                    ssh_key_file=ssh_key_file)
+        obj.create_sub_dirs()
+        try:
+            obj.copy_contrail_logs(container_type)
+        except Exception as e:
+            print('Error [%s] collecting analytics node contrail logs' % e)
+        try:
+            obj.copy_contrail_status()
+        except Exception as e:
+            print('Error [%s] collecting contrail-status logs' % e)
+        try:
+            obj.copy_docker_logs()
+        except Exception as e:
+            print('Error [%s] collecting docker logs' % e)
+        try:
+            obj.copy_docker_inspect_info()
+        except Exception as e:
+            print('Error [%s] collecting docker inspect info' % e)
+        try:
+            obj.copy_config_object_info(object_port)
+        except Exception as e:
+            print('Error [%s] collecting config object port: %s' % (e,object_port))
+        try:
+            obj.copy_cached_object_info(object_port,object_cache)
+        except Exception as e:
+            print('Error [%s] collecting cached object for object port: %s' % (e,object_port))
+        if dbmanage:
+            print('Allowed to access DB!')
+            try:
+               obj.copy_db_manage_dry_run('clean')
+            except Exception as e:
+               print('Error [%s] running DB manage clean dry run' % e)
+            try:
+               obj.copy_db_manage_dry_run('heal')
+            except Exception as e:
+               print('Error [%s] running DB manage heal dry run' % e)
+            try:
+               obj.copy_config_node_cassandra_db()
+            except Exception as e:
+               print('Error [%s] collecting cassandra info' % e)
+        obj.delete_tmp_dir()
+# end collect_config_node_logs
+
 def main():
     argv = sys.argv[1:]
     try:
@@ -1237,7 +1466,7 @@ def main():
         return
     name = 'vrouter-agent-debug-info'
     Debug.create_base_dir(name)
-    vrouter_error = control_error = analytics_error = False
+    vrouter_error = control_error = analytics_error = config_error = False
     try:
         if yaml_data['provider_config']['vrouter']:
             collect_vrouter_node_logs(yaml_data)
@@ -1256,8 +1485,14 @@ def main():
     except Exception as e:
         print('Error [%s] while collecting analytics node logs' % e)
         analytics_error = True
-    if vrouter_error and control_error and analytics_error:
-        print('No logs collected for vrouter, control and analytics node. Exiting!!!')
+    try:
+        if yaml_data['provider_config']['config']:
+            collect_config_node_logs(yaml_data)
+    except Exception as e:
+        print('Error [%s] while collecting config node logs' % e)
+        config_error = True
+    if vrouter_error and control_error and analytics_error and config_error:
+        print('No logs collected for vrouter, control, config and analytics node. Exiting!!!')
         return
     Debug.compress_folder(name)
     Debug.delete_base_dir()
