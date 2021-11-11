@@ -217,7 +217,7 @@ class FWRule(object):
                    rule_selector[0].get('operator') == 'NotIn':
                     rule_name = '-'.join([rule_name_prefix,
                                           ns_ps_name, str(from_rule_index),
-                                          tagsns])
+                                          tagsns[0]])
                     ep_list.append([rule_name,
                                     FWRuleEndpoint.get(tagsns),
                                     FWSimpleAction.DENY.value])
