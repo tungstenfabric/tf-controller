@@ -1519,7 +1519,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
                                          src_ports=[vnc_api.PortType(0, 255)],
                                          dst_addresses=local,
                                          dst_ports=[vnc_api.PortType(0, 255)],
-                                         ethertype='IPv4')
+                                         ethertype='IPv4',
+                                         description='test')
         rules = vnc_api.PolicyEntriesType([sgr_obj])
         sg1_obj.set_security_group_entries(rules)
         self._vnc_lib.security_group_update(sg1_obj)
@@ -1552,7 +1553,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
                                          src_ports=[vnc_api.PortType(0, 255)],
                                          dst_addresses=local,
                                          dst_ports=[vnc_api.PortType(0, 255)],
-                                         ethertype='IPv4')
+                                         ethertype='IPv4',
+                                         description='test')
         rules = vnc_api.PolicyEntriesType([sgr_obj])
         sg1_obj.set_security_group_entries(rules)
         self._vnc_lib.security_group_update(sg1_obj)
@@ -1584,7 +1586,8 @@ class TestBasic(test_case.NeutronBackendTestCase):
                                          src_ports=[vnc_api.PortType(0, 255)],
                                          dst_addresses=local,
                                          dst_ports=[vnc_api.PortType(0, 255)],
-                                         ethertype='IPv4')
+                                         ethertype='IPv4',
+                                         description='test')
         rules = vnc_api.PolicyEntriesType([sgr_obj])
         sg1_obj.set_security_group_entries(rules)
         self._vnc_lib.security_group_update(sg1_obj)
