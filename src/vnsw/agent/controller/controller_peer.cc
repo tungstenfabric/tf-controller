@@ -1496,7 +1496,7 @@ void AgentXmppChannel::AddRemoteRoute(string vrf_name, IpAddress prefix_addr,
     // When llgr and xmpp helper mode is enabled for agent
     // llgr route update from bgp peer can have stale mpls label on agent restart
     // do route lookup and add route with correct label if rt update is for local vm port
-    if ((mpls == NULL) || (mpls->nexthop() && mpls->nexthop()->GetType() != NextHop::INTERFACE
+    if ((mpls == NULL) || (mpls->nexthop()
         && mpls->nexthop()->GetType() != NextHop::VLAN && mpls->nexthop()->GetType() != NextHop::COMPOSITE)) {
         if (agent_->oper_db()->global_system_config()->
             gres_parameters().IsEnabled()) {
