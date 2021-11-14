@@ -476,17 +476,13 @@ void EcmpData::DeleteComponentNH(AgentRoute *rt, AgentPath *path) {
 
     // Form the request for Inet4UnicastEcmpRoute and invoke AddChangePath
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    DBEntryBase::KeyPtr comp_nh_key = comp_nh->GetDBRequestKey();
-    NextHopKey *cnh_key = static_cast<NextHopKey *>(comp_nh_key.get());
-    cnh_key->sub_op_ = AgentKey::RESYNC;
-    CompositeNHKey *composite_nh_key = new CompositeNHKey(Composite::LOCAL_ECMP,
-            comp_nh_policy, component_nh_key_list,
-            vrf_name_);
-    nh_req.key = comp_nh_key;
-    nh_req.data.reset(new CompositeNHData(component_nh_key_list));
+    nh_req.key.reset(new CompositeNHKey(Composite::LOCAL_ECMP,
+                                        comp_nh_policy, component_nh_key_list,
+                                        vrf_name_));
+    nh_req.data.reset(new CompositeNHData());
     nh_req_.Swap(&nh_req);
     label_ = ecmp_path_->label();
-    UpdateNh(composite_nh_key);
+    UpdateNh();
 
     RouteInfo rt_info;
     rt->FillTrace(rt_info, AgentRoute::CHANGE_PATH, path);
