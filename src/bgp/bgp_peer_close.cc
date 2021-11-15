@@ -213,7 +213,7 @@ bool BgpPeerClose::IsGRReady() const {
     }
 
     // Make sure that forwarding state is preserved for all families in
-    // the restarting speaker. (Except for EVPN and ERMVPN)
+    // the restarting speaker. (Except for ERMVPN)
     BOOST_FOREACH(BgpProto::OpenMessage::Capability::GR::Family family,
                   gr_params_.families) {
         // Check if forwarding state was preserved during restart.
@@ -223,8 +223,7 @@ bool BgpPeerClose::IsGRReady() const {
         // Ignore forwarding-state preservation check for certain families.
         Address::Family addr_family =
             BgpAf::AfiSafiToFamily(family.afi, family.safi);
-        if (addr_family == Address::EVPN || addr_family == Address::ERMVPN ||
-                addr_family == Address::MVPN)
+        if (addr_family == Address::ERMVPN || addr_family == Address::MVPN)
             continue;
 
         string family_str = Address::FamilyToString(addr_family);
@@ -277,7 +276,6 @@ bool BgpPeerClose::IsCloseGraceful() const {
 bool BgpPeerClose::IsLlgrSupportedForFamilies() const {
     // Keep a sorted list of unsupported families.
     static vector<string> unsupported_families = list_of
-        (Address::FamilyToString(Address::EVPN))
         (Address::FamilyToString(Address::ERMVPN))
         (Address::FamilyToString(Address::MVPN));
 
@@ -331,8 +329,7 @@ bool BgpPeerClose::IsCloseLongLivedGracefulInternal() const {
         // Ignore forwarding-state preservation check for certain families.
         Address::Family addr_family =
             BgpAf::AfiSafiToFamily(family.afi, family.safi);
-        if (addr_family == Address::EVPN || addr_family == Address::ERMVPN ||
-                addr_family == Address::MVPN)
+        if (addr_family == Address::ERMVPN || addr_family == Address::MVPN)
             continue;
 
         if (!family.forwarding_state_preserved()) {
