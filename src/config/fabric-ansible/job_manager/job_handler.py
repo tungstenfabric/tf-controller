@@ -546,8 +546,10 @@ class JobHandler(object):
                 playbook_info['extra_vars']['playbook_input'][
                     'job_execution_id']
             pr_uve_name = self.get_pr_uve_name_from_device_name(playbook_info)
+            # To take care of multi device playbook issue, appending unique
+            # playbook_id to the file name. CEM-24790
+            file_name = "/tmp/{}_{}_input.txt".format(exec_id, unique_pb_id)
 
-            file_name = "/tmp/{}_input.txt".format(exec_id)
             self._write2file(file_name, json.dumps(playbook_info))
 
             playbook_process = subprocess32.Popen(["python",
