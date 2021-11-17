@@ -1906,22 +1906,17 @@ bool AgentPath::ReorderCompositeNH(Agent *agent,
 
 bool AgentPath::ChangeCompositeNH(Agent *agent,
                                   CompositeNHKey *composite_nh_key) {
-    NextHop *nh = nexthop();
-    CompositeNH  *cnh  = dynamic_cast<CompositeNH *>(nh);
-    if (!nh || !cnh) {
-        return false;
-    }
-
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    DBEntryBase::KeyPtr key = cnh->GetDBRequestKey();
-    NextHopKey *nh_key = static_cast<NextHopKey *>(key.get());
-    nh_key->sub_op_ = AgentKey::RESYNC;
-    nh_req.key = key;
-    nh_req.data.reset(new CompositeNHData(composite_nh_key->component_nh_key_list()));
+    nh_req.key.reset(composite_nh_key->Clone());
+    nh_req.data.reset(new CompositeNHData());
 
-    agent->nexthop_table()->Process(nh_req);
-    nh = static_cast<NextHop *>(agent->nexthop_table()->
+    NextHop *nh = static_cast<NextHop *>(agent->nexthop_table()->
             FindActiveEntry(composite_nh_key));
+    if (!nh) {
+        agent->nexthop_table()->Process(nh_req);
+        nh = static_cast<NextHop *>(agent->nexthop_table()->
+            FindActiveEntry(composite_nh_key));
+    }
 
     // NH can be NULL in the following scenario
     // when VMI is deleted and it is the only member of VRF
