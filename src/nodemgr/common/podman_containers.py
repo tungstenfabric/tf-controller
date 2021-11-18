@@ -100,10 +100,14 @@ class PodmanContainersInterface:
                 container_['Id'] = container_['ID']
             if 'State' in container_:
                 s = container_['State']
-                container_['State'] = [
-                    'unknown', 'configured', 'created',
-                    'running', 'stopped', 'paused', 'exited', 'removing'][s]
-
+                # podman in ubi8 contains state directly as string
+                if isinstance(s, int):
+                    states_ = [
+                        'unknown', 'configured', 'created',
+                        'running', 'stopped', 'paused', 'exited',
+                        'removing'
+                    ]
+                    container_['State'] = states_[s]
         return container_
 
     def list(self, all_=True):
