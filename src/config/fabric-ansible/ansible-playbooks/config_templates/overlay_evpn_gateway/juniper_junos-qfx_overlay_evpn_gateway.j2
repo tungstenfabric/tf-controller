@@ -20,7 +20,10 @@ set groups {{cfg_group}} interfaces irb unit {{unit}} family {{family}} address 
 {%                     endif %}
 {%                 endfor %}
 {%                 if "Master LR IRB" not in li.get('comment', '') %}
+{%                      set phy_role = device_abstract_config.get('system', {}).get('physical_role', '') %}
+{%                      if phy_role != 'leaf' %}
 set groups {{cfg_group}} interfaces irb unit {{unit}} proxy-macip-advertisement
+{%                      endif %}
 set groups {{cfg_group}} interfaces irb unit {{unit}} virtual-gateway-accept-data
 {%                 endif %}
 {%                 if li.is_virtual_router == True %}
