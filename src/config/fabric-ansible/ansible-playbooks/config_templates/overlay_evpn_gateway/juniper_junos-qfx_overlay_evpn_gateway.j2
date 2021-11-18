@@ -20,7 +20,10 @@ set groups {{cfg_group}} interfaces irb unit {{unit}} family {{family}} address 
 {%                     endif %}
 {%                 endfor %}
 {%                 if "Master LR IRB" not in li.get('comment', '') %}
+{%                      set phy_role = device_abstract_config.get('system', {}).get('physical_role', '') %}
+{%                      if phy_role != 'leaf' %}
 set groups {{cfg_group}} interfaces irb unit {{unit}} proxy-macip-advertisement
+{%                      endif %}
 set groups {{cfg_group}} interfaces irb unit {{unit}} virtual-gateway-accept-data
 {%                 endif %}
 {%                 if li.is_virtual_router == True %}
@@ -51,6 +54,7 @@ set groups {{cfg_group}} vlans {{vlan_name}} vxlan vni {{vni}}
 {# This parsing of vlans from monolithic code is required when PNF-Service-Chaining with CRB/ERB roles configured #}
 {% set sys_config = device_abstract_config.get('system') %}
 {% set sys_roles = sys_config.get('routing_bridging_roles', []) %}
+{% set phy_role = sys_config.get('physical_role', '') %}
 {% if 'PNF-Servicechain' in sys_roles %}
 {%     for vlan in device_abstract_config.get('vlans', []) %}
 {%         if vlan.get('comment','') == 'PNF-Service-Chaining' %}
@@ -93,7 +97,9 @@ set groups {{cfg_group}} interfaces irb unit {{unit}} virtual-gateway-v6-mac 00:
 set groups {{cfg_group}} interfaces irb unit {{unit}} family {{family}} address {{address}} virtual-gateway-address {{gw}}
 {%                         endif %}
 {%                     endfor %}
+{%                     if phy_role != 'leaf' %}
 set groups {{cfg_group}} interfaces irb unit {{unit}} proxy-macip-advertisement
+{%                     endif %}
 set groups {{cfg_group}} interfaces irb unit {{unit}} virtual-gateway-accept-data
 {%                     if li.is_virtual_router == True %}
 set groups {{cfg_group}} protocols router-advertisement interface irb.{{unit}} virtual-router-only
