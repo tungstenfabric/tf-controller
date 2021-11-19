@@ -450,9 +450,11 @@ bool InterfaceKSyncEntry::Sync(DBEntry *e) {
                 InterfaceKSyncEntry tmp(ksync_obj_, inet_interface->xconnect());
                 xconnect = ksync_obj_->GetReference(&tmp);
             }
-            if (xconnect_ != xconnect) {
-                xconnect_ = xconnect;
-                ret = true;
+            if(xconnect) {
+                if (xconnect_ != xconnect) {
+                    xconnect_ = xconnect;
+                    ret = true;
+                }
             }
         }
     }
