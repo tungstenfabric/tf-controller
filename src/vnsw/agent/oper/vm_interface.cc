@@ -1151,6 +1151,17 @@ const NextHop* VmInterface::l2_interface_nh_policy() const {
     return nexthop_state_->l2_nh_policy_.get();
 }
 
+uint32_t VmInterface::label_op() const {
+    Agent *agent = static_cast<InterfaceTable *>(get_table())->agent();
+    if (nexthop_state_->GetOpL3(agent, this) == VmInterfaceState::INVALID)
+        return MplsTable::kInvalidLabel;
+
+    if (policy_enabled_)
+        return nexthop_state_->l3_nh_no_policy_->mpls_label()->label();
+    else
+        return nexthop_state_->l3_nh_policy_->mpls_label()->label();
+}
+
 void VmInterface::GetNextHopInfo() {
     l2_label_ = nexthop_state_->l2_label();
     label_ = nexthop_state_->l3_label();

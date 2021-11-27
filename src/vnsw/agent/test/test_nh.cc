@@ -40,14 +40,27 @@ public:
         bgp_peer_ = CreateBgpPeer(Ip4Address::from_string("0.0.0.1", ec),
                                  "xmpp channel");
         agent_ = Agent::GetInstance();
+        fabric_gw_ip_ = Ip4Address::from_string("10.1.1.254");
     }
     void TearDown() {
         WAIT_FOR(1000, 1000, agent_->vrf_table()->Size() == 2);
         DeleteBgpPeer(bgp_peer_);
     }
 
+    void SetPolicyDisabledStatus(struct PortInfo *input, bool status) {
+        ostringstream str;
+
+        str << "<virtual-machine-interface-disable-policy>";
+        str << (status ? "true" : "false");
+        str << "</virtual-machine-interface-disable-policy>";
+
+        AddNode("virtual-machine-interface", input[0].name, input[0].intf_id,
+                str.str().c_str());
+    }
+
     Agent *agent_;
     BgpPeer *bgp_peer_;
+    Ip4Address fabric_gw_ip_;
 };
 
 static void ValidateSandeshResponse(Sandesh *sandesh, vector<int> &result) {
@@ -1228,6 +1241,75 @@ TEST_F(CfgTest, NhUsageLimit) {
     agent_->set_vrouter_max_nexthops(default_nh_count);
     agent_->set_vr_limit_high_watermark(default_high_watermark);
     agent_->set_vr_limit_low_watermark(default_low_watermark);
+}
+
+void AddResolveRoute(const Ip4Address &server_ip, uint32_t plen) {
+        Agent* agent = Agent::GetInstance();
+        VmInterfaceKey vhost_key(AgentKey::ADD_DEL_CHANGE,
+                                      boost::uuids::nil_uuid(),
+                                      agent->vhost_interface()->name());
+
+                agent->fabric_inet4_unicast_table()->AddResolveRoute(
+                agent->local_peer(),
+                agent->fabric_vrf_name(), server_ip, plen, vhost_key,
+                0, false, "", SecurityGroupList(), TagList());
+        client->WaitForIdle();
+}
+
+TEST_F(CfgTest, NhMirrorDestDup) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.10", "0a:0b:0c:0d:0e:0f", 1, 1},
+    };
+    IpamInfo ipam_info[] = {
+        {"1.1.1.0", 24, "1.1.1.254", true},
+    };
+
+    AddIPAM("vn1", ipam_info, 1);
+    client->WaitForIdle();
+    CreateVmportEnv(input, 1);
+    WAIT_FOR(1000, 1000, VmPortActive(1));
+    client->WaitForIdle();
+    ModifyMirrorDestinationVn("vn1", 1, "true");
+    client->WaitForIdle();
+
+    VnEntry *vn = VnGet(1);
+    uint32_t vni = vn->GetVxLanId();
+    // When Agent VxLAN Identifier Mode AUTOMATIC, vxlan_id_ == vnid_
+    EXPECT_TRUE(vni == 1);
+
+    VmInterface *intf = VmInterfaceGet(input[0].intf_id);
+    EXPECT_TRUE(intf != NULL);
+    uint32_t label = intf->label();
+
+    VxLanId *vxlan_id = GetVxLan(agent_, vni);
+    const NextHop *vxlan_nh = vxlan_id->nexthop();
+    EXPECT_TRUE(vxlan_nh != NULL);
+    EXPECT_TRUE(vxlan_nh->GetType() == NextHop::COMPOSITE);
+    CompositeNH *cnh = (CompositeNH*)vxlan_nh;
+    EXPECT_TRUE(cnh->ComponentNHCount() == 1);
+    const ComponentNH *comp_nh = cnh->Get(0);
+    EXPECT_TRUE(comp_nh != NULL);
+    EXPECT_TRUE(comp_nh->label() == label);
+
+    // Toggle the policy mode on the analyzer VM interface
+    SetPolicyDisabledStatus(input, true);
+    client->WaitForIdle();
+    EXPECT_TRUE(intf->label_op() == label);
+    uint32_t new_label = intf->label();
+    EXPECT_TRUE(label != new_label);
+
+    // Check that NH has been updated
+    vxlan_id = GetVxLan(agent_, vni);
+    vxlan_nh = vxlan_id->nexthop();
+    EXPECT_TRUE(vxlan_nh != NULL);
+    EXPECT_TRUE(vxlan_nh->GetType() == NextHop::COMPOSITE);
+    cnh = (CompositeNH*)vxlan_nh;
+    EXPECT_TRUE(cnh->ComponentNHCount() == 1);
+    comp_nh = cnh->Get(0);
+    EXPECT_TRUE(comp_nh != NULL);
+    EXPECT_TRUE(comp_nh->label() == new_label);
+
+    DeleteVmportEnv(input, 1, true);
 }
 
 int main(int argc, char **argv) {

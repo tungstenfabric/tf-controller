@@ -76,6 +76,18 @@ void VxLanTable::VmInterfaceNotify(DBTablePartBase *partition, DBEntryBase *e) {
         composite_nh_modified = DeleteCompositeNH(vm_itf->vxlan_id(), nh_key);
     } else {
         composite_nh_modified = AddCompositeNH(vm_itf->vxlan_id(), nh_key);
+        // In case an older NH exists for the same interface, which was added based on
+        // a different vmi->label(), we need to delete that before adding the new one,
+        // otherwise there traffic will be duplicated on the output interface, since
+        // both the older and newer NH (policy disabled/enabled) point to the same
+        // output interface
+        if (composite_nh_modified && vm_itf->label_op() != MplsTable::kInvalidLabel) {
+                ComponentNHKeyPtr nh_key_op(
+                             new ComponentNHKey(vm_itf->label_op(),vm_itf->GetUuid(),
+                                                InterfaceNHFlags::BRIDGE,
+                                                vm_itf->vm_mac()));
+                DeleteCompositeNH(vm_itf->vxlan_id(), nh_key_op);
+        }
     }
 
     if (composite_nh_modified) {
@@ -98,6 +110,7 @@ bool VxLanTable::DeleteCompositeNH(uint32_t vxlan_id,
             if (**list_it == *nh_key) {
                 // release the ComponentNHKeyPtr
                 (*list_it).reset();
+                it->second.erase(list_it);
                 return true;
             }
         }

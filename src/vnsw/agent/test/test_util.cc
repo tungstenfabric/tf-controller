@@ -2213,6 +2213,16 @@ void ModifyForwardingModeVn(const string &name, int id, const string &fw_mode) {
     AddNode("virtual-network", name.c_str(), id, str.str().c_str());
 }
 
+void ModifyMirrorDestinationVn(const string &name, int id, const string &mirror_dest) {
+    std::stringstream str;
+    str << "<virtual-network-properties>" << endl;
+    str << "    <mirror-destination>" << mirror_dest << "</mirror-destination>" << endl;
+    str << "</virtual-network-properties>" << endl;
+    str << "<virtual-network-network-id>" << id << "</virtual-network-network-id>" << endl;
+
+    AddNode("virtual-network", name.c_str(), id, str.str().c_str());
+}
+
 void AddL3Vn(const char *name, int id) {
     std::stringstream str;
     str << "<virtual-network-properties>" << endl;

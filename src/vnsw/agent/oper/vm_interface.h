@@ -1521,6 +1521,9 @@ public:
     uint32_t GetPbbVrf() const;
     uint32_t GetPbbLabel() const;
 
+    // Label for opposite policy mode (old label before toggling policy mode)
+    uint32_t label_op() const;
+
     void GetNextHopInfo();
     bool UpdatePolicySet(const Agent *agent);
     const FirewallPolicyList& fw_policy_list() const {
