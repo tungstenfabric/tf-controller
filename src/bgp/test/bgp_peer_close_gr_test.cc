@@ -413,8 +413,7 @@ TEST_P(BgpPeerCloseGrTestParam, TestSetGRCapabilities) {
                 string fmly = gr_info->families[i++];
                 if (!(afi_flags & BgpProto::OpenMessage::Capability::GR
                                       ::ForwardingStatePreservedFlag)) {
-                    if (fmly != Address::FamilyToString(Address::EVPN) &&
-                        fmly != Address::FamilyToString(Address::ERMVPN)) {
+                    if (fmly != Address::FamilyToString(Address::ERMVPN)) {
                         mismatch = __LINE__;
                         expected = false;
                         break;
@@ -431,25 +430,23 @@ TEST_P(BgpPeerCloseGrTestParam, TestSetGRCapabilities) {
                 mismatch = __LINE__;
                 expected = false;
             } else if (llgr_families != gr_families) {
-                // Check if differing families are only evpn and/or ermvpn.
+                // Check if differing families is ermvpn.
                 vector<string> differing_families;
                 std::set_symmetric_difference(gr_families.begin(),
                         gr_families.end(),
                         llgr_families.begin(), llgr_families.end(),
                         std::back_inserter(differing_families));
 
-                if (differing_families.size() > 2) {
+                if (differing_families.size() >= 2) {
                     mismatch = __LINE__;
                     expected = false;
                 } else if (differing_families.size() == 1) {
-                    if (differing_families[0] != "e-vpn" &&
-                            differing_families[0] != "erm-vpn") {
+                    if (differing_families[0] != "erm-vpn") {
                         mismatch = __LINE__;
                         expected = false;
                     }
                 } else {
-                    if (differing_families[0] != "e-vpn" ||
-                            differing_families[1] != "erm-vpn") {
+                    if (differing_families[1] != "erm-vpn") {
                         mismatch = __LINE__;
                         expected = false;
                     }
@@ -462,8 +459,7 @@ TEST_P(BgpPeerCloseGrTestParam, TestSetGRCapabilities) {
                     string fmly = llgr_info->families[i++];
                     if (!(afi_flag & BgpProto::OpenMessage::Capability::LLGR::
                                          ForwardingStatePreservedFlag)) {
-                        if (fmly != Address::FamilyToString(Address::EVPN) &&
-                            fmly != Address::FamilyToString(Address::ERMVPN)) {
+                        if (fmly != Address::FamilyToString(Address::ERMVPN)) {
                             mismatch = __LINE__;
                             expected = false;
                             break;
