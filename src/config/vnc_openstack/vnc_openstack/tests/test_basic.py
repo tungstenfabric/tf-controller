@@ -1659,6 +1659,60 @@ class TestBasic(test_case.NeutronBackendTestCase):
                 found += 1
         self.assertEqual(found, 2)
 
+    def test_sg_list_with_description(self):
+        # As part of bug fixed for CEM-24418
+        proj_obj = self._vnc_lib.project_read(
+            fq_name=['default-domain', 'default-project'])
+        sg_dict = self.create_resource('security_group',
+                                       proj_obj.uuid,
+                                       extra_res_fields={
+                                           'name': 'sg-%s' % self.id(),
+                                           'description': 'test_security_group'
+                                       })
+
+        self.create_resource(
+            'security_group_rule',
+            proj_obj.uuid,
+            extra_res_fields={
+                'name': 'sgr1-%s' % self.id(),
+                'id': 'id123',
+                'security_group_id': sg_dict['id'],
+                'remote_ip_prefix': None,
+                'port_range_min': None,
+                'port_range_max': None,
+                'protocol': None,
+                'ethertype': None,
+                'remote_group_id': None,
+                'direction': 'egress',
+                'description': 'test1'
+            })
+        self.create_resource(
+            'security_group_rule',
+            proj_obj.uuid,
+            extra_res_fields={
+                'name': 'sgr2-%s' % self.id(),
+                'id': 'id321',
+                'security_group_id': sg_dict['id'],
+                'remote_ip_prefix': None,
+                'port_range_min': None,
+                'port_range_max': None,
+                'protocol': None,
+                'ethertype': None,
+                'remote_group_id': None,
+                'direction': 'egress',
+                'description': None
+            })
+        sg_list = self.read_resource('security_group', sg_dict['id'])
+        for rule in sg_list['security_group_rules']:
+            if rule['id'] == 'id123':
+                self.assertEqual(rule['description'], 'test1')
+                break
+
+        for rule in sg_list['security_group_rules']:
+            if rule['id'] == 'id321':
+                self.assertEqual(rule['description'], None)
+                break
+
     def test_delete_irt_for_subnet_host_route(self):
         proj_obj = self._vnc_lib.project_read(
             fq_name=['default-domain', 'default-project'])
