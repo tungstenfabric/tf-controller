@@ -598,7 +598,7 @@ void FlowTable::HandleRevaluateDBEntry(const DBEntry *entry, FlowEntry *flow,
 
     // On a l3mh compute, when physical interfaces state is down on host
     // make all flows with underlay_gw_index same as phy intf encap index short
-    if (flow->data().underlay_gw_index_ != -1 && agent()->is_l3mh()) {
+    if (flow->data().underlay_gw_index_ != 0xff && agent()->is_l3mh()) {
         InetUnicastRouteEntry *rt = NULL;
         if (flow->is_flags_set(FlowEntry::IngressDir)) {
             rt = static_cast<InetUnicastRouteEntry *>

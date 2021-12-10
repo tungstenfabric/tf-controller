@@ -33,6 +33,7 @@
 #include "net/bgp_af.h"
 #include <controller/controller_export.h>
 #include "oper/vxlan_routing_manager.h"
+#include "pkt/test/test_pkt_util.h"
 
 #define ROUTE_L3MH_CONFIG_FILE \
         "controller/src/vnsw/agent/test/vnswa_l3mh_cfg.ini"
@@ -129,6 +130,26 @@ TEST_F(RouteTest, RemoteVmRoute_5) {
     const NextHop *addr_nh = addr_rt->GetActiveNextHop();
     EXPECT_TRUE(addr_nh->IsValid() == false);
 
+    // Try to send a packet from VM, flow underlay_gw index should be -1
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+    };
+    IpamInfo ipam_info_1[] = {
+        {"1.1.1.0", 24, "1.1.1.254"},
+    };
+    Ip4Address local_vm_ip_ = Ip4Address::from_string("1.1.1.1");
+    AddIPAM("vn1", ipam_info_1, 1);
+    CreateVmportEnv(input, 1);
+    client->WaitForIdle();
+    EXPECT_TRUE(VmPortActive(input, 0));
+    EXPECT_TRUE(RouteFind(vrf_name_, local_vm_ip_, 32));
+    TxIpPacket(VmPortGetId(1), "1.1.1.1", remote_vm_ip_.to_string().c_str(), 1);
+    client->WaitForIdle();
+    FlowEntry *entry = FlowGet(VrfGet(vrf_name_.c_str())->vrf_id(),
+                       "1.1.1.1", remote_vm_ip_.to_string().c_str(), 1, 0, 0, GetFlowKeyNH(1));
+    EXPECT_TRUE(entry != NULL);
+    EXPECT_TRUE(entry->data().underlay_gw_index_ == 255);
+
     //Resolve ARP for gw1
     AddArp(fabric_gw_ip_1_.to_string().c_str(), "0a:0b:0c:0d:0e:0f",
            eth_name_1_.c_str());
@@ -160,6 +181,9 @@ TEST_F(RouteTest, RemoteVmRoute_5) {
     //Delete remote server route
     DeleteRoute(bgp_peer_, vrf_name_, remote_vm_ip_, 32);
     EXPECT_FALSE(RouteFind(vrf_name_, remote_vm_ip_, 32));
+
+    DeleteVmportEnv(input, 1, true);
+    client->WaitForIdle();
 }
 
 int main(int argc, char *argv[]) {
