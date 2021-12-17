@@ -138,7 +138,7 @@ class ContrailZKIssu():
 def _issu_zk_main():
     logging.basicConfig(
         level=logging.INFO,
-        filename='/var/log/issu_contrail_zk.log',
+        filename='/var/log/contrail/issu_contrail_zk.log',
         format='%(asctime)s %(message)s')
 
     args, remaining_args = issu_contrail_config.parse_args()
