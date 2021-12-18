@@ -500,6 +500,9 @@ func (vrouter *VRouter) PollVmCfg(containerName string) (*[]Result,
         log.Infof("Get from vrouter passed. Result %+v", results)
         result := (*results)[0]
         indices := strings.Split(result.Annotations.Index, "/")
+        if len(indices) < 2 {
+            return nil, fmt.Errorf("Failed in PollVmCfg. Error : %s", msg)
+        }
         total_interfaces, err := strconv.Atoi(indices[1])
         if err != nil {
             msg = err.Error()
