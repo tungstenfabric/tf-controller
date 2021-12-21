@@ -126,6 +126,23 @@ void DBTablePartition::Remove(DBEntryBase *db_entry) {
         table()->RetryDelete();
 }
 
+void DBTablePartition::AddWithoutAlloc(DBEntry *entry) {
+    tbb::mutex::scoped_lock lock(mutex_);
+    tree_.insert(*entry);
+    entry->set_table_partition(static_cast<DBTablePartBase *>(this));
+    Notify(entry);
+    parent()->AddRemoveCallback(entry, true);
+}
+
+void DBTablePartition::RemoveWithoutDelete(DBEntry *entry) {
+    tbb::mutex::scoped_lock lock(mutex_);
+    bool success = tree_.erase(*entry);
+    if (!success) {
+        LOG(FATAL, "ABORT: DB node erase failed for table " + parent()->name());
+        abort();
+    }
+}
+
 DBEntry *DBTablePartition::FindInternal(const DBEntry *entry) {
     Tree::iterator loc = tree_.find(*entry);
     if (loc != tree_.end()) {

@@ -236,27 +236,25 @@ void EcmpData::AppendEcmpPath(AgentRoute *rt, AgentPath *path) {
     ComponentNHKeyList component_nh_key_list;
     const CompositeNH *comp_nh =
         static_cast<const CompositeNH *>(ecmp_path_->ComputeNextHop(agent_));
+    DBEntryBase::KeyPtr comp_nh_key = comp_nh->GetDBRequestKey();
+    NextHopKey *cnh_key = static_cast<NextHopKey *>(comp_nh_key.get());
     bool composite_nh_policy = false;
     component_nh_key_list = comp_nh->AddComponentNHKey(comp_nh_key_ptr,
                                                        composite_nh_policy);
     // Form the request for Inet4UnicastEcmpRoute and invoke AddChangePath
     // Get the existing comp_nh key and do a resync
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    DBEntryBase::KeyPtr comp_nh_key = comp_nh->GetDBRequestKey();
-    NextHopKey *cnh_key = static_cast<NextHopKey *>(comp_nh_key.get());
     cnh_key->sub_op_ = AgentKey::RESYNC;
     CompositeNHKey *composite_nh_key = new CompositeNHKey(Composite::LOCAL_ECMP,
-                                                          composite_nh_policy,
-                                                          component_nh_key_list,
-                                                          vrf_name_);
+                   composite_nh_policy,
+                   component_nh_key_list,
+                   vrf_name_);
     nh_req.key = comp_nh_key;
     nh_req.data.reset(new CompositeNHData(component_nh_key_list));
     nh_req_.Swap(&nh_req);
 
     label_ = ecmp_path_->label();
     ModifyEcmpPath(composite_nh_key);
-    comp_nh =
-        static_cast<const CompositeNH *>(ecmp_path_->ComputeNextHop(agent_));
     path->SyncRoute(true);
 
     RouteInfo rt_info;
@@ -321,14 +319,17 @@ bool EcmpData::UpdateNh(CompositeNHKey *composite_nh_key) {
 
     agent_->nexthop_table()->Process(nh_req_);
     NextHopKey *key = static_cast<NextHopKey *>(nh_req_.key.get());
-    if (composite_nh_key) {
-        key = static_cast<NextHopKey *>(composite_nh_key);
-    }
+
     // Create MPLS label and point it to Composite NH
     if (alloc_label_) {
         label_ = agent_->mpls_table()->CreateRouteLabel(label_, key, vrf_name_,
                                                         route_str_);
     }
+
+    if (composite_nh_key) {
+        key = static_cast<NextHopKey *>(composite_nh_key);
+    }
+
     nh = static_cast<NextHop *>(agent_->nexthop_table()->
                                 FindActiveEntry(key));
     if (nh == NULL) {

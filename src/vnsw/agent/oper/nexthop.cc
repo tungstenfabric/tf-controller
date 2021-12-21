@@ -370,6 +370,20 @@ void NextHopTable::Process(DBRequest &req) {
     tpart->Process(NULL, &req);
 }
 
+void NextHopTable::RemoveWithoutDelete(DBEntry *entry) {
+    agent()->ConcurrencyCheck();
+    DBTablePartition *tpart =
+        static_cast<DBTablePartition *>(GetTablePartition(entry));
+    tpart->RemoveWithoutDelete(entry);
+}
+
+void NextHopTable::AddWithoutAlloc(DBEntry *entry) {
+    agent()->ConcurrencyCheck();
+    DBTablePartition *tpart =
+        static_cast<DBTablePartition *>(GetTablePartition(entry));
+    tpart->AddWithoutAlloc(entry);
+}
+
 void NextHopTable::OnZeroRefcount(AgentDBEntry *e) {
     NextHop *nh = static_cast<NextHop *>(e);
 
@@ -1909,6 +1923,7 @@ bool CompositeNH::ChangeEntry(const DBRequest* req) {
     bool changed = false;
     CompositeNHData *data = static_cast<CompositeNHData *>(req->data.get());
     NextHopKey *key =  static_cast <NextHopKey *>(req->key.get());
+    ComponentNHKeyList tmp_component_nh_key_list_;
     if (data && data->pbb_nh_ != pbb_nh_) {
         pbb_nh_ = data->pbb_nh_;
         changed = true;
@@ -1925,16 +1940,17 @@ bool CompositeNH::ChangeEntry(const DBRequest* req) {
     }
 
     if (key->sub_op_ == AgentKey::RESYNC  &&
-       (data && data->component_nh_key_list_.empty() == false)) {
-            //component_nh_key_list_ != data->component_nh_key_list_) {
-        /* PRADEEP: Should this be modified at the end ? */
-        component_nh_key_list_ = data->component_nh_key_list_;
+        (data && data->component_nh_key_list_.empty() == false) &&
+        composite_nh_type_ == Composite::LOCAL_ECMP ) {
+        tmp_component_nh_key_list_ = data->component_nh_key_list_;
         changed = true;
+    } else {
+        tmp_component_nh_key_list_ = component_nh_key_list_;
     }
 
     ComponentNHList component_nh_list;
-    ComponentNHKeyList::const_iterator it = component_nh_key_list_.begin();
-    for (;it != component_nh_key_list_.end(); it++) {
+    ComponentNHKeyList::const_iterator it = tmp_component_nh_key_list_.begin();
+    for (;it != tmp_component_nh_key_list_.end(); it++) {
         if ((*it) == NULL) {
             ComponentNHPtr nh_key;
             nh_key.reset();
@@ -1997,6 +2013,18 @@ bool CompositeNH::ChangeEntry(const DBRequest* req) {
         changed = true;
     }
     component_nh_list_ = component_nh_list;
+
+    if (key->sub_op_ == AgentKey::RESYNC  &&
+        (data && data->component_nh_key_list_.empty() == false) &&
+        composite_nh_type_ == Composite::LOCAL_ECMP ) {
+        /* First remove entry from tree */
+        Agent::GetInstance()->nexthop_table()->RemoveWithoutDelete(static_cast<DBEntry *>(this));
+
+        /* Now update the key and add it back to tree */
+        component_nh_key_list_ = tmp_component_nh_key_list_;
+        Agent::GetInstance()->nexthop_table()->AddWithoutAlloc(static_cast<DBEntry *>(this));
+    }
+
     return changed;
 }
 

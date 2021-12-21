@@ -1975,6 +1975,8 @@ public:
     uint32_t ReserveIndex();
     void CheckVrNexthopLimit();
     uint32_t NhIndexCount() { return index_table_.InUseIndexCount(); }
+    void AddWithoutAlloc(DBEntry *entry);
+    void RemoveWithoutDelete(DBEntry *entry);
 private:
     NextHop *AllocWithKey(const DBRequestKey *k) const;
     virtual std::auto_ptr<DBEntry> GetEntry(const DBRequestKey *key) const;
