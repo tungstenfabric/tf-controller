@@ -113,6 +113,12 @@ public:
     DBTable *table();
     size_t size() const { return tree_.size(); }
 
+    // Add an entry to DB without allocating
+    void AddWithoutAlloc(DBEntry *entry);
+
+    // Remove an entry from DB without delete
+    void RemoveWithoutDelete(DBEntry *entry);
+
 private:
     DBEntry *FindInternal(const DBEntry *entry);
     const DBEntry *FindInternal(const DBEntry *entry) const;
