@@ -64,7 +64,9 @@ import functools
 
 import sys
 
-RESYNC_MAX_WORKERS = 500
+# Reducing worker count due to CEM-25331
+RESYNC_MAX_WORKERS = 10
+#RESYNC_MAX_WORKERS = 500
 
 
 def get_trace_id():
@@ -1559,6 +1561,27 @@ class VncDbClient(object):
                 vpg_dict['annotations']['key_value_pair'].remove(key_val)
                 break
 
+    # Reads given list of UUIDs in chunks
+    def read_in_chunks(self, obj_type, obj_uuids, obj_fields):
+        chunk_count = 1000
+        ok =  True
+        uuid_chunks = [obj_uuids[i:i + chunk_count] for i in range(
+            0, len(obj_uuids), chunk_count)]
+        objs = []
+        notfound_objs = []
+        for uuid_chunk in uuid_chunks:
+            try:
+                ok, objs_chunk = self._object_db.object_read(
+                    obj_type, uuid_chunk, field_names=obj_fields)
+                if not ok:
+                    return ok, objs, notfound_objs
+            except NoIdError:
+                # ignoring not found objects
+                notfound_objs += uuid_chunk
+                continue
+            objs += objs_chunk
+        return ok, objs, notfound_objs
+
     def _dbe_resync(self, obj_type, obj_uuids):
         msg = "Start DB Resync for %s" % obj_type
         self.config_log(msg, level=SandeshLevel.SYS_DEBUG)
@@ -1590,21 +1613,48 @@ class VncDbClient(object):
             # update kwargs with vpg, fabric list
             kwargs.update({'vpgs': vpgs, 'fabrics': fabrics})
 
-        (ok, obj_dicts) = self._object_db.object_read(
-                               obj_type, obj_uuids, field_names=obj_fields)
+        starttime = datetime.datetime.now()
+        msg = "Start DB Read of %s" % obj_type
+        self.config_log(msg, level=SandeshLevel.SYS_INFO)
+
+        ok, obj_dicts, notfound_obj_dict_list = self.read_in_chunks(
+            obj_type, obj_uuids, obj_fields)
+
+        endtime = datetime.datetime.now()
+        msg = "Not Found UUIDs = %s" % notfound_obj_dict_list
+        self.config_log(msg, level=SandeshLevel.SYS_INFO)
+        msg = "End DB Read of %s" % obj_type
+
+        self.config_log(msg, level=SandeshLevel.SYS_INFO)
+        totalduration = (endtime - starttime).total_seconds()
+        msg = "Total Duration of DB Read for %s = %s seconds" % (obj_type, totalduration)
+        self.config_log(msg, level=SandeshLevel.SYS_INFO)
 
         uve_trace_list = []
         self._workers = []
         worker_count = 0
+        worker_subset = 1
+        zk_sleep_start = datetime.datetime.now()
         for obj_dict in obj_dicts:
             uve_trace_list.append(("RESYNC", obj_type, obj_dict['uuid'], obj_dict))
             self._workers.append(gevent.spawn(
                 self._dbe_resync_worker, obj_type, obj_dict, **kwargs))
             worker_count += 1
             if worker_count == RESYNC_MAX_WORKERS:
+                if datetime.datetime.now() - zk_sleep_start > datetime.timedelta(seconds=30):
+                    msg = "Sleeping 0.5s for ZK ping"
+                    self.config_log(msg, level=SandeshLevel.SYS_INFO)
+                    gevent.sleep(0.5)
+                    zk_sleep_start = datetime.datetime.now()
+                msg = ("Reached Max subset of workers for %s, "
+                       "waiting for worker subset %s to complete" % (obj_type, worker_subset))
+                self.config_log(msg, level=SandeshLevel.SYS_INFO)
                 gevent.joinall(self._workers)
+                msg = "Completed worker subset (%s) for %s" % (obj_type, worker_subset)
+                self.config_log(msg, level=SandeshLevel.SYS_INFO)
                 self._workers = []
                 worker_count = 0
+                worker_subset += 1
 
         # wait for all task to complete
         gevent.joinall(self._workers)
