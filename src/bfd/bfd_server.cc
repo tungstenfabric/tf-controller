@@ -103,16 +103,35 @@ bool Server::EventCallback(Event *event) {
 
 Session* Server::GetSession(const ControlPacket *packet) {
     CHECK_CONCURRENCY("BFD");
-    if (packet->receiver_discriminator) {
-        return session_manager_.SessionByDiscriminator(
-                packet->receiver_discriminator);
-    }
 
     SessionIndex session_index;
     if (packet->local_endpoint.port() == kSingleHop) {
         session_index.if_index = packet->session_index.if_index;
     } else {
         session_index.vrf_index = packet->session_index.vrf_index;
+    }
+
+    if (packet->receiver_discriminator) {
+        Session *session_bydesc = session_manager_.SessionByDiscriminator
+            (packet->receiver_discriminator);
+        if(session_bydesc && session_bydesc->Stats().rx_count == 0) {
+            Session *session_bykey = session_manager_.SessionByKey(
+                    SessionKey(packet->remote_endpoint.address(), session_index,
+                        packet->local_endpoint.port(),
+                        packet->local_endpoint.address()));
+            if(!session_bykey ||
+                    session_bydesc->local_discriminator() !=
+                    session_bykey->local_discriminator()) {
+                LOG(ERROR, __func__ << " DISC -> Session MISMATCH: " <<
+                        packet->remote_endpoint.address().to_string() <<
+                        " -> " <<
+                        packet->local_endpoint.address().to_string());
+                LOG(ERROR, "PACKET Your_Discriminator mapped session: " <<
+                        session_bydesc->toString());
+                return NULL;
+            }
+        }
+        return session_bydesc;
     }
 
     // Use ifindex for single hop and vrfindex for multihop sessions.
