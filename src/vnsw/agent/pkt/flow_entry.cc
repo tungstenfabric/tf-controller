@@ -3679,7 +3679,8 @@ uint8_t FlowEntry::GetUnderlayGwIndex(uint32_t intf_in, const IpAddress &sip,
     uint8_t index = 0;
     TunnelNH::EncapDataList encap_list = tunnel_nh->GetEncapDataList();
     while (index < encap_list.size()) {
-        if ( underlay_gw_index == (encap_list[index].get()->interface_).get()->id()) {
+        if (encap_list[index].get()->interface_.get() &&
+            underlay_gw_index == (encap_list[index].get()->interface_).get()->id()) {
             underlay_gw_index = index;
             break;
         }
