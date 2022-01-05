@@ -1203,6 +1203,14 @@ int NHKSyncEntry::Encode(sandesh_op::type op, char *buf, int buf_len) {
                 sub_label_list.push_back(pbb_label_);
                 encoder.set_nhr_label_list(sub_label_list);
             }
+            /*
+             * This is temp fix to handle CEM-25471
+             * Currently, vRouter doesn't differentiate PBB and MPLSoGRE/MPLSoUDP
+             * correctly and it uses encap_oif_id for PBB also which is not needed
+             * So, sending encap_oif_id as ZERO here in case of PBB so that vRouter
+             * can work in same way as it was working earlier.
+             */
+            encoder.set_nhr_encap_oif_id(std::vector<int32_t>(1, 0));
             break;
         }
 
