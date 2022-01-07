@@ -806,7 +806,9 @@ class AddrMgmt(object):
                 if not subnetting and not routed_vn:
                     if ('dns_server_address' not in ipam_subnet) or \
                         (ipam_subnet['dns_server_address'] is None) or \
-                        (ipam_subnet['dns_server_address'] is 'None'):
+                        (ipam_subnet['dns_server_address'] is 'None') or \
+                        ((old_dns_addr is not None) and \
+                        (ipam_subnet['dhcp_option_list']) is None):
                         #we need to make sure subnet_obj has a default dns
                         network = subnet_obj._network
                         if addr_from_start:
