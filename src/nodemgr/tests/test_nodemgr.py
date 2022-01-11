@@ -17,6 +17,8 @@ class Config(object):
         self.collectors = ['0.0.0.0']
         self.sandesh_keyfile = ''
         self.sandesh_certfile = ''
+        self.sandesh_server_keyfile = ''
+        self.sandesh_server_certfile = ''
         self.sandesh_ca_cert = ''
         self.sandesh_ssl_enable = False
         self.introspect_ssl_enable = None
