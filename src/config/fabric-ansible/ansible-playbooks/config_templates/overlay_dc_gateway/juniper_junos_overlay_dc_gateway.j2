@@ -107,6 +107,7 @@ set groups {{cfg_group}} services nat pool {{address_pool.name}} port automatic 
 set groups {{cfg_group}} services service-set {{nat_rules_name}} nat-rules {{rule.get('name')}}
 set groups {{cfg_group}} services nat rule {{rule.get('name')}} match-direction {{rule.get('direction')}}
 {%                 set source_addrs = rule.get('source_addresses', []) %}
+{%                 set source_prefixes = rule.get('source_prefixes', []) %}
 {%                 for index in range(source_addrs|length) %}
 {%                     set source_addr = source_addrs[index] %}
 {%                     set source_prefix = source_prefixes[index] %}
