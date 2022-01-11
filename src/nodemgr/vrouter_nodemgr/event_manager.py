@@ -30,7 +30,3 @@ class VrouterEventManager(EventManager):
         super(VrouterEventManager, self).do_periodic_events()
         # loadbalancer processing
         self.lb_stats.send_loadbalancer_stats()
-
-    def nodemgr_sighup_handler(self):
-        self.update_current_process()
-        super(VrouterEventManager, self).nodemgr_sighup_handler()
