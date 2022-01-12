@@ -1223,6 +1223,8 @@ public:
         DEACTIVATED_L2,
         FLOATING_IP_CHANGE,
         SERVICE_CHANGE,
+	VMI_REUSE,
+	VRF_REUSE,
     };
 
     VmInterface(const boost::uuids::uuid &uuid,
@@ -1315,6 +1317,7 @@ public:
     bool bridging() const { return bridging_; }
     bool layer3_forwarding() const { return layer3_forwarding_; }
     const std::string &vm_name() const { return vm_name_; }
+    const std::string &vrf_name() const { return vrf_name_; }
     const boost::uuids::uuid &vm_project_uuid() const {return vm_project_uuid_;}
 
     uint32_t local_preference() const { return local_preference_; }
@@ -1633,6 +1636,7 @@ private:
     bool ResyncConfig(VmInterfaceConfigData *data);
     bool CopyIpAddress(Ip4Address &addr);
     bool CopyIp6Address(const Ip6Address &addr);
+    bool ResetVrfDelete(const InterfaceTable *table, const std::string &vrf_name);
 
     void CleanupFloatingIpList();
 
@@ -1690,6 +1694,7 @@ private:
     ProxyArpMode proxy_arp_mode_;
     // VM-Name. Used by DNS
     std::string vm_name_;
+    std::string vrf_name_;
     // project uuid of the vm to which the interface belongs
     boost::uuids::uuid vm_project_uuid_;
     int vxlan_id_;
