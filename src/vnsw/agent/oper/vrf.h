@@ -155,6 +155,7 @@ public:
     void StartDeleteTimer();
     bool DeleteTimeout();
     void CancelDeleteTimer();
+    bool ResetVrfDelete();
     void PostAdd();
     void AddNH(Ip4Address ip, uint8_t plen, ComponentNHData *nh_data) ;
     void DeleteNH(Ip4Address ip, uint8_t plen, ComponentNHData *nh_data) ;
@@ -250,6 +251,7 @@ private:
     string bmac_vrf_name_;
     uint32_t isid_;
     tbb::atomic<uint32_t> mac_aging_time_;
+    tbb::mutex delete_reuse_mutex_;
     bool learning_enabled_;
     bool layer2_control_word_;
     bool l2_;
@@ -259,6 +261,7 @@ private:
     uint32_t retries_;
     uint32_t hbf_rintf_;
     uint32_t hbf_lintf_;
+    bool deleted_;
     DISALLOW_COPY_AND_ASSIGN(VrfEntry);
 };
 
