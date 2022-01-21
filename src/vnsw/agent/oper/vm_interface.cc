@@ -1739,6 +1739,12 @@ VmInterfaceState::Op VmInterface::LearntMacIp::GetOpL2
 
 bool VmInterface::LearntMacIp::AddL2(const Agent *agent,
                                     VmInterface *vmi) const {
+    // IPVLAN subinterface will have the same mac as the parent interface mac
+    // skip adding the route, as these routes are already installed as part 
+    // of parent interface add.
+    if (mac_.ToString() == vmi->vm_mac().ToString())
+        return true;
+
     if (vrf_ == NULL)
         return false;
     InterfaceNH::CreateL2VmInterfaceNH(vmi->GetUuid(), mac_,
@@ -1775,6 +1781,11 @@ bool VmInterface::LearntMacIp::DeleteL2(const Agent *agent,
                                        VmInterface *vmi) const {
     if (vrf_ == NULL)
         return false;
+
+    // IPVLAN subinterface will have the same mac as the parent interface mac
+    // skip deleting the route as the parent interface is not deleted.
+    if (mac_.ToString() == vmi->vm_mac().ToString())
+        return true;
 
     vmi->DeleteL2InterfaceRoute(vrf_, ethernet_tag_, Ip4Address(0),
                                 mac_);
