@@ -824,7 +824,7 @@ class AddrMgmt(object):
                             if subnet_obj.ip_belongs(new_dns_addr):
                                 read_ip_addr = subnet_obj.is_ip_allocated(
                                                    new_dns_addr)
-                                if read_ip_addr is not None:
+                                if ((read_ip_addr is not None) and (read_ip_addr != "dns_server")):
                                     raise AddrMgmtSubnetInvalid(fq_name_str,
                                                                 subnet_name)
 
