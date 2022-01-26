@@ -12,6 +12,9 @@ set groups {{cfg_group}} policy-options policy-statement type5_policy term 3 the
 set groups {{cfg_group}} policy-options policy-statement type5_policy term 4 from protocol bgp
 set groups {{cfg_group}} policy-options policy-statement type5_policy term 4 then accept
 {%     endif %}
+{%     if device_model.startswith('qfx51') %}
+set groups {{cfg_group}} forwarding-options vxlan-routing overlay-ecmp
+{%     endif %}
 {%     set dummy_ip = device_abstract_config.get('system', {}).get('dummy_ip') %}
 {%     for ri in device_abstract_config.get('features', {}).get('vn-interconnect', {}).get('routing_instances', []) %}
 {%         set name = ri.get('name', '')[:127] %}
