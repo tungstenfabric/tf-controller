@@ -523,6 +523,10 @@ class JobHandler(object):
                 self._logger.error("Failed to send prouter log: %s" % str(ex))
     # end send_prouter_uve
 
+    def _write2file(self, file_name, file_input):
+        with open(file_name, "w") as outfile:
+            outfile.writelines(file_input)
+
     def run_playbook_process(self, playbook_info, percentage_completed):
         playbook_process = None
         self.current_percentage = percentage_completed
@@ -537,10 +541,15 @@ class JobHandler(object):
                     'job_execution_id']
             pr_uve_name = self.get_pr_uve_name_from_device_name(playbook_info)
 
+            # To take care of multi device playbook issue, appending unique
+            # playbook_id to the file name. CEM-24790
+            file_name = "/tmp/{}_{}_input.txt".format(exec_id, unique_pb_id)
+            self._write2file(file_name, json.dumps(playbook_info))
+
             playbook_process = subprocess32.Popen(["python",
                                                    playbook_exec_path,
                                                    "-i",
-                                                   json.dumps(playbook_info)],
+                                                   file_name],
                                                   close_fds=True, cwd='/')
             # Save process ID in case of abort
             self._pb_pids.append(playbook_process.pid)
@@ -553,7 +562,9 @@ class JobHandler(object):
             marked_jsons = self._extract_marked_json(marked_output)
             playbook_output = marked_jsons.get(JobFileWrite.PLAYBOOK_OUTPUT)
             playbook_process.wait(timeout=self._playbook_timeout)
-
+            # Delete the file created above (file_name)
+            if os.path.isfile(file_name):
+                os.remove(file_name)
             # create prouter UVE in job_manager only if it is not a multi
             # device job template
             if not self.is_multi_device_playbook:
