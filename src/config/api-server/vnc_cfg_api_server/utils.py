@@ -113,6 +113,7 @@ def parse_args(args_str):
         'watch_keepalive_interval': 60,
         'worker_introspect_ports': '',
         'worker_admin_ports': '',
+        'contrail_version': '',
     }
     defaults.update(SandeshConfig.get_default_options(['DEFAULTS']))
     # keystone options
@@ -369,6 +370,9 @@ def parse_args(args_str):
         help="List of introspect ports for uwsgi workers")
     parser.add_argument("--worker_admin_ports",
         help="List of admin ports for uwsgi workers")
+    parser.add_argument(
+        "--contrail_version",
+        help="contrail build version info")
     SandeshConfig.add_parser_arguments(parser)
     args_obj, remaining_argv = parser.parse_known_args(remaining_argv)
     args_obj.conf_file = args.conf_file
