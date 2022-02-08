@@ -13,7 +13,7 @@ from builtins import zip
 from builtins import str
 from builtins import object
 from past.utils import old_div
-from cfgm_common.zkclient import ZookeeperClient, IndexAllocator
+from cfgm_common.zkclient import ZookeeperClient, IndexAllocator, ZookeeperLock
 from gevent import monkey
 monkey.patch_all()
 import gevent
@@ -22,6 +22,7 @@ from six import StringIO
 
 import time
 from pprint import pformat
+
 
 import socket
 from netaddr import IPNetwork, IPAddress
@@ -1328,9 +1329,40 @@ class VncDbClient(object):
     # end get_api_server
 
     def db_resync(self):
+        """ DB_resync is running only once among multiple api_server instances,
+        and DB walk will be completed by all instances
+        Fresh deployment and Upgrade scenario has been considered in this method in such a way that DB_resync runs only once
+        and all other instance does DB_walk """
+        lockdata = 'api-server-%s' % self._api_svr_mgr.get_worker_id()
+        zk_dbe_lock = {'zookeeper_client': self._zk_db._zk_client,
+                       'path': '/vnc_api_server_locks/dbe_resync',
+                       'name': lockdata, 'timeout': 60}
+        self.config_log("Executing db_resync on api-server instance (%s)" % self._api_svr_mgr.get_worker_id(),
+            level=SandeshLevel.SYS_INFO)
         # Read contents from cassandra and perform DB update if required
         start_time = datetime.datetime.utcnow()
-        self._object_db.walk(self._dbe_resync)
+        build_version = self._api_svr_mgr._args.contrail_version
+        walk_only=False
+        sync_complete_znode = '/vnc_api_server_locks/dbe-resync-complete'
+        with ZookeeperLock(**zk_dbe_lock):
+            try:
+                zk_sync_node = self._zk_db._zk_client.read_node(sync_complete_znode)
+                if not zk_sync_node:
+                   self.config_log("DBERESYNC: running dbe-resync", level=SandeshLevel.SYS_INFO)
+                   self._object_db.walk(self._dbe_resync)
+                   self._zk_db._zk_client.create_node(sync_complete_znode,build_version)
+                elif zk_sync_node and (zk_sync_node != build_version):
+                       self.config_log("DBERESYNC: running dbe-resync", level=SandeshLevel.SYS_INFO)
+                       self._object_db.walk(self._dbe_resync)
+                       self._zk_db._zk_client.update_node(sync_complete_znode,build_version)
+                else:
+                    walk_only=True
+            except Exception as e:
+                self.config_log("DBERESYNC: found exception (%s)" % e, level=SandeshLevel.SYS_ERR)
+        if walk_only:
+            self.config_log("DBERESYNC: running walk", level=SandeshLevel.SYS_INFO)
+            self._object_db.walk()
+
         self.config_log("Cassandra DB walk completed.",
             level=SandeshLevel.SYS_INFO)
         self._update_default_quota()
