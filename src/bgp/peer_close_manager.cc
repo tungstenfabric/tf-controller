@@ -580,8 +580,12 @@ bool PeerCloseManager::MembershipRequestCallback(Event *event) {
     // From LLGR_STALE state, switch to LLGR_TIMER state. Typically this would
     // be a very long timer, and we expect to receive EORs before this timer
     // expires.
+    // Just like for GRSTALE in the above case, before moving to LLGR_TIMER and 
+    // starting LLGR_TIMER, we can check if the peer can come back up.
     if (state_ == LLGR_STALE) {
         MOVE_TO_STATE(LLGR_TIMER);
+        peer_close_->CloseComplete();
+        peer_close_->GetLongLivedGracefulRestartFamilies(&families_);
 
         // Offset restart time with elapsed time during nested closures.
         int time = peer_close_->GetLongLivedGracefulRestartTime() * 1000;

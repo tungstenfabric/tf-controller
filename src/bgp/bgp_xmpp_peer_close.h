@@ -31,6 +31,7 @@ public:
     virtual bool IsCloseLongLivedGraceful() const;
     virtual void GetGracefulRestartFamilies(Families *families) const;
     virtual void ReceiveEndOfRIB(Address::Family family);
+    virtual void GetLongLivedGracefulRestartFamilies(Families *families) const;
     virtual void MembershipRequestCallbackComplete();
     virtual const char *GetTaskName() const;
     virtual int GetTaskInstance() const;
