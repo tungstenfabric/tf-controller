@@ -272,6 +272,7 @@ class TestPermissions(test_case.ApiServerTestCase):
             ('DEFAULTS', 'cloud_admin_role', 'cloud-admin'),
             ('DEFAULTS', 'global_read_only_role', 'read-only-role'),
             ('DEFAULTS', 'auth', 'keystone'),
+            ('DEFAULTS', 'contrail_version', '2011'),
         ]
         super(TestPermissions, cls).setUpClass(extra_mocks=extra_mocks,
             extra_config_knobs=extra_config_knobs)
@@ -1660,6 +1661,10 @@ class TestPermissions(test_case.ApiServerTestCase):
         (ok, result_dict) = self._api_server._db_conn._object_db.object_read(obj_type, [obj_uuid])
         obj_dict = result_dict[0]
         self.assertEquals(obj_dict['perms2']['owner'], None)
+
+        # manually setting contrail_version to 21.4
+        # so db_resync is run as part of upgrade scenario
+        self._api_server._args.contrail_version = '21.4'
 
         # simulate upgrade
         self._api_server._db_conn.db_resync()

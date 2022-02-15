@@ -72,6 +72,7 @@ class STTestCase(test_common.TestCase):
         extra_config = [
             ('DEFAULTS', 'multi_tenancy', 'False'),
             ('DEFAULTS', 'aaa_mode', 'no-auth'),
+            ('DEFAULTS', 'contrail_version', '2011'),
         ]
         if extra_config_knobs:
             extra_config.append(extra_config_knobs)

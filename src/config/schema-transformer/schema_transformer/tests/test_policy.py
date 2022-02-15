@@ -895,6 +895,10 @@ class TestPolicy(STTestCase, VerifyPolicy):
         vn6_obj1.set_is_provider_network(True)
         self._vnc_lib.virtual_network_update(vn6_obj1)
 
+        # manually setting contrail_version to 21.4
+        # so db_resync is run as part of upgrade scenario
+        self._api_server._args.contrail_version = '21.4'
+
         # check db_resync sets is_provider_network property
         # as True in provider-vn
         self._api_server._db_conn.db_resync()
