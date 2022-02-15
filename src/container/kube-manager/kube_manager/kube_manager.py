@@ -59,6 +59,15 @@ class KubeNetworkManager(object):
         event_callbacks = None
         # kube_api_skip is used by unittests (True)
         if not kube_api_skip:
+            while True:
+                try:
+                    kube = kube_monitor.KubeMonitor(
+                        args=self.args, logger=self.logger, q=self.q)
+                    break
+                except (OSError, IOError, socket.error) as e:
+                    self.logger.error("KubeNetworkManager - init exception(%s)" % e)
+                    gevent.sleep(3)
+
             # create monitors w/o accessing kubeapi
             # each monitor will be initialized individually
             # by its callback function
@@ -90,15 +99,6 @@ class KubeNetworkManager(object):
             event_callbacks = dict()
             for _, m in self.monitors.items():
                 event_callbacks[m.kind] = m.event_process_callback
-
-            while True:
-                try:
-                    kube = kube_monitor.KubeMonitor(
-                        args=self.args, logger=self.logger, q=self.q)
-                    break
-                except (OSError, IOError, socket.error) as e:
-                    self.logger.error("KubeNetworkManager - init exception(%s)" % e)
-                    gevent.sleep(3)
 
         self.vnc = vnc_kubernetes.VncKubernetes(
             args=self.args, logger=self.logger, q=self.q, callbacks=event_callbacks,
