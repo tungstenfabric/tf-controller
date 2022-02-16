@@ -710,3 +710,90 @@ TEST_P(BgpEvpnTest, Smet_With_ErmVpnRoute_3) {
         TASK_UTIL_EXPECT_EQ(0, red_ermvpn_[i-1]->Size());
     }
 }
+
+// Add smet route and verify that it gets copied to master table
+// but only after ermvpn route becomes available.
+// Update route update time to see if optimization works.
+TEST_P(BgpEvpnTest, Smet_With_ErmVpnRoute_Optimisation) {
+    // Inject smet route from a mock peer into evpn.0 table with red1 route
+    // target. This route should go into red1 table.
+    for (size_t i = 1; i <= instances_set_count_; i++)
+        for (size_t j = 1; j <= groups_count_; j++) {
+            AddEvpnRoute(red_[i-1], prefix6(i, j));
+        }
+
+
+    TASK_UTIL_EXPECT_EQ(0, master_->Size());
+    // Make ermvpn route available now and verifiy that smet route gets copied.
+    // to master table. Add a ermvpn route into the table.
+    ErmVpnRoute *ermvpn_rt[instances_set_count_*groups_count_];
+    for (size_t i = 1; i <= instances_set_count_; i++) {
+        for (size_t j = 1; j <= groups_count_; j++) {
+            tbb::mutex::scoped_lock lock(pmsi_params_mutex);
+            ermvpn_rt[(i-1)*groups_count_+(j-1)] = NULL;
+            PMSIParams pmsi(PMSIParams(10, "1.2.3.4", "gre",
+                            &ermvpn_rt[(i-1)*groups_count_+(j-1)]));
+            pmsi_params.insert(make_pair(sg(i, j), pmsi));
+        }
+    }
+
+    TASK_UTIL_EXPECT_EQ(0, master_->Size());
+
+    for (size_t i = 1; i <= instances_set_count_; i++) {
+        for (size_t j = 1; j <= groups_count_; j++) {
+            ErmVpnRoute *rt =
+                AddErmVpnRoute(red_ermvpn_[i-1], ermvpn_prefix(i, j),
+                               "target:127.0.0.1:1100");
+            // To test optimisation, change the route update time.
+            // Optimisation is triggered if the time difference is
+            // more five minutes. Setting the route change time as
+            // thirty one minutes ago to enable optimisation.
+            uint64_t start = UTCTimestampUsec();
+            rt->set_last_update_at(start-1860000000);
+            tbb::mutex::scoped_lock lock(pmsi_params_mutex);
+            ermvpn_rt[(i-1)*groups_count_+(j-1)] = rt;
+        }
+
+        TASK_UTIL_EXPECT_EQ(i*groups_count_, master_->Size());
+
+        for (size_t j = 1; j <= groups_count_; j++) {
+            // Lookup the actual smet route and verify its attributes.
+            EvpnRoute *smet_rt = VerifySmetRoute(red_[i-1], prefix6(i, j),
+                                                     pmsi_params[sg(i, j)]);
+            const BgpPath *red_path = smet_rt->BestPath();
+            const BgpAttr *red_attr = red_path->GetAttr();
+
+            // Notify ermvpn route without any change.
+            task_util::TaskFire(boost::bind(&BgpEvpnTest::NotifyRoute, this,
+                         ermvpn_rt, i, j), "bgpConfig");
+
+            // Verify that smet path or its attributes did not change.
+            std::map<SG, const PMSIParams>::iterator iter =
+                pmsi_params.find(sg(i, j));
+            assert(iter != pmsi_params.end());
+            TASK_UTIL_EXPECT_EQ(smet_rt,
+                VerifySmetRoute(red_[i-1], prefix6(i, j), iter->second));
+            TASK_UTIL_EXPECT_EQ(red_path, smet_rt->BestPath());
+            TASK_UTIL_EXPECT_EQ(red_attr, smet_rt->BestPath()->GetAttr());
+        }
+    }
+
+    for (size_t i = 1; i <= instances_set_count_; i++) {
+        for (size_t j = 1; j <= groups_count_; j++) {
+            DeleteEvpnRoute(red_[i-1], prefix6(i, j));
+            {
+                tbb::mutex::scoped_lock lock(pmsi_params_mutex);
+                assert(pmsi_params.erase(sg(i, j)) == 1);
+            }
+            DeleteErmVpnRoute(red_ermvpn_[i-1], ermvpn_prefix(i, j));
+        }
+    }
+
+    TASK_UTIL_EXPECT_EQ(0, master_->Size());
+    for (size_t i = 1; i <= instances_set_count_; i++) {
+        TASK_UTIL_EXPECT_EQ(0, red_[i-1]->Size());
+        if (red_ermvpn_[i-1]->Size() > 0)
+            WalkTable(red_ermvpn_[i-1]);
+        TASK_UTIL_EXPECT_EQ(0, red_ermvpn_[i-1]->Size());
+    }
+}

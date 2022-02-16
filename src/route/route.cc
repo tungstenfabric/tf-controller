@@ -40,6 +40,7 @@ void Route::remove(const Path *ipath) {
 void Route::Sort(Compare compare, const Path *prev_front) {
     path_.sort(compare);
 
+    set_last_update_at_to_now();
     // If the best path changes, update route's time stamp.
     if (prev_front != front()) {
         set_last_change_at_to_now();

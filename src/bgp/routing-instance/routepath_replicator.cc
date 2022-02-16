@@ -474,6 +474,26 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
         static_cast<RtReplicated *>(rt->GetState(table, id));
     RtReplicated::ReplicatedRtPathList replicated_path_list;
 
+    //Flag to track if any change happenned to route in last 30 minutes
+    bool route_unchanged = false;
+    //List of tables that needs replication of route
+    RtGroup::RtGroupMemberList addedTables;
+    //List of tables having the latest changes in route
+    RtGroup::RtGroupMemberList previousTables;
+    //Threshold used for optimised replication
+    uint64_t optimizationThresholdTime = 30ULL * 60 * 1000000;
+    uint64_t start = UTCTimestampUsec();
+
+    //Optimize only if last route change occurred 30 mins before.
+    //We update the route_unchanged flag to true
+    if ( (start - rt->last_update_at() > optimizationThresholdTime) &&
+          dbstate != NULL)
+    {
+        RPR_TRACE(RouteListener, "Route change occurred before threshold \
+        time, optimising replication");
+        route_unchanged = true;
+    }
+
     //
     // Cleanup if the route is not usable.
     // If route aggregation is enabled, contributing route/more specific route
@@ -502,6 +522,16 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
     if (!rtinstance->IsMasterRoutingInstance()) {
         BOOST_FOREACH(RouteTarget rtarget, rtinstance->GetExportList()) {
             export_list.push_back(rtarget.GetExtCommunity());
+        }
+    }
+
+    // Updating previousTables with the list of tables having the information
+    // about the route.
+    if (route_unchanged){
+        replicated_path_list = dbstate->GetList();
+        BOOST_FOREACH (RtReplicated::SecondaryRouteInfo path,
+                       replicated_path_list){
+            previousTables.insert(path.table_);
         }
     }
 
@@ -575,6 +605,19 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
             extcomm_ptr = UpdateOriginVn(server_, extcomm_ptr.get(), vn_index);
         }
 
+        if (route_unchanged){
+            addedTables = RtGroup::RtGroupMemberList();
+            // Finding the difference between sets, secondary_tables and
+            // previousTables
+            std::set_difference(secondary_tables.begin(), secondary_tables.end(),
+                                previousTables.begin(), previousTables.end(),
+                                std::inserter(addedTables, addedTables.end()));
+	    //Updating the secondary tables with the difference.
+            secondary_tables = addedTables;
+
+	}
+
+
         // Replicate path to all destination tables.
         BOOST_FOREACH(BgpTable *dest, secondary_tables) {
             // Skip if destination is same as source table.
@@ -609,7 +652,9 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
                 path->GetPathId(), path->GetSource(), replicated_rt);
             pair<RtReplicated::ReplicatedRtPathList::iterator, bool> result;
             result = replicated_path_list.insert(rtinfo);
-            assert(result.second);
+            // Assert if the insertion to replication path list fails
+	    if (!route_unchanged)
+                assert(result.second);
             RPR_TRACE_ONLY(Replicate, table->name(), rt->ToString(),
                            path->ToString(),
                            BgpPath::PathIdString(path->GetPathId()),
@@ -622,7 +667,6 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
     DBStateSync(table, ts, rt, dbstate, &replicated_path_list);
     return true;
 }
-
 const RtReplicated *RoutePathReplicator::GetReplicationState(
         BgpTable *table, BgpRoute *rt) const {
     const TableState *ts = FindTableState(table);
