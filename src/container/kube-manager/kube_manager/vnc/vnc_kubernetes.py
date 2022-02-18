@@ -8,6 +8,7 @@ VNC management for kubernetes.
 from __future__ import print_function
 
 from builtins import str
+from datetime import datetime
 from six import StringIO
 import gevent
 import time
@@ -189,6 +190,15 @@ class VncKubernetes(vnc_common.VncCommon):
         # Associate cluster with the APS.
         VncSecurityPolicy.tag_cluster_application_policy_set()
 
+    def _log(self, msg, level='info'):
+        print("%s: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4], msg))
+        if level == 'debug':
+            self.logger.debug(msg)
+        elif level == 'error':
+            self.logger.error(msg)
+        else:
+            self.logger.info(msg)
+
     def connection_state_update(self, status, message=None):
         ConnectionState.update(
             conn_type=ConnType.APISERVER, name='ApiServer',
@@ -201,7 +211,7 @@ class VncKubernetes(vnc_common.VncCommon):
         # Retry till API server connection is up
         self.connection_state_update(ConnectionStatus.INIT)
         api_server_list = self.args.vnc_endpoint_ip.split(',')
-        self.logger.info("%s - vnc_connect starting" % (self._name))
+        self._log("%s - vnc_connect starting" % (self._name))
         while True:
             try:
                 vnc_lib = VncApi(
@@ -217,11 +227,13 @@ class VncKubernetes(vnc_common.VncCommon):
                     socket.error,
                     IOError,
                     OSError) as e:
-                self.logger.error("%s - vnc_connect failed: %s" % (self._name, str(e)))
+                self._log(
+                    "%s - vnc_connect failed: %s" % (self._name, str(e)),
+                    level='error')
                 # Update connection info
                 self.connection_state_update(ConnectionStatus.DOWN, str(e))
             gevent.sleep(3)
-        self.logger.info("%s - vnc_connect done" % (self._name))
+        self._log("%s - vnc_connect done" % (self._name))
         return vnc_lib
 
     def _sync_km(self):
@@ -379,9 +391,10 @@ class VncKubernetes(vnc_common.VncCommon):
             ipam_subnet = IpamSubnetType(subnet=SubnetType(pfx, int(pfx_len)))
             ipam_subnets.append(ipam_subnet)
         if not len(ipam_subnets):
-            self.logger.error(
+            self._log(
                 "%s - %s subnet is empty for %s"
-                % (self._name, ipam_name, subnets))
+                % (self._name, ipam_name, subnets),
+                level='error')
 
         if type == 'flat-subnet':
             ipam_obj.set_ipam_subnet_method('flat-subnet')
@@ -459,12 +472,13 @@ class VncKubernetes(vnc_common.VncCommon):
         while True:
             try:
                 self.vnc_lib.domain_read(fq_name=[vnc_kube_config.cluster_domain()])
-                self.logger.info("%s domain available." % (vnc_kube_config.cluster_domain()))
+                self._log("%s domain available." % (vnc_kube_config.cluster_domain()))
                 break
             except NoIdError:
-                self.logger.error(
+                self._log(
                     "%s - Domain %s not available. check again in %s secs."
-                    % (self._name, vnc_kube_config.cluster_domain(), self.timeout))
+                    % (self._name, vnc_kube_config.cluster_domain(), self.timeout),
+                    level='error')
                 time.sleep(self.timeout)
                 continue
 
@@ -605,7 +619,9 @@ class VncKubernetes(vnc_common.VncCommon):
             func()
         except (OSError, IOError, socket.error,
                 requests.exceptions.ChunkedEncodingError) as e:
-            self.logger.error("%s  - %s - %s" % (self.name, func.__name__, e))
+            self._log(
+                "%s  - %s - %s" % (self.name, func.__name__, e),
+                level='error')
 
     def _vnc_sync(self, kind):
         msg = "%s - vnc_sync - %s" % (self._name, kind)
@@ -618,14 +634,11 @@ class VncKubernetes(vnc_common.VncCommon):
         }
         f = tfuncs.get(kind)
         if not f:
-            print(msg + " - no handler - skip")
-            self.logger.debug(msg + "- no handler - skip")
+            self._log(msg + " - no handler - skip", level='debug')
             return
-        print(msg + " start")
-        self.logger.debug(msg + " start")
+        self._log(msg + " start", level='debug')
         self._call_safe(f)
-        print(msg + " done")
-        self.logger.debug(msg + " done")
+        self._log(msg + " done", level='debug')
 
     def vnc_process(self):
         while True:
@@ -636,8 +649,7 @@ class VncKubernetes(vnc_common.VncCommon):
                 t = int(self.args.kube_timer_interval)
                 msg = "%s - wait event (qsize=%s timeout=%s)" % \
                       (self._name, self.q.qsize(), t)
-                print(msg)
-                self.logger.debug(msg)
+                self._log(msg, level='debug')
                 timeout = t if t > 0 else None
                 event, callback = self.q.get(timeout=timeout)
                 event_type = event['type']
@@ -646,6 +658,9 @@ class VncKubernetes(vnc_common.VncCommon):
                 metadata = obj.get('metadata', {})
                 namespace = metadata.get('namespace')
                 name = metadata.get('name')
+                msg = "%s - Process event (name=%s event_type=%s kind=%s ns=%s)" % \
+                      (self._name, name, event_type, kind, namespace)
+                self._log(msg, level='debug')
                 uid = metadata.get('uid')
                 if event_type == 'TF_VNC_SYNC':
                     self._vnc_sync(kind)
@@ -666,7 +681,7 @@ class VncKubernetes(vnc_common.VncCommon):
                 else:
                     msg = "%s - Event %s %s %s:%s:%s not handled" % \
                           (self._name, event_type, kind, namespace, name, uid)
-                    self.logger.error(msg)
+                    self._log(msg, level='error')
                     err = UnknownObjectKind(msg)
             except gevent.queue.Empty:
                 gevent.sleep(0)
@@ -676,7 +691,7 @@ class VncKubernetes(vnc_common.VncCommon):
                 string_buf = StringIO()
                 cgitb_hook(file=string_buf, format="text")
                 err_msg = string_buf.getvalue()
-                self.logger.error("%s - %s" % (self._name, err_msg))
+                self._log("%s - %s" % (self._name, err_msg), level='error')
                 err = VncKubernetesEventException(err_msg, origin=e)
             try:
                 if callback is not None and event is not None:
@@ -686,9 +701,10 @@ class VncKubernetes(vnc_common.VncCommon):
                 string_buf = StringIO()
                 cgitb_hook(file=string_buf, format="text")
                 err_msg = string_buf.getvalue()
-                self.logger.error(
+                self._log(
                     "%s - Internal error (callback=%s event=%s err=%s) - %s" %
-                    (self._name, callback, event, err, err_msg))
+                    (self._name, callback, event, err, err_msg),
+                    level='error')
                 # callabck cannot raise exception - if it happens - internal error
                 sys.exit(1)
 

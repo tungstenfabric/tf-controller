@@ -2,6 +2,7 @@
 # Copyright (c) 2017 Juniper Networks, Inc. All rights reserved.
 #
 from builtins import next
+from datetime import datetime
 import json
 import requests
 import socket
@@ -456,8 +457,10 @@ class KubeMonitor(object):
             time.sleep(0)
 
     def _log(self, msg, level='info'):
-        print(msg)
-        if level == 'error':
+        print("%s: %s" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4], msg))
+        if level == 'debug':
+            self.logger.debug(msg)
+        elif level == 'error':
             self.logger.error(msg)
         else:
             self.logger.info(msg)
@@ -526,8 +529,7 @@ class KubeMonitor(object):
 
         msg = "%s - Got %s %s %s:%s:%s" \
               % (self.name, event_type, kind, namespace, name, uuid)
-        print(msg)
-        self.logger.debug(msg)
+        self._log(msg)
         self.q.put((event, self.event_process_callback))
 
     def event_process_callback(self, event, err):

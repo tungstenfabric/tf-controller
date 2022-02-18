@@ -23,9 +23,10 @@ class EndPointMonitor(KubeMonitor):
         name = metadata.get('name')
 
         if not name or not namespace:
-            self.logger.debug(
+            self._log(
                 "%s - Skipped %s %s ns=%s endpoint=%s (ns or endpoint is empty)"
-                % (self.name, event_type, kind, namespace, name))
+                % (self.name, event_type, kind, namespace, name),
+                level='debug')
             return
 
         ctrl_plane_endpoints = [
@@ -34,9 +35,10 @@ class EndPointMonitor(KubeMonitor):
             "openshift-master-controllers"
         ]
         if name in ctrl_plane_endpoints:
-            self.logger.debug(
+            self._log(
                 "%s - Skipped %s %s ns=%s endpoint=%s (kube endpoint)"
-                % (self.name, event_type, kind, namespace, name))
+                % (self.name, event_type, kind, namespace, name),
+                level='debug')
             return
 
         uuid = metadata.get('uid')

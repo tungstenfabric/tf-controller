@@ -26,19 +26,22 @@ class PodMonitor(KubeMonitor):
             msg_obj = "%s:%s" % (namespace, name)
             spec = data['spec']
             if spec.get('hostNetwork'):
-                self.logger.debug(
+                self._log(
                     "%s - Skipped %s %s %s (hostNetwork=%s)"
-                    % (self.name, event_type, kind, msg_obj, spec.get('hostNetwork')))
+                    % (self.name, event_type, kind, msg_obj, spec.get('hostNetwork')),
+                    level='debug')
                 return
             if not spec.get('nodeName'):
-                self.logger.debug(
+                self._log(
                     "%s - Skipped %s %s %s (no nodeName)"
-                    % (self.name, event_type, kind, msg_obj))
+                    % (self.name, event_type, kind, msg_obj),
+                    level='debug')
                 return
             if not namespace or not name:
-                self.logger.debug(
+                self._log(
                     "%s - Skipped %s %s %s (ns or name is empty)"
-                    % (self.name, event_type, kind, msg_obj))
+                    % (self.name, event_type, kind, msg_obj),
+                    level='debug')
                 return
 
         if self.db:

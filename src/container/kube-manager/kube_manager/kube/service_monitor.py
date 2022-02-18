@@ -24,9 +24,10 @@ class ServiceMonitor(KubeMonitor):
             namespace = metadata.get('namespace')
             name = metadata.get('name')
             if not namespace or not name:
-                self.logger.debug(
+                self._log(
                     "%s - Skipped %s %s ns=%s sn=%s(ns or sn is empty)"
-                    % (self.name, event_type, kind, namespace, name))
+                    % (self.name, event_type, kind, namespace, name),
+                    level='debug')
                 return
 
         if self.db:

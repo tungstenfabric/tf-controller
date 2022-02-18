@@ -24,9 +24,10 @@ class IngressMonitor(KubeMonitor):
             name = metadata.get('name')
             if not namespace or not name:
                 kind = data.get('kind')
-                self.logger.debug(
+                self._log(
                     "%s - Skipped %s %s ns=%s name=%s (ns or name is empty)"
-                    % (self.name, event_type, kind, namespace, name))
+                    % (self.name, event_type, kind, namespace, name),
+                    level='debug')
                 return
 
         if self.db:

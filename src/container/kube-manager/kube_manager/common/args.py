@@ -98,7 +98,7 @@ def parse_args(args_str=None):
         'nested_mode': '0',
         'global_tags': '1',
         'aps_name': '',
-        'kube_timer_interval': '60',
+        'kube_timer_interval': '120',
         'secure_project': 'False',
         'host_ip': socket.gethostbyname(socket.getfqdn())
     }
