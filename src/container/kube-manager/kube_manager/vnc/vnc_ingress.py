@@ -481,8 +481,12 @@ class VncIngress(VncCommon):
                             secretname = 'ALL'
                     service = path['backend']
                     backend['annotations']['type'] = 'acl'
-                    backend['member']['serviceName'] = service['serviceName']
-                    backend['member']['servicePort'] = service['servicePort']
+                    if 'serviceName' in service:
+                        backend['member']['serviceName'] = service['serviceName']
+                        backend['member']['servicePort'] = service['servicePort']
+                    else:
+                        backend['member']['serviceName'] = service['service']['name']
+                        backend['member']['servicePort'] = service['service']['port']['number']
                     backend_list.append(backend)
                     if secretname:
                         backend_https = copy.deepcopy(backend)
@@ -504,6 +508,24 @@ class VncIngress(VncCommon):
             backend['annotations']['type'] = 'default'
             backend['member']['serviceName'] = service['serviceName']
             backend['member']['servicePort'] = service['servicePort']
+            backend_list.append(backend)
+            if 'ALL' in list(tls_dict.keys()):
+                backend_https = copy.deepcopy(backend)
+                backend_https['listener']['protocol'] = 'TERMINATED_HTTPS'
+                backend_https['listener']['default_tls_container'] = tls_dict['ALL']
+                backend_list.append(backend_https)
+        if 'defaultBackend' in spec:
+            service = spec['defaultBackend']
+            backend = {}
+            backend['annotations'] = {}
+            backend['listener'] = {}
+            backend['pool'] = {}
+            backend['member'] = {}
+            backend['listener']['protocol'] = 'HTTP'
+            backend['pool']['protocol'] = 'HTTP'
+            backend['annotations']['type'] = 'default'
+            backend['member']['serviceName'] = service['service']['name']
+            backend['member']['servicePort'] = service['service']['port']['number']
             backend_list.append(backend)
             if 'ALL' in list(tls_dict.keys()):
                 backend_https = copy.deepcopy(backend)
