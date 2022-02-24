@@ -475,6 +475,24 @@ systemlog sandesh RprWalkLog {
 }
 
 /**
+ * @description Route Replication Listner message
+ * @severity: INFO
+ */
+traceobject sandesh RprRouteListener {
+    1: string message;
+}
+
+/**
+ * @description Route Replication message
+ * @severity: INFO
+ * @cause: Normal diagnostic message used during software trouble-shooting
+ * @action: None
+ */
+systemlog sandesh RprRouteListenerLog {
+    1: string message;
+}
+
+/**
  * @description Route Replication table join message
  * @severity: DEBUG
  */

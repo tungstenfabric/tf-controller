@@ -101,6 +101,13 @@ void DBEntryBase::set_last_change_at(uint64_t time) {
     last_change_at_ = time;
 }
 
+void DBEntryBase::set_last_update_at_to_now() {
+    last_update_at_ = UTCTimestampUsec();
+}
+
+void DBEntryBase::set_last_update_at(uint64_t time) {
+    last_update_at_ = time;
+}
 void DBEntryBase::set_table_partition(DBTablePartBase *tpart) {
     tpart_ = tpart;
 }

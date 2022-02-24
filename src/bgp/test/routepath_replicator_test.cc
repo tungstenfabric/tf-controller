@@ -2697,6 +2697,164 @@ TEST_F(ReplicationTest, TableStateOnVRFInBulkSyncList) {
     VerifyVRFTableStateExists("red", false);
 }
 
+TEST_F(ReplicationTest, SinglePathNotificationTest) {
+    vector<string> instance_names = list_of("blue")("red")("green");
+    multimap<string, string> connections = map_list_of("blue", "red");
+    NetworkConfig(instance_names, connections);
+    task_util::WaitForIdle();
+
+    boost::system::error_code ec;
+    peers_.push_back(
+        new BgpPeerMock(Ip4Address::from_string("192.168.0.1", ec)));
+
+    // VPN route with target "blue".
+    AddVPNRoute(peers_[0], "192.168.0.1:1:10.0.1.1/32", 100, list_of("blue"));
+    task_util::WaitForIdle();
+
+    // Imported in both blue and red.
+    VERIFY_EQ(1, RouteCount("blue"));
+    VERIFY_EQ(1, RouteCount("red"));
+
+    // generate a notification for the route.
+    // This will copy the routes to blue.inet.0 and red.inet.0 even though the routes have not changed
+    BgpRoute *rt = VPNRouteLookup("192.168.0.1:1:10.0.1.1/32");
+    ASSERT_TRUE(rt != NULL);
+    BgpTable *table = static_cast<BgpTable *>(
+        bgp_server_->database()->FindTable("bgp.l3vpn.0"));
+    table->Change(rt);
+    task_util::WaitForIdle();
+
+    // make sure that there are no changes.
+    VERIFY_EQ(1, RouteCount("blue"));
+    VERIFY_EQ(1, RouteCount("red"));
+
+    // To test optimisation, change the route update time.
+    // Optimisation is triggered if the time difference is
+    // more than thirty minutes. Setting the route change time
+    // as thirty one minutes ago to enable optimisation.
+    uint64_t start = UTCTimestampUsec();
+    rt->set_last_update_at(start-1860000000);
+
+    //Send notification about the route
+    table->Change(rt);
+    task_util::WaitForIdle();
+
+    // make sure that there are no changes.
+    VERIFY_EQ(1, RouteCount("blue"));
+    VERIFY_EQ(1, RouteCount("red"));
+
+    DeleteVPNRoute(peers_[0], "192.168.0.1:1:10.0.1.1/32");
+    task_util::WaitForIdle();
+    VERIFY_EQ(0, RouteCount("red"));
+    VERIFY_EQ(0, RouteCount("green"));
+    VERIFY_EQ(0, RouteCount("blue"));
+}
+
+
+TEST_F(ReplicationTest, MultiplePathOptimizationTest)  {
+    vector<string> instance_names = list_of("blue")("red")("green");
+    multimap<string, string> connections = map_list_of("blue", "red");
+    NetworkConfig(instance_names, connections);
+    task_util::WaitForIdle();
+
+    boost::system::error_code ec;
+    peers_.push_back(
+        new BgpPeerMock(Ip4Address::from_string("192.168.0.1", ec)));
+    peers_.push_back(
+        new BgpPeerMock(Ip4Address::from_string("192.168.0.2", ec)));
+    peers_.push_back(
+        new BgpPeerMock(Ip4Address::from_string("192.168.0.3", ec)));
+
+    // VPN route with target "blue".
+    AddVPNRoute(peers_[0], "192.2.0.1:1:10.0.1.1/32", 100, list_of("blue"));
+    AddVPNRoute(peers_[1], "192.2.0.1:1:10.0.1.1/32", 100, list_of("blue"));
+    task_util::WaitForIdle();
+    AddVPNRoute(peers_[2], "192.2.0.1:1:10.0.1.1/32", 100, list_of("blue"));
+    task_util::WaitForIdle();
+
+    // generate a notification for the route.
+    BgpRoute *rt = VPNRouteLookup("192.2.0.1:1:10.0.1.1/32");
+    ASSERT_TRUE(rt != NULL);
+    BgpTable *table = static_cast<BgpTable *>(
+        bgp_server_->database()->FindTable("bgp.l3vpn.0"));
+    table->Change(rt);
+    task_util::WaitForIdle();
+
+    // To test optimisation, change the route update time.
+    // Optimisation is triggered if the time difference is
+    // more than thirty minutes. Setting the route change time
+    // as thirty one minutes ago to enable optimisation.
+    uint64_t start = UTCTimestampUsec();
+    rt->set_last_update_at(start-1860000000);
+    table->Change(rt);
+    task_util::WaitForIdle();
+
+
+    // Imported in both blue and red.
+    VERIFY_EQ(1, RouteCount("blue"));
+    VERIFY_EQ(1, RouteCount("red"));
+    BgpRoute *brt = InetRouteLookup("blue", "10.0.1.1/32");
+    // Verify that all 3 paths are replicated
+    VERIFY_EQ(3, brt->count());
+
+    DeleteVPNRoute(peers_[0], "192.2.0.1:1:10.0.1.1/32");
+    DeleteVPNRoute(peers_[1], "192.2.0.1:1:10.0.1.1/32");
+    DeleteVPNRoute(peers_[2], "192.2.0.1:1:10.0.1.1/32");
+
+    task_util::WaitForIdle();
+    VERIFY_EQ(0, RouteCount("blue"));
+    VERIFY_EQ(0, RouteCount("red"));
+}
+
+TEST_F(ReplicationTest, AddDeleteNetworkOptimization) {
+    vector<string> instance_names = list_of("blue")("red")("green");
+    multimap<string, string> connections = map_list_of("blue", "red");
+    NetworkConfig(instance_names, connections);
+    task_util::WaitForIdle();
+
+    boost::system::error_code ec;
+    peers_.push_back(
+        new BgpPeerMock(Ip4Address::from_string("192.168.0.1", ec)));
+
+    // VPN routes with target "blue".
+    AddVPNRoute(peers_[0], "192.2.0.1:1:10.0.1.1/32", 100, list_of("blue"));
+    task_util::WaitForIdle();
+
+    // Imported in both blue and red.
+    VERIFY_EQ(1, RouteCount("blue"));
+    VERIFY_EQ(1, RouteCount("red"));
+    VERIFY_EQ(0, RouteCount("green"));
+
+    // To test optimisation, change the route update time.
+    // Optimisation is triggered if the time difference is more than
+    // thirty minutes. Setting the route change time as thirty one
+    // minutes ago to enable optimisation.
+    BgpRoute *rt = VPNRouteLookup("192.2.0.1:1:10.0.1.1/32");
+    uint64_t start = UTCTimestampUsec();
+    rt->set_last_update_at(start-1860000000);
+
+    ifmap_test_util::IFMapMsgLink(&config_db_,
+                                    "routing-instance", "blue",
+                                    "routing-instance", "green",
+                                    "connection");
+    task_util::WaitForIdle();
+    VERIFY_EQ(1, RouteCount("blue"));
+    VERIFY_EQ(1, RouteCount("red"));
+    VERIFY_EQ(1, RouteCount("green"));
+
+    ifmap_test_util::IFMapMsgUnlink(&config_db_,
+                                    "routing-instance", "blue",
+                                    "routing-instance", "red",
+                                    "connection");
+    task_util::WaitForIdle();
+
+    DeleteVPNRoute(peers_[0], "192.2.0.1:1:10.0.1.1/32");
+    task_util::WaitForIdle();
+    VERIFY_EQ(0, RouteCount("blue"));
+    VERIFY_EQ(0, RouteCount("red"));
+    VERIFY_EQ(0, RouteCount("green"));
+}
+
 class TestEnvironment : public ::testing::Environment {
     virtual ~TestEnvironment() { }
 };

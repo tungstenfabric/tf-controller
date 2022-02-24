@@ -67,6 +67,9 @@ public:
     void set_last_change_at_to_now();
     const uint64_t last_change_at() const { return last_change_at_; }
     const std::string last_change_at_str() const;
+    void set_last_update_at(uint64_t time);
+    void set_last_update_at_to_now();
+    const uint64_t last_update_at() const { return last_update_at_; }
     DBTablePartBase *get_table_partition() const;
     void set_table_partition(DBTablePartBase *tpart);
     DBTableBase *get_table() const;
@@ -83,6 +86,7 @@ private:
     uint8_t flags;
     tbb::atomic<bool> onremoveq_;
     uint64_t last_change_at_; // time at which entry was last 'changed'
+    uint64_t last_update_at_; // time at which entry was last 'updated'
     DISALLOW_COPY_AND_ASSIGN(DBEntryBase);
 };
 
