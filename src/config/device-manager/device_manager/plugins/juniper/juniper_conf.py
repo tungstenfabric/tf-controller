@@ -7,6 +7,7 @@ This file contains generic plugin implementation for juniper devices
 """
 
 from future import standard_library
+from future.utils import native_str
 standard_library.install_aliases()
 from builtins import str
 from builtins import object
@@ -353,19 +354,21 @@ class JuniperConf(DeviceConf):
 
     def add_dynamic_tunnels(self, tunnel_source_ip,
                              ip_fabric_nets, bgp_router_ips):
-        dynamic_tunnel = DynamicTunnel(name=DMUtils.dynamic_tunnel_name(self.get_asn()),
-                                       source_address=tunnel_source_ip, gre='')
+        dynamic_tunnel = DynamicTunnel(
+            name=native_str(DMUtils.dynamic_tunnel_name(self.get_asn())),
+            source_address=tunnel_source_ip, gre='')
         if ip_fabric_nets is not None:
             for subnet in ip_fabric_nets.get("subnet", []):
                 dest_net = subnet['ip_prefix'] + '/' + str(subnet['ip_prefix_len'])
                 dynamic_tunnel.add_destination_networks(
-                    DestinationNetworks(name=dest_net,
+                    DestinationNetworks(name=native_str(dest_net),
                                         comment=DMUtils.ip_fabric_subnet_comment()))
 
         for r_name, bgp_router_ip in list(bgp_router_ips.items()):
-            dynamic_tunnel.add_destination_networks(
-                DestinationNetworks(name=bgp_router_ip + '/32',
-                                    comment=DMUtils.bgp_router_subnet_comment(r_name)))
+            if bgp_router_ip != tunnel_source_ip:
+                dynamic_tunnel.add_destination_networks(
+                    DestinationNetworks(name=bgp_router_ip + '/32',
+                                        comment=DMUtils.bgp_router_subnet_comment(r_name)))
 
         dynamic_tunnels = DynamicTunnels()
         dynamic_tunnels.add_dynamic_tunnel(dynamic_tunnel)
@@ -465,11 +468,11 @@ class JuniperConf(DeviceConf):
         bgp_group = BgpGroup()
         bgp_group.set_comment(DMUtils.bgp_group_comment(self.bgp_obj))
         if external:
-            bgp_group.set_name(DMUtils.make_bgp_group_name(self.get_asn(), True))
+            bgp_group.set_name(native_str(DMUtils.make_bgp_group_name(self.get_asn(), True)))
             bgp_group.set_type('external')
             bgp_group.set_multihop('')
         else:
-            bgp_group.set_name(DMUtils.make_bgp_group_name(self.get_asn(), False))
+            bgp_group.set_name(native_str(DMUtils.make_bgp_group_name(self.get_asn(), False)))
             bgp_group.set_type('internal')
             self.add_ibgp_export_policy(self.bgp_params, bgp_group)
         bgp_group.set_local_address(self.bgp_params['address'])
@@ -523,7 +526,7 @@ class JuniperConf(DeviceConf):
         if self.global_routing_options_config is None:
             self.global_routing_options_config = RoutingOptions(comment=DMUtils.routing_options_comment())
         self.global_routing_options_config.set_route_distinguisher_id(self.bgp_params['identifier'])
-        self.global_routing_options_config.set_autonomous_system(str(self.get_asn()))
+        self.global_routing_options_config.set_autonomous_system(native_str(self.get_asn()))
     # end set_as_config
 
     def set_bgp_group_config(self):
