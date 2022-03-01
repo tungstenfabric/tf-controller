@@ -15,6 +15,10 @@ from unittest import skip
 from cfgm_common.exceptions import BadRequest
 from cfgm_common.exceptions import NoIdError
 from cfgm_common.tests import test_common
+from cfgm_common.utils import (
+    _DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX
+    as PATH_SYNC
+)
 from cfgm_common.utils import _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX
 from cfgm_common.utils import _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX
 import gevent
@@ -44,6 +48,8 @@ class TestVirtualPortGroupBase(test_case.ApiServerTestCase):
         cls.console_handler = logging.StreamHandler()
         cls.console_handler.setLevel(logging.DEBUG)
         logger.addHandler(cls.console_handler)
+        kwargs = {'extra_config_knobs': [('DEFAULTS', 'contrail_version',
+                                         '2011')]}
         super(TestVirtualPortGroupBase, cls).setUpClass(*args, **kwargs)
 
     @classmethod
@@ -2296,6 +2302,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         assert vpg_annotations, \
             "Annotations not added for VPG (%s)" % vpg_obj.uuid
 
+        # manually setting contrail_version to 21.4
+        # so db_resync is run as part of upgrade scenario
+        self._api_server._args.contrail_version = '21.4'
+
         self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
@@ -2324,6 +2334,9 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.physical_interface_delete(id=pi_uuid)
         self.api.physical_router_delete(id=pr_obj.uuid)
         self.api.fabric_delete(id=fabric_obj.uuid)
+        # adding back zknode to original version
+        # so other test cases runs from the begining
+        mock_zk._zk_client.update_node(PATH_SYNC, '2011')
 
     def test_verify_enterprise_reinit_remove_annotations(self):
         """Verify if annotations are removed from the enterprise."""
@@ -2446,6 +2459,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         mock_zk._zk_client.delete_node(validation_node1, True)
         mock_zk._zk_client.delete_node(validation_node2, True)
 
+        # manually setting contrail_version to 21.4
+        # so db_resync is run as part of upgrade scenario
+        self._api_server._args.contrail_version = '21.4'
+
         self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
@@ -2474,6 +2491,9 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.physical_interface_delete(id=pi_uuid)
         self.api.physical_router_delete(id=pr_obj.uuid)
         self.api.fabric_delete(id=fabric_obj.uuid)
+        # adding back zknode to original version
+        # so other test cases runs from the begining
+        mock_zk._zk_client.update_node(PATH_SYNC, '2011')
 
     def test_verify_enterprise_reinit(self):
         """Verify if znodes are added in the enterprise VPG."""
@@ -2626,6 +2646,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         mock_zk._zk_client.delete_node(validation_node2, True)
         mock_zk._zk_client.delete_node(validation_node3, True)
 
+        # manually setting contrail_version to 21.4
+        # so db_resync is run as part of upgrade scenario
+        self._api_server._args.contrail_version = '21.4'
+
         self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
@@ -2652,12 +2676,14 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.physical_interface_delete(id=pi_uuid)
         self.api.physical_router_delete(id=pr_obj.uuid)
         self.api.fabric_delete(id=fabric_obj.uuid)
+        # adding back zknode to original version
+        # so other test cases runs from the begining
+        mock_zk._zk_client.update_node(PATH_SYNC, '2011')
 
     def test_verify_sp_reinit(self):
         """Verify if znodes are added in the service provider VPG."""
         proj_obj, fabric_obj, pr_obj = self._create_prerequisites(
             enterprise_style_flag=False)
-
         esi_id = '00:11:22:33:44:55:66:77:88:99'
         vlan_1 = 42
         vlan_2 = '4094'
@@ -2794,6 +2820,10 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         mock_zk._zk_client.delete_node(validation_node2, True)
         mock_zk._zk_client.delete_node(validation_node3, True)
 
+        # manually setting contrail_version to 21.4
+        # so db_resync is run as part of upgrade scenario
+        self._api_server._args.contrail_version = '21.4'
+
         self._api_server._db_conn._db_resync_done.clear()
         # API server DB reinit
         self._api_server._db_init_entries()
@@ -2820,6 +2850,9 @@ class TestVirtualPortGroup(TestVirtualPortGroupBase):
         self.api.physical_interface_delete(id=pi_uuid)
         self.api.physical_router_delete(id=pr_obj.uuid)
         self.api.fabric_delete(id=fabric_obj.uuid)
+        # adding back zknode to original version
+        # so other test cases runs from the begining
+        mock_zk._zk_client.update_node(PATH_SYNC, '2011')
 
     def test_enterprise_vpg_annotations(self):
         """Verify annotations are added in the enterprise VPG."""

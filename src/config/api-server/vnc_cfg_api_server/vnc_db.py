@@ -42,6 +42,9 @@ from cfgm_common.utils import cgitb_hook
 from cfgm_common.utils import shareinfo_from_perms2
 from cfgm_common.utils import _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX
 from cfgm_common.utils import _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX
+from cfgm_common.utils import _DEFAULT_ZK_DB_RESYNC_PATH_PREFIX
+from cfgm_common.utils import _DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX
+from cfgm_common.utils import _DEFAULT_ZK_LOCK_TIMEOUT
 from cfgm_common import vnc_greenlets
 from cfgm_common import PERMS_RWX
 from cfgm_common import SGID_MIN_ALLOC
@@ -1333,32 +1336,35 @@ class VncDbClient(object):
         and DB walk will be completed by all instances
         Fresh deployment and Upgrade scenario has been considered in this method in such a way that DB_resync runs only once
         and all other instance does DB_walk """
-        lockdata = 'api-server-%s' % self._api_svr_mgr.get_worker_id()
+        lockdata = '%s' % self._api_svr_mgr._args.listen_ip_addr + '_' + '%s' % self._api_svr_mgr.get_worker_id()
         zk_dbe_lock = {'zookeeper_client': self._zk_db._zk_client,
-                       'path': '/vnc_api_server_locks/dbe_resync',
-                       'name': lockdata, 'timeout': 60}
-        self.config_log("Executing db_resync on api-server instance (%s)" % self._api_svr_mgr.get_worker_id(),
-            level=SandeshLevel.SYS_INFO)
+                       'path': _DEFAULT_ZK_DB_RESYNC_PATH_PREFIX,
+                       'name': lockdata, 'timeout': _DEFAULT_ZK_LOCK_TIMEOUT/2}
+        self.config_log("Executing db_resync on api-server instance %s" % self._api_svr_mgr._args.listen_ip_addr + '_' + "%s" % self._api_svr_mgr.get_worker_id(), level=SandeshLevel.SYS_INFO)
         # Read contents from cassandra and perform DB update if required
         start_time = datetime.datetime.utcnow()
         build_version = self._api_svr_mgr._args.contrail_version
+        self.config_log("Contrail Version is(%s)" % build_version , level=SandeshLevel.SYS_INFO)
         walk_only=False
-        sync_complete_znode = '/vnc_api_server_locks/dbe-resync-complete'
         with ZookeeperLock(**zk_dbe_lock):
             try:
-                zk_sync_node = self._zk_db._zk_client.read_node(sync_complete_znode)
+                zk_sync_node = self._zk_db._zk_client.read_node(_DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX)
+                self.config_log("zk_sync_node data (%s)" % zk_sync_node , level=SandeshLevel.SYS_INFO)
                 if not zk_sync_node:
-                   self.config_log("DBERESYNC: running dbe-resync", level=SandeshLevel.SYS_INFO)
-                   self._object_db.walk(self._dbe_resync)
-                   self._zk_db._zk_client.create_node(sync_complete_znode,build_version)
+                    self.config_log("DBERESYNC: running dbe-resync", level=SandeshLevel.SYS_INFO)
+                    self._object_db.walk(self._dbe_resync)
+                    self._zk_db._zk_client.create_node(_DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX,build_version)
+                    self.config_log("DBERESYNC: Completed successfully", level=SandeshLevel.SYS_INFO)
                 elif zk_sync_node and (zk_sync_node != build_version):
-                       self.config_log("DBERESYNC: running dbe-resync", level=SandeshLevel.SYS_INFO)
-                       self._object_db.walk(self._dbe_resync)
-                       self._zk_db._zk_client.update_node(sync_complete_znode,build_version)
+                    self.config_log("DBERESYNC: running dbe-resync on update scenario", level=SandeshLevel.SYS_INFO)
+                    self._object_db.walk(self._dbe_resync)
+                    self._zk_db._zk_client.update_node(_DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX,build_version)
+                    self.config_log("DBERESYNC: Completed successfully for upgrade scenario", level=SandeshLevel.SYS_INFO)
                 else:
                     walk_only=True
             except Exception as e:
                 self.config_log("DBERESYNC: found exception (%s)" % e, level=SandeshLevel.SYS_ERR)
+                raise
         if walk_only:
             self.config_log("DBERESYNC: running walk", level=SandeshLevel.SYS_INFO)
             self._object_db.walk()

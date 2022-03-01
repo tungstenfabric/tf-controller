@@ -46,6 +46,9 @@ _DEFAULT_ZK_LOCK_TIMEOUT = 120
 _DEFAULT_ZK_FABRIC_SP_PATH_PREFIX = '/validation/fabric/serviceprovider'
 _DEFAULT_ZK_FABRIC_ENTERPRISE_PATH_PREFIX = '/validation/fabric/enterprise'
 
+_DEFAULT_ZK_DB_RESYNC_PATH_PREFIX = '/vnc_api_server_locks/dbe_resync'
+_DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX = '/vnc_api_server_locks/dbe-resync-complete'
+
 def cgitb_hook(info=None, **kwargs):
     vnc_cgitb.Hook(**kwargs).handle(info or sys.exc_info())
 # end cgitb_hook

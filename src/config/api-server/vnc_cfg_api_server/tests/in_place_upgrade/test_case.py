@@ -23,6 +23,8 @@ class InPlaceUpgradeTestCase(TestCase):
         cls.console_handler.setLevel(logging.DEBUG)
         logger.addHandler(cls.console_handler)
         kwargs['in_place_upgrade_path'] = cls._get_golden_json()
+        kwargs = {'extra_config_knobs': [('DEFAULTS', 'contrail_version',
+                                         '2011')]}
         super(InPlaceUpgradeTestCase, cls).setUpClass(*args, **kwargs)
 
     @classmethod

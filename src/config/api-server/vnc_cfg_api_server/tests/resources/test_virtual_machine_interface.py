@@ -424,6 +424,8 @@ class TestVMIVirtualPortGroupRelation(test_case.ApiServerTestCase):
         cls.console_handler = logging.StreamHandler()
         cls.console_handler.setLevel(logging.DEBUG)
         logger.addHandler(cls.console_handler)
+        kwargs = {'extra_config_knobs': [('DEFAULTS', 'contrail_version',
+                                         '2011')]}
         super(TestVMIVirtualPortGroupRelation, cls).setUpClass(*args, **kwargs)
 
     @classmethod
@@ -607,6 +609,10 @@ class TestVMIVirtualPortGroupRelation(test_case.ApiServerTestCase):
         vmi_obj = self.api.virtual_machine_interface_read(id=vmi_uuid)
         vpg_refs = vmi_obj.get_virtual_port_group_refs()
         self.assertIsNone(vpg_refs)
+
+        # manually setting contrail_version to 21.4
+        # so db_resync is run as part of upgrade scenario
+        self._api_server._args.contrail_version = '21.4'
 
         self._api_server._db_conn._db_resync_done.clear()
         # Simulate api-server restart by DB reinit
