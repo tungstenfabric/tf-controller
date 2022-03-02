@@ -518,7 +518,12 @@ void Agent::CopyConfig(AgentParam *params) {
     InitializeFilteredParams();
 
     vhost_interface_name_ = params_->vhost_name();
-    ip_fabric_intf_name_ = params_->eth_port_list()[0].c_str(); /* PKC: Using first element for now */
+
+    // Don't fetch the VHOST conf for tor agent. For tor agent, vhost conf will
+    // not be populated into eth_port_list_ from conf file.
+    if (params_->eth_port_list().size() != 0) {
+        ip_fabric_intf_name_ = params_->eth_port_list()[0].c_str(); /* PKC: Using first element for now */
+    }
     ip_fabric_intf_name_list_ = params_->eth_port_list();
     ip_fabric_intf_addr_list_ = params_->eth_port_addr_list();
     crypt_intf_name_ = params_->crypt_port();
