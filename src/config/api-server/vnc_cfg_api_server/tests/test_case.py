@@ -10,6 +10,11 @@ from cfgm_common.utils import _DEFAULT_ZK_DB_RESYNC_PATH_PREFIX
 from cfgm_common.utils import _DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX
 from cfgm_common.utils import _DEFAULT_ZK_LOCK_TIMEOUT
 
+from cfgm_common.utils import (
+    _DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX
+    as PATH_SYNC
+)
+
 class ApiServerTestCase(test_common.TestCase):
     def setUp(self):
         super(ApiServerTestCase, self).setUp()
@@ -83,37 +88,50 @@ class TestAPIServerDBresync(ApiServerTestCase):
         super(TestAPIServerDBresync,
               cls).tearDownClass(*args, **kwargs)
 
-    def test_verify_db_resync_on_reinit(self):
-        DB_RESYNC = self._api_server._db_conn
-        DBE_RESYNC_original = self._api_server._db_conn._dbe_resync
+    def test_verify_db_walk_dbe_resync_on_reinit(self):
+        DB_RESYNC=self._api_server._db_conn
+        DBE_RESYNC_original=self._api_server._db_conn._dbe_resync
+        DB_WALK=self._api_server._db_conn._object_db
+        DB_WALK_original=self._api_server._db_conn._object_db.walk
 
+        self._api_server._args.contrail_version = '2011'
         """ _dbe_resync is not ran even though we have restarted api-server
         since zk_sync_node  is not NONE
+        also only DB_walk will be executed
         """
         mock_zk = self._api_server._db_conn._zk_db
         zk_sync_node = mock_zk._zk_client.read_node(_DEFAULT_ZK_DB_SYNC_COMPLETE_ZNODE_PATH_PREFIX)
         self.assertIsNotNone(zk_sync_node)
-        #Mocking _dbe_resync
+
+        #mocking dbe_resync
         def mock_db_resync( obj_type, obj_uuids):
             mock_db_resync.has_been_called = True
-            logger.info('MOCK _DBE_RESYNC NOT RUNNING')
-            return DB_RESYNC_original(obj_type, obj_uuids)
+            return DBE_RESYNC_original(obj_type, obj_uuids)
 
+        #Mocking db_walk
+        def mock_db_walk():
+            mock_db_walk.has_been_called = True
+            return DB_WALK_original()
+
+        mock_db_walk.has_been_called = False
         mock_db_resync.has_been_called = False
-        with mock.patch.object(DB_RESYNC, '_dbe_resync',
-                               side_effect=mock_db_resync):
 
-            self._api_server._db_conn._db_resync_done.clear()
-            # API server DB reinit
-            self._api_server._db_init_entries()
-            self._api_server._db_conn.wait_for_resync_done()
+        with mock.patch.object(DB_WALK, 'walk',
+                               side_effect=mock_db_walk):
 
-        if zk_sync_node and not mock_db_resync.has_been_called:
+            with mock.patch.object(DB_RESYNC, '_dbe_resync',
+                                   side_effect=mock_db_resync):
+                self._api_server._db_conn._db_resync_done.clear()
+                # API server DB reinit
+                self._api_server._db_init_entries()
+                self._api_server._db_conn.wait_for_resync_done()
+        if zk_sync_node and mock_db_walk.has_been_called and not mock_db_resync.has_been_called:
             self.assertEqual(zk_sync_node, '2011')
-            logger.info('PASS - test_verify_db_resync_on_reinit')
+            logger.info('PASS - test_db_resync_db_walk_verify')
         else:
-            logger.info('FAIL - test_verify_db_resync_on_reinit')
-            self.fail("test_verify_db_resync_on_reinit Test case failed")
+            logger.info('FAIL - test_db_resync_db_walk_verify')
+            self.fail("test_verify_db_resync_db_walk_on_reinit Test case failed")
+
 
     def test_verify_db_resync_on_reinit_upgrade_scenario(self):
         DB_RESYNC = self._api_server._db_conn
@@ -154,4 +172,9 @@ class TestAPIServerDBresync(ApiServerTestCase):
         else:
             logger.info('FAIL - test_verify_db_resync_on_reinit_upgrade_scenario')
             self.fail("test_verify_db_resync_on_reinit_upgrade_scenario Test case failed")
+
+        # adding back zknode to original version
+        # so other test cases runs from the begining
+        mock_zk._zk_client.update_node(PATH_SYNC, '2011')
+
 #END of TestAPIServerDBresync
