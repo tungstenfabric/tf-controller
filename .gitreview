@@ -2,4 +2,4 @@
 host=gerrit.tungsten.io
 port=29418
 project=tungstenfabric/tf-controller.git
-defaultbranch=master
+defaultbranch=R21.4
