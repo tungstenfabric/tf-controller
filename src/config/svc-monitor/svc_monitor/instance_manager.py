@@ -167,12 +167,16 @@ class InstanceManager(object):
                               (fip_id, vmi_id))
             return
         if fip_id in vmi.floating_ips:
+            self.logger.debug("VMI object already has the floating ip %s attribute"
+                              %(fip_id))
             return
         try:
             self._vnc_lib.ref_update('floating-ip', fip_id,
                 'virtual-machine-interface', vmi_id, None, 'ADD')
             vmi.floating_ips.add(fip_id)
         except NoIdError:
+            self.logger.debug("Error occured while creating reference %s to %s"
+                              %(fip_id,vmi_id))
             # vmi would have been deleted(if this call is due to lb->vmi delete operation)
             pass
 
