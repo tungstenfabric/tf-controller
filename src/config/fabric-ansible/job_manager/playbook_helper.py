@@ -15,16 +15,17 @@
 import argparse
 from builtins import object
 from builtins import str
-from collections import namedtuple
 import errno
 import json
 import sys
 import traceback
 
 from ansible import constants as CONST
+from ansible import context
 from ansible.executor.playbook_executor import PlaybookExecutor
 from ansible.inventory.manager import InventoryManager
 from ansible.module_utils._text import to_bytes, to_text
+from ansible.module_utils.common.collections import ImmutableDict
 from ansible.parsing.dataloader import DataLoader
 from ansible.utils.color import stringc
 import ansible.utils.display as default_display
@@ -128,30 +129,45 @@ class PlaybookHelper(object):
             variable_manager = VariableManager(loader=loader,
                                                inventory=inventory)
 
-            Options = namedtuple('Options',
-                                 ['listtags', 'listtasks', 'listhosts',
-                                  'syntax', 'connection', 'module_path',
-                                  'forks', 'remote_user', 'private_key_file',
-                                  'ssh_common_args', 'ssh_extra_args',
-                                  'sftp_extra_args', 'scp_extra_args',
-                                  'become', 'become_method', 'become_user',
-                                  'verbosity', 'check', 'diff'])
-            options = Options(listtags=False, listtasks=False, listhosts=False,
-                              syntax=False, connection='ssh', module_path=None,
-                              forks=100, remote_user=None,
-                              private_key_file=None, ssh_common_args=None,
-                              ssh_extra_args=None, sftp_extra_args=None,
-                              scp_extra_args=None, become=None,
-                              become_method=None, become_user=None,
-                              verbosity=None, check=False, diff=False)
+            # The private _options attribute has been removed from the
+            # CallbackBaseclass of callback plugins. If you have a third-party
+            # callback plugin which needs to access the command line arguments
+            # then we can pass options through CLIARGS as per Ansible 2.8.
+            context.CLIARGS = ImmutableDict(
+                listtags=False,
+                listtasks=False,
+                listhosts=False,
+                syntax=False,
+                connection='ssh',
+                module_path=None,
+                forks=100,
+                remote_user=None,
+                private_key_file=None,
+                ssh_common_args=None,
+                ssh_extra_args=None,
+                sftp_extra_args=None,
+                scp_extra_args=None,
+                become=None,
+                become_method=None,
+                become_user=None,
+                verbosity=None,
+                check=False,
+                diff=False,
+                start_at_task=None
+            )
 
-            variable_manager.extra_vars = playbook_info['extra_vars']
+            # Since the setter for variable_manager.extra_vars was removed
+            # in Ansible 2.8, we need to use variable_manager._extra_vars
+            # to change the value
+            variable_manager._extra_vars = playbook_info['extra_vars']
 
+            # Removed 'options' argument from PlayBookExecutor() as per
+            # Ansible 2.8
             pbex = PlaybookExecutor(playbooks=[playbook_info['uri']],
                                     inventory=inventory,
                                     variable_manager=variable_manager,
                                     loader=loader,
-                                    options=options, passwords=None)
+                                    passwords=None)
             ret_val = pbex.run()
 
             output = self.get_plugin_output(pbex)
