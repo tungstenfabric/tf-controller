@@ -5587,7 +5587,7 @@ class DMCassandraDB(VncObjectDBClient):
         pr_entries = dict(cf.get_range())
         for pr_uuid in list(pr_entries.keys()):
             pr_entry = pr_entries[pr_uuid] or {}
-            asn = int(pr_entry.get('asn'))
+            asn = pr_entry.get('asn')
             if asn:
                 if pr_uuid not in self.pr_fabric_asn_map:
                     self.pr_fabric_asn_map[pr_uuid] = asn
