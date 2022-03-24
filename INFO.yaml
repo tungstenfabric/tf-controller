@@ -100,25 +100,15 @@ committers:
       company: 'Juniper'
       Juniper id: ‘mlnu’
       timezone: 'Asia/Kolkata'
-    - name: 'Lakshmi Harika Pappu'
-      email: 'lpappu@juniper.net'
+    - name: 'Ankit Patne'
+      email: 'apatne@juniper.net'
       company: 'Juniper'
-      Juniper id: 'lpappu'
+      Juniper id: ‘apatne’
       timezone: 'Asia/Kolkata'
-    - name: 'Sarathkumar Pandurangan'
-      email: 'spandurangan@juniper.net'
-      company: 'Juniper'
-      Juniper id: 'spandurangan'
-      timezone: 'Asia/Kolkata'
-    - name: 'Sravya madugula'
-      email: 'smadugula@juniper.net'
-      company: 'Juniper'
-      Juniper id: 'smadugula'
-      timezone: ‘Asia/Kolkata’
 tsc:
     # yamllint disable rule:line-length
-    approval: 'https://wiki.tungsten.io/display/TUN/Projects'
+    approval: ''
     changes:
-        - type: 'initial approval'
-          name: ''
-          link: ''
+        - type: 'Approval'
+          name: 'Committer Approval'
+          link: 'https://lists.tungsten.io/g/tsc/topic/88752516#1249'
