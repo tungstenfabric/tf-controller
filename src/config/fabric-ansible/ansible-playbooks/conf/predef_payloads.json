@@ -424,6 +424,7 @@
               {
                 "playbook_uri": "./opt/contrail/fabric_ansible_playbooks/discover_device.yml",
                 "multi_device_playbook": false,
+                "refresh_token": true,
                 "vendor": "Juniper",
                 "device_family": "",
                 "job_completion_weightage": 15,

@@ -591,6 +591,8 @@ class WFManager(object):
                 playbooks = job_template.get_job_template_playbooks()
                 play_info = playbooks.playbook_info[i]
                 multi_device_playbook = play_info.multi_device_playbook
+                # check if refresh auth_token is set to true
+                is_refresh_token = play_info.refresh_token
 
                 if len(playbook_list) > 1:
                     # get the job percentage based on weightage of each plabook
@@ -608,6 +610,13 @@ class WFManager(object):
 
                 retry_devices = None
                 while True:
+                    if is_refresh_token:
+                        headers = self._vnc_api._reauthenticate(
+                            self._vnc_api._headers)
+                        self._vnc_api._headers['X-AUTH-TOKEN'] =\
+                            headers['X-AUTH-TOKEN']
+                        self.job_input['auth_token'] =\
+                            headers['X-AUTH-TOKEN']
                     job_mgr = JobManager(self._logger, self._vnc_api,
                                          self.job_input, self.job_log_utils,
                                          job_template, self.result_handler,
