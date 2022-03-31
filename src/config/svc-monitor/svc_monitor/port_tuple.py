@@ -255,7 +255,8 @@ class PortTupleAgent(Agent):
         else:
             for idx in range(0, len(vmi.aaps)):
                 if vmi.aaps[idx]['ip'] != aaps[idx]['ip'] or \
-                    vmi.aaps[idx]['mac'] != aaps[idx]['mac']:
+                    ('mac' in vmi.aaps[idx] and 'mac' in aaps[idx] and \
+                    vmi.aaps[idx]['mac'] != aaps[idx]['mac']):
                     update_aap = True
                     break
         if update_aap:
