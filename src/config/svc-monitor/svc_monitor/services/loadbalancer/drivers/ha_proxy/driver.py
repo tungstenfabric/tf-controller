@@ -462,7 +462,7 @@ class OpencontrailLoadbalancerDriver(
         lb = LoadbalancerSM.get(lb_id)
         if not lb:
             return
-        if not lb.device_owner or lb.device_owner != 'K8S:LOADBALANCER':
+        if not lb.device_owner or (lb.device_owner != 'K8S:LOADBALANCER' and lb.device_owner != 'CS:LOADBALANCER'):
             self.update_vmi_fat_flows(lb.virtual_machine_interface,
                 self.get_port_list_v2(lb))
         conf = haproxy_config.get_config_v2(lb)
@@ -490,6 +490,9 @@ class OpencontrailLoadbalancerDriver(
         si_obj.add_service_instance_bindings(kvp)
         if device_owner and device_owner == 'K8S:LOADBALANCER':
             kvp = KeyValuePair('orchestrator', 'kubernetes')
+            si_obj.add_service_instance_bindings(kvp)
+        if device_owner and device_owner == 'CS:LOADBALANCER':
+            kvp = KeyValuePair('orchestrator', 'cloudstack')
             si_obj.add_service_instance_bindings(kvp)
         try:
             self._api.service_instance_update(si_obj)

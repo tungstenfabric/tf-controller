@@ -13,6 +13,11 @@ try:
 except ImportError:
     pass
 
+try:
+    from .cloudstack_cert_manager import CloudstackCertManager
+except ImportError:
+    pass
+
 class CertManager(object):
 
     def __init__(self):
@@ -25,6 +30,9 @@ class CertManager(object):
             if provider == 'barbican':
                 updated_config = (BarbicanCertManager(auth_conf)). \
                     update_ssl_config(haproxy_config, dest_dir)
+        elif orchestrator == 'cloudstack':
+            updated_config = (CloudstackCertManager(auth_conf)). \
+                update_ssl_config(haproxy_config, dest_dir)
         elif orchestrator == 'kubernetes':
             updated_config = (KubernetesCert(auth_conf)). \
                 update_ssl_config(haproxy_config, dest_dir)
