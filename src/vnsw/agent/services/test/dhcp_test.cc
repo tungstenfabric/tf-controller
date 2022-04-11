@@ -684,6 +684,36 @@ public:
     std::string Description() const { return "AsioRunEvent"; }
 };
 
+//On a single stack network (only ipv6) the ipv4 is being configured to 0.0.0.0
+//And hence the ipv6 dhcpflag failed to set properly (refer CEM-25980)
+TEST_F(DhcpTest, Dhcpv6EnableFlagTest) {
+
+    struct PortInfo input[] = {
+        {"vnet1", 1, "0.0.0.0", "00:00:00:01:01:01", 1, 1, "fd11::2"},
+    };
+
+
+    IpamInfo ipam_info[] = {
+
+        {"fd11::", 96, "fd11:1", true},
+
+    };
+
+    CreateV6VmportEnv(input, 1, 1, NULL, NULL, false);
+    client->WaitForIdle();
+    AddIPAM("vn1", ipam_info, 1);
+    client->WaitForIdle();
+    VmInterface *vmi_0 = VmInterfaceGet(1);   
+    bool ret = vmi_0->dhcp_enable_v6_config();
+    EXPECT_EQ(ret, true);
+    DeleteVmportEnv(input, 1, 1, 0);
+    client->WaitForIdle();
+    client->Reset();
+
+
+}
+
+
 TEST_F(DhcpTest, DhcpReqTest) {
     struct PortInfo input[] = {
         {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
