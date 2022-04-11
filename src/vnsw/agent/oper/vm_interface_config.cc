@@ -1331,7 +1331,7 @@ static void ReadDhcpEnable(Agent *agent, VmInterfaceConfigData *data,
                 if (IsIp4SubnetMember(data->addr_,
                         Ip4Address::from_string(
                             subnets.ipam_subnets[i].subnet.ip_prefix, ec),
-                        subnets.ipam_subnets[i].subnet.ip_prefix_len)) {
+                        subnets.ipam_subnets[i].subnet.ip_prefix_len) && data->addr_ != Ip4Address(0)) {
                     data->dhcp_enable_ = subnets.ipam_subnets[i].enable_dhcp;
                 }
                 else if (IsIp6SubnetMember(data->ip6_addr_,
