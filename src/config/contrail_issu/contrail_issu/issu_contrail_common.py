@@ -4,7 +4,10 @@
 #
 
 from cfgm_common.vnc_cassandra import VncCassandraClient
+from contrail_issu import issu_contrail_config
+from pycassa.system_manager import SystemManager
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
+from thrift.transport import TTransport
 
 
 class ICCassandraInfo():
@@ -70,8 +73,24 @@ class ICCassandraClient():
             "Issu contrail cassandra prepare...",
             level=SandeshLevel.SYS_INFO,
         )
-        for issu_func, ks, cflist in self._issu_info:
+        for server in self._oldversion_server_list:
+            try:
+                old_sys_mgr = SystemManager(server, credentials=self._old_creds)
+                break
+            except TTransport.TTransportException:
+                continue
+        old_keyspaces = old_sys_mgr.list_keyspaces()
 
+        for issu_func, ks, cflist in self._issu_info:
+            # new keyspaces such as
+            # dm_ni_ipv6_ll_table, dm_pr_asn_table,
+            # healthmonitor_table, loadbalancer_table do not exist in old db
+            if ks not in old_keyspaces:
+                continue
+            for cf in set(cflist.keys()) - set(old_sys_mgr.get_keyspace_column_families(ks).keys()):
+                issu_contrail_config.lognprint("Skip syncing {} column family".format(cf),
+                                               level=SandeshLevel.SYS_INFO)
+                del cflist[cf]
             if issu_func is None:
                 issu_func = self._issu_basic_function
             ks_issu_func_info = {ks: issu_func}
