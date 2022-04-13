@@ -30,6 +30,8 @@ class DeviceJobManager(object):
     JOB_REQUEST_EXCHANGE = "job_request_exchange"
     JOB_REQUEST_CONSUMER = "job_request_consumer"
     JOB_REQUEST_ROUTING_KEY = "job.request"
+    JOB_SUBPROCESS_EXCHANGE = "job_subprocess_exchange"
+    JOB_SUBPROCESS_ROUTING_KEY = "job.subprocess."
     JOB_ABORT_CONSUMER = "job_abort_consumer"
     JOB_ABORT_ROUTING_KEY = "job.abort"
     JOB_STATUS_EXCHANGE = "job_status_exchange"
@@ -117,6 +119,9 @@ class DeviceJobManager(object):
             self.JOB_REQUEST_EXCHANGE,
             routing_key=self.JOB_ABORT_ROUTING_KEY,
             callback=self.handle_abort_job_request)
+
+        self._amqp_client.add_exchange(self.JOB_SUBPROCESS_EXCHANGE,
+                                       type='direct')
 
     # end __init__
 
@@ -318,30 +323,35 @@ class DeviceJobManager(object):
             self.publish_job_status_notification(job_execution_id,
                                                  JobStatus.STARTING.value)
 
-            # handle process exit signal
-            signal.signal(signal.SIGCHLD, self.job_mgr_signal_handler)
-
             # write the abstract config to file if needed
             self.save_abstract_config(job_input_params)
 
             # add params needed for sandesh connection
             job_input_params['args'] = self._job_args
-
+            routing_key = self.JOB_SUBPROCESS_ROUTING_KEY + job_execution_id
+            callback_fn = self.job_mgr_signal_handler
+            self._logger.debug("Adding job subprocess consumer queue")
+            JOB_SUBPROCESS_CONSUMER = \
+                'device_job_mgr.%s.subprocessqueue' % job_execution_id
+            self._amqp_client.add_consumer(JOB_SUBPROCESS_CONSUMER,
+                                           self.JOB_SUBPROCESS_EXCHANGE,
+                                           routing_key=routing_key,
+                                           callback=callback_fn)
+            job_input_params['routing_key'] = routing_key
             # create job manager subprocess
             job_mgr_path = os.path.dirname(
                 __file__) + "/../job_manager/job_mgr.py"
             job_process = subprocess.Popen(["python", job_mgr_path, "-i",
                                             json.dumps(job_input_params)],
                                            cwd="/", close_fds=True)
+            self._job_mgr_running_instances[job_execution_id] = signal_var
 
-            self._job_mgr_running_instances[str(job_process.pid)] = signal_var
-
+            self._logger.debug("CEM-26539 - started the subprocess %s" %
+                               job_process.pid)
             self._job_mgr_statistics['running_job_count'] = len(
                 self._job_mgr_running_instances)
-
             self._logger.notice("Created job manager process. Execution id: "
                                 "%s" % job_execution_id)
-
             self._logger.info(
                 "Current number of job_mgr processes running %s"
                 % self._job_mgr_statistics.get('running_job_count'))
@@ -497,20 +507,16 @@ class DeviceJobManager(object):
         return status, prouter_info, device_op_results, failed_devices_list
 
     # end _extracted_file_output
-
-    def job_mgr_signal_handler(self, signalnum, frame):
-        pid = None
-        signal_var = None
+    def job_mgr_signal_handler(self, body, message):
+        message.ack()
+        signal_var = self._job_mgr_running_instances.get(
+            body['job_execution_id'])
+        if not signal_var:
+            err_msg = "job_execution_id %s not found in running instances" \
+                      % body['job_execution_id']
+            signal_var['exec_id'] = body['job_execution_id']
+            raise Exception(err_msg)
         try:
-            # get the child process id that called the signal handler
-            pid = os.waitpid(-1, os.WNOHANG)
-            signal_var = self._job_mgr_running_instances.get(str(pid[0]))
-            if not signal_var:
-                self._logger.error(
-                    "Job mgr process %s not found in the instance "
-                    "map" % str(pid))
-                return
-
             msg = "Entered job_mgr_signal_handler for: %s" % signal_var
             self._logger.notice(msg)
             exec_id = signal_var.get('exec_id')
@@ -559,7 +565,7 @@ class DeviceJobManager(object):
                     data=prouter_job_data, sandesh=self._sandesh)
                 prouter_job_uve.send(sandesh=self._sandesh)
 
-            self._clean_up_job_data(signal_var, str(pid[0]))
+            self._clean_up_job_data(signal_var)
 
             self._logger.info("Job : %s finished. Current number of job_mgr "
                               "processes running now %s " %
@@ -571,25 +577,31 @@ class DeviceJobManager(object):
                                "OS call returned with error %s" %
                                str(process_error))
         except Exception as unknown_exception:
-            self._clean_up_job_data(signal_var, str(pid[0]))
+            self._clean_up_job_data(signal_var)
             self._logger.error("Failed in job signal handler %s" %
                                str(unknown_exception))
 
     # end job_mgr_signal_handler
 
-    def _clean_up_job_data(self, signal_var, pid):
-        # remove the pid entry of the processed job_mgr process
-        del self._job_mgr_running_instances[pid]
+    def _clean_up_job_data(self, signal_var):
+        try:
+            # remove the pid entry of the processed job_mgr process
+            del self._job_mgr_running_instances[signal_var['exec_id']]
 
-        # clean up fabric level lock
-        if signal_var.get('job_concurrency') \
-                is not None and signal_var.get('job_concurrency') == "fabric":
-            self._release_fabric_job_lock(signal_var.get('fabric_fq_name'))
-        self._cleanup_job_lock(signal_var.get('fabric_fq_name'))
+            # clean up fabric level lock
+            if signal_var.get('job_concurrency') \
+                    is not None and \
+                    signal_var.get('job_concurrency') == "fabric":
+                self._release_fabric_job_lock(signal_var.get('fabric_fq_name'))
+            self._cleanup_job_lock(signal_var.get('fabric_fq_name'))
 
-        self._job_mgr_statistics['running_job_count'] = len(
-            self._job_mgr_running_instances)
-
+            self._job_mgr_statistics['running_job_count'] = len(
+                self._job_mgr_running_instances)
+        except Exception:
+            pass
+        exec_id = signal_var.get('exec_id')
+        consumer_name = 'device_job_mgr.%s.subprocessqueue' % exec_id
+        self._amqp_client.remove_consumer(consumer_name)
     # end _clean_up_job_data
 
     def _is_existing_job_for_fabric(self, fabric_fq_name, job_execution_id):

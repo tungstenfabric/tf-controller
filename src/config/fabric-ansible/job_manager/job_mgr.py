@@ -428,8 +428,11 @@ class WFManager(object):
         signal.signal(signal.SIGABRT, self.job_mgr_abort_signal_handler)
         signal.signal(signal.SIGUSR1, self.job_mgr_abort_signal_handler)
         logger.debug("Job manager initialized")
+        self.JOB_SUBPROCESS_EXCHANGE = "job_subprocess_exchange"
 
     def parse_job_input(self, job_input_json):
+        self._logger.debug("CEM-26539 Entered to parse_job_input with %s" %
+                           job_input_json)
         # job input should have job_template_id and execution_id field
         if job_input_json.get('job_template_id') is None:
             msg = MsgBundle.getMessage(MsgBundle.JOB_TEMPLATE_MISSING)
@@ -530,6 +533,7 @@ class WFManager(object):
             sys.exit()
 
     def start_job(self):
+        self._logger.debug("CEM-26539 Entered to start_job")
         job_error_msg = None
         job_template = None
         try:
@@ -630,6 +634,7 @@ class WFManager(object):
                     self.job_input['device_json'] = retry_devices
                     self.job_input['input']['failed_list'] = failed_device_list
 
+                self._logger.debug("CEM-26539 Completed playbook execution")
                 # update the job input with marked playbook output json
                 pb_output = self.result_handler.playbook_output or {}
 
@@ -691,12 +696,14 @@ class WFManager(object):
                 # In case we have any recovery playbooks, execute them now
                 recovery_playbooks = (
                     job_template.get_job_template_recovery_playbooks())
-                if len(recovery_playbooks.playbook_info) > 0:
+                if recovery_playbooks \
+                        and len(recovery_playbooks.playbook_info) > 0:
                     self._logger.info(
                         "Found recovery playbooks for workflow. "
                         "Will try to cleanup."
                     )
                     self.start_cleanup_job(job_template)
+            self._logger.debug("CEM-26539 Completed everything")
 
         except JobException as exp:
             err_msg = "Job Exception recieved: %s " % repr(exp)
@@ -722,8 +729,28 @@ class WFManager(object):
             sandesh_util = SandeshUtils(self._logger)
             sandesh_util.close_sandesh_connection()
             self._logger.info("Closed Sandesh connection")
-            if job_error_msg is not None:
-                sys.exit(job_error_msg)
+            if 'routing_key' in self.job_input:
+                self._logger.debug("CEM-26359 routing_key %s" %
+                                   self.job_input['routing_key'])
+                job_status = JobStatus.FAILURE if job_error_msg is not None \
+                    else JobStatus.SUCCESS
+                self.job_input["STATUS"] = job_status.value
+                self.publish_subprocess_response(self.job_input)
+            else:
+                if job_error_msg is not None:
+                    sys.exit(job_error_msg)
+
+    def publish_subprocess_response(self, response):
+        self._logger.debug("CEM-26359 Entered to publish response %s" %
+                           response)
+        try:
+            self._vnc_api.amqp_publish(
+                payload=response, exchange=self.JOB_SUBPROCESS_EXCHANGE,
+                routing_key=response['routing_key'])
+        except Exception as e:
+            msg = "Failed to send job subprocess request via RabbitMQ" \
+                  " %s %s" % (response['job_execution_id'], repr(e))
+            self._logger.error(msg)
 
     def job_mgr_abort_signal_handler(self, signalnum, frame):
         if signalnum == signal.SIGABRT:
@@ -740,7 +767,8 @@ class WFManager(object):
                 # execute them and then exit
                 recovery_playbooks = (
                     self.job_template.get_job_template_recovery_playbooks())
-                if len(recovery_playbooks.playbook_info) > 0:
+                if recovery_playbooks \
+                        and len(recovery_playbooks.playbook_info) > 0:
                     self._logger.info("Found recovery playbooks for workflow. "
                                       "Will try to cleanup before abort.")
                     Greenlet.spawn(self.start_cleanup_job,
