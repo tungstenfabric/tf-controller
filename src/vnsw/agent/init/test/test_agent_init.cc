@@ -589,6 +589,24 @@ TEST_F(AgentParamTest, Restart_1) {
     EXPECT_EQ(param1.restart_restore_audit_timeout(), 20);
 }
 
+TEST_F(AgentParamTest, Agent_Llgr_Option_1) {
+    int argc = 1;
+    char *argv[] = {
+        (char *)"",
+    };
+
+    AgentParam param;
+    param.ParseArguments(argc, argv);
+    param.Init("controller/src/vnsw/agent/init/test/llgr.ini", "test-param");
+    LlgrParams llgr_params = param.llgr_params();
+    EXPECT_EQ(llgr_params.stale_config_cleanup_time(), 300);
+    EXPECT_EQ(llgr_params.config_inactivity_time(), 30);
+    EXPECT_EQ(llgr_params.config_fallback_time(), 1000);
+    EXPECT_EQ(llgr_params.end_of_rib_rx_fallback_time(), 100);
+    EXPECT_EQ(llgr_params.end_of_rib_tx_fallback_time(), 100);
+    EXPECT_EQ(llgr_params.end_of_rib_tx_inactivity_time(), 100);
+}
+
 TEST_F(AgentParamTest, Agent_Mac_Learning_Option_1) {
     int argc = 1;
     char *argv[] = {

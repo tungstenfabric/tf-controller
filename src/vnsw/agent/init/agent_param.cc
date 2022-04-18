@@ -850,7 +850,7 @@ void AgentParam::ParseRestartArguments
 void AgentParam::ParseLlgrArguments
     (const boost::program_options::variables_map &var_map) {
     GetOptValue<uint16_t>(var_map, llgr_params_.stale_config_cleanup_time_,
-                          "LLGR.stale_config_cleanup_time_");
+                          "LLGR.stale_config_cleanup_time");
     GetOptValue<uint16_t>(var_map, llgr_params_.config_inactivity_time_,
                           "LLGR.config_inactivity_time");
     GetOptValue<uint16_t>(var_map, llgr_params_.config_fallback_time_,
@@ -860,7 +860,7 @@ void AgentParam::ParseLlgrArguments
     GetOptValue<uint16_t>(var_map, llgr_params_.end_of_rib_tx_fallback_time_,
                           "LLGR.end_of_rib_tx_fallback_time");
     GetOptValue<uint16_t>(var_map, llgr_params_.end_of_rib_tx_inactivity_time_,
-                          "LLGR.end_of_rib_tx_inactivity_time_");
+                          "LLGR.end_of_rib_tx_inactivity_time");
     GetOptValue<uint32_t>(var_map, llgr_params_.llgr_stale_time_,
                           "LLGR.llgr_stale_time");
 }
@@ -1143,6 +1143,7 @@ void AgentParam::ProcessArguments() {
     ParseSandeshArguments(var_map_);
     ParseQueue();
     ParseRestartArguments(var_map_);
+    ParseLlgrArguments(var_map_);
     ParseMacLearning(var_map_);
     ParseTsnServersArguments(var_map_);
     ParseCryptArguments(var_map_);
