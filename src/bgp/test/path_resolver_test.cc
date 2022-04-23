@@ -244,6 +244,24 @@ protected:
         }
     }
 
+    // This function returns the path id used when fast convergence is enabled.
+    // Returned path id is calculated by adding 1 to last octect of input.
+    string BuildFastConvergencePathId(const string &ipv4_addr) const {
+        if (nexthop_family_is_inet) {
+            string updated_path_id = BuildPathId(ipv4_addr);
+            std::size_t found = ipv4_addr.rfind(".");
+            if (found != std::string::npos) {
+                string last_octet = ipv4_addr.substr(found+1, ipv4_addr.length());
+                int last_octet_number = (atoi(last_octet.c_str())+1)%255;
+                updated_path_id = ipv4_addr.substr(0, found+1) +
+                    boost::lexical_cast<std::string>(last_octet_number);
+            }
+            return updated_path_id;
+        } else {
+            string path_id("0.0.0.0");
+            return path_id;
+        }
+    }
     string GetTableName(const string &instance) const {
         if (family_ == Address::INET) {
             if (instance == master_) {
@@ -714,8 +732,21 @@ protected:
         const set<string> &encap_list, const LoadBalance &lb, uint32_t med,
         const CommunitySpec &comm_spec, const vector<uint16_t> &as_list) {
         const BgpAttr *attr = path->GetAttr();
+        // Path id used during fast convergence is not same as next hop
+        // ip address. So one is subtracted from last octet to get next
+        // hop address.
+        string updated_path_id = path_id;
         if (path_id != "0.0.0.0" &&
-            attr->nexthop().to_v4().to_string() != path_id)
+            attr->nexthop().to_v4().to_string() != path_id){
+            std::size_t found = path_id.rfind(".");
+            if (found != std::string::npos) {
+                string last_octet = path_id.substr(found+1, path_id.length());
+                int last_octet_number = (atoi(last_octet.c_str())-1)%255;
+                updated_path_id = path_id.substr(0, found+1)+ boost::lexical_cast<std::string>(last_octet_number);
+            }
+        }
+        if (path_id != "0.0.0.0" &&
+            attr->nexthop().to_v4().to_string() != updated_path_id)
             return false;
         if (label && path->GetLabel() != label)
             return false;
@@ -3114,16 +3145,16 @@ TYPED_TEST(PathResolverTest, UnderlaySinglePrefix1) {
         this->BuildNextHopAddress(bgp_peer2->ToString()));
 
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+    this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+    this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+    this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+    this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(1));
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(2));
@@ -3154,16 +3185,16 @@ TYPED_TEST(PathResolverTest, UnderlaySinglePrefix2) {
         this->BuildHostAddress(bgp_peer1->ToString()));
 
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(1));
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(2));
@@ -3189,26 +3220,26 @@ TYPED_TEST(PathResolverTest, UnderlayChangeBgpPath1) {
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithMed(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), 100, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, 100);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, 100);
 
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithMed(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), 200, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, 200);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, 200);
 
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(1));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
@@ -3236,7 +3267,7 @@ TYPED_TEST(PathResolverTest, UnderlayChangeBgpPath2) {
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     vector<uint32_t> comm_list1 = list_of(0xFFFFA101)(0xFFFFA102)(0xFFFFA103);
     CommunitySpec comm_spec1;
@@ -3244,12 +3275,12 @@ TYPED_TEST(PathResolverTest, UnderlayChangeBgpPath2) {
     this->AddBgpPathWithCommunities(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), comm_list1, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, comm_spec1);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, comm_spec1);
 
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     vector<uint32_t> comm_list2 = list_of(0xFFFFA201)(0xFFFFA202)(0xFFFFA203);
     CommunitySpec comm_spec2;
@@ -3257,7 +3288,7 @@ TYPED_TEST(PathResolverTest, UnderlayChangeBgpPath2) {
     this->AddBgpPathWithCommunities(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), comm_list2, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, comm_spec2);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, comm_spec2);
 
     vector<uint32_t> comm_list3 = list_of(0xFFFFA301)(0xFFFFA302)(0xFFFFA303);
     CommunitySpec comm_spec3;
@@ -3265,11 +3296,11 @@ TYPED_TEST(PathResolverTest, UnderlayChangeBgpPath2) {
     this->AddBgpPathWithCommunities(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), comm_list3, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, comm_spec3);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, comm_spec3);
 
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(1));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
@@ -3297,34 +3328,34 @@ TYPED_TEST(PathResolverTest, UnderlayChangeBgpPath3) {
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     vector<uint16_t> as_list1 = list_of(64512)(64513)(64514);
     this->AddBgpPathWithAsList(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), as_list1, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, as_list1);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, as_list1);
 
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     vector<uint16_t> as_list2 = list_of(64522)(64523)(64524);
     this->AddBgpPathWithAsList(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), as_list2, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, as_list2);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, as_list2);
 
     vector<uint16_t> as_list3 = list_of(64532)(64533)(64534);
     this->AddBgpPathWithAsList(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()), as_list3, false);
     this->VerifyPathAttributes("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()), 0, as_list3);
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()), 0, as_list3);
 
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(1));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
@@ -3352,22 +3383,22 @@ TYPED_TEST(PathResolverTest, UnderlayChangeBgpPath4) {
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithFlags(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()),
         BgpPath::AsPathLooped, false);
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithNoRes(bgp_peer1, "blue", this->BuildPrefix(1),
         this->BuildHostAddress(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, "blue", this->BuildPrefix(1));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
@@ -3400,18 +3431,18 @@ TYPED_TEST(PathResolverTest, UnderlaySamePrefixNexthop1) {
         this->BuildHostAddress(bgp_peer1->ToString()));
 
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithNoRes(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32),
         this->BuildHostAddress(bgp_peer2->ToString()));
 
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
@@ -3445,18 +3476,18 @@ TYPED_TEST(PathResolverTest, UnderlaySamePrefixNexthop2) {
         this->BuildHostAddress(bgp_peer1->ToString()));
 
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithNoRes(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32),
         this->BuildHostAddress(bgp_peer2->ToString()));
 
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
@@ -3490,7 +3521,7 @@ TYPED_TEST(PathResolverTest, UnderlayMultiplePrefixSameNexthop1) {
 
     for (int idx = 1; idx <= DB::PartitionCount() * 2; ++idx) {
         this->VerifyPathExists("blue", this->BuildPrefix(idx), bgp_peer1,
-            this->BuildPathId(bgp_peer1->ToString()));
+            this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     }
 
     this->DeleteBgpPath(bgp_peer1, master,
@@ -3498,7 +3529,7 @@ TYPED_TEST(PathResolverTest, UnderlayMultiplePrefixSameNexthop1) {
 
     for (int idx = 1; idx <= DB::PartitionCount() * 2; ++idx) {
         this->VerifyPathNoExists("blue", this->BuildPrefix(idx), bgp_peer1,
-            this->BuildPathId(bgp_peer1->ToString()));
+            this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     }
 
     for (int idx = 1; idx <= DB::PartitionCount() * 2; ++idx) {
@@ -3534,9 +3565,9 @@ TYPED_TEST(PathResolverTest, UnderlayMultiplePrefixSameNexthop2) {
 
     for (int idx = 1; idx <= DB::PartitionCount() * 2; ++idx) {
         this->VerifyPathExists("blue", this->BuildPrefix(idx), bgp_peer1,
-            this->BuildPathId(bgp_peer1->ToString()));
+            this->BuildFastConvergencePathId(bgp_peer1->ToString()));
         this->VerifyPathExists("pink", this->BuildPrefix(idx), bgp_peer1,
-            this->BuildPathId(bgp_peer1->ToString()));
+            this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     }
 
     this->DeleteBgpPath(bgp_peer1, master,
@@ -3544,9 +3575,9 @@ TYPED_TEST(PathResolverTest, UnderlayMultiplePrefixSameNexthop2) {
 
     for (int idx = 1; idx <= DB::PartitionCount() * 2; ++idx) {
         this->VerifyPathNoExists("blue", this->BuildPrefix(idx), bgp_peer1,
-            this->BuildPathId(bgp_peer1->ToString()));
+            this->BuildFastConvergencePathId(bgp_peer1->ToString()));
         this->VerifyPathNoExists("pink", this->BuildPrefix(idx), bgp_peer1,
-            this->BuildPathId(bgp_peer1->ToString()));
+            this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     }
 
     for (int idx = 1; idx <= DB::PartitionCount() * 2; ++idx) {
@@ -3581,25 +3612,25 @@ TYPED_TEST(PathResolverTest, UnderlayLongestMatch1) {
         this->BuildNextHopAddress(bgp_peer2->ToString()));
 
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithNoRes(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32),
         this->BuildNextHopAddress(bgp_peer2->ToString()));
 
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 24));
@@ -3633,34 +3664,34 @@ TYPED_TEST(PathResolverTest, UnderlayLongestMatch2) {
         this->BuildNextHopAddress(bgp_peer2->ToString()));
 
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithNoRes(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 24),
         this->BuildNextHopAddress(bgp_peer2->ToString()));
 
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->AddBgpPathWithNoRes(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32),
         this->BuildNextHopAddress(bgp_peer2->ToString()));
 
     this->VerifyPathExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 32));
     this->VerifyPathNoExists("blue", this->BuildPrefix(1), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
     this->VerifyPathNoExists("blue", this->BuildPrefix(2), bgp_peer1,
-        this->BuildPathId(bgp_peer1->ToString()));
+        this->BuildFastConvergencePathId(bgp_peer1->ToString()));
 
     this->DeleteBgpPath(bgp_peer1, master,
         this->BuildPrefix(bgp_peer1->ToString(), 24));
