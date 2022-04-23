@@ -1087,7 +1087,26 @@ bool ResolverPath::UpdateResolvedPaths() {
     // If nexthop RI is the default routing-instance, nothing to update except
     // changing path_flags. Locate the resolved path.
     if (path_ && nh_route && nh_ri_def) {
-        BgpPath *updated_path = LocateResolvedPath(peer, path_->GetPathId(),
+        uint32_t new_path_id = path_->GetPathId();
+        // Check the next hop ip address. If its ipv6, original path id is
+        // used. New path id is generated for ipv4 address.
+        if(path_->GetAttr()->nexthop().is_v4()){
+            // Create new path id from next hop ip by adding one to the last
+            // octet of next hop ip address. This is done to make the path id
+            // unique.
+            string next_hop_ip = path_->GetAttr()->nexthop().to_string();
+            std::size_t found = next_hop_ip.rfind(".");
+            if (found != std::string::npos) {
+                string last_octet = next_hop_ip.substr(found+1,
+                       next_hop_ip.length());
+                int last_octet_number = (atoi(last_octet.c_str())+1)%255;
+                string temp_path_id = next_hop_ip.substr(0, found+1)+
+                       boost::lexical_cast<std::string>(last_octet_number);
+                new_path_id = IpAddress::from_string(temp_path_id)
+                       .to_v4().to_ulong();
+            }
+        }
+        BgpPath *updated_path = LocateResolvedPath(peer, new_path_id,
             path_->GetAttr(), path_->GetLabel(), path_->IsReplicated());
         if (path_->IsReplicated()) {
             const BgpSecondaryPath *sec_path =
