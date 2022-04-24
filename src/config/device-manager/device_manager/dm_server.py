@@ -144,7 +144,7 @@ def run_partial_dm(pid):
     for proc in running_procs:
         if proc.pid == pid:
             continue
-        elif 'contrail-device-manager' in ' '.join(proc.cmdline()):
+        elif '--dm_run_mode Full' in ' '.join(proc.cmdline()):
             is_master = True
     if not is_master:
         # start dm with Partial flag
