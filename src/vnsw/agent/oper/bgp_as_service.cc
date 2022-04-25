@@ -360,9 +360,15 @@ void BgpAsAService::ProcessConfig(const std::string &vrf_name,
                     (*scb_it)(vm_uuid, prev->source_port_);
                     scb_it++;
                 }
-                if (prev->is_shared_) {
+                InterfaceConstRef vm_intf = agent_->interface_table()->FindVmi(vm_uuid);
+                const VmInterface *vmi = dynamic_cast<const VmInterface *>(vm_intf.get());
+                if ((prev->is_shared_ && vmi==NULL) || (prev->is_shared_ && vmi && vmi->IsDeleted())) {
                     FreeBgpVmiServicePortIndex(prev->source_port_);
                 }
+                else if(vmi && !(vmi->IsDeleted())){
+                    LOG(DEBUG, "Undeleted vmi might have active bgp session with source port");
+                }
+
                 old_bgp_as_a_service_entry_list_iter->second->list_.erase(prev);
                 continue;
             }

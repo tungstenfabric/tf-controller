@@ -180,6 +180,9 @@ public:
         client->EnqueueFlowFlush();
         client->WaitForIdle();
         EXPECT_EQ(0U, flow_proto_->FlowCount());
+        DeleteVmportEnv(input, 7, true);
+        WAIT_FOR(1000, 1000, (0 == Agent::GetInstance()->vm_table()->Size()));
+        DelBgpaasPortRange();
         DeleteBgpRouterConfig("127.0.0.1", 0, "ip-fabric");
         DeleteBgpServiceConfig("1.1.1.10", 50000, "vnet1", "vrf1");
         DeleteBgpServiceConfig("2.2.2.20", 50000, "vnet2", "vrf2");
@@ -195,8 +198,7 @@ public:
         DelIPAM("vn5");
         DelIPAM("vn6");
         DelIPAM("vn7");
-        DeleteVmportEnv(input, 7, true);
-        DelBgpaasPortRange();
+        client->WaitForIdle(10);
         client->WaitForIdle();
         EXPECT_FALSE(agent_->oper_db()->bgp_as_a_service()->IsConfigured());
     }
@@ -908,6 +910,9 @@ TEST_F(BgpServiceTest, Test_14) {
     client->WaitForIdle();
     EXPECT_TRUE(agent_->pkt()->get_flow_proto()->FlowCount() == 0);
     EXPECT_FALSE(VrfFind("vrf1", true));
+    agent_->resource_manager()->Release(Resource::BGP_AS_SERVICE_INDEX,0);
+    client->WaitForIdle();
+
 }
 
 int main(int argc, char *argv[]) {
