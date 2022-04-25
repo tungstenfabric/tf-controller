@@ -344,6 +344,7 @@ class DeviceJobManager(object):
             job_process = subprocess.Popen(["python", job_mgr_path, "-i",
                                             json.dumps(job_input_params)],
                                            cwd="/", close_fds=True)
+            signal_var['pid'] = job_process.pid
             self._job_mgr_running_instances[job_execution_id] = signal_var
 
             self._logger.debug("CEM-26539 - started the subprocess %s" %
@@ -384,13 +385,14 @@ class DeviceJobManager(object):
 
         # Search through running job instances to find this job
         for pid, job_instance in list(self._job_mgr_running_instances.items()):
+            process_id = job_instance.get('pid')
             # Abort one job
             if job_execution_ids:
                 if job_instance.get('exec_id') in job_execution_ids:
-                    self._abort_job(pid, job_instance, abort_mode)
+                    self._abort_job(process_id, job_instance, abort_mode)
             # Abort next job
             else:
-                self._abort_job(pid, job_instance, abort_mode)
+                self._abort_job(process_id, job_instance, abort_mode)
 
     # end handle_abort_job_request
 
