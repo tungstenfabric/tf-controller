@@ -74,7 +74,26 @@ class NetworkMonitor(KubeMonitor):
             ),
             spec=dict(
                 group='k8s.cni.cncf.io',
-                version='v1',
+                versions=[dict(
+                    name='v1',
+                    served=bool(1),
+                    storage=bool(1),
+                    schema=dict(
+                        openAPIV3Schema=dict(
+                            type='object',
+                            properties=dict(
+                                spec=dict(
+                                    type='object',
+                                    properties=dict(
+                                        config=dict(
+                                            type='string'
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )],
                 scope='Namespaced',
                 names=dict(
                     plural='network-attachment-definitions',
