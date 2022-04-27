@@ -131,13 +131,31 @@ class ConfigServiceLogger(object):
             logger_config_file=self._args.logging_conf,
             config=self._args.sandesh_config)
 
+        # Security Check for max bytes and backup count
+        try:
+            self._args.maxbytes = int(float(self._args.maxbytes))
+            if self._args.maxbytes < 5000000 or self._args.maxbytes > 50000000:
+                self._args.maxbytes = 5000000
+        except:
+            self._args.maxbytes = 5000000
+        try:
+            self._args.backupcount = int(float(self._args.backupcount))
+            if self._args.backupcount < 10 or self._args.backupcount > 20:
+                self._args.backupcount = 10
+        except:
+            self._args.backupcount = 10
+
+        # End Security Check for max bytes and backup count
+
         self._sandesh.set_logging_params(
             enable_local_log=self._args.log_local,
             category=self._args.log_category,
             level=self._args.log_level,
             file=self._args.log_file,
             enable_syslog=self._args.use_syslog,
-            syslog_facility=self._args.syslog_facility)
+            syslog_facility=self._args.syslog_facility,
+            maxBytes=int(self._args.maxbytes),
+            backupCount=int(self._args.backupcount))
 
         # connection state init
         ConnectionState.init(

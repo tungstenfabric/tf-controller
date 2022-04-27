@@ -195,6 +195,10 @@ def add_parser_arguments(parser):
     parser.add_argument("--dm_run_mode",
                         help="Run all classes or just DeviceJobManager "
                              "and DeviceZtpManager")
+    parser.add_argument("--maxBytes",
+                        help="max bytes changed")
+    parser.add_argument("--backupCount",
+                        help="backup count changed")
     SandeshConfig.add_parser_arguments(parser)
 # end add_parser_arguments
 
