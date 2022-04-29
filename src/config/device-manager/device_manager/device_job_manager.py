@@ -336,7 +336,8 @@ class DeviceJobManager(object):
             self._amqp_client.add_consumer(JOB_SUBPROCESS_CONSUMER,
                                            self.JOB_SUBPROCESS_EXCHANGE,
                                            routing_key=routing_key,
-                                           callback=callback_fn)
+                                           callback=callback_fn,
+                                           exclusive=True)
             job_input_params['routing_key'] = routing_key
             # create job manager subprocess
             job_mgr_path = os.path.dirname(
