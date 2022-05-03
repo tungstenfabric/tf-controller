@@ -114,6 +114,8 @@ def parse_args(args_str):
         'worker_introspect_ports': '',
         'worker_admin_ports': '',
         'contrail_version': '',
+        'max_bytes': 5000000,
+        'backup_count': 10,
     }
     defaults.update(SandeshConfig.get_default_options(['DEFAULTS']))
     # keystone options
@@ -179,6 +181,33 @@ def parse_args(args_str):
         if 'ZOOKEEPER' in config.sections():
                 zookeeperopts.update(dict(config.items('ZOOKEEPER')))
         SandeshConfig.update_options(sandeshopts, config)
+
+    def check_maxbytes_range(arg):
+        try:
+            value = int(arg)
+        except ValueError as err:
+            raise argparse.ArgumentTypeError(str(err))
+
+        if value < 5000000 or value > 50000000:
+            message = ("Expecting 5000000 <= value <= 50000000,"
+                      " got value = {}").format(value)
+            raise argparse.ArgumentTypeError(message)
+
+        return value
+
+    def check_backupcount_range(arg):
+        try:
+            value = int(arg)
+        except ValueError as err:
+            raise argparse.ArgumentTypeError(str(err))
+
+        if value < 10 or value > 100:
+            message = ("Expecting 10 <= value <= 100,"
+                      " got value = {}").format(value)
+            raise argparse.ArgumentTypeError(message)
+
+        return value
+
     # Override with CLI options
     # Don't surpress add_help here so it will handle -h
     parser = argparse.ArgumentParser(
@@ -370,6 +399,10 @@ def parse_args(args_str):
         help="List of introspect ports for uwsgi workers")
     parser.add_argument("--worker_admin_ports",
         help="List of admin ports for uwsgi workers")
+    parser.add_argument("--max_bytes",
+        type=check_maxbytes_range, nargs="?")
+    parser.add_argument("--backup_count",
+        type=check_backupcount_range, nargs="?")
     parser.add_argument(
         "--contrail_version",
         help="contrail build version info")
