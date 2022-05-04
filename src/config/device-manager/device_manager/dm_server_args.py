@@ -13,6 +13,32 @@ from pysandesh.sandesh_base import Sandesh, SandeshConfig
 from six.moves.configparser import SafeConfigParser
 
 
+def check_maxbytes_range(arg):
+    try:
+        value = int(arg)
+    except ValueError as err:
+        raise argparse.ArgumentTypeError(str(err))
+
+    if value < 5000000 or value > 50000000:
+        message = ("Expecting 5000000 <= value <= 50000000,"
+                   " got value = {}").format(value)
+        raise argparse.ArgumentTypeError(message)
+    return value
+
+
+def check_backupcount_range(arg):
+    try:
+        value = int(arg)
+    except ValueError as err:
+        raise argparse.ArgumentTypeError(str(err))
+
+    if value < 10 or value > 100:
+        message = ("Expecting 10 <= value <= 100,"
+                   " got value = {}").format(value)
+        raise argparse.ArgumentTypeError(message)
+    return value
+
+
 def default_options():
     return {
         'use_certs': False,
@@ -83,6 +109,8 @@ def default_options():
         'job_manager_db_conn_max_retries': '6',
         'fabric_ansible_dir': '/opt/contrail/fabric_ansible_playbooks',
         'dm_run_mode': None,
+        'max_bytes': 5000000,
+        'backup_count': 10,
     }
 # end default_options
 
@@ -195,6 +223,10 @@ def add_parser_arguments(parser):
     parser.add_argument("--dm_run_mode",
                         help="Run all classes or just DeviceJobManager "
                              "and DeviceZtpManager")
+    parser.add_argument("--max_bytes",
+                        type=check_maxbytes_range, nargs="?")
+    parser.add_argument("--backup_count",
+                        type=check_backupcount_range, nargs="?")
     SandeshConfig.add_parser_arguments(parser)
 # end add_parser_arguments
 

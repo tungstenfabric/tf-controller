@@ -622,6 +622,8 @@ def parse_args(args_str):
         'zk_timeout': 120,
         'logical_routers_enabled': True,
         'yield_in_evaluate': False,
+        'max_bytes': 5000000,
+        'backup_count': 10,
     }
     defaults.update(SandeshConfig.get_default_options(['DEFAULTS']))
     secopts = {
@@ -773,6 +775,10 @@ def parse_args(args_str):
                         help="Location of zookeeper ssl private key")
     parser.add_argument("--zookeeper_ssl_ca_cert", type=str,
                         help="Location of zookeeper ssl CA certificate")
+    parser.add_argument("--max_bytes",
+                        help="default max_bytes")
+    parser.add_argument("--backup_count",
+                        help="default backup_count")
     SandeshConfig.add_parser_arguments(parser)
 
     args = parser.parse_args(remaining_argv)
