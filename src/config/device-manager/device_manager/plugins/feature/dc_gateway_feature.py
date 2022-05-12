@@ -7,8 +7,9 @@ from builtins import str
 from collections import OrderedDict
 import copy
 
-from abstract_device_api.abstract_device_xsd import Feature, Firewall, \
-    FirewallFilter, From, NatRule, NatRules, RoutingInstance, Term, Then
+from abstract_device_api.abstract_device_xsd import AddressPool, Feature, \
+    Firewall, FirewallFilter, From, NatRule, NatRules, RoutingInstance, \
+    Term, Then
 import gevent
 
 from .db import GlobalVRouterConfigDM, LogicalRouterDM, PhysicalInterfaceDM, \
@@ -216,6 +217,7 @@ class DcGatewayFeature(FeatureBase):
 
         ri = RoutingInstance(name=ri_name)
         is_master_int_vn = False
+        is_public_lr_vn = False
         if vn:
             is_nat = True if fip_map else False
             ri.set_comment(DMUtils.vn_ri_comment(vn, is_l2, is_l2_l3, is_nat,
@@ -238,6 +240,7 @@ class DcGatewayFeature(FeatureBase):
                         # set description only for interval VN/VRF
                         ri.set_description("__contrail_%s_%s" %
                                            (lr.name, lr_uuid))
+                    is_public_lr_vn = lr.logical_router_gateway_external
             ri.set_is_master(is_master_int_vn)
 
         ri.set_virtual_network_id(str(network_id))
@@ -290,17 +293,18 @@ class DcGatewayFeature(FeatureBase):
                 self._add_ref_to_list(ri.get_routing_interfaces(), irb_name)
 
         # add firewall config for public VRF
-        if router_external and is_l2 is False:
+        if router_external and is_l2 is False and not is_public_lr_vn:
             self._add_ri_vrf_firewall_config(prefixes, ri)
 
         # add firewall config for DCI Network
-        if fip_map is not None:
+        if fip_map is not None and not ri_conf.get('is_cgnat_vrf', False):
             self._add_ref_to_list(ri.get_interfaces(), interfaces[0].name)
             self.firewall_config = self.firewall_config or Firewall(
                 comment=DMUtils.firewall_comment())
             f = FirewallFilter(
                 name=DMUtils.make_private_vrf_filter_name(ri_name))
             f.set_comment(DMUtils.vn_firewall_comment(vn, "private"))
+            self.firewall_config.set_family('inet')
             self.firewall_config.add_firewall_filters(f)
 
             term = Term(name=DMUtils.make_vrf_term_name(ri_name))
@@ -357,6 +361,66 @@ class DcGatewayFeature(FeatureBase):
             self._add_to_list(ri.get_import_targets(), target)
         for target in export_targets:
             self._add_to_list(ri.get_export_targets(), target)
+        if ri_conf.get('is_cgnat_vrf', False):
+            self._add_ref_to_list(ri.get_interfaces(), interfaces[0].name)
+            self.firewall_config = self.firewall_config or Firewall(
+                comment=DMUtils.firewall_comment())
+            self.firewall_config.set_family('inet')
+            f = FirewallFilter(
+                name=DMUtils.make_private_vrf_filter_name(ri_name))
+            f.set_comment(DMUtils.vn_firewall_comment(vn, "private"))
+            self.firewall_config.add_firewall_filters(f)
+
+            # Construct the Address pool
+            public_subnet = self._get_subnets_in_vn(vn)
+            address_pool = AddressPool(name=DMUtils.make_ip_pool_name(
+                public_subnet[0]), address=public_subnet[0])
+            term = Term(name=DMUtils.make_vrf_term_name(ri_name))
+            from_ = From()
+            term.set_from(from_)
+            term.set_then(Then(routing_instance=[ri_name]))
+            f.add_terms(term)
+
+            # cgnat services config
+            nat_rules = NatRules(allow_overlapping_nat_pools=True,
+                                 name=DMUtils.make_services_set_name(ri_name),
+                                 comment=DMUtils.service_set_comment(vn))
+            ri.set_nat_rules(nat_rules)
+            snat_rule = NatRule(
+                name=DMUtils.make_snat_rule_name(ri_name),
+                comment=DMUtils.service_set_nat_rule_comment(vn, "CGNAT"),
+                direction="input", translation_type="napt-44",
+                source_pool=address_pool.get_name())
+            snat_rule.set_comment(DMUtils.snat_rule_comment())
+            # Get all the private VN subnets
+            __, li_map = self._add_or_lookup_pi(self.pi_map, 'irb', 'irb')
+            for private_vn in ri_conf.get('private_vns', []):
+                private_vn_obj = VirtualNetworkDM.get(private_vn)
+                # Add the irb
+                network_id = private_vn_obj.vn_network_id
+                intf_name = 'irb.' + str(network_id)
+                intf_unit = self._add_or_lookup_li(li_map, intf_name,
+                                                   network_id)
+                intf_unit.set_comment(DMUtils.vn_irb_fip_inet_comment(vn))
+                intf_unit.set_family("inet")
+                intf_unit.add_firewall_filters(
+                    DMUtils.make_private_vrf_filter_name(ri_name))
+                self._add_ref_to_list(ri.get_routing_interfaces(), intf_name)
+
+                subnet_list = self._get_subnets_in_vn(private_vn_obj)
+                for s in subnet_list:
+                    if s:
+                        from_.add_source_address(self._get_subnet_for_cidr(s))
+                        snat_rule.add_source_addresses(
+                            self._get_subnet_for_cidr(s))
+            nat_rules.add_rules(snat_rule)
+            nat_rules.set_inside_interface(interfaces[0].name)
+            nat_rules.set_outside_interface(interfaces[1].name)
+            nat_rules.set_address_pool(address_pool)
+            self._add_ref_to_list(ri.get_ingress_interfaces(),
+                                  interfaces[0].name)
+            self._add_ref_to_list(ri.get_egress_interfaces(),
+                                  interfaces[1].name)
     # end _add_routing_instance
 
     def _update_vn_dict_for_external_vn(self, vn_dict, pr):
@@ -530,6 +594,21 @@ class DcGatewayFeature(FeatureBase):
                             extract_lr_uuid_from_internal_vn_name(vrf_name_l3)
                         lr = LogicalRouterDM.get(lr_uuid)
                         if lr and not lr.is_master:
+                            # For MX router, we need to include the tenant
+                            # VN RTs as well
+                            if self._physical_router.device_family == 'junos':
+                                lr_vns = lr_obj.get_connected_networks(
+                                    include_internal=False,
+                                    pr_uuid=self._physical_router.uuid)
+                                for lr_vn in lr_vns:
+                                    lr_vn_obj = VirtualNetworkDM.get(lr_vn)
+                                    ex_rt, im_rt = \
+                                        lr_vn_obj.get_route_targets()
+                                    if ex_rt:
+                                        ri_conf['export_targets'] |= ex_rt
+                                    if im_rt:
+                                        ri_conf['import_targets'] |= im_rt
+
                             ri_conf['vni'] = vn_obj.get_vxlan_vni(
                                 is_internal_vn=is_internal_vn)
                             ri_conf['router_external'] = lr.\
@@ -636,6 +715,11 @@ class DcGatewayFeature(FeatureBase):
                            'is_cgnat_vrf': True,
                            'private_vns': private_vns}
                 self._add_routing_instance(ri_conf)
+
+    def _get_subnets_in_vn(self, vn_obj):
+        gateways = vn_obj.gateways
+        cidrs = list(gateways.keys())
+        return cidrs
 
     def feature_config(self, **kwargs):
         self.ri_map = {}
