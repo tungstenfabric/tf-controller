@@ -225,8 +225,19 @@ class KombuAmqpClient(object):
                     with self._consumer_lock:
                         msg = 'KombuAmqpClient: Producer publish: {}'.format(payload.routing_key)
                         self._logger(msg, level=SandeshLevel.SYS_DEBUG)
-                        producer.publish(payload.message, exchange=exchange,
-                            routing_key=payload.routing_key, **payload.kwargs)
+                        if payload.exchange == 'job_subprocess_exchange':
+                            #hack for CEM-26987 till we find better resolution.
+                            producer.publish(payload.message,
+                                             exchange=exchange,
+                                             mandatory=True,
+                                             routing_key=payload.routing_key,
+                                             **payload.kwargs)
+                        else:
+                            producer.publish(payload.message,
+                                             exchange=exchange,
+                                             routing_key=payload.routing_key,
+                                             **payload.kwargs)
+
                     payload = None
             except errors as e:
                 msg = 'KombuAmqpClient: Connection error in Kombu amqp publisher greenlet: %s' % str(e)
