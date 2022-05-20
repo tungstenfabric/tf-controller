@@ -8,6 +8,8 @@ from contrail_issu import issu_contrail_config
 from pycassa.system_manager import SystemManager
 from pysandesh.gen_py.sandesh.ttypes import SandeshLevel
 from thrift.transport import TTransport
+from thrift.transport import TSSLSocket
+import ssl
 
 
 class ICCassandraInfo():
@@ -68,16 +70,35 @@ class ICCassandraClient():
         )
         self.issu_prepare()
 
+    def _make_ssl_socket_factory(self, ca_certs, validate=True):
+        # copy method from pycassa library because no other method
+        # to override ssl version
+        def ssl_socket_factory(host, port):
+            TSSLSocket.TSSLSocket.SSL_VERSION = ssl.PROTOCOL_TLSv1_2
+            return TSSLSocket.TSSLSocket(host, port,
+                                         ca_certs=ca_certs, validate=validate)
+        return ssl_socket_factory
+
     def issu_prepare(self):
         self._logger(
             "Issu contrail cassandra prepare...",
             level=SandeshLevel.SYS_INFO,
         )
+        socket_factory = None
+        if self._odb_use_ssl:
+            socket_factory = self._make_ssl_socket_factory(
+                self._odb_ca_certs, validate=False)
         for server in self._oldversion_server_list:
             try:
-                old_sys_mgr = SystemManager(server, credentials=self._old_creds)
+                old_sys_mgr = SystemManager(server,
+                                            socket_factory=socket_factory,
+                                            credentials=self._old_creds)
                 break
-            except TTransport.TTransportException:
+            except TTransport.TTransportException as err:
+                self._logger(
+                    "Issu contrail cassandra connect to %s failed with %s" % (server, err),
+                    level=SandeshLevel.SYS_DEBUG,
+                )
                 continue
         old_keyspaces = old_sys_mgr.list_keyspaces()
 
