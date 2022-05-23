@@ -702,7 +702,11 @@ class VncApiServer(object):
         self._amqp_client.publish(body.get('payload'),
                                   body.get('exchange'),
                                   routing_key=body.get('routing_key'),
-                                  headers=body.get('headers'))
+                                  headers=body.get('headers'), retry=True,
+                                  retry_policy={'max_retries': 12,
+                                                'interval_start': 2,
+                                                'interval_step': 5,
+                                                'interval_max': 15})
         bottle.response.status = 202
         self.config_log("Exiting amqp-publish", level=SandeshLevel.SYS_DEBUG)
     # end amqp_publish_http_post
