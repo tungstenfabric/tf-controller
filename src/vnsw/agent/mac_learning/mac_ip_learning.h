@@ -94,6 +94,10 @@ public:
         return agent_;
     }
 
+    void SetQueueDisable(bool disable) {
+        work_queue_.SetQueueDisable(disable);
+    }
+
     void Enqueue(MacLearningEntryRequestPtr req);
     void EnqueueMgmtReq(MacLearningEntryPtr ptr, bool add);
 
