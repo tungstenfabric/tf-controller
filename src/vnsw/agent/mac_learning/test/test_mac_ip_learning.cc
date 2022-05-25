@@ -289,6 +289,47 @@ TEST_F(MacIpLearningTest, Test7) {
     EXPECT_TRUE(intf->learnt_mac_ip_list().list_.size()  == 0);
 }
 
+// CEM-27212
+TEST_F(MacIpLearningTest, Test8) {
+    BgpPeer *bgp_peer = CreateBgpPeer("127.0.0.1", "remote");
+    const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
+    TxL2Packet(intf->id(), "00:00:00:11:22:33", "00:00:00:33:22:11",
+               "1.1.1.3", "1.1.1.11", 1, intf->vrf()->vrf_id(), 1, 1);
+    client->WaitForIdle();
+    boost::system::error_code error_code;
+    IpAddress sip = AddressFromString("1.1.1.3", &error_code);
+    MacAddress smac_old(0x00, 0x00, 0x00, 0x11, 0x22, 0x33);
+    EXPECT_TRUE(EvpnRouteGet("vrf1", smac_old, Ip4Address(0), 0) != NULL);
+    EXPECT_TRUE(EvpnRouteGet("vrf1", smac_old, AddressFromString("1.1.1.3", &error_code), 0) != NULL);
+    EXPECT_TRUE(L2RouteGet("vrf1", smac_old) != NULL);
+    EXPECT_TRUE(RouteGet("vrf1", sip.to_v4(), 32) != NULL);
+    // Disable work queue
+    agent_->mac_learning_proto()->GetMacIpLearningTable()->SetQueueDisable(true);
+    client->WaitForIdle();
+    MacAddress smac_new(0x00, 0x00, 0x00, 0x11, 0x22, 0x44);
+    BridgeTunnelRouteAdd(bgp_peer, "vrf1", TunnelType::AllType(),
+            Ip4Address::from_string("10.10.10.10"),
+                         (MplsTable::kStartLabel + 60), smac_new,
+                         Ip4Address::from_string("1.1.1.3"), 32);
+    client->WaitForIdle();
+    // Delete the route immediately
+    EvpnAgentRouteTable::DeleteReq(bgp_peer, "vrf1", smac_new,
+                                   Ip4Address::from_string("1.1.1.3"), 32, 0,
+                                   (new ControllerVmRoute(bgp_peer)));
+    client->WaitForIdle();
+    // Enable work queue
+    agent_->mac_learning_proto()->GetMacIpLearningTable()->SetQueueDisable(false);
+    client->WaitForIdle();
+    EXPECT_TRUE(L2RouteGet("vrf1", smac_new) == NULL);
+    EXPECT_TRUE(EvpnRouteGet("vrf1", smac_old, Ip4Address(0), 0) == NULL);
+    EXPECT_TRUE(EvpnRouteGet("vrf1", smac_old, AddressFromString("1.1.1.3", &error_code), 0) == NULL);
+    EXPECT_TRUE(L2RouteGet("vrf1", smac_old) == NULL);
+    EXPECT_TRUE(RouteGet("vrf1", sip.to_v4(), 32) == NULL);
+    DeleteBgpPeer(bgp_peer);
+    client->WaitForIdle();
+}
+
+
 int main(int argc, char *argv[]) {
     GETUSERARGS();
     client = TestInit(init_file, ksync_init);
