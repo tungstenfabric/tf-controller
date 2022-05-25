@@ -155,18 +155,19 @@ void MacIpLearningTable::Resync(MacLearningEntryPtr ptr) {
 }
 
 void MacIpLearningTable::DetectIpMove(MacLearningEntryRequestPtr ptr) {
-    const EvpnRouteEntry *route = dynamic_cast<const EvpnRouteEntry *>(ptr->db_entry());
-    MacIpLearningKey key(route->vrf_id(), route->ip_addr());
+    MacIpLearningKey key(ptr->vrf_id(), ptr->ip());
     MacIpLearningEntryMap::iterator it = mac_ip_learning_entry_map_.find(key);
     if (it == mac_ip_learning_entry_map_.end()) {
         return;
     }
     MacIpLearningEntry *mac_ip_entry = dynamic_cast<MacIpLearningEntry *>( it->second.get());
-    if (mac_ip_entry->Mac() == route->mac()) {
+    if (!mac_ip_entry || mac_ip_entry->Mac() == ptr->mac()) {
         return;
     }
-    MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, route->vrf()?route->vrf()->GetName():"NULL",
-                    route->ip_addr().to_string(), mac_ip_entry->Mac().ToString(),
+
+    VrfEntry *vrf = Agent::GetInstance()->vrf_table()->FindVrfFromId(ptr->vrf_id());
+    MAC_IP_LEARNING_TRACE(MacLearningTraceBuf, vrf?vrf->GetName():"NULL",
+                    ptr->ip().to_string(), mac_ip_entry->Mac().ToString(),
                     mac_ip_entry->intf()->name(),
                     "IP Move detected, deleting local entry");
 

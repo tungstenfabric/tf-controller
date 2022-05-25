@@ -278,8 +278,6 @@ void MacLearningDBClient::EvpnRouteNotify(MacLearningVrfState *vrf_state,
                                       DBTablePartBase *partition,
                                       DBEntryBase *e) {
     AgentRoute *route = static_cast<AgentRoute *>(e);
-    const DBEntry *const_entry = static_cast<const DBEntry *>(e);
-
 
     if (route->IsDeleted()) {
         return;
@@ -298,16 +296,22 @@ void MacLearningDBClient::EvpnRouteNotify(MacLearningVrfState *vrf_state,
     if (!entry) {
         return;
     }
+
     if (!entry->IsType2()) {
         return;
     }
     if (route->FindLocalVmPortPath()) {
         return;
     }
+
+    IpAddress ip_ = entry->ip_addr();
+    MacAddress mac_ = entry->mac();
     MacLearningEntryRequestPtr ptr(new MacLearningEntryRequest(
                     MacLearningEntryRequest::REMOTE_MAC_IP,
-                    const_entry,
-                    0));
+                    entry->vrf_id(),
+                    ip_,
+                    mac_));
+
     agent_->mac_learning_proto()->
             GetMacIpLearningTable()->Enqueue(ptr);
 
