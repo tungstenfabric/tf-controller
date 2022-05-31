@@ -67,15 +67,14 @@
               }
             }
         when: prouter_onboarding_state != "underlay_configured"
-      when: is_delete is undefined or is_delete == False
 
-    - name: PR objectlog update to set onboarding state
-      prouter_objectlog:
-        job_ctx: "{{ job_ctx }}"
-        prouter_fqname: "{{ prouter_fqname }}"
-        onboarding_state: "{{ DEVICE_STATE.UNDERLAY_CONFIGURED }}"
-      when: prouter_onboarding_state != "underlay_configured"
-    when: is_delete is undefined or is_delete == False
+      - name: PR objectlog update to set onboarding state
+        prouter_objectlog:
+          job_ctx: "{{ job_ctx }}"
+          prouter_fqname: "{{ prouter_fqname }}"
+          onboarding_state: "{{ DEVICE_STATE.UNDERLAY_CONFIGURED }}"
+        when: prouter_onboarding_state != "underlay_configured"
+      when: is_delete is undefined or is_delete == False
 
     - set_fact:
         output: {
