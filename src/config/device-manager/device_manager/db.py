@@ -914,6 +914,14 @@ class PhysicalRouterDM(DBBaseDM):
         if not self.fabric or not self.underlay_managed \
            or not self.fabric_obj or not self.config_manager:
             return
+
+        if self._object_db.get_asn_for_pr(self.uuid):
+            self.allocated_asn = self._object_db.get_asn_for_pr(self.uuid)
+            self._logger.debug(
+                "physical router: using existing asn %s for %s" %
+                (self.allocated_asn, self.uuid))
+            return
+
         if self.verify_allocated_asn(self.fabric_obj):
             return
 
