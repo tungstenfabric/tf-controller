@@ -74,26 +74,6 @@ class NetworkMonitor(KubeMonitor):
             ),
             spec=dict(
                 group='k8s.cni.cncf.io',
-                versions=[dict(
-                    name='v1',
-                    served=bool(1),
-                    storage=bool(1),
-                    schema=dict(
-                        openAPIV3Schema=dict(
-                            type='object',
-                            properties=dict(
-                                spec=dict(
-                                    type='object',
-                                    properties=dict(
-                                        config=dict(
-                                            type='string'
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )],
                 scope='Namespaced',
                 names=dict(
                     plural='network-attachment-definitions',
@@ -103,6 +83,31 @@ class NetworkMonitor(KubeMonitor):
                 )
             )
         )
+
+        # Added to unblock test cases using kubernetes below 1.22, to be removed when we no longer support v1beta1
+        if api_version == 'v1beta1':
+            network_crd_dict['spec']['version'] = 'v1'
+        else:
+            network_crd_dict['spec']['versions'] = [dict(
+                name='v1',
+                served=bool(1),
+                storage=bool(1),
+                schema=dict(
+                    openAPIV3Schema=dict(
+                        type='object',
+                        properties=dict(
+                            spec=dict(
+                                type='object',
+                                properties=dict(
+                                    config=dict(
+                                        type='string'
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )]
 
         return network_crd_dict
 
