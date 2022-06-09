@@ -1489,6 +1489,17 @@ void PktFlowInfo::EgressProcess(const PktInfo *pkt, PktControlInfo *in,
     if (nh == NULL) {
         return;
     }
+    if((nh->GetType() == NextHop::ARP) && (l3_flow == false)) {
+	LOG(ERROR, "PktFlowInfo::EgressProcess: ARP nexthop and l3_flow "
+	  " false, DROP this frame. module " << pkt->module << " type "
+	  << pkt->type << " family " << pkt->family << " vrf " <<pkt->vrf
+	  << " tunnel_type " << pkt->tunnel.type.GetType()<< " ifindex "
+	  << pkt->agent_hdr.ifindex << " sip " << pkt->ip_saddr.to_string()
+	  << " dip " << pkt->ip_daddr.to_string() << " proto " << pkt->ip_proto
+	  << " sport " << pkt->sport << " dport " <<pkt->dport<<" l3_label "
+	  << pkt->l3_label);
+	return;
+    }
     const CompositeNH *comp_nh = dynamic_cast<const CompositeNH *>(nh);
     EcmpLoadBalance ecmp_load_balance;
     if (comp_nh != NULL) {
