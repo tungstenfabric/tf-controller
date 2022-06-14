@@ -521,6 +521,10 @@ void StaticRoute<T>::AddStaticRoute(NexthopPathIdList *old_path_ids) {
             }
         }
 
+        // Populate SubProtocol for StaticRoute.
+        new_attr = attr_db->ReplaceSubProtocolAndLocate(new_attr.get(),
+                    MatchProtocolToString(MatchProtocol::StaticRoute));
+
         // Check whether we already have a path with the associated path id.
         uint32_t path_id =
             nexthop_route_path->GetAttr()->nexthop().to_v4().to_ulong();
@@ -536,10 +540,6 @@ void StaticRoute<T>::AddStaticRoute(NexthopPathIdList *old_path_ids) {
                 continue;
             }
         }
-
-        // Populate SubProtocol for StaticRoute.
-        new_attr = attr_db->ReplaceSubProtocolAndLocate(new_attr.get(),
-                    MatchProtocolToString(MatchProtocol::StaticRoute));
 
         BgpPath *new_path =
             new BgpPath(path_id, BgpPath::StaticRoute, new_attr.get(),
