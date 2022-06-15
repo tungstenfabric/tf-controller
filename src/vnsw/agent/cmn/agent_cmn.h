@@ -44,6 +44,11 @@
 #include <cmn/agent_db.h>
 #include <cmn/event_notifier.h>
 
+#include <stdio.h>
+#include <execinfo.h>
+#include <dlfcn.h>
+#include <cxxabi.h>
+
 static inline bool UnregisterDBTable(DBTable *table,
                                      DBTableBase::ListenerId id) {
     table->Unregister(id);
@@ -94,4 +99,5 @@ do {\
               SandeshLevel::SYS_ERR, __FILE__, __LINE__, ##__VA_ARGS__);\
 } while (false)
 
+std::string AgentBackTrace(int skip);
 #endif // vnsw_agent_cmn_hpp

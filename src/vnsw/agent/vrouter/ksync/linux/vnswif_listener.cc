@@ -31,8 +31,8 @@ int VnswInterfaceListenerLinux::CreateSocket() {
 
     if (s < 0) {
         LOG(ERROR, "Error <" << errno << ": " << strerror(errno) <<
-                "> creating socket");
-        assert(0);
+                    "> creating socket. BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     /* Bind to netlink socket */
@@ -42,8 +42,10 @@ int VnswInterfaceListenerLinux::CreateSocket() {
     addr.nl_groups = (RTMGRP_IPV4_ROUTE | RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
     if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
         LOG(ERROR, "Error <" << errno << ": " << strerror(errno) <<
-                       "> binding to netlink address family");
-        assert(0);
+                   "> binding to netlink address family. BackTrace: "
+                << AgentBackTrace(1));
+        _Exit(0);
+
     }
 
     return s;

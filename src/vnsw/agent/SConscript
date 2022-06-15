@@ -184,7 +184,7 @@ env.Prepend(LIBS = AGENT_MULTIPATH_LIBS)
 def MakeLinkCmd(list):
     return ['-l' + x for x in list]
 
-env.Prepend(LINKFLAGS = [ '-Wl,--whole-archive', '-rdynamic'] +
+env.Prepend(LINKFLAGS = [ '-Wl,--whole-archive', '-ldl', '-rdynamic'] +
                               MakeLinkCmd(AGENT_MULTIPATH_LIBS) +
                             ['-Wl,--no-whole-archive'])
 # Prefer linking against the self-built libraries over the system ones
