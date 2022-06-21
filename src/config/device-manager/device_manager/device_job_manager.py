@@ -326,7 +326,8 @@ class DeviceJobManager(object):
 
             # add params needed for sandesh connection
             job_input_params['args'] = self._job_args
-
+            job_input_params['max_bytes'] = int(self._args.max_bytes)
+            job_input_params['backup_count'] = int(self._args.backup_count)
             # create job manager subprocess
             job_mgr_path = os.path.dirname(
                 __file__) + "/../job_manager/job_mgr.py"
