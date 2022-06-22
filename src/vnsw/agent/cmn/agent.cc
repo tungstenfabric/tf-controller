@@ -1172,3 +1172,35 @@ uint8_t Agent::GetInterfaceTransport() const {
     }
     return Interface::TRANSPORT_ETHERNET;
 }
+
+
+std::string AgentBackTrace(int skip = 1)
+{
+    std::ostringstream sbuffer;
+    void *callstack[128];
+    char buffer[1024];
+    const int nMaxFrames = sizeof(callstack) / sizeof(callstack[0]);
+    int nFrames = backtrace(callstack, nMaxFrames);
+
+    for (int i = skip; i < nFrames; i++) {
+        Dl_info info;
+        if (dladdr(callstack[i], &info)) {
+            char *demangled = NULL;
+            int status;
+            demangled = abi::__cxa_demangle(info.dli_sname, NULL, 0, &status);
+            snprintf(buffer, sizeof(buffer), "%-3d %p %s + %zd\n",
+                     i,  callstack[i],
+                     status == 0 ? demangled : info.dli_sname,
+                     (char *)callstack[i] - (char *)info.dli_saddr);
+            free(demangled);
+        } else {
+            snprintf(buffer, sizeof(buffer), "%-3d %p\n",
+                     i, callstack[i]);
+        }
+        sbuffer << buffer;
+    }
+    if (nFrames == nMaxFrames)
+        sbuffer << "  [truncated]\n";
+
+    return sbuffer.str();
+}

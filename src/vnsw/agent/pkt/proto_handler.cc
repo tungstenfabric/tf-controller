@@ -181,12 +181,15 @@ uint16_t ProtoHandler::IcmpHdr(char *buff, uint16_t buf_len, uint8_t type,
 
     hdr->icmp_type = type;
     hdr->icmp_code = code;
-    assert(type == ICMP_UNREACH);
+    if(type != ICMP_UNREACH) {
+        LOG(ERROR,
+          "Error type != ICMP_UNREACH. BackTrace: " << AgentBackTrace(1));
+        return 0;
+    }
     hdr->icmp_nextmtu = htons(word2);
     hdr->icmp_cksum = 0;
     if (type == ICMP_UNREACH)
         return ICMP_UNREACH_HDR_LEN;
-    assert(0);
     return 0;
 }
 

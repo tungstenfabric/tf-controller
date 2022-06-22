@@ -37,8 +37,9 @@ void Pkt0Interface::InitControlInterface() {
 
     if ((tap_fd_ = open(TUN_INTF_CLONE_DEV, O_RDWR)) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> opening tap-device");
-        assert(0);
+        strerror(errno) << "> opening tap-device"
+                << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     struct ifreq ifr;
@@ -47,46 +48,52 @@ void Pkt0Interface::InitControlInterface() {
     strncpy(ifr.ifr_name, name_.c_str(), IF_NAMESIZE-1);
     if (ioctl(tap_fd_, TUNSETIFF, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> creating " << name_ << "tap-device");
-        assert(0);
+        strerror(errno) << "> creating " << name_ 
+                << "tap-device. BackTrace: " << AgentBackTrace(1));
+        _Exit(0); 
     }
 
     // We dont want the fd to be inherited by child process such as
     // virsh etc... So, close tap fd on fork.
     if (fcntl(tap_fd_, F_SETFD, FD_CLOEXEC) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> setting fcntl on " << name_ );
-        assert(0);
+        strerror(errno) << "> setting fcntl on " << name_ 
+                << " BackTrace: " << AgentBackTrace(1));
+        _Exit(0); 
     }
 
     if (ioctl(tap_fd_, TUNSETPERSIST, 0) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> making tap interface non-persistent");
-        assert(0);
+        strerror(errno) << "> making tap interface non-persistent"
+                << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, name_.c_str(), IF_NAMESIZE-1);
     if (ioctl(tap_fd_, SIOCGIFHWADDR, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " << strerror(errno) <<
-            "> retrieving MAC address of the tap interface");
-        assert(0);
+            "> retrieving MAC address of the tap interface. BackTrace: "
+                << AgentBackTrace(1));
+        _Exit(0); 
     }
     memcpy(mac_address_, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 
     int raw;
     if ((raw = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> creating socket");
-        assert(0);
+        strerror(errno) << "> creating socket"
+                << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, name_.c_str(), IF_NAMESIZE-1);
     if (ioctl(raw, SIOCGIFINDEX, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> getting ifindex of the tap interface");
-        assert(0);
+        strerror(errno) << "> getting ifindex of the tap interface"
+                << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     struct sockaddr_ll sll;
@@ -97,8 +104,9 @@ void Pkt0Interface::InitControlInterface() {
     if (bind(raw, (struct sockaddr *)&sll,
              sizeof(struct sockaddr_ll)) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> binding the socket to the tap interface");
-        assert(0);
+        strerror(errno) << "> binding the socket to the tap interface"
+                << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0); 
     }
 
     // Set tx-buffer count
@@ -106,8 +114,8 @@ void Pkt0Interface::InitControlInterface() {
     strncpy(ifr.ifr_name, name_.c_str(), IF_NAMESIZE-1);
     if (ioctl(raw, SIOCGIFTXQLEN, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " << strerror(errno) <<
-            "> getting tx-buffer size");
-        assert(0);
+            "> getting tx-buffer size. BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     uint32_t qlen = pkt_handler()->agent()->params()->pkt0_tx_buffer_count();
@@ -115,8 +123,9 @@ void Pkt0Interface::InitControlInterface() {
         ifr.ifr_qlen = qlen;
         if (ioctl(raw, SIOCSIFTXQLEN, (void *)&ifr) < 0) {
             LOG(ERROR, "Packet Tap Error <" << errno << ": "
-                << strerror(errno) << "> setting tx-buffer size");
-            assert(0);
+                << strerror(errno) << "> setting tx-buffer size"
+                << ". BackTrace: " << AgentBackTrace(1));
+            _Exit(0);
         }
     }
 
@@ -124,15 +133,17 @@ void Pkt0Interface::InitControlInterface() {
     strncpy(ifr.ifr_name, name_.c_str(), IF_NAMESIZE-1);
     if (ioctl(raw, SIOCGIFFLAGS, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> getting socket flags");
-        assert(0);
+                   strerror(errno) << "> getting socket flags"
+                   << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     ifr.ifr_flags |= IFF_UP;
     if (ioctl(raw, SIOCSIFFLAGS, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-            strerror(errno) << "> setting socket flags");
-        assert(0);
+                   strerror(errno) << "> setting socket flags"
+                   << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
     close(raw);
 
@@ -160,8 +171,9 @@ void Pkt0RawInterface::InitControlInterface() {
     memset(&ifr, 0, sizeof(ifr));
     if ((raw_ = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-                strerror(errno) << "> creating socket");
-        assert(0);
+                   strerror(errno) << "> creating socket"
+                   << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     memset(&ifr, 0, sizeof(ifr));
@@ -170,8 +182,9 @@ void Pkt0RawInterface::InitControlInterface() {
     if (ioctl(raw_, SIOCGIFINDEX, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
                 strerror(errno) << "> getting ifindex of the " <<
-                "expception packet interface");
-        assert(0);
+                "expception packet interface"
+                << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     struct sockaddr_ll sll;
@@ -182,23 +195,26 @@ void Pkt0RawInterface::InitControlInterface() {
     if (bind(raw_, (struct sockaddr *)&sll,
                 sizeof(struct sockaddr_ll)) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-                strerror(errno) << "> binding the socket to the tap interface");
-        assert(0);
+                   strerror(errno) << "> binding the socket to the tap interface"
+                   << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0); 
     }
 
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, name_.c_str(), IF_NAMESIZE-1);
     if (ioctl(raw_, SIOCGIFFLAGS, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-                strerror(errno) << "> getting socket flags");
-        assert(0);
+                   strerror(errno) << "> getting socket flags"
+                   << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
     }
 
     ifr.ifr_flags |= IFF_UP;
     if (ioctl(raw_, SIOCSIFFLAGS, (void *)&ifr) < 0) {
         LOG(ERROR, "Packet Tap Error <" << errno << ": " <<
-                strerror(errno) << "> setting socket flags");
-        assert(0);
+                   strerror(errno) << "> setting socket flags"
+                   << ". BackTrace: " << AgentBackTrace(1));
+        _Exit(0); 
     }
     tap_fd_ = raw_;
 

@@ -53,6 +53,21 @@
 
 #define    VNSW_GENETLINK_FAMILY_NAME  "vnsw"
 
+void LogSockInitErrors(bool success_cond, bool use_errno, string err_str) {
+    if(success_cond == false) {
+        if (use_errno) {
+            LOG(ERROR,
+                err_str << " Failed with " << errno << "syscall: " 
+                << strerror(errno) << ". BackTrace: " << AgentBackTrace(1));
+        } else {
+            LOG(ERROR,
+               "Failed with " << err_str << ". BackTrace: " << AgentBackTrace(1));
+        }
+        _Exit(0);
+    }
+    return;
+}
+
 KSync::KSync(Agent *agent)
     : agent_(agent), interface_ksync_obj_(new InterfaceKSyncObject(this)),
       flow_table_ksync_obj_list_(),
@@ -401,10 +416,18 @@ void KSync::VnswInterfaceListenerInit() {
 void KSync::CreateVhostIntf() {
 #if defined(__linux__)
     struct  nl_client *cl;
+        int ret;
 
     assert((cl = nl_register_client()) != NULL);
-    assert(nl_socket(cl, AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE) > 0);
-    assert(nl_connect(cl, 0, 0, 0) == 0);
+    LogSockInitErrors((cl->cl_sock < 0), false, "cl_sock EEXIST");
+    LogSockInitErrors((nl_socket(cl, AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE) > 0), true, "socket");
+    ret = nl_connect(cl, 0, 0, 0);
+    if(ret != 0) {
+        if(!(cl->cl_sa))
+            LogSockInitErrors(false, false, "cl_sa malloc failure");
+        else
+            LogSockInitErrors(false, true, "connect");
+    }
 
     struct vn_if ifm;
     struct nl_response *resp;
@@ -417,8 +440,13 @@ void KSync::CreateVhostIntf() {
     ifm.if_flags = IFF_UP;
 
     assert(nl_build_if_create_msg(cl, &ifm, 1) == 0);
-    assert(nl_sendmsg(cl) > 0);
-    assert(nl_recvmsg(cl) > 0);
+        LogSockInitErrors((nl_sendmsg(cl) > 0), true, "sendmsg");
+    ret = nl_recvmsg(cl);
+    if(ret == -EOPNOTSUPP) {
+      LogSockInitErrors(false, false, "cl->cl_recv_len > cl->cl_buf_len");
+    } else if (ret < 0) {
+      LogSockInitErrors(false, true, "recvmsg");
+    }
     assert((resp = nl_parse_reply(cl)) != NULL);
     assert(resp->nl_type == NL_MSG_TYPE_ERROR);
     nl_free_client(cl);

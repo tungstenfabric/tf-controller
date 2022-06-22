@@ -249,8 +249,8 @@ PktHandler::PktModuleName PktHandler::ParseBfdDataPacket(const AgentHdr &hdr,
     PktType::Type pkt_type = PktType::INVALID;
     pkt_info->agent_hdr = hdr;
 
-    int len = 0;
-
+    int len = 0, ret = 0;
+    
     // Parse packet before computing forwarding mode. Packet is parsed
     // independent of packet forwarding mode
     len += ParseEthernetHeader(pkt_info, (pkt + len));
@@ -259,7 +259,12 @@ PktHandler::PktModuleName PktHandler::ParseBfdDataPacket(const AgentHdr &hdr,
     }
 
     // IP Packets
-    len += ParseIpPacket(pkt_info, pkt_type, (pkt + len));
+    ret = ParseIpPacket(pkt_info, pkt_type, (pkt + len));
+    if(ret == -1) {
+        return INVALID;
+    }
+    len += ret;
+
     // Check if the BFD KA packet
     if (pkt_info->ip_proto == IPPROTO_UDP &&
             pkt_info->dport == BFD_SINGLEHOP_CONTROL_PORT &&
@@ -588,8 +593,10 @@ int PktHandler::ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
 
         pkt_info->ip_proto = proto;
     } else {
-        assert(0);
-    }
+        LOG(ERROR,
+          "Error EthType = Non IP/IPv6. BackTrace: " << AgentBackTrace(1));
+        return -1;
+     }
 
     switch (pkt_info->ip_proto) {
     case IPPROTO_UDP : {
@@ -651,8 +658,10 @@ int PktHandler::ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
             //Agent has to look at inner payload
             //and recalculate the parameter
             //Handle this only for packets requiring flow miss
-            ParseIpPacket(pkt_info, pkt_type, pkt + len + sizeof(icmp));
-            //Swap the key parameter, which would be used as key
+            if(ParseIpPacket(pkt_info, pkt_type, pkt + len + sizeof(icmp)) == -1) {
+                return -1;
+            }
+	    //Swap the key parameter, which would be used as key
             IpAddress src_ip = pkt_info->ip_saddr;
             pkt_info->ip_saddr = pkt_info->ip_daddr;
             pkt_info->ip_daddr = src_ip;
@@ -682,8 +691,10 @@ int PktHandler::ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
             //Agent has to look at inner payload
             //and recalculate the parameter
             //Handle this only for packets requiring flow miss
-            ParseIpPacket(pkt_info, pkt_type, pkt + len + sizeof(icmp));
-            //Swap the key parameter, which would be used as key
+            if(ParseIpPacket(pkt_info, pkt_type, pkt + len + sizeof(icmp)) == -1) {
+                return -1;
+            }
+	    //Swap the key parameter, which would be used as key
             IpAddress src_ip = pkt_info->ip_saddr;
             pkt_info->ip_saddr = pkt_info->ip_daddr;
             pkt_info->ip_daddr = src_ip;
@@ -904,7 +915,7 @@ bool PktHandler::ValidateIpPacket(PktInfo *pkt_info) {
 
 int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
                              PktType::Type &pkt_type, uint8_t *pkt) {
-    int len = 0;
+    int len = 0, ret = 0;
     bool pkt_ok;
 
     // get to the actual packet header
@@ -937,7 +948,11 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
     SetOuterIp(pkt_info, (pkt + len));
 
     // IP Packets
-    len += ParseIpPacket(pkt_info, pkt_type, (pkt + len));
+    ret = ParseIpPacket(pkt_info, pkt_type, (pkt + len));
+    if(ret == -1) {
+        return -1;
+    }
+    len += ret;
 
     if (!ValidateIpPacket(pkt_info)) {
         return -1;
@@ -1008,7 +1023,12 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
         pkt_info->ether_type = ETHERTYPE_IP;
     }
 
-    len += ParseIpPacket(pkt_info, pkt_type, (pkt + len));
+
+    ret = ParseIpPacket(pkt_info, pkt_type, (pkt + len));
+    if(ret == -1) {
+        return -1;
+    }
+    len += ret;
 
     // validate inner iphdr
     if (!ValidateIpPacket(pkt_info)) {
@@ -1155,7 +1175,11 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
         return false;
    BridgeAgentRouteTable *bridge_table =
         dynamic_cast<BridgeAgentRouteTable *>(vrf->GetBridgeRouteTable());
-    assert(bridge_table != NULL);
+    if(bridge_table == NULL) {
+        LOG(ERROR,
+           "Error bridge_table == NULL. BackTrace: " << AgentBackTrace(1));
+        _Exit(0);
+    }
     const VmInterface *vm_intf = bridge_table->FindVmFromDhcpBinding(address);
     if (vm_intf == NULL) {
         return false;
@@ -1187,8 +1211,10 @@ bool PktHandler::IsManagedTORPacket(Interface *intf, PktInfo *pkt_info,
     }
 
     // IP Packets
-    ParseIpPacket(pkt_info, pkt_type, pkt);
-
+    if(ParseIpPacket(pkt_info, pkt_type, pkt) == -1) {
+        *pkt_ok = false; //Don't process any further
+        return false;
+    }
     if (!ValidateIpPacket(pkt_info)) {
         *pkt_ok = false;
         return false;

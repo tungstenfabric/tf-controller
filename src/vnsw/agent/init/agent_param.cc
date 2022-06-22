@@ -228,13 +228,25 @@ AgentParam::ParseDerivedStats(const std::vector<std::string> &dsvec) {
 
     for (size_t idx=0; idx!=dsvec.size(); idx++) {
         size_t pos = dsvec[idx].find(':');
-        assert(pos != string::npos);
-        string dsfull = dsvec[idx].substr(0,pos);
+        if(pos == string::npos) {
+            LOG(ERROR,
+                "Error config-file, DerivedStats parsing: dsvec size "
+                << dsvec.size() << " at index " << idx << ": " <<dsvec[idx]
+                << ". BackTrace: " << AgentBackTrace(1));
+            _Exit(0);
+        }
+	string dsfull = dsvec[idx].substr(0,pos);
         string dsarg = dsvec[idx].substr(pos+1, string::npos);
 
         size_t dpos = dsfull.find('.');
-        assert(dpos != string::npos);
-        string dsstruct = dsfull.substr(0,dpos);
+        if(dpos == string::npos) {
+            LOG(ERROR,
+                "Error config-file, DerivedStats parsing: dsvec size "
+                << dsvec.size() << " at index " << idx << ": " <<dsvec[idx]
+                << ". substr: " << dsfull << ". BackTrace: " << AgentBackTrace(1));
+            _Exit(0);
+        }
+	string dsstruct = dsfull.substr(0,dpos);
         string dsattr = dsfull.substr(dpos+1, string::npos);
 
         dsiter = dsmap.find(dsstruct);
@@ -368,12 +380,32 @@ void AgentParam::ParseSessionDestinationArguments
     valid_dest_values.insert("syslog");
     valid_dest_values.insert("");
     for (uint32_t i=0; i<slo_destination_.size(); i++) {
-        assert(valid_dest_values.find(slo_destination_[i]) !=
-            valid_dest_values.end());
+
+        if(valid_dest_values.find(slo_destination_[i]) ==
+            valid_dest_values.end()) {
+            LOG(ERROR,
+                "Error in config file <" << config_file_
+                << ">. Error parsing slo_destination, size "
+                << slo_destination_.size() << " at index " << i << ":" 
+                << slo_destination_[i]
+                << ". BackTrace: " << AgentBackTrace(1));
+            _Exit(0);
+        }
+
     }
     for (uint32_t i=0; i<sample_destination_.size(); i++) {
-        assert(valid_dest_values.find(sample_destination_[i]) !=
-            valid_dest_values.end());
+    
+        if(valid_dest_values.find(sample_destination_[i]) ==
+            valid_dest_values.end()) {
+            LOG(ERROR,
+                "Error in config file <" << config_file_
+                << ">. Error parsing sample_destination, size "
+                << sample_destination_.size() << " at index " << i << ":" 
+                << sample_destination_[i]
+                << ". BackTrace: " << AgentBackTrace(1));
+            _Exit(0);
+        }
+
     }
 }
 
