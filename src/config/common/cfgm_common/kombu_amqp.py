@@ -226,7 +226,8 @@ class KombuAmqpClient(object):
                         msg = 'KombuAmqpClient: Producer publish: {}'.format(payload.routing_key)
                         self._logger(msg, level=SandeshLevel.SYS_DEBUG)
                         producer.publish(payload.message, exchange=exchange,
-                            routing_key=payload.routing_key, **payload.kwargs)
+                            routing_key=payload.routing_key,
+                            mandatory=True, **payload.kwargs)
                     payload = None
             except errors as e:
                 msg = 'KombuAmqpClient: Connection error in Kombu amqp publisher greenlet: %s' % str(e)
