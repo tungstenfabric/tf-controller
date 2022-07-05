@@ -102,6 +102,8 @@ class JobLogUtils(object):
             'logger_class': None,
             'max_job_task': self.TASK_POOL_SIZE,
             'playbook_timeout': self.PLAYBOOK_TIMEOUT_VALUE,
+            'max_bytes': 5000000,
+            'backup_count': 10,
         }
 
         defaults.update(SandeshConfig.get_default_options(['DEFAULTS']))
@@ -172,6 +174,10 @@ class JobLogUtils(object):
         parser.add_argument("--playbook_timeout",
                             help=("Playbook execution timeout value,"
                                   " default: 60 min"))
+        parser.add_argument("--max_bytes",
+                            help="default max_bytes")
+        parser.add_argument("--backup_count",
+                            help="default backup_count")
         SandeshConfig.add_parser_arguments(parser)
         args = parser.parse_args(list())
         args.conf_file = config_args.get('fabric_ansible_conf_file')
