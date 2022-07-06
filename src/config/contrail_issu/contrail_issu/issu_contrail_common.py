@@ -90,9 +90,13 @@ class ICCassandraClient():
                 self._odb_ca_certs, validate=False)
         for server in self._oldversion_server_list:
             try:
-                old_sys_mgr = SystemManager(server,
-                                            socket_factory=socket_factory,
-                                            credentials=self._old_creds)
+                if socket_factory:
+                    old_sys_mgr = SystemManager(server,
+                                                socket_factory=socket_factory,
+                                                credentials=self._old_creds)
+                else:
+                    old_sys_mgr = SystemManager(server,
+                                                credentials=self._old_creds)
                 break
             except TTransport.TTransportException as err:
                 self._logger(
