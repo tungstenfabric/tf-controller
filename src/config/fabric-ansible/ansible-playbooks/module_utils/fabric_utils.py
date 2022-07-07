@@ -61,7 +61,10 @@ class FabricAnsibleModule(AnsibleModule):
                                                   **kwargs)
         self.module_name = self._name
         self.job_ctx = self.params.get('job_ctx')
-        self.logger = fabric_ansible_logger(self.module_name)
+        self.max_bytes = self.params.get('max_bytes')
+        self.backup_count = self.params.get('backup_count')
+        self.logger = fabric_ansible_logger(self.module_name, self.max_bytes,
+                                            self.backup_count)
         self.results = dict()
         self.results['failed'] = False
         self.logger.debug("Module params: {}".format(self.params))

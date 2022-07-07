@@ -56,7 +56,9 @@ class JobLogger(ConfigServiceLogger):
             level=self._args.log_level,
             file=self._args.log_file,
             enable_syslog=self._args.use_syslog,
-            syslog_facility=self._args.syslog_facility)
+            syslog_facility=self._args.syslog_facility,
+            maxBytes=int(self._args.max_bytes),
+            backupCount=int(self._args.backup_count))
 
         VncGreenlet.register_sandesh_handler()
 
