@@ -82,8 +82,12 @@ class FilterModule(object):
                 vnc_lib = JobVncApi.vnc_init(job_ctx)
                 pr_fq_name = ["default-global-system-config", device_name]
                 pr_obj = vnc_lib.physical_router_read(fq_name=pr_fq_name)
-                pr_obj.set_physical_router_cli_commit_state("out_of_sync")
-                vnc_lib.physical_router_update(pr_obj)
+                cli_state = pr_obj.get_physical_router_cli_commit_state()
+                if cli_state != "out_of_sync":
+                    # If device already in the out-of-sync state, don't set
+                    # it's generating a false update.
+                    pr_obj.set_physical_router_cli_commit_state("out_of_sync")
+                    vnc_lib.physical_router_update(pr_obj)
                 try:
                     cls = JobVncApi.get_vnc_cls(object_type)
                     cli_obj_payload = cls.from_dict(**cli_config_payload)
