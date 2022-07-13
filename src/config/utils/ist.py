@@ -133,6 +133,18 @@ class Introspect:
         if len(items):
             Introspect.dumpTbl(items, max_width, args)
 
+    def get_vrflist(self):
+        """ Get list of VRF ucindex values """
+        items = []
+        for tree in self.output_etree:
+            items = items + tree.xpath("//VrfSandeshData/ucindex")
+        print 'Number of vrfs = %d' % len(items)
+        vrf_list = []
+        for vrf in items:
+            vrf_list.append(vrf.text)
+
+        return vrf_list
+
     def printText(self, xpathExpr):
         """ print introspect output in human readable text """
         for tree in self.output_etree:
@@ -1591,6 +1603,22 @@ class CLI_vr(CLI_basic):
         subp.add_argument('handle', nargs='?', default='', help='handle')
         subp.set_defaults(func=self.Snh_IntfMirrorCfgDisplayReq)
 
+        ## show SandeshTaskRequest
+        subp = self.subparser.add_parser('tasksummary',
+                                         parents = [self.common_parser],
+                                         help='Show vrouter agent task summary')
+        subp.set_defaults(func=self.SnhSandeshTaskRequest)
+
+        ## show Sandesh Message Stats for vrouter agent uve  and CollectorInfoResponse
+        subp = self.subparser.add_parser('SandeshMessageStats',
+                                         parents = [self.common_parser],
+                                         help='Show Sandesh Message Stats for vrouter agent uve, number of sent messages and Collector Connection Info')
+        subp.add_argument('type', nargs='?',
+                       choices=['type_stats', 'aggregate_stats', 'send_queue_stats', 'all'],
+                       default = 'all',
+                       help = 'Sandesh Message Stats Type, default: all')
+        subp.set_defaults(func=self.Snh_SandeshMessageStatsReq)
+
     def Snh_MirrorCfgVnInfoReq(self, args):
         path = 'Snh_MirrorCfgVnInfoReq?vn_name=%s' % (args.name)
         xpath = 'VnAclInfo'
@@ -1729,6 +1757,69 @@ class CLI_vr(CLI_basic):
                            "evpnindex", "vxlan_id", "vn"]
 
         self.output_formatters(args, xpath, default_columns)
+        vrfs = self.IST.get_vrflist()
+        print 'vrf list output:'
+        vrfs.sort()
+        print vrfs
+        return vrfs
+
+    def SnhSandeshTaskRequest(self, args):
+        path = 'Snh_SandeshTaskRequest?'
+        self.IST.get(path)
+        print("Printing vrouter agent TaskScheduler State\n")
+        self.IST.printText('//running')
+        self.IST.printText('//use_spawn')
+        self.IST.printText('//total_count')
+        self.IST.printText('//thread_count')
+
+        xpath = "//SandeshTaskGroup"
+        default_columns = ["name", "task_id", "total_run_time",
+                          "task_entry_list", "task_policy_list"]
+
+        print("\nPrinting vrouter agent Task Summary\n")
+        self.output_formatters(args, xpath, default_columns)
+
+        path = 'Snh_SandeshTaskMonitorRequest?'
+        self.IST.get(path)
+
+        print("\nPrinting Task Monitor State\n")
+        self.IST.printText('//running')
+        self.IST.printText('//inactivity_time_msec')
+        self.IST.printText('//poll_interval_msec')
+        self.IST.printText('//poll_count')
+        self.IST.printText('//last_activity')
+        self.IST.printText('//last_enqueue_count')
+        self.IST.printText('//last_done_count')
+        self.IST.printText('//tbb_keepawake_time')
+
+    def Snh_SandeshMessageStatsReq(self, args):
+        MessageStatsMap = {
+            'type_stats': '//SandeshMessageTypeStats',
+            'aggregate_stats': '//SandeshMessageStats',
+            'send_queue_stats': '//SandeshQueueStats',
+        }
+        path = 'Snh_SandeshMessageStatsReq'
+        self.IST.get(path)
+
+        if args.type == 'all':
+            for key in MessageStatsMap.keys():
+                print("\nPrinting Sandesh Message Stats %s" %key)
+                self.output_formatters(args, MessageStatsMap[key])
+        elif (args.type in MessageStatsMap.keys()):
+            print("\nPrinting Sandesh Message Stats %s" %args.type)
+            self.output_formatters(args, MessageStatsMap[args.type])
+
+        # Print sandesh session parameters and collector Info
+        print("\nPrinting collector session parameters")
+        self.IST.printText('//sending_level')
+        self.IST.printText('//session_close_interval_msec')
+        self.IST.printText('//session_close_timestamp')
+
+        print("\nPrinting Collector Info")
+        path = 'Snh_CollectorInfoRequest?'
+        self.IST.get(path)
+        xpath = '//CollectorInfoResponse'
+        self.output_formatters(args, xpath)
 
     def SnhAll(self, args):
         print("Printing Status info")
@@ -1738,9 +1829,12 @@ class CLI_vr(CLI_basic):
         print("\nPrinting Intf")
         self.SnhItf(args)
         print("\nPrinting vrf")
-        self.SnhVrf(args)
+        vrfs = self.SnhVrf(args)
         print("\nPrinting route")
-        self.SnhRoute(args)
+        for vrf in vrfs:
+            args.vrf = vrf
+            print '\nXXXXXXXXXXXXXXX PRINTING ROUTE FOR VRF %s XXXXXXXXXXXXXX' % vrf
+            self.SnhRoute(args)
         print("\nPrinting Acl")
         self.SnhAcl(args)
         print("\nPrinting Ifmap")
