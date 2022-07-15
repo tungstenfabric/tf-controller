@@ -573,6 +573,24 @@ protected:
         path_spec.path_segments.push_back(path_seg);
         attr_spec.push_back(&path_spec);
 
+        As4PathSpec path_spec4;
+        As4PathSpec::PathSegment *path_seg4 = new As4PathSpec::PathSegment;
+        path_seg4->path_segment_type = As4PathSpec::PathSegment::AS_SEQUENCE;
+        path_seg4->path_segment.push_back(20);
+        path_seg4->path_segment.push_back(21);
+        path_seg4->path_segment.push_back(22);
+        path_spec4.path_segments.push_back(path_seg4);
+        attr_spec.push_back(&path_spec4);
+
+        AsPath4ByteSpec path4_spec;
+        AsPath4ByteSpec::PathSegment *path4_seg = new AsPath4ByteSpec::PathSegment;
+        path4_seg->path_segment_type = AsPath4ByteSpec::PathSegment::AS_SEQUENCE;
+        path4_seg->path_segment.push_back(10);
+        path4_seg->path_segment.push_back(11);
+        path4_seg->path_segment.push_back(12);
+        path4_spec.path_segments.push_back(path4_seg);
+        attr_spec.push_back(&path4_spec);
+
         BgpAttrPtr attr = bgp_server_->attr_db()->Locate(attr_spec);
 
         request.data.reset(new BgpTable::RequestData(attr, flags, label));
@@ -930,8 +948,20 @@ protected:
             if (!attr->as_path_count()) {
                 return false;
             }
+            if (!attr->as4_path_count()) {
+                return false;
+            }
+            if (!attr->aspath_4byte_count()) {
+                return false;
+            }
         } else {
             if (attr->as_path_count()) {
+                return false;
+            }
+            if (attr->as4_path_count()) {
+                return false;
+            }
+            if (attr->aspath_4byte_count()) {
                 return false;
             }
         }

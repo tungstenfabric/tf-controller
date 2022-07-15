@@ -1002,6 +1002,10 @@ public:
     explicit BgpAttrDB(BgpServer *server);
     BgpAttrPtr ReplaceAsPathAndLocate(const BgpAttr *attr,
                                       AsPathPtr aspath);
+    BgpAttrPtr ReplaceAs4PathAndLocate(const BgpAttr *attr,
+                                       As4PathPtr aspath);
+    BgpAttrPtr ReplaceAsPath4ByteAndLocate(const BgpAttr *attr,
+                                           AsPath4BytePtr aspath);
     BgpAttrPtr ReplaceCommunityAndLocate(const BgpAttr *attr,
                                          CommunityPtr community);
     BgpAttrPtr ReplaceOriginAndLocate(const BgpAttr *attr,

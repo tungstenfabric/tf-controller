@@ -16,7 +16,6 @@
 class Inet6Prefix {
 public:
     static const uint8_t kMaxV6PrefixLen = Address::kMaxV6PrefixLen;
-
     Inet6Prefix() : prefixlen_(0) { }
     Inet6Prefix(Ip6Address addr, int prefixlen)
         : ip6_addr_(addr), prefixlen_(prefixlen) {

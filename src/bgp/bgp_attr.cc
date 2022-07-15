@@ -1310,6 +1310,22 @@ BgpAttrPtr BgpAttrDB::ReplaceAsPathAndLocate(const BgpAttr *attr,
     return Locate(clone);
 }
 
+// Return a clone of attribute with updated as4path.
+BgpAttrPtr BgpAttrDB::ReplaceAs4PathAndLocate(const BgpAttr *attr,
+                                              As4PathPtr aspath) {
+    BgpAttr *clone = new BgpAttr(*attr);
+    clone->set_as4_path(aspath);
+    return Locate(clone);
+}
+
+// Return a clone of attribute with updated aspath4byte.
+BgpAttrPtr BgpAttrDB::ReplaceAsPath4ByteAndLocate(const BgpAttr *attr,
+                                                  AsPath4BytePtr aspath) {
+    BgpAttr *clone = new BgpAttr(*attr);
+    clone->set_aspath_4byte(aspath);
+    return Locate(clone);
+}
+
 // Return a clone of attribute with updated community.
 BgpAttrPtr BgpAttrDB::ReplaceCommunityAndLocate(const BgpAttr *attr,
                                                 CommunityPtr community) {

@@ -818,6 +818,8 @@ void ServiceChain<T>::UpdateServiceChainRouteInternal(const RouteT *orig_route,
     const Community *orig_community = NULL;
     const OriginVnPath *orig_ovnpath = NULL;
     const AsPath *orig_aspath = NULL;
+    const As4Path *orig_as4path = NULL;
+    const AsPath4Byte *orig_aspath_4byte = NULL;
     RouteDistinguisher orig_rd;
     if (orig_route) {
         const BgpPath *orig_path = orig_route->BestPath();
@@ -831,6 +833,8 @@ void ServiceChain<T>::UpdateServiceChainRouteInternal(const RouteT *orig_route,
             orig_ovnpath = orig_attr->origin_vn_path();
             orig_rd = orig_attr->source_rd();
             orig_aspath = orig_attr->as_path();
+            orig_as4path = orig_attr->as4_path();
+            orig_aspath_4byte = orig_attr->aspath_4byte();
         }
         if (ext_community) {
             BOOST_FOREACH(const ExtCommunity::ExtCommunityValue &comm,
@@ -1002,6 +1006,20 @@ void ServiceChain<T>::UpdateServiceChainRouteInternal(const RouteT *orig_route,
         } else {
             new_attr = attr_db->ReplaceAsPathAndLocate(new_attr.get(),
                                                        AsPathPtr());
+        }
+        if (retain_as_path() && orig_as4path) {
+            new_attr = attr_db->ReplaceAs4PathAndLocate(new_attr.get(),
+                                                        orig_as4path);
+        } else {
+            new_attr = attr_db->ReplaceAs4PathAndLocate(new_attr.get(),
+                                                        As4PathPtr());
+        }
+        if (retain_as_path() && orig_aspath_4byte) {
+            new_attr = attr_db->ReplaceAsPath4ByteAndLocate(new_attr.get(),
+                                                            orig_aspath_4byte);
+        } else {
+            new_attr = attr_db->ReplaceAsPath4ByteAndLocate(new_attr.get(),
+                                                            AsPath4BytePtr());
         }
 
         // If the connected path is learnt via XMPP, construct RD based on
