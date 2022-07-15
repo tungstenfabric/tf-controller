@@ -424,7 +424,7 @@ private:
 class XmppStateMachineTest : public XmppStateMachine {
 public:
     XmppStateMachineTest(XmppConnection *connection, bool active,
-                         bool auth_enabled = false)
+                         bool auth_enabled = false, int config_hold_time = StateMachine::kHoldTime)
         : XmppStateMachine(connection, active, auth_enabled) {
         if (!notify_fn_.empty())
             notify_fn_(this, true);
