@@ -1087,7 +1087,7 @@ void XmppStateMachine::ResetSession() {
 }
 
 XmppStateMachine::XmppStateMachine(XmppConnection *connection, bool active,
-    bool auth_enabled)
+    bool auth_enabled, int config_hold_time)
     : work_queue_(TaskScheduler::GetInstance()->GetTaskId("xmpp::StateMachine"),
           connection->GetTaskInstance(),
           boost::bind(&XmppStateMachine::DequeueEvent, this, _1)),
@@ -1109,6 +1109,7 @@ XmppStateMachine::XmppStateMachine(XmppConnection *connection, bool active,
           "Hold timer",
           TaskScheduler::GetInstance()->GetTaskId("xmpp::StateMachine"),
           connection->GetTaskInstance())),
+      config_hold_time_(config_hold_time),
       hold_time_(GetConfiguredHoldTime()),
       attempts_(0),
       keepalive_count_(0),
@@ -1222,6 +1223,8 @@ int XmppStateMachine::GetConfiguredHoldTime() const {
         }
     } else if (env_hold_time) {
         return env_hold_time;
+    } else if (config_hold_time_) {
+        return config_hold_time_;
     }
 
     // Use hard coded default.

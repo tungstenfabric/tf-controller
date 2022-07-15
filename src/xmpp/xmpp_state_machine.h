@@ -66,7 +66,7 @@ public:
     static const int kMaxAttempts = 4;
     static const int kJitter = 10;           // percentage
 
-    XmppStateMachine(XmppConnection *connection, bool active, bool auth_enabled = false);
+    XmppStateMachine(XmppConnection *connection, bool active, bool auth_enabled = false, int config_hold_time = kHoldTime);
     ~XmppStateMachine();
 
     void Initialize();
@@ -206,6 +206,7 @@ private:
     Timer *connect_timer_;
     Timer *open_timer_;
     Timer *hold_timer_;
+    int config_hold_time_;
     int hold_time_;
     uint32_t attempts_;
     uint32_t keepalive_count_;
