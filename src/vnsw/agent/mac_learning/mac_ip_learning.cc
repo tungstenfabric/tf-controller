@@ -208,8 +208,8 @@ void MacIpLearningTable::MacIpEntryUnreachable(MacLearningEntryRequestPtr ptr) {
                     mac_ip_entry->IpAddr().to_string(), mac_ip_entry->Mac().ToString(),
                     mac_ip_entry->intf()->name(), "MACIP unreachable, trigger delete");
         it->second->Delete();
-        mac_ip_learning_entry_map_.erase(key);
         EnqueueMgmtReq(it->second, false);
+        mac_ip_learning_entry_map_.erase(key);
     }
 }
 
