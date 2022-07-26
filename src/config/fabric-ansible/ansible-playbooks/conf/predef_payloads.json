@@ -2505,6 +2505,12 @@
       "from_type": "role-definition",
       "from_fq_name": [ "default-global-system-config", "crb-gateway-spine" ],
       "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "crb-gateway-spine" ],
+      "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "telemetry" ]
     },
     {
@@ -2548,6 +2554,12 @@
       "from_fq_name": [ "default-global-system-config", "crb-gateway-leaf" ],
       "to_type": "feature",
       "to_fq_name": [ "default-global-system-config", "overlay-bgp" ]
+    },
+    {
+      "from_type": "role-definition",
+      "from_fq_name": [ "default-global-system-config", "crb-gateway-leaf" ],
+      "to_type": "feature",
+      "to_fq_name": [ "default-global-system-config", "port-profile"]
     },
     {
       "from_type": "role-definition",
