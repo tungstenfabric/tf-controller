@@ -2090,6 +2090,13 @@ bool BgpIfmapGlobalSystemConfig::Update(BgpIfmapConfigManager *manager,
         changed |= true;
     }
 
+    if (data_.route_replication_threshold() != static_cast<uint64_t>(
+            system->route_replication_threshold())) {
+        data_.set_route_replication_threshold(
+            system->route_replication_threshold());
+        changed |= true;
+    }
+
     if (data_.bgpaas_port_start() != system->bgpaas_parameters().port_start) {
         data_.set_bgpaas_port_start(system->bgpaas_parameters().port_start);
         changed |= true;

@@ -475,23 +475,26 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
     RtReplicated::ReplicatedRtPathList replicated_path_list;
 
     //Flag to track if any change happenned to route in last 30 minutes
-    bool route_unchanged = false;
+    bool optimize_replication = false;
     //List of tables that needs replication of route
-    RtGroup::RtGroupMemberList addedTables;
+    RtGroup::RtGroupMemberList addedTables=RtGroup::RtGroupMemberList();
     //List of tables having the latest changes in route
-    RtGroup::RtGroupMemberList previousTables;
+    RtGroup::RtGroupMemberList previousTables=RtGroup::RtGroupMemberList();
     //Threshold used for optimised replication
-    uint64_t optimizationThresholdTime = 30ULL * 60 * 1000000;
+    uint64_t optimizationThresholdTime =server_->global_config()->route_replication_threshold()*60* 1000000;
     uint64_t start = UTCTimestampUsec();
 
-    //Optimize only if last route change occurred 30 mins before.
-    //We update the route_unchanged flag to true
-    if ( (start - rt->last_update_at() > optimizationThresholdTime) &&
-          dbstate != NULL)
+
+    //By implementing the optimisation, we are avoiding the frequent copy of routes to all RI's.
+    //Find routes whose path has not been changed while copying routes by checking whether
+    //rt->last_updated_at() has been updated. Compare the current time and the last_updated_at()
+    //of routes when calculating paths in routepath_replicator. 
+    //If a certain period of time has passed, assume that there is no change.
+    if (optimizationThresholdTime && (start - rt->last_update_at() > optimizationThresholdTime) && dbstate != NULL)
     {
         RPR_TRACE(RouteListener, "Route change occurred before threshold \
         time, optimising replication");
-        route_unchanged = true;
+        optimize_replication = true;
     }
 
     //
@@ -527,7 +530,7 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
 
     // Updating previousTables with the list of tables having the information
     // about the route.
-    if (route_unchanged){
+    if (optimize_replication){
         replicated_path_list = dbstate->GetList();
         BOOST_FOREACH (RtReplicated::SecondaryRouteInfo path,
                        replicated_path_list){
@@ -605,7 +608,7 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
             extcomm_ptr = UpdateOriginVn(server_, extcomm_ptr.get(), vn_index);
         }
 
-        if (route_unchanged){
+        if (optimize_replication){
             addedTables = RtGroup::RtGroupMemberList();
             // Finding the difference between sets, secondary_tables and
             // previousTables
@@ -653,7 +656,7 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
             pair<RtReplicated::ReplicatedRtPathList::iterator, bool> result;
             result = replicated_path_list.insert(rtinfo);
             // Assert if the insertion to replication path list fails
-	    if (!route_unchanged)
+	    if (!optimize_replication)
                 assert(result.second);
             RPR_TRACE_ONLY(Replicate, table->name(), rt->ToString(),
                            path->ToString(),

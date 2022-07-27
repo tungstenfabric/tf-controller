@@ -76,6 +76,7 @@ public:
     uint32_t GetLongLivedGracefulRestartTime() const;
     bool IsFastConvergenceEnabled() const;
     uint16_t GetXmppHoldTime() const;
+    uint64_t GetRouteReplicationThreshold() const;
     bool IsNextHopCheckEnabled() const;
     uint32_t GetEndOfRibReceiveTime() const;
     uint32_t GetEndOfRibSendTime() const;
