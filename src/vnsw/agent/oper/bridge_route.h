@@ -101,6 +101,7 @@ public:
     BridgeRouteEntry(VrfEntry *vrf, const MacAddress &mac,
                      Peer::Type type, bool is_multicast) :
         AgentRoute(vrf, is_multicast), mac_(mac) {
+        l3_plen_ = 0;
     }
     virtual ~BridgeRouteEntry() { }
 
@@ -126,6 +127,8 @@ public:
     }
     const MacAddress &mac() const {return mac_;}
     const MacVmBindingPath *FindMacVmBindingPath() const;
+    const uint8_t plen() {return l3_plen_;};
+    const void setplen(uint8_t l3_plen) { l3_plen_ = l3_plen;};
 
 private:
     AgentPath *FindEvpnPathUsingKeyData(const AgentRouteKey *key,
@@ -134,6 +137,7 @@ private:
                                              const AgentRouteData *data) const;
 
     MacAddress mac_;
+    uint8_t l3_plen_;
     DISALLOW_COPY_AND_ASSIGN(BridgeRouteEntry);
 };
 
