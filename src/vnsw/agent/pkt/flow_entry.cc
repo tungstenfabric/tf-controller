@@ -1168,12 +1168,19 @@ static void SetRpfFieldsInternal(FlowEntry *flow, const AgentRoute *rt) {
 
     if (!flow->l3_flow()) {
         flow->data().rpf_vrf = rt->vrf()->vrf_id();
-        /* For L2 flows we don't use rpf_plen. Prefix len is taken after
-         * doing LPMFind on IP. */
-        flow->data().rpf_plen = 0;
+        /* 
+         * For L2 flows also  plen is found using GetUCRoute 
+         * plen is stored in L2 route entry
+         * this changed to address CEM-27722  
+         */
+        const BridgeRouteEntry *bridge_rt =
+            dynamic_cast<const BridgeRouteEntry *>(rt);
+        if (bridge_rt != NULL) {
+            BridgeRouteEntry *temp = const_cast<BridgeRouteEntry *>(bridge_rt);
+            flow->data().rpf_plen  = temp->plen();
+        }
         return;
     }
-
     // Route is not INET. Dont track any route
     flow->data().rpf_vrf = VrfEntry::kInvalidIndex;
     flow->data().rpf_plen = 0;
