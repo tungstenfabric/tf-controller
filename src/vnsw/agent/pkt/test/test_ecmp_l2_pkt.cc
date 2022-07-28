@@ -11,6 +11,8 @@
 
 #define AGE_TIME 10*1000
 
+#define remote_router_ip "10.1.1.2"
+
 void RouterIdDepInit(Agent *agent) {
 }
 
@@ -113,6 +115,24 @@ public:
         //ECMP create component NH
         EvpnAgentRouteTable::AddRemoteVmRouteReq(bgp_peer, "vrf1", mac, prefix,
                                              32, 0, data);
+    }
+    void CreateRemoteRoute(const char *vrf, const char *remote_vm, uint8_t plen,
+            const char *serv, int label, const char *vn) {
+        Ip4Address addr = Ip4Address::from_string(remote_vm);
+        Ip4Address gw = Ip4Address::from_string(serv);
+        Inet4TunnelRouteAdd(bgp_peer, vrf, addr, plen, gw, TunnelType::MplsType(),
+                label, vn, SecurityGroupList(),
+                TagList(), PathPreference());
+        client->WaitForIdle(2);
+        WAIT_FOR(1000, 500, (RouteFind(vrf, addr, plen) == true));
+    }
+    void DeleteRemoteRoute(const char *vrf, const char *ip, uint8_t plen) {
+        Ip4Address addr = Ip4Address::from_string(ip);
+        agent_->fabric_inet4_unicast_table()->DeleteReq(bgp_peer,
+                vrf, addr, plen,
+                new ControllerVmRoute(static_cast<BgpPeer *>(bgp_peer)));
+        client->WaitForIdle();
+        WAIT_FOR(1000, 1, (RouteFind(vrf, addr, 32) == false));
     }
 
     FlowProto *get_flow_proto() const { return flow_proto_; }
@@ -322,6 +342,50 @@ TEST_F(EcmpTest, EcmpTest_8) {
     WAIT_FOR(1000, 1000, (get_flow_proto()->FlowCount() == 0));
 }
 #endif
+
+
+TEST_F(EcmpTest, EcmpTest_13) {
+
+    AddRemoteEcmpRoute("vrf1", "00:00:00:09:09:09", "9.9.9.9",
+            "vn1", 4);
+    client->WaitForIdle();
+    AgentRoute *rt = L2RouteGet("vrf1", MacAddress("00:00:00:09:09:09"));
+
+    CreateRemoteRoute("vrf1", "103.103.103.103", 30, remote_router_ip, 10, "vn1");
+    CreateRemoteRoute("vrf1", "13.13.13.13", 28, remote_router_ip, 20, "vn1");
+    client->WaitForIdle();
+
+    TxL2IpMplsPacket(eth_intf_id, MX_2, router_id, vm1_label,
+                     "00:00:00:09:09:09", "00:00:00:01:01:01",
+                     "103.103.103.103", "13.13.13.13", 1, 10);
+    client->WaitForIdle();
+
+    //Entry is keyed with nh corresponding to l2 mpls label and not flowkey nh.
+    //Flow key nh is mapped to l3.
+    FlowEntry *entry = FlowGet(VrfGet("vrf1")->vrf_id(),
+            "103.103.103.103", "13.13.13.13", 1, 0, 0,
+            agent_->mpls_table()->FindMplsLabel(vm1_label)->nexthop()->id());
+    EXPECT_TRUE(entry != NULL);
+    EXPECT_TRUE(entry->IsEcmpFlow());
+    EXPECT_TRUE(entry->data().component_nh_idx ==
+                CompositeNH::kInvalidComponentNHIdx);
+    EXPECT_TRUE(entry->data().rpf_nh.get() == rt->GetActiveNextHop());
+
+    //Reverse flow is ECMP
+    FlowEntry *rev_entry = entry->reverse_flow_entry();
+    EXPECT_TRUE(rev_entry->IsEcmpFlow());
+    EXPECT_TRUE(rev_entry->data().component_nh_idx ==
+                CompositeNH::kInvalidComponentNHIdx);
+
+    EvpnAgentRouteTable::DeleteReq(bgp_peer, "vrf1",
+                                   MacAddress("00:00:00:09:09:09"),
+                                   Ip4Address::from_string("9.9.9.9"), 32, 0,
+                                   new ControllerVmRoute(bgp_peer));
+    DeleteRemoteRoute("vrf1", "103.103.103.103", 30);
+    DeleteRemoteRoute("vrf1", "13.13.13.13", 28);
+    client->WaitForIdle();
+    WAIT_FOR(1000, 1000, (get_flow_proto()->FlowCount() == 0));
+}
 
 int main(int argc, char *argv[]) {
     GETUSERARGS();

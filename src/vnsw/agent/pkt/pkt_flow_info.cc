@@ -73,6 +73,21 @@ void PktFlowInfo::UpdateRoute(const AgentRoute **rt, const VrfEntry *vrf,
         *rt = FlowEntry::GetUcRoute(vrf, ip);
     } else {
         *rt = FlowEntry::GetL2Route(vrf, mac);
+        if (*rt != NULL) {
+           const BridgeRouteEntry *bridge_rt =
+                dynamic_cast<const BridgeRouteEntry *>(*rt);
+            if (bridge_rt != NULL) {
+                BridgeRouteEntry *temp = const_cast<BridgeRouteEntry*>(bridge_rt);
+                AgentRoute *route = FlowEntry::GetUcRoute(vrf, ip);
+                const InetUnicastRouteEntry *inet_rt =
+                    dynamic_cast<const InetUnicastRouteEntry *>(route);
+                if (inet_rt != NULL) {
+                    temp->setplen(inet_rt->plen());
+                } else {
+                    temp->setplen(-1); // -1 = 255 invalid plen for both v4 and v6
+                }
+            }
+        }
     }
     if (*rt == NULL)
         ref_map[vrf->vrf_id()] = 0;

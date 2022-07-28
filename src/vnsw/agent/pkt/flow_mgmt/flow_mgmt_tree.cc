@@ -450,18 +450,18 @@ void InetRouteFlowMgmtTree::ExtractKeys(FlowEntry *flow, FlowMgmtKeyTree *tree,
     }
 
     InetRouteFlowMgmtKey *key = NULL;
-    if (flow->l3_flow()) {
+    /*
+     * For L2 flows, plen is found using LPMFind
+     * when route is not found plen is set to -1(255)
+     * in that case key should not be added
+     */ 
+    if (flow->l3_flow() || (plen != 255)) {
         if (ip.is_v4()) {
             Ip4Address ip4 = Address::GetIp4SubnetAddress(ip.to_v4(), plen);
             key = new InetRouteFlowMgmtKey(vrf, ip4, plen);
         } else {
             Ip6Address ip6 = Address::GetIp6SubnetAddress(ip.to_v6(), plen);
             key = new InetRouteFlowMgmtKey(vrf, ip6, plen);
-        }
-    } else {
-        InetUnicastRouteEntry *rt = vrfp->GetUcRoute(ip);
-        if (rt) {
-            key = new InetRouteFlowMgmtKey(vrf, rt->addr(), rt->plen());
         }
     }
 
