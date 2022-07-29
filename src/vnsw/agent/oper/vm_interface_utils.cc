@@ -1457,7 +1457,9 @@ void VmInterface::InsertMetaDataIpInfo(MetaDataIp *mip) {
 
 void VmInterface::DeleteMetaDataIpInfo(MetaDataIp *mip) {
     std::size_t ret = metadata_ip_map_.erase(mip->GetLinkLocalIp());
-    assert(ret != 0);
+    if (ret == 0) {
+        LOG(DEBUG, "Return code for Metadata IP Map Erase: " <<ret<< " for MetaDataIp: " <<mip->GetLinkLocalIp());
+    }
 }
 
 void VmInterface::UpdateMetaDataIpInfo() {
