@@ -48,6 +48,7 @@ uint16_t Session::GetRandomLocalPort() const {
 
 Session::~Session() {
     Stop();
+    callbacks_.clear();
 }
 
 bool Session::SendTimerExpired() {
