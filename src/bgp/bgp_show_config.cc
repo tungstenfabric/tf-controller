@@ -522,6 +522,7 @@ static void FillBgpGlobalSystemConfigInfo(ShowBgpGlobalSystemConfig *sbgc,
     sbgc->set_rd_cluster_seed(bgsc->rd_cluster_seed());
     sbgc->set_bgpaas_port_start(bgsc->bgpaas_port_start());
     sbgc->set_bgpaas_port_end(bgsc->bgpaas_port_end());
+    sbgc->set_route_replication_threshold(bgsc->route_replication_threshold());
 }
 
 //
