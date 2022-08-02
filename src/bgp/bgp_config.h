@@ -617,7 +617,7 @@ public:
             always_compare_med_(false),
             rd_cluster_seed_(0),
             xmpp_hold_time_(90),
-            route_replication_threshold_(3600000000) {
+            route_replication_threshold_(0) {
     }
     ~BgpGlobalSystemConfig() { }
 
