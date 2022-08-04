@@ -33,7 +33,8 @@ class JobHandler(object):
                  api_server_host, job_log_utils, sandesh_args, fabric_fq_name,
                  playbook_timeout, playbook_seq, vnc_api_init_params,
                  zk_client, job_description,
-                 transaction_id, transaction_descr, cleanup_mode=False):
+                 transaction_id, transaction_descr, max_bytes,
+                 backup_count, cleanup_mode=False):
         """Initialize JobHandler and save all required information."""
         self.is_multi_device_playbook = False
         self._logger = logger
@@ -59,6 +60,8 @@ class JobHandler(object):
         self._zk_client = zk_client
         self._job_progress = None
         self.current_percentage = None
+        self.max_bytes = max_bytes
+        self.backup_count = backup_count
         self._pb_pids = []
         self.cleanup_mode = cleanup_mode
     # end __init__
@@ -112,6 +115,8 @@ class JobHandler(object):
             # get the playbook information from the job template
             playbook_info = self.get_playbook_info(job_percent_per_task,
                                                    device_id)
+            playbook_info['max_bytes'] = self.max_bytes
+            playbook_info['backup_count'] = self.backup_count
             # run the playbook and retrieve the playbook output if any
             playbook_output = self.run_playbook(
                 playbook_info,

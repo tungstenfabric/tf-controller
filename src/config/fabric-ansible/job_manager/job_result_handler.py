@@ -16,7 +16,8 @@ class JobResultHandler(object):
 
     def __init__(self, job_template_id, execution_id, fabric_fq_name,
                  logger, job_utils, job_log_utils, device_name,
-                 job_description, transaction_id, transaction_descr):
+                 job_description, transaction_id, transaction_descr,
+                 max_bytes, backup_count):
         """Initialize JobResultHandler."""
         self._job_template_id = job_template_id
         self._execution_id = execution_id
@@ -40,6 +41,8 @@ class JobResultHandler(object):
         # device_management_ip, device_username, etc
         self.playbook_output = None  # marked output from the playbook stdout
         self.percentage_completed = 0.0
+        self.max_bytes = max_bytes
+        self.backup_count = backup_count
         self._job_file_write = JobFileWrite(self._logger)
 
     def get_retry_devices(self):
