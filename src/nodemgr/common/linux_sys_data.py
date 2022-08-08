@@ -116,7 +116,8 @@ class LinuxSysData(object):
         try:
             corefile_path = self._get_corefile_path()
             exception_set = {"lost+found"}
-            files = filter(os.path.isfile, os.listdir(corefile_path))
+            files = [os.path.abspath(os.path.join(corefile_path, x)) for x in os.listdir(corefile_path)]
+            files = filter(os.path.isfile, files)
             files = [os.path.join(corefile_path, f) for f in files if f not in exception_set]
             files.sort(key=lambda x: os.path.getmtime(x))
             return files
