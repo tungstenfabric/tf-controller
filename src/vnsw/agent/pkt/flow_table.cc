@@ -671,7 +671,9 @@ void FlowTable::HandleKSyncError(FlowEntry *flow,
         // short, but since EEXIST is returned for the RF (from Controller), it
         // is necessary to update the ksync_entry to the flow handle returned by
         // vrouter DP, Agent does not know it and is thus -1.
-        if (ksync_error == EEXIST) {
+        if (flow->is_flags_set(FlowEntry::ReverseFlow) && 
+            ksync_error == EEXIST && 
+            flow->is_flags_set(FlowEntry::BgpRouterService)) {
             KSyncFlowIndexManager *mgr =
                     agent()->ksync()->ksync_flow_index_manager();
             mgr->UpdateFlowHandle(ksync_entry,
