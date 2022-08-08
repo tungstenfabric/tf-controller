@@ -504,7 +504,7 @@ class EventManager(object):
             # encode other core file
             if self.system_data.update_all_core_file():
                 self.send_process_state_db(self.group_names)
-                node_status.all_core_file_list = self.all_core_file_list
+                node_status.all_core_file_list = self.system_data.all_core_file_list
 
             node_status_uve = NodeStatusUVE(table=self.type_info._object_table,
                                             data=node_status)
