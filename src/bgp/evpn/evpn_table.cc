@@ -203,7 +203,7 @@ BgpRoute *EvpnTable::RouteReplicate(BgpServer *server,
     if (!ShouldReplicate(server, src_table, community, evpn_prefix))
         return NULL;
     if (evpn_prefix.type() == EvpnPrefix::AutoDiscoveryRoute) {
-        if (IsMaster() || evpn_prefix.tag() != EvpnPrefix::kMaxTag)
+        if (IsMaster())
             return NULL;
         community = server->extcomm_db()->ReplaceRTargetAndLocate(
             community.get(), ExtCommunity::ExtCommunityList());

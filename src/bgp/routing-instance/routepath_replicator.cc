@@ -15,6 +15,7 @@
 #include "bgp/bgp_log.h"
 #include "bgp/bgp_route.h"
 #include "bgp/bgp_server.h"
+#include "bgp/evpn/evpn_route.h"
 #include "bgp/origin-vn/origin_vn.h"
 #include "bgp/routing-instance/path_resolver.h"
 #include "bgp/routing-instance/routing_instance.h"
@@ -446,6 +447,22 @@ static ExtCommunityPtr UpdateExtCommunity(BgpServer *server,
     return UpdateOriginVn(server, ext_community, vn_index);
 }
 
+// We need to optmise for Type1 and not evpn tag == 0x0
+bool RoutePathReplicator::CheckEvpnType1Route(BgpTable *table, BgpRoute *rt) {
+    if (table->family() == Address::EVPN) {
+        EvpnRoute *evpnRT = static_cast<EvpnRoute *>(rt);
+        if (evpnRT->GetPrefix().type() == EvpnPrefix::AutoDiscoveryRoute &&
+            evpnRT->GetPrefix().tag() != EvpnPrefix::kMaxTag)
+        {
+            BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,
+                       "Prefix type is auto discovery route and tag is not "
+                       "kMaxTag, performing optimisation");
+            return true;
+        }
+    }
+    return false;
+}
+
 //
 // Concurrency: Called in the context of the DB partition task.
 //
@@ -506,7 +523,8 @@ bool RoutePathReplicator::RouteListener(TableState *ts,
     //
     if (!rt->IsUsable() || (table->IsRouteAggregationSupported() &&
                             !rtinstance->deleted() &&
-                            table->IsContributingRoute(rt))) {
+                            table->IsContributingRoute(rt))
+                        || CheckEvpnType1Route(table, rt)) {
         if (!dbstate) {
             return true;
         }
