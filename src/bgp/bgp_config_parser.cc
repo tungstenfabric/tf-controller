@@ -784,6 +784,18 @@ bool BgpConfigParser::ParseGlobalSystemConfig(const xml_node &node,
                     "rd-cluster-seed", requests);
             }
         }
+        if (strcmp(child.name(), "route-replication-threshold") == 0) {
+            auto_ptr<autogen::GlobalSystemConfig::NtProperty> property(
+                new autogen::GlobalSystemConfig::NtProperty);
+            property->data = atoi(child.child_value());
+            if (add_change) {
+                MapObjectSetProperty("global-system-config", "",
+                    "route-replication-threshold", property.release(), requests);
+            } else {
+                MapObjectClearProperty("global-system-config", "",
+                    "route-replication-threshold", requests);
+            }
+        }
     }
     return true;
 }

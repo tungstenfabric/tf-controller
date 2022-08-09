@@ -616,7 +616,8 @@ public:
             nh_check_enabled_(false),
             always_compare_med_(false),
             rd_cluster_seed_(0),
-            xmpp_hold_time_(90) {
+            xmpp_hold_time_(90),
+            route_replication_threshold_(0) {
     }
     ~BgpGlobalSystemConfig() { }
 
@@ -658,6 +659,12 @@ public:
     void set_xmpp_hold_time(uint8_t hold_time) {
         xmpp_hold_time_ = hold_time;
     }
+    uint64_t route_replication_threshold() const {
+        return route_replication_threshold_;
+    }
+    void set_route_replication_threshold(uint64_t route_replication_threshold) {
+        route_replication_threshold_ = route_replication_threshold;
+    }
     uint16_t rd_cluster_seed() const {
         return rd_cluster_seed_;
     }
@@ -688,6 +695,7 @@ private:
     bool always_compare_med_;
     uint16_t rd_cluster_seed_;
     uint8_t xmpp_hold_time_;
+    uint64_t route_replication_threshold_;
 
     DISALLOW_COPY_AND_ASSIGN(BgpGlobalSystemConfig);
 };
