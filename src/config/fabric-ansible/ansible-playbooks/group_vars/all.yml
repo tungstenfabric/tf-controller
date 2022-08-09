@@ -181,6 +181,7 @@ feature_based_plugin_roles:
     - overlay_evpn_type5
     - overlay_security_group
     - overlay_lag
+    - overlay_port_profile
     - overlay_multi_homing
   CRB-MCAST-Gateway@spine:
     - basic
@@ -230,6 +231,7 @@ feature_based_plugin_roles:
     - overlay_evpn_type5
     - overlay_security_group
     - overlay_lag
+    - overlay_port_profile
     - overlay_multi_homing
   Collapsed-Spine@spine:
     - basic
