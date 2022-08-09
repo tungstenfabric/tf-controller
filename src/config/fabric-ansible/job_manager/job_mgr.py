@@ -59,6 +59,8 @@ class ExecutableManager(object):
         self.job_transaction_descr = None
         self.job_template_id = None
         self.result_handler = None
+        self.max_bytes = None
+        self.backup_count = None
         self.parse_job_input(job_input)
         self.job_utils = JobUtils(self.job_execution_id,
                                   self.job_template_id,
@@ -81,6 +83,8 @@ class ExecutableManager(object):
         self.sandesh_args = job_input_json.get('args')
         self.vnc_api_init_params = job_input_json.get('vnc_api_init_params')
         self.api_server_host = job_input_json.get('api_server_host')
+        self.max_bytes = job_input_json.get('max_bytes')
+        self.backup_count = job_input_json.get('backup_count')
 
     def _validate_job_input(self, input_schema, ip_json):
         if ip_json is None:
@@ -134,7 +138,9 @@ class ExecutableManager(object):
                                                    self.device_name,
                                                    self.job_description,
                                                    self.job_transaction_id,
-                                                   self.job_transaction_descr)
+                                                   self.job_transaction_descr,
+                                                   self.max_bytes,
+                                                   self.backup_count)
 
             msg = MsgBundle.getMessage(MsgBundle.START_JOB_MESSAGE,
                                        job_execution_id=self.job_execution_id,
@@ -268,7 +274,7 @@ class JobManager(object):
     def __init__(self, logger, vnc_api, job_input, job_log_utils, job_template,
                  result_handler, job_utils, playbook_seq, job_percent,
                  zk_client, job_description, job_transaction_id,
-                 job_transaction_descr):
+                 job_transaction_descr, max_bytes, backup_count):
         """Initialize job manager."""
         self._logger = logger
         self._vnc_api = vnc_api
@@ -294,6 +300,8 @@ class JobManager(object):
         self.job_percent = job_percent
         self._zk_client = zk_client
         self.job_handler = None
+        self.max_bytes = max_bytes
+        self.backup_count = backup_count
         logger.debug("Job manager initialized")
 
     def parse_job_input(self, job_input_json):
@@ -334,6 +342,8 @@ class JobManager(object):
                                  self._zk_client, self.job_description,
                                  self.job_transaction_id,
                                  self.job_transaction_descr,
+                                 self.max_bytes,
+                                 self.backup_count,
                                  cleanup_mode=cleanup_mode)
         self.job_handler = job_handler
 
@@ -417,6 +427,8 @@ class WFManager(object):
         self.result_handler = None
         self.job_data = None
         self.fabric_fq_name = None
+        self.max_bytes = None
+        self.backup_count = None
         self.parse_job_input(job_input)
         self.job_utils = JobUtils(self.job_execution_id,
                                   self.job_template_id,
@@ -453,6 +465,8 @@ class WFManager(object):
             job_input_json.get('job_transaction_descr')
         self.job_data = job_input_json.get('input')
         self.fabric_fq_name = job_input_json.get('fabric_fq_name')
+        self.max_bytes = job_input_json.get('max_bytes')
+        self.backup_count = job_input_json.get('backup_count')
         self.device_name = self._get_device_name()
 
     def _validate_job_input(self, input_schema, ip_json):
@@ -517,7 +531,9 @@ class WFManager(object):
                                      self.job_utils, i, 100, self._zk_client,
                                      self.job_description,
                                      self.job_transaction_id,
-                                     self.job_transaction_descr)
+                                     self.job_transaction_descr,
+                                     self.max_bytes,
+                                     self.backup_count)
                 self.job_mgr = job_mgr
                 job_mgr.start_job(cleanup_mode=True)
             except Exception as e:
@@ -553,7 +569,9 @@ class WFManager(object):
                                                    self.device_name,
                                                    self.job_description,
                                                    self.job_transaction_id,
-                                                   self.job_transaction_descr)
+                                                   self.job_transaction_descr,
+                                                   self.max_bytes,
+                                                   self.backup_count)
 
             msg = MsgBundle.getMessage(
                 MsgBundle.START_JOB_MESSAGE,
@@ -618,7 +636,9 @@ class WFManager(object):
                                          self.job_utils, i, job_percent,
                                          self._zk_client, self.job_description,
                                          self.job_transaction_id,
-                                         self.job_transaction_descr)
+                                         self.job_transaction_descr,
+                                         self.max_bytes,
+                                         self.backup_count)
                     self.job_mgr = job_mgr
                     job_mgr.start_job()
 

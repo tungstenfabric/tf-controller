@@ -21,8 +21,6 @@ DEFAULT_ANSIBLE_LOG_PATH = BASE_LOG_PATH + \
 LOGGING_FORMAT = \
     '%(asctime)s.%(msecs)03d %(name)s [%(levelname)s]:  %(message)s'
 DATE_FORMAT = "%m/%d/%Y %H:%M:%S"
-MAX_BYTES = 5000000
-BACKUP_COUNT = 10
 
 # Context attribute along with it's abbeviation for logging
 # Include attributes in this list if you want them to appear in log
@@ -33,8 +31,10 @@ extra_list = {
 }
 
 
-def fabric_ansible_logger(name, ctx=None):
+def fabric_ansible_logger(name, max_bytes, backup_count, ctx=None):
     name = name
+    max_bytes = max_bytes
+    backup_count = backup_count
     ctx = ctx
     debug = CONST.DEFAULT_DEBUG
     verbosity = CONST.DEFAULT_VERBOSITY
@@ -65,7 +65,7 @@ def fabric_ansible_logger(name, ctx=None):
 
         if not len(logger.handlers):
             logging_file_handler = RotatingFileHandler(
-                filename=logfile, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT)
+                filename=logfile, maxBytes=max_bytes, backupCount=backup_count)
             log_format = logging.Formatter(LOGGING_FORMAT, datefmt=DATE_FORMAT)
             logging_file_handler.setFormatter(log_format)
             logger.addHandler(logging_file_handler)

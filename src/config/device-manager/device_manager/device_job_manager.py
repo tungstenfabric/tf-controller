@@ -328,6 +328,8 @@ class DeviceJobManager(object):
 
             # add params needed for sandesh connection
             job_input_params['args'] = self._job_args
+            job_input_params['max_bytes'] = int(self._args.max_bytes)
+            job_input_params['backup_count'] = int(self._args.backup_count)
             routing_key = self.JOB_SUBPROCESS_ROUTING_KEY + job_execution_id
             callback_fn = self.job_mgr_signal_handler
             self._logger.debug("Adding job subprocess consumer queue")
