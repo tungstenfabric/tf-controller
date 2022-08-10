@@ -145,6 +145,13 @@ public:
               new_config->xmpp_hold_time());
         }
 
+        // Process a change in route-replication-threshold knob.
+        if (server_->global_config()->route_replication_threshold() !=
+            new_config->route_replication_threshold()) {
+          server_->global_config()->set_route_replication_threshold(
+              new_config->route_replication_threshold());
+        }
+
         bool clear_bgpaas_peers = false;
 
         // Clear bgpaas peers if there's a change in bgpaas-port-start.
@@ -709,6 +716,10 @@ uint16_t BgpServer::GetXmppHoldTime() const {
     if (!global_config_->fc_enabled())
         return XMPP_HOLD_TIME_DEFAULT;
     return global_config_->xmpp_hold_time();
+}
+
+uint64_t BgpServer::GetRouteReplicationThreshold() const {
+    return global_config_->route_replication_threshold();
 }
 
 uint32_t BgpServer::GetEndOfRibReceiveTime() const {

@@ -761,6 +761,7 @@ struct ShowBgpGlobalSystemConfig {
     10: i16 rd_cluster_seed;
     9: i16 bgpaas_port_start;
     5: i16 bgpaas_port_end;
+   12: i64 route_replication_threshold;
 }
 
 response sandesh ShowBgpGlobalSystemConfigResp {
