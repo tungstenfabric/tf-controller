@@ -34,7 +34,8 @@ Session::Session(Discriminator localDiscriminator,
         local_endpoint_(key.local_address, GetRandomLocalPort()),
         remote_endpoint_(key.remote_address, key.remote_port),
         started_(false),
-        stopped_(false) {
+        stopped_(false),
+        mutex_() {
     ScheduleSendTimer();
     ScheduleRecvDeadlineTimer();
     sm_->SetCallback(boost::optional<ChangeCb>(
@@ -296,6 +297,7 @@ Discriminator Session::local_discriminator() const {
 
 void Session::CallStateChangeCallbacks(
     const SessionKey &key, const BFD::BFDState &new_state) {
+    tbb::mutex::scoped_lock lock(mutex_);
     for (Callbacks::const_iterator it = callbacks_.begin();
          it != callbacks_.end(); ++it) {
         it->second(key, new_state);
@@ -303,10 +305,12 @@ void Session::CallStateChangeCallbacks(
 }
 
 void Session::RegisterChangeCallback(ClientId client_id, ChangeCb cb) {
+    tbb::mutex::scoped_lock lock(mutex_);
     callbacks_[client_id] = cb;
 }
 
 void Session::UnregisterChangeCallback(ClientId client_id) {
+    tbb::mutex::scoped_lock lock(mutex_);
     callbacks_.erase(client_id);
 }
 
@@ -318,6 +322,7 @@ void Session::UpdateConfig(const SessionConfig& config) {
 }
 
 int Session::reference_count() {
+    tbb::mutex::scoped_lock lock(mutex_);
     return callbacks_.size();
 }
 

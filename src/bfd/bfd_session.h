@@ -12,6 +12,7 @@
 #include <map>
 #include <boost/scoped_ptr.hpp>
 #include <boost/asio/ip/address.hpp>
+#include <tbb/mutex.h>
 
 #include "base/timer.h"
 #include "io/event_manager.h"
@@ -113,6 +114,7 @@ class Session {
     bool                     stopped_;
     Callbacks                callbacks_;
     BFDStats                 stats_;
+    tbb::mutex               mutex_;
 };
 
 }  // namespace BFD
