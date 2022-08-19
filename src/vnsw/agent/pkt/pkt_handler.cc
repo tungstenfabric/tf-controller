@@ -255,6 +255,7 @@ PktHandler::PktModuleName PktHandler::ParseBfdDataPacket(const AgentHdr &hdr,
     // independent of packet forwarding mode
     len += ParseEthernetHeader(pkt_info, (pkt + len));
     if (pkt_info->ether_type != ETHERTYPE_IP) {
+        agent_->stats()->incr_pkt_drop_due_to_invalid_ethertype();
         return INVALID;
     }
 
@@ -340,6 +341,7 @@ PktHandler::PktModuleName PktHandler::ParsePacket(const AgentHdr &hdr,
         } else {
             PKT_TRACE(Err, "Flow trap for non-IP packet for interface "
                       "index <" << hdr.ifindex << ">");
+            agent_->stats()->pkt_drop_due_to_flow_trap();
             return INVALID;
         }
     }
@@ -595,6 +597,7 @@ int PktHandler::ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
     } else {
         LOG(ERROR,
           "Error EthType = Non IP/IPv6. BackTrace: " << AgentBackTrace(1));
+        agent_->stats()->incr_pkt_drop_due_to_invalid_ethertype();
         return -1;
      }
 
@@ -661,7 +664,7 @@ int PktHandler::ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
             if(ParseIpPacket(pkt_info, pkt_type, pkt + len + sizeof(icmp)) == -1) {
                 return -1;
             }
-	    //Swap the key parameter, which would be used as key
+     //Swap the key parameter, which would be used as key
             IpAddress src_ip = pkt_info->ip_saddr;
             pkt_info->ip_saddr = pkt_info->ip_daddr;
             pkt_info->ip_daddr = src_ip;
@@ -694,7 +697,7 @@ int PktHandler::ParseIpPacket(PktInfo *pkt_info, PktType::Type &pkt_type,
             if(ParseIpPacket(pkt_info, pkt_type, pkt + len + sizeof(icmp)) == -1) {
                 return -1;
             }
-	    //Swap the key parameter, which would be used as key
+     //Swap the key parameter, which would be used as key
             IpAddress src_ip = pkt_info->ip_saddr;
             pkt_info->ip_saddr = pkt_info->ip_daddr;
             pkt_info->ip_daddr = src_ip;
@@ -955,6 +958,7 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
     len += ret;
 
     if (!ValidateIpPacket(pkt_info)) {
+         agent_->stats()->incr_pkt_invalid_ip_pkt();
         return -1;
     }
 
@@ -969,7 +973,8 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
         return len;
     } else if (!pkt_ok) {
         // invalid pkt received from tor
-        return -1;
+       agent_->stats()->incr_pkt_invalid_frm_tor();
+       return -1;
     }
 
     if (IsDiagPacket(pkt_info) &&
@@ -979,7 +984,12 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
 
     // If tunneling is not enabled on interface or if it is a DHCP packet,
     // dont parse any further
-    if (intf->IsTunnelEnabled() == false || IsDHCPPacket(pkt_info)) {
+//    if (intf->IsTunnelEnabled() == false || IsDHCPPacket(pkt_info)) {
+    if (intf->IsTunnelEnabled() == false) {
+        agent_->stats()->incr_pkt_drop_due_to_disable_tnl();
+        return len;
+    }
+    else if (IsDHCPPacket(pkt_info)) {
         return len;
     }
 
@@ -1007,6 +1017,7 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
     if (tunnel_len < 0) {
         // Found tunnel packet, but error in decoding
         pkt_type = PktType::INVALID;
+        agent_->stats()->incr_pkt_drop_due_to_decode_error();
         return tunnel_len;
     }
 
@@ -1032,6 +1043,7 @@ int PktHandler::ParseUserPkt(PktInfo *pkt_info, Interface *intf,
 
     // validate inner iphdr
     if (!ValidateIpPacket(pkt_info)) {
+        agent_->stats()->incr_pkt_invalid_ip_pkt();
         return -1;
     }
 

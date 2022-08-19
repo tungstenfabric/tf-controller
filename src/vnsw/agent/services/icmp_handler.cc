@@ -26,10 +26,12 @@ bool IcmpHandler::Run() {
     Interface *itf =
         agent()->interface_table()->FindInterface(GetInterfaceIndex());
     if (itf == NULL) {
+        icmp_proto->IncrStatsIntfNotInst();
         return true;
     }
     VmInterface *vm_itf = static_cast<VmInterface *>(itf);
     if (!vm_itf->layer3_forwarding()) {
+        icmp_proto->IncrStatsNoL3Fwd();
         return true;
     }
     switch (icmp_->icmp_type) {

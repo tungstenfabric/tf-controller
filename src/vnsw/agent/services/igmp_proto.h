@@ -88,6 +88,7 @@ public:
     uint32_t GetTxDropPkt() {
         return stats_.tx_drop_packet;
     }
+
     const IgmpInfo::IgmpItfStats &GetItfStats() const { return stats_; }
     void ClearItfStats() { stats_.Reset(); }
 
@@ -120,7 +121,7 @@ public:
         IgmpStats() { Reset(); }
         void Reset() {
             bad_length = bad_cksum = bad_interface = not_local =
-            rx_unknown = rejected_pkt = 0;
+            rx_unknown = rejected_pkt = ip_pkt_len = 0;
         }
 
         uint32_t bad_length;
@@ -129,6 +130,7 @@ public:
         uint32_t not_local;
         uint32_t rx_unknown;
         uint32_t rejected_pkt;
+        uint32_t ip_pkt_len;
     };
 
     void Shutdown();
@@ -145,6 +147,7 @@ public:
     void IncrStatsNotLocal() { stats_.not_local++; }
     void IncrStatsRxUnknown() { stats_.rx_unknown++; }
     void IncrStatsRejectedPkt() { stats_.rejected_pkt++; }
+    void IncrStatsIpPktLen() { stats_.ip_pkt_len++; }
     const IgmpStats &GetStats() const { return stats_; }
     void ClearStats() { stats_.Reset(); }
     GmpProto *GetGmpProto() { return gmp_proto_; }

@@ -378,12 +378,14 @@ bool DhcpHandler::HandleVmRequest() {
     }
     vm_itf_ = static_cast<VmInterface *>(itf);
     if (!vm_itf_->dhcp_enable_config()) {
+        dhcp_proto->IncrDhcpDisabledDrops();
         DHCP_TRACE(Error, "DHCP request on VM port with dhcp services disabled: "
                    << GetInterfaceIndex());
         return true;
     }
 
     if (vm_itf_->vm_mac() != request_.mac_addr) {
+        dhcp_proto->IncrIncorrectMac();
         DHCP_TRACE(Error, "DHCP request for incorrect MAC: interface = "
                    << GetInterfaceIndex() << " interface MAC = "
                    << vm_itf_->vm_mac().ToString() << " requested MAC = "
@@ -480,6 +482,7 @@ bool DhcpHandler::HandleMessage() {
                 return HandleDhcpFromFabric();
 
         default:
+            agent()->GetDhcpProto()->IncrUnknownMsgDrops();
             assert(0);
     }
 

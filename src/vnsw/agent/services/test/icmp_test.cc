@@ -97,7 +97,7 @@ public:
         }
     }
 
-    void SendIcmp(short ifindex, uint32_t dest_ip, IcmpError error = NO_ERROR) {
+    void SendIcmp(short ifindex, uint32_t dest_ip, IcmpError error = NO_ERROR, bool layer3fwd = true) {
         int len = 512;
         uint8_t *buf = new uint8_t[len];
         memset(buf, 0, len);
@@ -109,6 +109,11 @@ public:
 
         agent_hdr *agent = (agent_hdr *)(eth + 1);
         agent->hdr_ifindex = htons(ifindex);
+        if(layer3fwd != true) {
+            Interface *itf = Agent::GetInstance()->interface_table()->FindInterface(ifindex);
+             VmInterface *vm_itf = static_cast<VmInterface *>(itf);
+             vm_itf->set_layer3_forwarding(false);
+        }
         agent->hdr_vrf = htons(0);
         agent->hdr_cmd = htons(AgentHdr::TRAP_NEXTHOP);
 
@@ -376,6 +381,116 @@ TEST_F(IcmpTest, IcmpErrorTest) {
     EXPECT_EQ(0U, stats.icmp_gw_ping);
     EXPECT_EQ(1U, stats.icmp_drop);
     EXPECT_EQ(1U, stats.icmp_gw_ping_err);
+    Agent::GetInstance()->GetIcmpProto()->ClearStats();
+
+    client->Reset();
+    DelIPAM("vn1");
+    client->WaitForIdle();
+
+    client->Reset();
+    DeleteVmportEnv(input, 1, 1, 0);
+    client->WaitForIdle();
+}
+
+TEST_F(IcmpTest, IcmpIntfTest) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+    };
+    Agent *agent = Agent::GetInstance();
+    AgentStats *stats = agent->stats();
+
+    IpamInfo ipam_info[] = {
+        {"1.1.1.0", 24, "1.1.1.200", true},
+    };
+
+    CreateVmportEnv(input, 1, 0);
+    client->WaitForIdle();
+    client->Reset();
+    AddIPAM("vn1", ipam_info, 1);
+    client->WaitForIdle();
+
+    // Provide a non-existing inteface to trigger the icmp_intf_not_inst counter incr
+    SendIcmp(989, ntohl(inet_addr(ipam_info[0].gw)));
+    int count = 0;
+    do {
+        usleep(1000);
+        client->WaitForIdle();
+        if (++count == MAX_WAIT_COUNT)
+            assert(0);
+    } while (stats->pkt_invalid_interface() < 1);
+    client->WaitForIdle();
+    EXPECT_EQ(1U, stats->pkt_invalid_interface());
+
+    // Provide a non-existing inteface to trigger the icmp_intf_not_inst counter incr
+    SendIcmp(1989, ntohl(inet_addr(ipam_info[0].gw)));
+    count = 0;
+    do {
+        usleep(1000);
+        client->WaitForIdle();
+        if (++count == MAX_WAIT_COUNT)
+            assert(0);
+    } while (stats->pkt_invalid_interface() < 2);
+    client->WaitForIdle();
+    EXPECT_EQ(2U, stats->pkt_invalid_interface());
+
+    Agent::GetInstance()->GetIcmpProto()->ClearStats();
+
+    client->Reset();
+    DelIPAM("vn1");
+    client->WaitForIdle();
+
+    client->Reset();
+    DeleteVmportEnv(input, 1, 1, 0);
+    client->WaitForIdle();
+}
+
+TEST_F(IcmpTest, IcmpFwdTest) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+    };
+    IcmpProto::IcmpStats stats;
+
+    IpamInfo ipam_info[] = {
+        {"1.1.1.0", 24, "1.1.1.200", true},
+    };
+
+    CreateVmportEnv(input, 1, 0);
+    client->WaitForIdle();
+    client->Reset();
+    AddIPAM("vn1", ipam_info, 1);
+    client->WaitForIdle();
+
+    // Provide a boolean to set the VM intf attribute via utility function
+    SendIcmp(GetItfId(0), ntohl(inet_addr(ipam_info[0].gw)), NO_ERROR, false);
+    int count = 0;
+    do {
+        usleep(1000);
+        client->WaitForIdle();
+        stats = Agent::GetInstance()->GetIcmpProto()->GetStats();
+        if (++count == MAX_WAIT_COUNT)
+            assert(0);
+    } while (stats.icmp_no_l3fwd < 1);
+    client->WaitForIdle();
+    EXPECT_EQ(1U, stats.icmp_no_l3fwd);
+
+    // Provide a boolean to set the VM intf attribute via utility function
+    SendIcmp(GetItfId(0), ntohl(inet_addr(ipam_info[0].gw)), NO_ERROR, false);
+    count = 0;
+    do {
+        usleep(1000);
+        client->WaitForIdle();
+        stats = Agent::GetInstance()->GetIcmpProto()->GetStats();
+        if (++count == MAX_WAIT_COUNT)
+            assert(0);
+    } while (stats.icmp_no_l3fwd < 2);
+    client->WaitForIdle();
+    EXPECT_EQ(2U, stats.icmp_no_l3fwd);
+
+    // Clean up for the VM interface L3 Fwd setting
+    Interface *itf = Agent::GetInstance()->interface_table()->FindInterface(GetItfId(0));
+    VmInterface *vm_itf = static_cast<VmInterface *>(itf);
+    vm_itf->set_layer3_forwarding(true);
+
     Agent::GetInstance()->GetIcmpProto()->ClearStats();
 
     client->Reset();

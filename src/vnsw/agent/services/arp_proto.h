@@ -60,7 +60,8 @@ public:
             arp_req = arp_replies = arp_gratuitous =
             resolved = max_retries_exceeded = errors = 0;
             arp_invalid_packets = arp_invalid_interface = arp_invalid_vrf =
-                arp_invalid_address = vm_arp_req = vm_garp_req = 0;
+            arp_invalid_address = vm_arp_req = vm_garp_req =
+            ipfabric_not_inst = 0;
         }
 
         uint32_t arp_req;
@@ -75,6 +76,8 @@ public:
         uint32_t arp_invalid_address;
         uint32_t vm_arp_req;
         uint32_t vm_garp_req;
+        uint32_t agent_not_inst;
+        uint32_t ipfabric_not_inst;
     };
 
     struct InterfaceArpInfo {
@@ -145,6 +148,9 @@ public:
         IncrementStatsErrors();
         arp_stats_.arp_invalid_address++;
     }
+
+    void IncrementStatsIPFabricNotInst() { arp_stats_.ipfabric_not_inst++; }
+
     const ArpStats &GetStats() const { return arp_stats_; }
     void ClearStats() { arp_stats_.Reset(); }
 
