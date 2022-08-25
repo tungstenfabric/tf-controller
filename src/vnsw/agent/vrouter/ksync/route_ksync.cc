@@ -270,6 +270,9 @@ bool RouteKSyncEntry::BuildArpFlags(const DBEntry *e, const AgentPath *path,
     bool proxy_arp = false;
     const NextHop *nh = rt->GetActiveNextHop();
 
+    if (nh == NULL) {
+        return false;
+    }
     switch (nh->GetType()) {
     case NextHop::RESOLVE:
         // RESOLVE NH can be used by Gateway Interface or Fabric VRF

@@ -381,12 +381,16 @@ void ArpDBState::Update(const AgentRoute *rt) {
     if (ip_rt == NULL) {
         return;
     }
+    const NextHop *anh =ip_rt->GetActiveNextHop();
+    if (anh == NULL) {
+        return;
+    }
 
-    if (ip_rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+    if (anh->GetType() == NextHop::RESOLVE) {
         resolve_route_ = true;
     }
 
-    bool policy = ip_rt->GetActiveNextHop()->PolicyEnabled();
+    bool policy = anh->PolicyEnabled();
     const SecurityGroupList sg = ip_rt->GetActivePath()->sg_list();
     const TagList tag = ip_rt->GetActivePath()->tag_list();
 
@@ -462,7 +466,7 @@ void ArpVrfState::RouteUpdate(DBTablePartBase *part, DBEntryBase *entry) {
 
     state->UpdateMac(intf_nh);
 
-    if (route->vrf()->GetName() == agent->fabric_vrf_name() &&
+    if (route->vrf()->GetName() == agent->fabric_vrf_name() && intf_nh &&
         route->GetActiveNextHop()->GetType() == NextHop::RECEIVE &&
         arp_proto->agent()->router_id() == route->addr().to_v4()) {
         //Send Grat ARP

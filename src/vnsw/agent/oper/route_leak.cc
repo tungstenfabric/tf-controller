@@ -234,8 +234,8 @@ bool RouteLeakState::CanAdd(const InetUnicastRouteEntry *rt) {
 void RouteLeakState::AddRoute(const AgentRoute *route) {
     const InetUnicastRouteEntry *uc_rt =
         static_cast<const InetUnicastRouteEntry *>(route);
-
-    if (CanAdd(uc_rt) == false) {
+    const NextHop *anh = uc_rt->GetActiveNextHop();
+    if (CanAdd(uc_rt) == false && anh) {
         DeleteRoute(route, peer_list_);
         return;
     }
@@ -243,15 +243,15 @@ void RouteLeakState::AddRoute(const AgentRoute *route) {
     std::set<const Peer *> old_peer_list = peer_list_;
     peer_list_.clear();
 
-    if (uc_rt->GetActiveNextHop()->GetType() == NextHop::TUNNEL) {
+    if (anh->GetType() == NextHop::TUNNEL) {
         AddIndirectRoute(route);
-    } else if ((uc_rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE)||
+    } else if ((anh->GetType() == NextHop::COMPOSITE)||
             (route->FindLocalVmPortPath() &&
-             route->FindLocalVmPortPath()->nexthop() &&
-             route->FindLocalVmPortPath()->nexthop()->GetType()
+            route->FindLocalVmPortPath()->nexthop() &&
+            route->FindLocalVmPortPath()->nexthop()->GetType()
                             == NextHop::COMPOSITE)) {
         AddCompositeRoute(route);
-    } else if (uc_rt->GetActiveNextHop()->GetType() == NextHop::INTERFACE) {
+    } else if (anh->GetType() == NextHop::INTERFACE) {
         AddInterfaceRoute(route, route->FindLocalVmPortPath());
     }
 

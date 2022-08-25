@@ -795,13 +795,17 @@ bool VxlanRoutingManager::EvpnType5RouteNotify(DBTablePartBase *partition,
                            evpn_rt->GetVmIpPlen());
         return true;
     }
+    const NextHop *anh = evpn_rt->GetActiveNextHop();
+    if (anh == NULL) {
+        return true;
+    }
 
     InetUnicastAgentRouteTable *inet_table =
         evpn_rt->vrf()->GetInetUnicastRouteTable(evpn_rt->ip_addr());
 
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
     nh_req.key.reset((static_cast<NextHopKey *>
-                     (evpn_rt->GetActiveNextHop()->GetDBRequestKey().get()))->
+                     (anh->GetDBRequestKey().get()))->
                      Clone());
     nh_req.data.reset(new InterfaceNHData(vrf->GetName()));
     const AgentPath *p = evpn_rt->GetActivePath();

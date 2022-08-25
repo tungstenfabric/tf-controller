@@ -128,6 +128,8 @@ bool PktFlowInfo::ComputeDirection(const Interface *intf) {
 // Get VRF corresponding to a NH
 static uint32_t NhToVrf(const NextHop *nh) {
     const VrfEntry *vrf = NULL;
+    if (nh == NULL)
+        return VrfEntry::kInvalidIndex;
     switch (nh->GetType()) {
     case NextHop::COMPOSITE: {
         vrf = (static_cast<const CompositeNH *>(nh))->vrf();
@@ -690,12 +692,14 @@ void PktFlowInfo::LinkLocalServiceFromHost(const PktInfo *pkt, PktControlInfo *i
     if (out->vrf_) {
         out_rt = static_cast<InetUnicastRouteEntry *>(
                      FlowEntry::GetUcRoute(out->vrf_, mip->destination_ip()));
-        if (out_rt &&
-            out_rt->GetActiveNextHop()->GetType() == NextHop::COMPOSITE) {
+        if (out_rt) {
+            const NextHop *anh = out_rt->GetActiveNextHop();
+            if (anh && anh->GetType() == NextHop::COMPOSITE) {
             const CompositeNH *comp_nh =
-                static_cast<const CompositeNH *>(out_rt->GetActiveNextHop());
+                static_cast<const CompositeNH *>(anh);
             ComponentNH component_nh(vm_port->label(), vm_port->flow_key_nh());
             comp_nh->GetIndex(component_nh, out_component_nh_idx);
+            }
         }
     }
 
@@ -1586,8 +1590,9 @@ void PktFlowInfo::EgressProcess(const PktInfo *pkt, PktControlInfo *in,
                             ecmp_load_balance()), ingress);
             }
         }
-        if (out->rt_->GetActiveNextHop()->GetType() == NextHop::ARP ||
-            out->rt_->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+        const NextHop *anh = out->rt_->GetActiveNextHop();
+        if ((anh) && (anh->GetType() == NextHop::ARP ||
+            anh->GetType() == NextHop::RESOLVE)) {
             //If a packet came with mpls label pointing to
             //vrf NH, then we need to do a route lookup
             //and set the nexthop for reverse flow properly

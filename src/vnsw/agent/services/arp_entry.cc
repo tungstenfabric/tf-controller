@@ -276,8 +276,9 @@ void ArpEntry::AddArpRoute(bool resolved) {
     SecurityGroupList sg;
     TagList tag;
     VnListType vn_list;
-    if (entry) {
-        policy = entry->GetActiveNextHop()->PolicyEnabled();
+    const NextHop *anh;
+    if (entry && (anh = entry->GetActiveNextHop()) != NULL) {
+        policy = anh->PolicyEnabled();
         sg = entry->GetActivePath()->sg_list();
         tag = entry->GetActivePath()->tag_list();
         vn_list = entry->GetActivePath()->dest_vn_list();

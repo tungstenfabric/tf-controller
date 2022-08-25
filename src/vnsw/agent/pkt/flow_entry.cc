@@ -1296,7 +1296,7 @@ void FlowEntry::RpfInit(const AgentRoute *rt, const IpAddress &sip) {
         return;
 
     const NextHop *src_ip_nh = src_ip_rt->GetActiveNextHop();
-    if (src_ip_nh->GetType() == NextHop::COMPOSITE)
+    if ((src_ip_nh != NULL) && src_ip_nh->GetType() == NextHop::COMPOSITE)
         return;
 
     RpfSetSrcIpNhFields(src_ip_rt, src_ip_nh);
@@ -1373,7 +1373,7 @@ void FlowEntry::RpfComputeEgress() {
 
     InetUnicastRouteEntry *rt = static_cast<InetUnicastRouteEntry *>
         (FlowEntry::GetUcRoute(vrf, key().src_addr));
-    if (!rt ) {
+    if (!rt) {
         FlowInfo flow_info;
         FillFlowInfo(flow_info);
         FLOW_TRACE(Trace, "Error setting RPF NH. Route not found in "
@@ -1528,18 +1528,20 @@ void FlowEntry::GetSourceRouteInfo(const AgentRoute *rt) {
         data_.source_plen = rt->plen();
         data_.source_tag_id_l = path->tag_list();
     }
-
     /* Handle case when default route NextHop points to vrf */
-    if (rt && rt->GetActiveNextHop()->GetType() == NextHop::VRF) {
-        const VrfNH *nh =
-            static_cast<const VrfNH *>(rt->GetActiveNextHop());
-        AgentRoute *new_rt = GetUcRoute(nh->GetVrf(), key_.src_addr);
-        if (new_rt) {
-            path = new_rt->GetActivePath();
-            if (path) {
-                data_.origin_vn_src = path->origin_vn();
-                if (!path->origin_vn().empty()) {
-                    data_.origin_vn_src_list.insert(path->origin_vn());
+    if (rt) {
+        const NextHop *anh = rt->GetActiveNextHop();
+        if (anh && anh->GetType() == NextHop::VRF) {
+            const VrfNH *nh =
+                static_cast<const VrfNH *>(anh);
+            AgentRoute *new_rt = GetUcRoute(nh->GetVrf(), key_.src_addr);
+            if (new_rt) {
+                path = new_rt->GetActivePath();
+                if (path) {
+                    data_.origin_vn_src = path->origin_vn();
+                    if (!path->origin_vn().empty()) {
+                        data_.origin_vn_src_list.insert(path->origin_vn());
+                    }
                 }
             }
         }
@@ -1600,16 +1602,19 @@ void FlowEntry::GetDestRouteInfo(const AgentRoute *rt) {
     }
 
     /* Handle case when default route NextHop points to vrf */
-    if (rt && rt->GetActiveNextHop()->GetType() == NextHop::VRF) {
-        const VrfNH *nh =
-            static_cast<const VrfNH *>(rt->GetActiveNextHop());
-        AgentRoute *new_rt = GetUcRoute(nh->GetVrf(), key_.dst_addr);
-        if (new_rt) {
-            path = new_rt->GetActivePath();
-            if (path) {
-                data_.origin_vn_dst = path->origin_vn();
-                if (!path->origin_vn().empty()) {
-                    data_.origin_vn_dst_list.insert(path->origin_vn());
+    if (rt) {
+        const NextHop *anh = rt->GetActiveNextHop();
+        if (anh && anh->GetType() == NextHop::VRF) {
+            const VrfNH *nh =
+                static_cast<const VrfNH *>(anh);
+            AgentRoute *new_rt = GetUcRoute(nh->GetVrf(), key_.dst_addr);
+            if (new_rt) {
+                path = new_rt->GetActivePath();
+                if (path) {
+                    data_.origin_vn_dst = path->origin_vn();
+                    if (!path->origin_vn().empty()) {
+                        data_.origin_vn_dst_list.insert(path->origin_vn());
+                    }
                 }
             }
         }

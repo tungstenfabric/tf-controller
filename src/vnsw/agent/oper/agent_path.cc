@@ -341,7 +341,8 @@ bool AgentPath::ResolveGwNextHops(Agent *agent, const AgentRoute *sync_route) {
     if (ecmp_member_list_.size() == 1) {
         AgentPathEcmpComponentPtr member = ecmp_member_list_[0];
         InetUnicastRouteEntry *uc_rt = table->FindRoute(member->GetGwIpAddr());
-        if (uc_rt == NULL || uc_rt->plen() == 0) {
+        const NextHop *anh;
+        if (uc_rt == NULL || uc_rt->plen() == 0 || (anh = uc_rt->GetActiveNextHop()) == NULL) {
             set_unresolved(true);
             member->UpdateDependentRoute(NULL);
             member->SetUnresolved(true);
@@ -349,7 +350,7 @@ bool AgentPath::ResolveGwNextHops(Agent *agent, const AgentRoute *sync_route) {
             set_unresolved(false);
             table->RemoveUnresolvedRoute(GetParentRoute());
             DBEntryBase::KeyPtr key =
-                uc_rt->GetActiveNextHop()->GetDBRequestKey();
+                anh->GetDBRequestKey();
             const NextHopKey *nh_key =
                 static_cast<const NextHopKey*>(key.get());
             nh = static_cast<NextHop *>(agent->nexthop_table()->
@@ -378,7 +379,8 @@ bool AgentPath::ResolveGwNextHops(Agent *agent, const AgentRoute *sync_route) {
         while (ecmp_member_it != ecmp_member_list_.end()) {
             InetUnicastRouteEntry *uc_rt =
                 table->FindRoute((*ecmp_member_it)->GetGwIpAddr());
-            if (uc_rt == NULL || uc_rt->plen() == 0) {
+            const NextHop *anh;
+            if (uc_rt == NULL || uc_rt->plen() == 0 || (anh = uc_rt->GetActiveNextHop()) == NULL) {
                 (*ecmp_member_it)->UpdateDependentRoute(NULL);
                 (*ecmp_member_it)->SetUnresolved(true);
                 if (!path_unresolved) {
@@ -396,7 +398,7 @@ bool AgentPath::ResolveGwNextHops(Agent *agent, const AgentRoute *sync_route) {
             } else {
                 is_ecmp_member_resolved = true;
                 DBEntryBase::KeyPtr key =
-                    uc_rt->GetActiveNextHop()->GetDBRequestKey();
+                    anh->GetDBRequestKey();
                 NextHopKey *nh_key = static_cast<NextHopKey *>(key.release());
                 if (nh_key->GetType() != NextHop::COMPOSITE) {
                     //By default all component members of composite NH
@@ -495,7 +497,7 @@ bool AgentPath::Sync(AgentRoute *sync_route) {
     if (rt == sync_route) {
         rt = NULL;
     }
-
+    const NextHop *anh;
     if (rt == NULL || rt->plen() == 0) {
        if (agent->params()->subnet_hosts_resolvable() == false &&
             agent->fabric_vrf_name() == vrf_name_) {
@@ -507,9 +509,20 @@ bool AgentPath::Sync(AgentRoute *sync_route) {
         } else {
             unresolved = true;
         }
-    } else if (rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+    } else if ((anh = rt->GetActiveNextHop()) == NULL) {
+       if (agent->params()->subnet_hosts_resolvable() == false &&
+            agent->fabric_vrf_name() == vrf_name_) {
+            unresolved = false;
+            assert(gw_ip_.is_v4());
+            table->AddArpReq(vrf_name_, gw_ip_.to_v4(), vrf_name_,
+                             agent->vhost_interface(), false,
+                             dest_vn_list_, sg_list_, tag_list_);
+        } else {
+            unresolved = true;
+        }
+    } else if (anh->GetType() == NextHop::RESOLVE) {
         const ResolveNH *nh =
-            static_cast<const ResolveNH *>(rt->GetActiveNextHop());
+            static_cast<const ResolveNH *>(anh);
         std::string nexthop_vrf = nh->get_interface()->vrf()->GetName();
         if (nh->get_interface()->vrf()->forwarding_vrf()) {
             nexthop_vrf = nh->get_interface()->vrf()->forwarding_vrf()->GetName();

@@ -689,11 +689,12 @@ bool Inet4UnicastGatewayRoute::AddChangePathExtended(Agent *agent, AgentPath *pa
             (agent->vrf_table()->GetInet4UnicastRouteTable(vrf_name_));
         IpAddress gw_ip = gw_list_.empty() ? Ip4Address(0) : gw_list_[0];
         rt = table->FindRoute(gw_ip);
-        if (rt == NULL || rt->plen() == 0) {
+        const NextHop *anh;
+        if (rt == NULL || rt->plen() == 0 || (anh = rt->GetActiveNextHop()) == NULL) {
             path->set_unresolved(true);
-        } else if (rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+        } else if (anh->GetType() == NextHop::RESOLVE) {
             const ResolveNH *nh =
-                static_cast<const ResolveNH *>(rt->GetActiveNextHop());
+                static_cast<const ResolveNH *>(anh);
             path->set_unresolved(true);
             std::string nexthop_vrf = nh->get_interface()->vrf()->GetName();
             if (nh->get_interface()->vrf()->forwarding_vrf()) {

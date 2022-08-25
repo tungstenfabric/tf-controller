@@ -979,8 +979,9 @@ void NdpEntry::AddNdpRoute(bool resolved) {
     SecurityGroupList sg;
     TagList tag;
     VnListType vn_list;
-    if (entry) {
-        policy = entry->GetActiveNextHop()->PolicyEnabled();
+    const NextHop *nh;
+    if (entry && (nh = entry->GetActiveNextHop()) != NULL) {
+        policy = nh->PolicyEnabled();
         sg = entry->GetActivePath()->sg_list();
         tag = entry->GetActivePath()->tag_list();
         vn_list = entry->GetActivePath()->dest_vn_list();

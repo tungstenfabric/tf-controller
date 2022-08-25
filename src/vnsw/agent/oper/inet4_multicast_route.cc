@@ -262,9 +262,10 @@ bool Inet4MulticastRouteEntry::DBEntrySandesh(Sandesh *sresp, bool stale) const 
     MulticastGroupObject *mc_obj = MulticastHandler::GetInstance()->
         FindGroupObject(vrf()->GetName(), Ip4Address(), dest_ip_addr());
     Agent *agent = (static_cast<AgentRouteTable *>(get_table()))->agent();
-    if (!stale || (mc_obj && (mc_obj->peer_identifier() != agent->controller()->
+    const NextHop *anh = GetActiveNextHop();
+    if (!stale || anh || (mc_obj && (mc_obj->peer_identifier() != agent->controller()->
                    multicast_sequence_number()))) {
-        GetActiveNextHop()->SetNHSandeshData(data.nh);
+        anh->SetNHSandeshData(data.nh);
     }
 
     std::vector<RouteMcSandeshData> &list =
