@@ -179,6 +179,9 @@ void ServicesSandesh::DhcpStatsSandesh(std::string ctxt, bool more) {
     dhcp->set_nacks_sent(dstats.nacks);
     dhcp->set_relay_request(dstats.relay_req);
     dhcp->set_relay_response(dstats.relay_resp);
+    dhcp->set_unknown_msg_drop(dstats.unknown_msg_drop);
+    dhcp->set_dhcp_disabled_drop(dstats.dhcp_disabled_drop);
+    dhcp->set_incorrect_mac(dstats.incorrect_mac);
     dhcp->set_context(ctxt);
     dhcp->set_more(more);
     dhcp->Response();

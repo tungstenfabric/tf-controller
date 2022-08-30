@@ -227,7 +227,7 @@ public:
                   uint8_t *options, int num_options, char *source_mac,
                   bool error = false, bool response = false,
                   uint32_t yiaddr = 0, uint32_t vmifindex = 0,
-                  uint16_t server_port = DHCP_SERVER_PORT) {
+                  uint16_t server_port = DHCP_SERVER_PORT, bool dhcp_enable = true, bool set_intf_mac = false) {
         int len = 512;
         uint8_t *buf = new uint8_t[len];
         memset(buf, 0, len);
@@ -239,6 +239,20 @@ public:
 
         agent_hdr *agent = (agent_hdr *)(eth + 1);
         agent->hdr_ifindex = htons(ifindex);
+        if(dhcp_enable != true) {
+            Interface *itf = Agent::GetInstance()->interface_table()->FindInterface(ifindex);
+            VmInterface *vm_itf = dynamic_cast<VmInterface *>(itf);
+            if (vm_itf) {
+                vm_itf->set_dhcp_enable_config(false);
+            }
+        }
+        if(set_intf_mac != false) {
+            Interface *itf = Agent::GetInstance()->interface_table()->FindInterface(ifindex);
+            VmInterface *vm_itf = dynamic_cast<VmInterface *>(itf);
+            if (vm_itf) {
+                vm_itf->set_vm_mac(MacAddress::ZeroMac());
+            }
+        }
         agent->hdr_vrf = htons(0);
         agent->hdr_cmd = htons(AgentHdr::TRAP_NEXTHOP);
 
@@ -798,6 +812,119 @@ TEST_F(DhcpTest, DhcpReqTest) {
     all_sandesh->HandleRequest();
     client->WaitForIdle();
     all_sandesh->Release();
+
+    client->Reset();
+    DelIPAM("vn1", "vdns1");
+    client->WaitForIdle();
+    DelVDNS("vdns1");
+    client->WaitForIdle();
+
+    client->Reset();
+    DeleteVmportEnv(input, 2, 1, 0);
+    client->WaitForIdle();
+
+    Agent::GetInstance()->GetDhcpProto()->ClearStats();
+}
+
+TEST_F(DhcpTest, DhcpDisabledTest) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+        {"vnet2", 2, "1.1.1.2", "00:00:00:02:02:02", 1, 2},
+    };
+    uint8_t options[] = {
+        DHCP_OPTION_MSG_TYPE,
+        DHCP_OPTION_HOST_NAME,
+        DHCP_OPTION_DOMAIN_NAME,
+        DHCP_OPTION_END
+    };
+    DhcpProto::DhcpStats stats;
+
+    ClearPktTrace();
+    IpamInfo ipam_info[] = {
+        {"1.2.3.128", 27, "1.2.3.129", true},
+        {"7.8.9.0", 24, "7.8.9.12", true},
+        {"1.1.1.0", 24, "1.1.1.200", true},
+    };
+    char vdns_attr[] = "<virtual-DNS-data>\n <domain-name>test.contrail.juniper.net</domain-name>\n <dynamic-records-from-client>true</dynamic-records-from-client>\n <record-order>fixed</record-order>\n <default-ttl-seconds>120</default-ttl-seconds>\n </virtual-DNS-data>\n";
+    char ipam_attr[] = "<network-ipam-mgmt>\n <ipam-dns-method>virtual-dns-server</ipam-dns-method>\n <ipam-dns-server><virtual-dns-server-name>vdns1</virtual-dns-server-name></ipam-dns-server>\n </network-ipam-mgmt>\n";
+
+    CreateVmportEnv(input, 2, 0);
+    client->WaitForIdle();
+    client->Reset();
+    AddVDNS("vdns1", vdns_attr);
+    client->WaitForIdle();
+    AddIPAM("vn1", ipam_info, 3, ipam_attr, "vdns1");
+    client->WaitForIdle();
+
+    SendDhcp(GetItfId(0), 0x8000, DHCP_DISCOVER, options, 4, input[0].mac, false, false, 0, 0, DHCP_SERVER_PORT, false);
+
+    usleep(1000);
+    client->WaitForIdle();
+    stats = Agent::GetInstance()->GetDhcpProto()->GetStats();
+    EXPECT_EQ(1U, stats.dhcp_disabled_drop);
+
+    SendDhcp(GetItfId(0), 0x8000, DHCP_REQUEST, options, 4, input[0].mac, false, false, 0, 0, DHCP_SERVER_PORT, false);
+
+    usleep(1000);
+    client->WaitForIdle();
+    stats = Agent::GetInstance()->GetDhcpProto()->GetStats();
+    EXPECT_EQ(2U, stats.dhcp_disabled_drop);
+
+    client->Reset();
+    DelIPAM("vn1", "vdns1");
+    client->WaitForIdle();
+    DelVDNS("vdns1");
+    client->WaitForIdle();
+
+    client->Reset();
+    DeleteVmportEnv(input, 2, 1, 0);
+    client->WaitForIdle();
+
+    Agent::GetInstance()->GetDhcpProto()->ClearStats();
+}
+
+TEST_F(DhcpTest, DhcpIncorrectMacTest) {
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+        {"vnet2", 2, "1.1.1.2", "00:00:00:02:02:02", 1, 2},
+    };
+    uint8_t options[] = {
+        DHCP_OPTION_MSG_TYPE,
+        DHCP_OPTION_HOST_NAME,
+        DHCP_OPTION_DOMAIN_NAME,
+        DHCP_OPTION_END
+    };
+    DhcpProto::DhcpStats stats;
+
+    ClearPktTrace();
+    IpamInfo ipam_info[] = {
+        {"1.2.3.128", 27, "1.2.3.129", true},
+        {"7.8.9.0", 24, "7.8.9.12", true},
+        {"1.1.1.0", 24, "1.1.1.200", true},
+    };
+    char vdns_attr[] = "<virtual-DNS-data>\n <domain-name>test.contrail.juniper.net</domain-name>\n <dynamic-records-from-client>true</dynamic-records-from-client>\n <record-order>fixed</record-order>\n <default-ttl-seconds>120</default-ttl-seconds>\n </virtual-DNS-data>\n";
+    char ipam_attr[] = "<network-ipam-mgmt>\n <ipam-dns-method>virtual-dns-server</ipam-dns-method>\n <ipam-dns-server><virtual-dns-server-name>vdns1</virtual-dns-server-name></ipam-dns-server>\n </network-ipam-mgmt>\n";
+
+    CreateVmportEnv(input, 2, 0);
+    client->WaitForIdle();
+    client->Reset();
+    AddVDNS("vdns1", vdns_attr);
+    client->WaitForIdle();
+    AddIPAM("vn1", ipam_info, 3, ipam_attr, "vdns1");
+    client->WaitForIdle();
+
+    SendDhcp(GetItfId(0), 0x8000, DHCP_DISCOVER, options, 4, input[0].mac, false, false, 0, 0, DHCP_SERVER_PORT, true, true);
+
+    usleep(1000);
+    client->WaitForIdle();
+    stats = Agent::GetInstance()->GetDhcpProto()->GetStats();
+    EXPECT_EQ(1U, stats.incorrect_mac);
+    SendDhcp(GetItfId(0), 0x8000, DHCP_REQUEST, options, 4, input[0].mac, false, false, 0, 0, DHCP_SERVER_PORT, true, true);
+
+    usleep(1000);
+    client->WaitForIdle();
+    stats = Agent::GetInstance()->GetDhcpProto()->GetStats();
+    EXPECT_EQ(2U, stats.incorrect_mac);
 
     client->Reset();
     DelIPAM("vn1", "vdns1");

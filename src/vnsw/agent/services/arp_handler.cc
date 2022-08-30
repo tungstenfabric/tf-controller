@@ -25,10 +25,15 @@ ArpHandler::~ArpHandler() {
 }
 
 bool ArpHandler::Run() {
+
     // Process ARP only when the IP Fabric interface is configured
+
     assert(agent());
     assert(agent()->GetArpProto());
+    ArpProto *arp_proto = agent()->GetArpProto();
+
     if (agent()->GetArpProto()->ip_fabric_interface() == NULL) {
+        arp_proto->IncrementStatsIPFabricNotInst();
         delete pkt_info_->ipc;
         return true;
     }

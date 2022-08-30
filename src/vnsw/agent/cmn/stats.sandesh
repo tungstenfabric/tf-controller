@@ -38,8 +38,14 @@ response sandesh PktTrapStatsResp {
     4:  i64 no_handler;
     5:  i64 pkt_dropped;
     6:  i64 pkt_fragments_dropped;
+    7:  i64 pkt_invalid_mpls_hdr;
+    8:  i64 pkt_invalid_ip_pkt;
+    9:  i64 pkt_drop_due_to_disable_tnl;
+    10: i64 pkt_invalid_frm_tor;
+    11: i64 pkt_drop_due_to_decode_error;
+    12: i64 pkt_drop_due_to_invalid_ethertype;
+    13: i64 pkt_drop_due_to_flow_trap;
 }
-
 /**
  *  Response for flows returned as a part of agent stats
  */

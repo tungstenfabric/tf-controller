@@ -33,6 +33,9 @@ public:
         sandesh_http_sessions_(0U), nh_count_(0U), pkt_exceptions_(0U),
         pkt_invalid_agent_hdr_(0U), pkt_invalid_interface_(0U),
         pkt_no_handler_(0U), pkt_fragments_dropped_(0U), pkt_dropped_(0U),
+        pkt_invalid_mpls_hdr_(0U), pkt_invalid_ip_pkt_(0U), pkt_drop_due_to_disable_tnl_(0U),
+        pkt_invalid_frm_tor_(0U), pkt_drop_due_to_decode_error_(0U), pkt_drop_due_to_invalid_ethertype_(0U),
+        pkt_drop_due_to_flow_trap_(0U),
         max_flow_count_(0),
         flow_drop_due_to_max_limit_(0), flow_drop_due_to_linklocal_limit_(0),
         flow_stats_update_timeout_(kFlowStatsUpdateInterval),
@@ -137,6 +140,27 @@ public:
     void incr_pkt_fragments_dropped() {pkt_fragments_dropped_++;}
     uint64_t pkt_fragments_dropped() const {return pkt_fragments_dropped_;}
 
+    void incr_pkt_invalid_mpls_hdr() {pkt_invalid_mpls_hdr_++;}
+    uint64_t pkt_invalid_mpls_hdr() const {return pkt_invalid_mpls_hdr_;}
+
+    void incr_pkt_invalid_ip_pkt() {pkt_invalid_ip_pkt_++;}
+    uint64_t pkt_invalid_ip_pkt() const {return pkt_invalid_ip_pkt_;}
+
+    void incr_pkt_drop_due_to_disable_tnl() {pkt_drop_due_to_disable_tnl_++;}
+    uint64_t pkt_drop_due_to_disable_tnl() const {return pkt_drop_due_to_disable_tnl_;}
+
+    void incr_pkt_invalid_frm_tor() {pkt_invalid_frm_tor_++;}
+    uint64_t pkt_invalid_frm_tor() const {return pkt_invalid_frm_tor_;}
+
+    void incr_pkt_drop_due_to_decode_error() {pkt_drop_due_to_decode_error_++;}
+    uint64_t pkt_drop_due_to_decode_error() const {return pkt_drop_due_to_decode_error_;}
+
+    void incr_pkt_drop_due_to_invalid_ethertype() {pkt_drop_due_to_invalid_ethertype_++;}
+    uint64_t pkt_drop_due_to_invalid_ethertype() const {return pkt_drop_due_to_invalid_ethertype_;}
+
+    void incr_pkt_drop_due_to_flow_trap() {pkt_drop_due_to_flow_trap_++;}
+    uint64_t pkt_drop_due_to_flow_trap() const {return pkt_drop_due_to_flow_trap_;}
+
     void incr_pkt_dropped() {pkt_dropped_++;}
     uint64_t pkt_dropped() const {return pkt_dropped_;}
 
@@ -221,6 +245,13 @@ private:
     uint64_t pkt_no_handler_;
     uint64_t pkt_fragments_dropped_;
     uint64_t pkt_dropped_;
+    uint64_t pkt_invalid_mpls_hdr_;
+    uint64_t pkt_invalid_ip_pkt_;
+    uint64_t pkt_drop_due_to_disable_tnl_;
+    uint64_t pkt_invalid_frm_tor_;
+    uint64_t pkt_drop_due_to_decode_error_;
+    uint64_t pkt_drop_due_to_invalid_ethertype_;
+    uint64_t pkt_drop_due_to_flow_trap_;
 
     // Flow stats
     tbb::atomic<uint32_t> flow_count_;

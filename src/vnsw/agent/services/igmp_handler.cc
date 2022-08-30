@@ -62,6 +62,7 @@ bool IgmpHandler::HandleVmIgmpPacket() {
 
     if (pkt_info_->len <
                 (sizeof(struct ether_header) + ntohs(pkt_info_->ip->ip_len))) {
+        igmp_proto->IncrStatsIpPktLen();
         return true;
     }
 

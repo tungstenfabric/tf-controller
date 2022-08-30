@@ -1266,6 +1266,7 @@ public:
     const Ip4Address &vm_ip_service_addr() const { return vm_ip_service_addr_; }
     const Ip6Address &primary_ip6_addr() const { return primary_ip6_addr_; }
     const MacAddress &vm_mac() const { return vm_mac_; }
+    void set_vm_mac(const MacAddress &mac) { vm_mac_ = mac; }
     bool fabric_port() const { return fabric_port_; }
     bool need_linklocal_ip() const { return  need_linklocal_ip_; }
     bool drop_new_flows() const { return drop_new_flows_; }
@@ -1323,6 +1324,7 @@ public:
     bool flood_unknown_unicast() const { return flood_unknown_unicast_; }
     bool bridging() const { return bridging_; }
     bool layer3_forwarding() const { return layer3_forwarding_; }
+    void set_layer3_forwarding(bool val) { layer3_forwarding_ = val; }
     const std::string &vm_name() const { return vm_name_; }
     const std::string &vrf_name() const { return vrf_name_; }
     const boost::uuids::uuid &vm_project_uuid() const {return vm_project_uuid_;}

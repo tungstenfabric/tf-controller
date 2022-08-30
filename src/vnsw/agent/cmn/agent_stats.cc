@@ -22,8 +22,11 @@ void AgentStats::Reset() {
     sandesh_reconnects_ = sandesh_in_msgs_ = sandesh_out_msgs_ = 0;
     sandesh_http_sessions_ = nh_count_ = pkt_exceptions_ = 0;
     pkt_invalid_agent_hdr_ = pkt_invalid_interface_ = 0;
-    pkt_no_handler_ = pkt_dropped_ = flow_created_ = 0;
-    pkt_fragments_dropped_ = hold_flow_count_ = 0;
+    pkt_no_handler_ = pkt_dropped_ = 0;
+    pkt_invalid_mpls_hdr_ = pkt_invalid_ip_pkt_ = pkt_drop_due_to_disable_tnl_ = 0;
+    pkt_invalid_frm_tor_ = pkt_drop_due_to_decode_error_ = pkt_drop_due_to_invalid_ethertype_ = 0;
+    pkt_drop_due_to_flow_trap_ = 0;
+    flow_created_ = pkt_fragments_dropped_ = hold_flow_count_ = 0;
     flow_aged_ = flow_drop_due_to_max_limit_ = 0;
     flow_drop_due_to_linklocal_limit_ = ipc_in_msgs_ = 0;
     ipc_out_msgs_ = in_tpkts_ = in_bytes_ = out_tpkts_ = 0;
@@ -51,6 +54,13 @@ void AgentStatsReq::HandleRequest() const {
         pkt->set_no_handler(stats->pkt_no_handler());
         pkt->set_pkt_dropped(stats->pkt_dropped());
         pkt->set_pkt_fragments_dropped(stats->pkt_fragments_dropped());
+        pkt->set_pkt_invalid_mpls_hdr(stats->pkt_invalid_mpls_hdr());
+        pkt->set_pkt_invalid_ip_pkt(stats->pkt_invalid_ip_pkt());
+        pkt->set_pkt_drop_due_to_disable_tnl(stats->pkt_drop_due_to_disable_tnl());
+        pkt->set_pkt_invalid_frm_tor(stats->pkt_invalid_frm_tor());
+        pkt->set_pkt_drop_due_to_decode_error(stats->pkt_drop_due_to_decode_error());
+        pkt->set_pkt_drop_due_to_invalid_ethertype(stats->pkt_drop_due_to_invalid_ethertype());
+        pkt->set_pkt_drop_due_to_flow_trap(stats->pkt_drop_due_to_flow_trap());
         pkt->set_context(context());
         pkt->set_more(true);
         pkt->Response();

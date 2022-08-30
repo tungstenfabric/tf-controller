@@ -45,7 +45,8 @@ public:
         DhcpStats() { Reset(); }
         void Reset() {
             discover = request = inform = decline = release = other =
-            offers = acks = nacks = errors = relay_req = relay_resp = 0;
+            offers = acks = nacks = errors = relay_req = relay_resp =
+            unknown_msg_drop = dhcp_disabled_drop = incorrect_mac = 0;
         }
 
         uint32_t discover;
@@ -60,6 +61,9 @@ public:
         uint32_t relay_req;
         uint32_t relay_resp;
         uint32_t errors;
+        uint32_t unknown_msg_drop;
+        uint32_t dhcp_disabled_drop;
+        uint32_t incorrect_mac;
     };
 
     void Shutdown();
@@ -106,6 +110,9 @@ public:
     void IncrStatsRelayReqs() { stats_.relay_req++; }
     void IncrStatsRelayResps() { stats_.relay_resp++; }
     void IncrStatsErrors() { stats_.errors++; }
+    void IncrUnknownMsgDrops() { stats_.unknown_msg_drop++; }
+    void IncrDhcpDisabledDrops() { stats_.dhcp_disabled_drop++; }
+    void IncrIncorrectMac() { stats_.incorrect_mac++; }
     const DhcpStats &GetStats() const { return stats_; }
     void ClearStats() { stats_.Reset(); }
 
