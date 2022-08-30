@@ -8,7 +8,6 @@
       include_role:
         name: rollback_compare
       ignore_errors: True
-      static: no
 
     - name: Initialize variables
       set_fact:
@@ -72,7 +71,7 @@
       register: ccheck_results
 
     - set_fact:
-      check_results: "{{ccheck_results}}"
+        check_results: "{{ccheck_results}}"
   rescue:
     - name: Perform the necessary error handling
       include_tasks: error_handler.yml

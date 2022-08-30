@@ -3,7 +3,6 @@
       include_role:
         name: rollback_compare
       ignore_errors: True
-      static: no
 
     - name: Pushing config ... please wait
       block:
