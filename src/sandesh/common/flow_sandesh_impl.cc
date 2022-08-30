@@ -261,11 +261,13 @@ void SessionEndpointObject::adjust_session_end_point_objects(
                         }
                     }
                 }
+                std::map<SessionIpPort, SessionInfo>::iterator sessions_temp_iter = sessions_iter;
+                sessions_temp_iter++;
                 if (erase_session) {
                     local_ep_iter->second.sessionMap.
                                  erase(sessions_iter);
                 }
-                sessions_iter++;
+                sessions_iter  = sessions_temp_iter;
 
             }
        }
