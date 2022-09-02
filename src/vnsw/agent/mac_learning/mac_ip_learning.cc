@@ -18,7 +18,7 @@
 
 MacIpLearningTable::MacIpLearningTable(Agent *agent, MacLearningProto *proto) :
     agent_(agent),
-    work_queue_(this) {
+    work_queue_(this), macip_map_mutex_() {
     agent->health_check_table()->RegisterHealthCheckNotifyCallback(
             boost::bind(&MacIpLearningTable::MacIpEntryHcNotify, this, _1));
 }
@@ -75,6 +75,7 @@ void MacIpLearningTable::Add(MacLearningEntryPtr ptr) {
                     "ip address does not belong to same subnet, ignoring");
         return;
     }
+    tbb::mutex::scoped_lock lock(macip_map_mutex_);
     MacIpLearningEntryMap::iterator it = mac_ip_learning_entry_map_.find(key);
     if (it != mac_ip_learning_entry_map_.end()) {
         MacIpLearningEntry *existing_entry =
@@ -124,6 +125,7 @@ void MacIpLearningTable::Delete(const MacLearningEntryPtr ptr) {
         return;
     }
 
+    tbb::mutex::scoped_lock lock(macip_map_mutex_);
     MacIpLearningKey key(ptr->vrf_id(), entry->IpAddr());
     if (mac_ip_learning_entry_map_.find(key) == mac_ip_learning_entry_map_.end()) {
         return;
@@ -143,6 +145,7 @@ void MacIpLearningTable::Resync(MacLearningEntryPtr ptr) {
         return;
     }
     MacIpLearningKey key(ptr->vrf_id(), entry->IpAddr());
+    tbb::mutex::scoped_lock lock(macip_map_mutex_);
     if (mac_ip_learning_entry_map_.find(key) == mac_ip_learning_entry_map_.end()) {
         return;
     }
@@ -156,6 +159,7 @@ void MacIpLearningTable::Resync(MacLearningEntryPtr ptr) {
 
 void MacIpLearningTable::DetectIpMove(MacLearningEntryRequestPtr ptr) {
     MacIpLearningKey key(ptr->vrf_id(), ptr->ip());
+    tbb::mutex::scoped_lock lock(macip_map_mutex_);
     MacIpLearningEntryMap::iterator it = mac_ip_learning_entry_map_.find(key);
     if (it == mac_ip_learning_entry_map_.end()) {
         return;
@@ -199,6 +203,7 @@ void MacIpLearningTable::MacIpEntryHcNotify(
 }
 void MacIpLearningTable::MacIpEntryUnreachable(MacLearningEntryRequestPtr ptr) {
     MacIpLearningKey key(ptr->vrf_id(), ptr->ip());
+    tbb::mutex::scoped_lock lock(macip_map_mutex_);
     MacIpLearningEntryMap::iterator it = mac_ip_learning_entry_map_.find(key);
     if (it == mac_ip_learning_entry_map_.end()) {
         return;
@@ -220,6 +225,7 @@ void MacIpLearningTable::Enqueue(MacLearningEntryRequestPtr req) {
 }
 MacIpLearningEntry*
 MacIpLearningTable::Find(const MacIpLearningKey &key) {
+    tbb::mutex::scoped_lock lock(macip_map_mutex_);
     MacIpLearningEntryMap::iterator it = mac_ip_learning_entry_map_.find(key);
     if (it == mac_ip_learning_entry_map_.end()) {
         return NULL;
