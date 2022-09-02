@@ -11,6 +11,7 @@
 #include "mac_learning_event.h"
 #include "pkt/flow_token.h"
 #include "health_check.h"
+#include <tbb/mutex.h>
 
 class MacIpLearningTable;
 class MacIpLearningRequestQueue;
@@ -105,6 +106,7 @@ private:
     Agent *agent_;
     MacIpLearningEntryMap mac_ip_learning_entry_map_;
     MacIpLearningRequestQueue work_queue_;
+    tbb::mutex macip_map_mutex_;
     DISALLOW_COPY_AND_ASSIGN(MacIpLearningTable);
 };
 #endif
