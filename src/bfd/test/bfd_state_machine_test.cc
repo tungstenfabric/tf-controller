@@ -11,13 +11,15 @@ typedef contrail::regex regex_t;
 
 #include "bfd/bfd_state_machine.h"
 #include "bfd/test/bfd_test_utils.h"
+#include "bfd/bfd_session.h"
 #include <testing/gunit.h>
 
 using namespace BFD;
 
 class StateMachineTest : public ::testing::Test {
   public:
-    StateMachineTest() : sm(CreateStateMachine(&evm, NULL)) {}
+    Session test_session;
+    StateMachineTest() : sm(CreateStateMachine(&evm, &test_session)) {}
 
     EventManager evm;
     boost::scoped_ptr<StateMachine> sm;
