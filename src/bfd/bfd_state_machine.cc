@@ -48,9 +48,11 @@ class StateMachineImpl : public StateMachine,
 
     void Notify(BFDState state) {
         LOG(DEBUG, "StateMachine state: " << state);
-        if (cb_.is_initialized()) {
-            evm_->io_service()->post(boost::bind(cb_.get(),
-                session_ ? session_->key() : SessionKey(), GetState()));
+        if (cb_.is_initialized() && session_) {
+            (cb_.get())(session_->key(), GetState());
+        } else {
+            LOG(ERROR, "StateMachine cb initialized: "
+                << cb_.is_initialized() << " session: " << session_);
         }
     }
 
