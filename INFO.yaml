@@ -4,12 +4,12 @@ project_creation_date: '2019-12-31'
 project_category: ''
 lifecycle_state: 'Incubation'
 project_lead: &tungstenfabric_tf-controller_ptl
-    name: 'Sukhdev Kapur'
-    email: 'sukhdevkapur@gmail.com'
-    id: 'sukhdevkapur'
-    company: ''
-    timezone: 'America/Los_Angeles'
-primary_contact: *tungstenfabric_tf-analytics_ptl
+    name: 'Chandra Mohan G'
+    email: 'cmohan@juniper.net'
+    id: 'cmohan'
+    company: 'Juniper'
+    timezone: 'Asia/Kolkata'
+primary_contact: *tungstenfabric_tf-controller_ptl
 issue_tracking:
     type: 'jira'
     url: 'https://jira.tungsten.io/projects/'
@@ -57,7 +57,7 @@ committers:
     - name: 'Nagendra Maynattamai'
       email: 'np.nwdev@gmail.com'
       id: 'nagendraprasath'
-      company: ''
+      company: 'Juniper'
       timezone: 'America/Los_Angeles'
     - name: 'Atul Moghe'
       email: 'amoghe@juniper.net'
@@ -73,7 +73,7 @@ committers:
       email: 'pranavad@juniper.net'
       company: 'Juniper'
       id: 'pranavadn'
-      timezone: ''
+      timezone: 'Asia/Kolkata'
     - name: 'sangarshan pillareddy'
       email: 'sangarshp@juniper.net'
       company: 'Juniper'
@@ -89,21 +89,20 @@ committers:
       company: 'Juniper'
       id: 'vaidyasd'
       timezone: 'America/Los_Angeles'
-#Added commitors from B&R Team
-    - name: 'Chandra Mohan G'
-      email: 'cmohan@juniper.net'
-      company: 'Juniper'
-      Juniper id: 'cmohan'
-      timezone: ‘Asia/Kolkata’
     - name: 'Minakshi'
       email: 'mlnu@juniper.net'
       company: 'Juniper'
-      Juniper id: ‘mlnu’
+      id: 'mlnu'
       timezone: 'Asia/Kolkata'
     - name: 'Ankit Patne'
       email: 'apatne@juniper.net'
       company: 'Juniper'
-      Juniper id: ‘apatne’
+      id: 'apatne'
+      timezone: 'Asia/Kolkata'
+    - name: 'Sarathkumar Pandurangan'
+      email: 'spandurangan@juniper.net'
+      company: 'Juniper'
+      id: 'spandurangan'
       timezone: 'Asia/Kolkata'
 tsc:
     # yamllint disable rule:line-length
