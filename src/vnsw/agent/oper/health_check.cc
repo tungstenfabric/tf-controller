@@ -43,7 +43,7 @@ HealthCheckInstanceBase::HealthCheckInstanceBase(HealthCheckService *service,
                                                  VmInterface *intf,
                                                  bool ignore_status_event) :
     service_(NULL), intf_(intf),
-    ip_(new MetaDataIp(allocator, intf, MetaDataIp::HEALTH_CHECK)),
+    ip_(new MetaDataIp(allocator, intf, MetaDataIp::HEALTH_CHECK, service->IsInstanceTaskBased())),
     last_update_time_("-"), deleted_(false),
     ignore_status_event_(ignore_status_event) {
     // start with health check instance state as active, unless reported
