@@ -122,8 +122,7 @@ class JobHandler(object):
             self.JOB_STATUS_CONSUMER + job_execution_id,
             self.JOB_STATUS_EXCHANGE,
             routing_key=self.JOB_STATUS_ROUTING_KEY + job_execution_id,
-            callback=self._handle_job_status_change_notification,
-            auto_delete=True)
+            callback=self._handle_job_status_change_notification)
 
     def _stop_job_status_listener(self, job_execution_id):
         self._amqp_client.remove_consumer(
