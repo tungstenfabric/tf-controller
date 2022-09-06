@@ -12,7 +12,6 @@
 #include <map>
 #include <boost/scoped_ptr.hpp>
 #include <boost/asio/ip/address.hpp>
-#include <tbb/mutex.h>
 
 #include "base/timer.h"
 #include "io/event_manager.h"
@@ -81,6 +80,16 @@ class Session {
     // reference count drops to zero.
     int reference_count();
 
+    // Used only in UTs
+    Session()
+    {
+        // Setting stopped_ as true so that Session::Stop can be avoided
+        // in destructor. It was adding unnecessary complications in UT
+        stopped_ = true;
+        // creating a default session key for UT
+        key_ = SessionKey();
+    }
+
  protected:
     bool RecvTimerExpired();
 
@@ -114,7 +123,6 @@ class Session {
     bool                     stopped_;
     Callbacks                callbacks_;
     BFDStats                 stats_;
-    tbb::mutex               mutex_;
 };
 
 }  // namespace BFD
