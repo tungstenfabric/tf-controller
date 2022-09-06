@@ -12,12 +12,14 @@
 const IpAddress MetaDataIp::kDefaultIp;
 
 MetaDataIp::MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
-                       MetaDataIpType type) :
+                       MetaDataIpType type, bool insert_metadata_ip) :
     allocator_(allocator), index_(-1), intf_(intf),
     intf_label_(MplsTable::kInvalidLabel), service_ip_(), destination_ip_(),
-    active_(false), type_(type) {
+    active_(false), type_(type), insert_metadata_ip_(insert_metadata_ip) {
     index_ = allocator_->AllocateIndex(this);
-    intf->InsertMetaDataIpInfo(this);
+    if (insert_metadata_ip_) {
+        intf->InsertMetaDataIpInfo(this);
+    }
 }
 
 MetaDataIp::MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
@@ -30,7 +32,13 @@ MetaDataIp::MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
 }
 
 MetaDataIp::~MetaDataIp() {
-    intf_->DeleteMetaDataIpInfo(this);
+    if (type_ == HEALTH_CHECK) {
+        if (insert_metadata_ip_) {
+            intf_->DeleteMetaDataIpInfo(this);
+        }
+    } else {
+        intf_->DeleteMetaDataIpInfo(this);
+    }
     set_active(false);
     allocator_->ReleaseIndex(this);
 }

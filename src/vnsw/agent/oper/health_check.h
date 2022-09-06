@@ -335,6 +335,7 @@ public:
     const std::string &url_path() const { return url_path_; }
     const std::string &monitor_type() const { return monitor_type_; }
     const HealthCheckTable *table() const { return table_; }
+    bool IsInstanceTaskBased() const;
     bool IsSegmentHealthCheckService() const;
     bool IsVnIpListHealthCheckService() const;
     HealthCheckType health_check_type() const {
@@ -360,7 +361,6 @@ public:
 private:
     friend struct HealthCheckInstanceEvent;
 
-    bool IsInstanceTaskBased() const;
     HealthCheckType GetHealthCheckType() const;
 
     const HealthCheckTable *table_;

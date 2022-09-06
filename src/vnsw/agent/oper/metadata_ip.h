@@ -37,7 +37,7 @@ public:
     };
 
     MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
-               MetaDataIpType type);
+               MetaDataIpType type, bool insert_metadata_ip);
     MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
                uint16_t index);
     ~MetaDataIp();
@@ -68,6 +68,7 @@ private:
     IpAddress destination_ip_;
     bool active_;
     MetaDataIpType type_;
+    bool insert_metadata_ip_;
     DISALLOW_COPY_AND_ASSIGN(MetaDataIp);
 };
 
