@@ -62,7 +62,7 @@ Tag4ByteAs::Tag4ByteAs(as_t asn, int tag) {
     data_[0] = BgpExtendedCommunityType::Experimental4ByteAs;
     data_[1] = BgpExtendedCommunityExperimentalSubType::Tag;
     put_value(&data_[2], 4, asn); // ASN
-    put_value(&data_[4], 2, tag); // Tag value
+    put_value(&data_[6], 2, tag); // Tag value
 }
 
 as_t Tag4ByteAs::as_number() const {

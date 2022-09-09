@@ -48,6 +48,10 @@ TEST_F(TagTest, Init) {
     EXPECT_EQ(tag.ToString(), "tag:100:100");
 }
 
+TEST_F(TagTest, Init4Byte) {
+    Tag4ByteAs tag4(90000, 100);
+    EXPECT_EQ(tag4.ToString(), "tag:90000:100");
+}
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     int result = RUN_ALL_TESTS();
