@@ -137,6 +137,7 @@ def parse_args(args_str):
         'auth_type': 'password',
         'auth_url': '',
         'default_domain_id': 'default',
+        'interface': 'admin',
     }
     # cassandra options
     cassandraopts = {
