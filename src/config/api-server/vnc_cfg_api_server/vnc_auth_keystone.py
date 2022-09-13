@@ -196,6 +196,7 @@ class AuthServiceKeystone(object):
             'region_name': args.region_name,
             'insecure': args.insecure,
             'signing_dir': args.signing_dir,
+            'interface': args.interface,
         }
         if args.auth_url:
             auth_url = args.auth_url
