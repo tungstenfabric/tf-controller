@@ -269,6 +269,7 @@ private:
 
     void JoinVpnTable(RtGroup *group);
     void LeaveVpnTable(RtGroup *group);
+    bool CheckEvpnType1Route(BgpTable *table, BgpRoute *rt);
 
     bool RouteListener(TableState *ts, DBTablePartBase *root,
                        DBEntryBase *entry);
