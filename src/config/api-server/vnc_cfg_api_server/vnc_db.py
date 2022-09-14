@@ -2057,7 +2057,8 @@ class VncDbClient(object):
 
         if type == 'bgp_router':
             if (obj_dict.get('bgp_router_parameters', {}).get('router_type') !=
-                'control-node'):
+                'control-node') and (obj_dict.get('bgp_router_parameters', {}).get('router_type') !=
+                'external-control-node'):
                 return
 
         oper = oper.upper()
