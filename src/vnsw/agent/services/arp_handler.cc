@@ -129,15 +129,22 @@ bool ArpHandler::HandlePacket() {
         static_cast<InetUnicastAgentRouteTable *>(vrf->
             GetInet4UnicastRouteTable())->FindLPM(arp_addr);
     if (route) {
+        const NextHop *anh = route->GetActiveNextHop();
         if (route->is_multicast()) {
             arp_proto->IncrementStatsInvalidAddress();
             ARP_TRACE(Error, "ARP : ignoring multicast address" +
                       arp_addr.to_string());
             return true;
         }
-        if (route->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+        if (anh == NULL) {
+            arp_proto->IncrementStatsInvalidAddress();
+            ARP_TRACE(Error, "ARP : no active nexthop" +
+                      arp_addr.to_string());
+            return true;
+        }
+        if(anh->GetType() == NextHop::RESOLVE) {
             const ResolveNH *nh =
-                static_cast<const ResolveNH *>(route->GetActiveNextHop());
+                static_cast<const ResolveNH *>(anh);
             itf = nh->get_interface();
             nh_vrf = itf->vrf();
         }

@@ -83,7 +83,8 @@ bool ControllerEcmpRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
             AgentPathEcmpComponentPtr member(new AgentPathEcmpComponent(
                                     addr, label, path->GetParentRoute()));
             InetUnicastRouteEntry *uc_rt = table->FindRoute(addr);
-            if (uc_rt == NULL || uc_rt->plen() == 0) {
+            const NextHop *anh;
+            if (uc_rt == NULL || uc_rt->plen() == 0 || (anh = uc_rt->GetActiveNextHop()) == NULL) {
                 member->SetUnresolved(true);
                 if (!path_unresolved) {
                     path_unresolved  = true;
@@ -98,7 +99,7 @@ bool ControllerEcmpRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
                 }
             } else {
                 DBEntryBase::KeyPtr key =
-                    uc_rt->GetActiveNextHop()->GetDBRequestKey();
+                    anh->GetDBRequestKey();
                 NextHopKey *nh_key = static_cast<NextHopKey *>(key.release());
                 if (nh_key->GetType() != NextHop::COMPOSITE) {
                     //By default all component members of composite NH
@@ -464,13 +465,13 @@ bool ControllerVmRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
                                         tunnel_dest_, label_,
                                         path->GetParentRoute()));
         InetUnicastRouteEntry *uc_rt = table->FindRoute(tunnel_dest_);
-        if (uc_rt == NULL || uc_rt->plen() == 0) {
+        const NextHop *anh;
+        if (uc_rt == NULL || uc_rt->plen() == 0 || (anh = uc_rt->GetActiveNextHop()) == NULL) {
             path->set_unresolved(true);
             member->SetUnresolved(false);
         } else {
             path->set_unresolved(false);
-            DBEntryBase::KeyPtr key =
-                uc_rt->GetActiveNextHop()->GetDBRequestKey();
+            DBEntryBase::KeyPtr key = anh->GetDBRequestKey();
             const NextHopKey *nh_key =
                     static_cast<const NextHopKey*>(key.get());
             nh = static_cast<NextHop *>(agent->nexthop_table()->

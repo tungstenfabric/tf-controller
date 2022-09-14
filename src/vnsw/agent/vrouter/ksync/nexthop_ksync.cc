@@ -811,32 +811,37 @@ bool NHKSyncEntry::Sync(DBEntry *e) {
 
         const MirrorNH *mirror_nh = static_cast<MirrorNH *>(e);
         const NextHop *active_nh = mirror_nh->GetRt()->GetActiveNextHop();
-        if (active_nh->GetType() == NextHop::ARP) {
-            const ArpNH *arp_nh = static_cast<const ArpNH *>(active_nh);
-            InterfaceKSyncObject *interface_object =
-                ksync_obj_->ksync()->interface_ksync_obj();
-            InterfaceKSyncEntry if_ksync(interface_object,
-                                         arp_nh->GetInterface());
-            interface = interface_object->GetReference(&if_ksync);
-            dmac = arp_nh->GetMac();
-        } else if (active_nh->GetType() == NextHop::NDP) {
-            const NdpNH *ndp_nh = static_cast<const NdpNH *>(active_nh);
-            InterfaceKSyncObject *interface_object =
-                ksync_obj_->ksync()->interface_ksync_obj();
-            InterfaceKSyncEntry if_ksync(interface_object,
-                                         ndp_nh->GetInterface());
-            interface = interface_object->GetReference(&if_ksync);
-            dmac = ndp_nh->GetMac();
-        } else if (active_nh->GetType() == NextHop::RECEIVE) {
-            const ReceiveNH *rcv_nh = static_cast<const ReceiveNH *>(active_nh);
-            InterfaceKSyncObject *interface_object =
-                ksync_obj_->ksync()->interface_ksync_obj();
-            InterfaceKSyncEntry if_ksync(interface_object,
-                                         rcv_nh->GetInterface());
-            interface = interface_object->GetReference(&if_ksync);
-            Agent *agent = ksync_obj_->ksync()->agent();
-            dmac = agent->vhost_interface()->mac();
-        } else if (active_nh->GetType() == NextHop::DISCARD) {
+        if (active_nh) {
+            if (active_nh->GetType() == NextHop::ARP) {
+                const ArpNH *arp_nh = static_cast<const ArpNH *>(active_nh);
+                InterfaceKSyncObject *interface_object =
+                    ksync_obj_->ksync()->interface_ksync_obj();
+                InterfaceKSyncEntry if_ksync(interface_object,
+                                            arp_nh->GetInterface());
+                interface = interface_object->GetReference(&if_ksync);
+                dmac = arp_nh->GetMac();
+            } else if (active_nh->GetType() == NextHop::NDP) {
+                const NdpNH *ndp_nh = static_cast<const NdpNH *>(active_nh);
+                InterfaceKSyncObject *interface_object =
+                    ksync_obj_->ksync()->interface_ksync_obj();
+                InterfaceKSyncEntry if_ksync(interface_object,
+                                            ndp_nh->GetInterface());
+                interface = interface_object->GetReference(&if_ksync);
+                dmac = ndp_nh->GetMac();
+            } else if (active_nh->GetType() == NextHop::RECEIVE) {
+                const ReceiveNH *rcv_nh = static_cast<const ReceiveNH *>(active_nh);
+                InterfaceKSyncObject *interface_object =
+                    ksync_obj_->ksync()->interface_ksync_obj();
+                InterfaceKSyncEntry if_ksync(interface_object,
+                                            rcv_nh->GetInterface());
+                interface = interface_object->GetReference(&if_ksync);
+                Agent *agent = ksync_obj_->ksync()->agent();
+                dmac = agent->vhost_interface()->mac();
+            } else if (active_nh->GetType() == NextHop::DISCARD) {
+                valid = false;
+                interface = NULL;
+            }
+        } else {
             valid = false;
             interface = NULL;
         }

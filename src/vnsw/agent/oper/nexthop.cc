@@ -1072,17 +1072,20 @@ bool TunnelNH::ChangeEntry(const DBRequest *req) {
     InetUnicastAgentRouteTable *rt_table =
         (GetVrf()->GetInet4UnicastRouteTable());
     InetUnicastRouteEntry *rt = rt_table->FindLPM(dip_);
+    const NextHop *anh;
     if (!rt) {
         //No route to reach destination, add to unresolved list
         valid = false;
         rt_table->AddUnresolvedNH(this);
-    } else if (rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE) {
+    } else if ((anh = rt->GetActiveNextHop()) == NULL) {
+	    valid = false;
+        rt_table->AddUnresolvedNH(this);
+    } else if (anh->GetType() == NextHop::RESOLVE) {
         //Trigger ARP resolution
         valid = false;
         rt_table->AddUnresolvedNH(this);
 
-        const ResolveNH *nh =
-            static_cast<const ResolveNH *>(rt->GetActiveNextHop());
+        const ResolveNH *nh = static_cast<const ResolveNH *>(anh);
         std::string nexthop_vrf = nh->get_interface()->vrf()->GetName();
         if (nh->get_interface()->vrf()->forwarding_vrf()) {
             nexthop_vrf = nh->get_interface()->vrf()->forwarding_vrf()->GetName();
@@ -1097,7 +1100,7 @@ bool TunnelNH::ChangeEntry(const DBRequest *req) {
                                               rt->GetActivePath()->tag_list());
         rt = NULL;
     } else {
-        valid = rt->GetActiveNextHop()->IsValid();
+        valid = anh->IsValid();
     }
 
     if (valid != valid_) {
@@ -1139,6 +1142,9 @@ bool TunnelNH::ChangeEntry(const DBRequest *req) {
         //of the dependent route has changed
         //only then notify the route
         const NextHop *active_nh = rt->GetActiveNextHop();
+        if (active_nh == NULL) {
+            return ret;
+        }
         const Interface *intf = NULL;
         MacAddress dmac;
         if (active_nh->GetType() == NextHop::ARP) {
@@ -1381,18 +1387,21 @@ bool MirrorNH::ChangeEntry(const DBRequest *req) {
     }
     InetUnicastAgentRouteTable *rt_table = GetRouteTable();
     InetUnicastRouteEntry *rt = rt_table->FindLPM(dip_);
+    const NextHop *anh;
     if (!rt) {
         //No route to reach destination, add to unresolved list
         valid = false;
         rt_table->AddUnresolvedNH(this);
-    } else if ((rt->GetActiveNextHop()->GetType() == NextHop::RESOLVE) &&
+    } else if ((anh = rt->GetActiveNextHop()) == NULL) {
+        valid = false;
+        rt_table->AddUnresolvedNH(this);
+    } else if ((anh->GetType() == NextHop::RESOLVE) &&
                (GetVrf()->GetName() == Agent::GetInstance()->fabric_vrf_name())) {
         //Trigger ARP resolution
         valid = false;
         rt_table->AddUnresolvedNH(this);
 
-        const ResolveNH *nh =
-            static_cast<const ResolveNH *>(rt->GetActiveNextHop());
+        const ResolveNH *nh = static_cast<const ResolveNH *>(anh);
         std::string nexthop_vrf = nh->get_interface()->vrf()->GetName();
         if (nh->get_interface()->vrf()->forwarding_vrf()) {
             nexthop_vrf = nh->get_interface()->vrf()->forwarding_vrf()->GetName();
@@ -1407,7 +1416,7 @@ bool MirrorNH::ChangeEntry(const DBRequest *req) {
                                               rt->GetActivePath()->tag_list());
         rt = NULL;
     } else {
-        valid = rt->GetActiveNextHop()->IsValid();
+        valid = anh->IsValid();
     }
 
     if (valid != valid_) {
@@ -2888,10 +2897,12 @@ bool PBBNH::ChangeEntry(const DBRequest *req) {
         label_ = label;
         ret = true;
     }
-
-    if (rt && etree_leaf_ != rt->GetActivePath()->etree_leaf()) {
-        etree_leaf_ = rt->GetActivePath()->etree_leaf();
-        ret = true;
+    const AgentPath *path;
+    if (rt && (path = rt->GetActivePath()) != NULL) {
+        if (etree_leaf_ != path->etree_leaf()) {
+            etree_leaf_ = path->etree_leaf();
+            ret = true;
+        }
     }
 
     return ret;
@@ -3250,46 +3261,48 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
             data.set_vrf(tun->GetVrf()->GetName());
             data.set_tunnel_type(tun->GetTunnelType().ToString());
             if (valid_) {
-                const NextHop *nh = static_cast<const NextHop *>
-                                  (tun->GetRt()->GetActiveNextHop());
-                if (nh->GetType() == NextHop::ARP) {
-                    const ArpNH *arp_nh = static_cast<const ArpNH *>(nh);
-                    const unsigned char *m = arp_nh->GetMac().GetData();
-                    char mstr[32];
-                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
-                            m[0], m[1], m[2], m[3], m[4], m[5]);
-                    std::string mac(mstr);
-                    data.set_mac(std::vector<std::string>(1, mac));
-                } else if (nh->GetType() == NextHop::NDP) {
-                    const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
-                    const unsigned char *m = ndp_nh->GetMac().GetData();
-                    char mstr[32];
-                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
-                            m[0], m[1], m[2], m[3], m[4], m[5]);
-                    std::string mac(mstr);
-                    data.set_mac(std::vector<std::string>(1, mac));
-                } else if (nh->GetType() == NextHop::COMPOSITE) {
-                    const CompositeNH *cnh = dynamic_cast<const CompositeNH*>(nh);
-                    ComponentNHList::const_iterator component_nh_it =
-                        cnh->begin();
-                    std::vector<std::string> mac_list;
-                    while (component_nh_it != cnh->end()) {
-                        const NextHop *component_nh = NULL;
-                        if (*component_nh_it) {
-                            component_nh =  (*component_nh_it)->nh();
-                            if (component_nh->GetType() == NextHop::ARP) {
-                                const ArpNH *arp_nh = dynamic_cast<const ArpNH*>(component_nh);
-                                const unsigned char *m = arp_nh->GetMac().GetData();
-                                char mstr[32];
-                                snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
-                                        m[0], m[1], m[2], m[3], m[4], m[5]);
-                                std::string mac(mstr);
-                                mac_list.push_back(mac);
+                const NextHop *anh = tun->GetRt()->GetActiveNextHop();
+                if (anh != NULL) {
+                    const NextHop *nh = static_cast<const NextHop *>(anh);
+                    if (nh->GetType() == NextHop::ARP) {
+                        const ArpNH *arp_nh = static_cast<const ArpNH *>(nh);
+                        const unsigned char *m = arp_nh->GetMac().GetData();
+                        char mstr[32];
+                        snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                m[0], m[1], m[2], m[3], m[4], m[5]);
+                        std::string mac(mstr);
+                        data.set_mac(std::vector<std::string>(1, mac));
+                    } else if (nh->GetType() == NextHop::NDP) {
+                        const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
+                        const unsigned char *m = ndp_nh->GetMac().GetData();
+                        char mstr[32];
+                        snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                m[0], m[1], m[2], m[3], m[4], m[5]);
+                        std::string mac(mstr);
+                        data.set_mac(std::vector<std::string>(1, mac));
+                    } else if (nh->GetType() == NextHop::COMPOSITE) {
+                        const CompositeNH *cnh = dynamic_cast<const CompositeNH*>(nh);
+                        ComponentNHList::const_iterator component_nh_it =
+                            cnh->begin();
+                        std::vector<std::string> mac_list;
+                        while (component_nh_it != cnh->end()) {
+                            const NextHop *component_nh = NULL;
+                            if (*component_nh_it) {
+                                component_nh =  (*component_nh_it)->nh();
+                                if (component_nh->GetType() == NextHop::ARP) {
+                                    const ArpNH *arp_nh = dynamic_cast<const ArpNH*>(component_nh);
+                                    const unsigned char *m = arp_nh->GetMac().GetData();
+                                    char mstr[32];
+                                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                            m[0], m[1], m[2], m[3], m[4], m[5]);
+                                    std::string mac(mstr);
+                                    mac_list.push_back(mac);
+                                }
                             }
+                            component_nh_it++;
                         }
-                        component_nh_it++;
+                        data.set_mac(mac_list);
                     }
-                    data.set_mac(mac_list);
                 }
             }
             data.set_crypt_all_traffic(tun->GetCrypt());
@@ -3312,52 +3325,54 @@ void NextHop::SetNHSandeshData(NhSandeshData &data) const {
             data.set_sport(mir_nh->GetSPort());
             data.set_dport(mir_nh->GetDPort());
             if (valid_ && mir_nh->GetVrf()) {
-                const NextHop *nh = static_cast<const NextHop *>
-                                  (mir_nh->GetRt()->GetActiveNextHop());
-                if (nh->GetType() == NextHop::ARP) {
-                    const ArpNH *arp_nh = static_cast<const ArpNH *>(nh);
-                    (mir_nh->GetRt()->GetActiveNextHop());
-                    const unsigned char *m = arp_nh->GetMac().GetData();
-                    char mstr[32];
-                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
-                            m[0], m[1], m[2], m[3], m[4], m[5]);
-                    std::string mac(mstr);
-                    data.set_mac(std::vector<std::string>(1, mac));
-                } else if (nh->GetType() == NextHop::NDP) {
-                    const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
-                    (mir_nh->GetRt()->GetActiveNextHop());
-                    const unsigned char *m = ndp_nh->GetMac().GetData();
-                    char mstr[32];
-                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
-                            m[0], m[1], m[2], m[3], m[4], m[5]);
-                    std::string mac(mstr);
-                    data.set_mac(std::vector<std::string>(1, mac));
-                } else if (nh->GetType() == NextHop::RECEIVE) {
-                    const ReceiveNH *rcv_nh = static_cast<const ReceiveNH*>(nh);
-                    data.set_itf(rcv_nh->GetInterface()->name());
-                } else if (nh->GetType() == NextHop::COMPOSITE) {
-                    const CompositeNH *cnh = dynamic_cast<const CompositeNH*>(nh);
-                    ComponentNHList::const_iterator component_nh_it =
-                        cnh->begin();
-                    std::vector<std::string> mac_list;
-                    while (component_nh_it != cnh->end()) {
-                        const NextHop *component_nh = NULL;
-                        if (*component_nh_it) {
-                            component_nh =  (*component_nh_it)->nh();
-                            if (component_nh->GetType() == NextHop::ARP) {
-                                const ArpNH *arp_nh = dynamic_cast<const ArpNH*>(component_nh);
-                                const unsigned char *m = arp_nh->GetMac().GetData();
-                                char mstr[32];
-                                snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
-                                        m[0], m[1], m[2], m[3], m[4], m[5]);
-                                std::string mac(mstr);
-                                mac_list.push_back(mac);
+                const NextHop *mnh = mir_nh->GetRt()->GetActiveNextHop();
+                if (mnh != NULL) {
+                    const NextHop *nh = static_cast<const NextHop *>(mnh);
+                    if (nh->GetType() == NextHop::ARP) {
+                        const ArpNH *arp_nh = static_cast<const ArpNH *>(nh);
+                        (mir_nh->GetRt()->GetActiveNextHop());
+                        const unsigned char *m = arp_nh->GetMac().GetData();
+                        char mstr[32];
+                        snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                m[0], m[1], m[2], m[3], m[4], m[5]);
+                        std::string mac(mstr);
+                        data.set_mac(std::vector<std::string>(1, mac));
+                    } else if (nh->GetType() == NextHop::NDP) {
+                        const NdpNH *ndp_nh = static_cast<const NdpNH *>(nh);
+                        (mir_nh->GetRt()->GetActiveNextHop());
+                        const unsigned char *m = ndp_nh->GetMac().GetData();
+                        char mstr[32];
+                        snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                m[0], m[1], m[2], m[3], m[4], m[5]);
+                        std::string mac(mstr);
+                        data.set_mac(std::vector<std::string>(1, mac));
+                    } else if (nh->GetType() == NextHop::RECEIVE) {
+                        const ReceiveNH *rcv_nh = static_cast<const ReceiveNH*>(nh);
+                        data.set_itf(rcv_nh->GetInterface()->name());
+                    } else if (nh->GetType() == NextHop::COMPOSITE) {
+                        const CompositeNH *cnh = dynamic_cast<const CompositeNH*>(nh);
+                        ComponentNHList::const_iterator component_nh_it =
+                            cnh->begin();
+                        std::vector<std::string> mac_list;
+                        while (component_nh_it != cnh->end()) {
+                            const NextHop *component_nh = NULL;
+                            if (*component_nh_it) {
+                                component_nh =  (*component_nh_it)->nh();
+                                if (component_nh->GetType() == NextHop::ARP) {
+                                    const ArpNH *arp_nh = dynamic_cast<const ArpNH*>(component_nh);
+                                    const unsigned char *m = arp_nh->GetMac().GetData();
+                                    char mstr[32];
+                                    snprintf(mstr, 32, "%x:%x:%x:%x:%x:%x",
+                                            m[0], m[1], m[2], m[3], m[4], m[5]);
+                                    std::string mac(mstr);
+                                    mac_list.push_back(mac);
+                                }
                             }
+                            component_nh_it++;
                         }
-                        component_nh_it++;
-                    }
-                    data.set_mac(mac_list);
+                        data.set_mac(mac_list);
 
+                    }
                 }
             }
             break;

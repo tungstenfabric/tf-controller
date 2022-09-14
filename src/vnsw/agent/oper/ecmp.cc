@@ -520,7 +520,7 @@ const NextHop* EcmpData::GetLocalNextHop(const AgentRoute *rt) {
     }
 
     const NextHop *nh = rt->GetActiveNextHop();
-    if (nh->GetType() == NextHop::COMPOSITE) {
+    if (nh && nh->GetType() == NextHop::COMPOSITE ) {
         const CompositeNH *comp_nh = static_cast<const CompositeNH *>(nh);
         //Get the local composite NH
         return comp_nh->GetLocalNextHop();
