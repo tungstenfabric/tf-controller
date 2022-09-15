@@ -636,12 +636,14 @@ void VxlanRoutingManager::UpdateEvpnType5Route(Agent *agent,
         return;
     //Add route in evpn table
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    NextHopKey *key = (static_cast<NextHopKey *>
-        (path->nexthop()->GetDBRequestKey().get()))->Clone();
-    InterfaceNHKey *intf_nh_key = static_cast<InterfaceNHKey *>(key);
-    intf_nh_key->set_flags(intf_nh_key->flags() |
-                           InterfaceNHFlags::VXLAN_ROUTING);
-    nh_req.key.reset(intf_nh_key);
+    NextHopKey * orig_key = dynamic_cast<NextHopKey*>(
+        path->nexthop()->GetDBRequestKey().get())->Clone();
+    assert(orig_key);
+    InterfaceNHKey *int_orig_key = dynamic_cast<InterfaceNHKey*>(orig_key);
+    if (int_orig_key) //if NH is interface, then update flags
+        int_orig_key->set_flags(int_orig_key->flags() |
+            InterfaceNHFlags::VXLAN_ROUTING);
+    nh_req.key.reset(orig_key);
     nh_req.data.reset(new InterfaceNHData(routing_vrf->GetName()));
     evpn_table->AddType5Route(agent->local_vm_export_peer(),
                               routing_vrf->GetName(),
