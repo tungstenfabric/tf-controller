@@ -57,6 +57,7 @@ public:
     BgpPeerMock(const Ip4Address &address)
         : address_(address),
           address_str_(address.to_string()) {
+        is_bgpaas_ = false;
     }
     virtual ~BgpPeerMock() { }
     virtual const std::string &ToString() const { return address_str_; }
@@ -115,8 +116,11 @@ public:
         BgpRoute *route, BgpPath *path) { return false; }
     virtual bool CanUseMembershipManager() const { return true; }
     virtual bool IsInGRTimerWaitState() const { return false; }
+    virtual bool IsRouterTypeBGPaaS() const { return is_bgpaas_; }
+    void SetBgpaas() { is_bgpaas_ = true; }
 
 private:
+    bool is_bgpaas_;
     Ip4Address address_;
     std::string address_str_;
 };
@@ -535,10 +539,11 @@ TEST_F(RoutingPolicyTest, PolicySubProtocolMatchUpdateLocalPrefBgpPeer) {
     boost::system::error_code ec;
     peers_.push_back(
         new BgpPeerMock(Ip4Address::from_string("192.168.0.1", ec)));
+    peers_[0]->SetBgpaas();
 
     AddRoute<InetDefinition>(peers_[0], "test.inet.0",
                              "10.0.1.1/32", 100,
-                             vector<string>(), vector<string>(), "bgpaas");
+                             vector<string>(), vector<string>());
     task_util::WaitForIdle();
 
     VERIFY_EQ(1, RouteCount("test.inet.0"));
@@ -3841,7 +3846,7 @@ TEST_F(RoutingPolicyTest, ProtocolMatchServiceChainWithSubprotocol) {
                              vector<string>(), vector<string>(), "interface");
     AddRoute<InetDefinition>(peers_[0], "blue.inet.0",
                              "192.168.1.1/32", 100,
-                             vector<string>(), vector<string>(), "bgpaas");
+                             vector<string>(), vector<string>());
     task_util::WaitForIdle();
 
     VERIFY_EQ(2, RouteCount("red.inet.0"));

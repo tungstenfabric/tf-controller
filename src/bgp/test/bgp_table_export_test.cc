@@ -122,6 +122,7 @@ public:
         }
         return false;
     }
+    virtual bool IsRouterTypeBGPaaS() const { return false; }
 
 private:
     int index_;
