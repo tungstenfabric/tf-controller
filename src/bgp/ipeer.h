@@ -197,6 +197,7 @@ public:
     virtual const IPeerDebugStats *peer_stats() const = 0;
     virtual bool IsReady() const = 0;
     virtual bool IsXmppPeer() const = 0;
+    virtual bool IsRouterTypeBGPaaS() const = 0;
     //
     // Whether the peer must register to a table
     // before it could push the route to VRF.

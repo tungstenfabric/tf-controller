@@ -84,6 +84,7 @@ public:
         BgpRoute *route, BgpPath *path) { return false; }
     virtual bool CanUseMembershipManager() const { return true; }
     virtual bool IsInGRTimerWaitState() const { return false; }
+    virtual bool IsRouterTypeBGPaaS() const { return false; }
 
 private:
     bool is_xmpp_;
