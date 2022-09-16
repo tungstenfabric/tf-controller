@@ -16,8 +16,8 @@ MetaDataIp::MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
     allocator_(allocator), index_(-1), intf_(intf),
     intf_label_(MplsTable::kInvalidLabel), service_ip_(), destination_ip_(),
     active_(false), type_(type), insert_metadata_ip_(insert_metadata_ip) {
-    index_ = allocator_->AllocateIndex(this);
     if (insert_metadata_ip_) {
+        index_ = allocator_->AllocateIndex(this);
         intf->InsertMetaDataIpInfo(this);
     }
 }
@@ -35,12 +35,13 @@ MetaDataIp::~MetaDataIp() {
     if (type_ == HEALTH_CHECK) {
         if (insert_metadata_ip_) {
             intf_->DeleteMetaDataIpInfo(this);
+            allocator_->ReleaseIndex(this);
         }
     } else {
         intf_->DeleteMetaDataIpInfo(this);
+        allocator_->ReleaseIndex(this);
     }
     set_active(false);
-    allocator_->ReleaseIndex(this);
 }
 
 Ip4Address MetaDataIp::GetLinkLocalIp() const {
