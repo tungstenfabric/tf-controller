@@ -475,7 +475,6 @@ static const vector<MatchProtocol::MatchProtocolType>
     isSubprotocol = boost::assign::list_of(MatchProtocol::Interface)
                                           (MatchProtocol::InterfaceStatic)
                                           (MatchProtocol::ServiceInterface)
-                                          (MatchProtocol::BGPaaS)
                                           (MatchProtocol::StaticRoute);
 
 static bool IsSubprotocol(MatchProtocol::MatchProtocolType protocol) {
@@ -535,6 +534,7 @@ bool MatchProtocol::Match(const BgpRoute *route, const BgpPath *path,
                            const BgpAttr *attr) const {
     BgpPath::PathSource path_src = path->GetSource();
     bool is_xmpp = path->GetPeer() ? path->GetPeer()->IsXmppPeer() : false;
+    bool bgpaas = path->GetPeer() ? path->GetPeer()->IsRouterTypeBGPaaS() : false;
     BOOST_FOREACH(MatchProtocolType protocol, protocols()) {
         if (IsSubprotocol(protocol)) {
             // Check only if matching protocol is subprotocol
@@ -550,7 +550,9 @@ bool MatchProtocol::Match(const BgpRoute *route, const BgpPath *path,
                 if (mapped_src == path_src) {
                     if (protocol == XMPP && !is_xmpp)
                         continue;
-                    if (protocol == BGP && is_xmpp)
+                    if (protocol == BGP && (bgpaas || is_xmpp))
+                        continue;
+                    if (protocol == BGPaaS && (!bgpaas || is_xmpp))
                         continue;
                     return true;
                 }

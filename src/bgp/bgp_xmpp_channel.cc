@@ -397,6 +397,7 @@ public:
     }
 
     virtual bool send_ready() const { return send_ready_; }
+    bool IsRouterTypeBGPaaS() const { return false; }
 
 private:
     void WriteReadyCb(const boost::system::error_code &ec) {
