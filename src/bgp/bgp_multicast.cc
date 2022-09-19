@@ -202,6 +202,7 @@ void McastForwarder::ReleaseLabel() {
 // forwarding edges for Native McastForwarders attached it.
 //
 void McastForwarder::AddGlobalTreeRoute() {
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Entering McastForwarder::AddGlobalTreeRoute");
     assert(level_ == McastTreeManager::LevelLocal);
     assert(!global_tree_route_);
 
@@ -218,7 +219,9 @@ void McastForwarder::AddGlobalTreeRoute() {
     ErmVpnPrefix prefix(ErmVpnPrefix::GlobalTreeRoute,
         RouteDistinguisher::kZeroRd, router_id_,
         sg_entry_->group(), sg_entry_->source());
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Created ErmVpnPrefix " << prefix.ToString());
     ErmVpnRoute rt_key(prefix);
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Created ErmVpnRoute " << rt_key.ToString());
 
     // Find or create the route.
     McastManagerPartition *partition = sg_entry_->partition();
@@ -229,7 +232,9 @@ void McastForwarder::AddGlobalTreeRoute() {
     if (!route) {
         route = new ErmVpnRoute(prefix);
         tbl_partition->Add(route);
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Route not present in partition creating new " << route->ToString());
     } else {
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Route present in partition " << route->ToString());
         route->ClearDelete();
     }
 
@@ -251,6 +256,7 @@ void McastForwarder::AddGlobalTreeRoute() {
         edge->outbound_label = (*it)->label();
         efspec.edge_list.push_back(edge);
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Created EdgeForwardingSpec " << efspec.ToString());
     attr_spec.push_back(&efspec);
     // Add tunnel encaps for remote nodes
     ExtCommunitySpec ext;
@@ -263,6 +269,7 @@ void McastForwarder::AddGlobalTreeRoute() {
     BgpPath *path = new BgpPath(0, BgpPath::Local, attr);
     route->InsertPath(path);
     tbl_partition->Notify(route);
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Global Tree Route is " << route->ToString());
     global_tree_route_ = route;
 }
 
@@ -270,6 +277,7 @@ void McastForwarder::AddGlobalTreeRoute() {
 // Delete the GlobalTreeRoute for this McastForwarder.
 //
 void McastForwarder::DeleteGlobalTreeRoute() {
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Entering McastForwarder::DeleteGlobalTreeRoute");
     if (!global_tree_route_)
         return;
 
@@ -284,6 +292,7 @@ void McastForwarder::DeleteGlobalTreeRoute() {
         tbl_partition->Notify(global_tree_route_);
     }
     global_tree_route_ = NULL;
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Entering McastForwarder::DeleteGlobalTreeRoute");
 }
 
 //
@@ -291,6 +300,7 @@ void McastForwarder::DeleteGlobalTreeRoute() {
 // list is built based on the tree links in this McastForwarder.
 //
 void McastForwarder::AddLocalOListElems(BgpOListSpec *olist_spec) {
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Entering McastForwarder::AddLocalOListElems");
     assert(level_ == McastTreeManager::LevelNative);
 
     for (McastForwarderList::const_iterator it = tree_links_.begin();
@@ -298,6 +308,7 @@ void McastForwarder::AddLocalOListElems(BgpOListSpec *olist_spec) {
         BgpOListElem elem((*it)->address(), (*it)->label(), (*it)->encap());
         olist_spec->elements.push_back(elem);
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Entering McastForwarder::");
 }
 
 //
@@ -305,6 +316,7 @@ void McastForwarder::AddLocalOListElems(BgpOListSpec *olist_spec) {
 // list is built based on EdgeForwarding attribute in the GlobalTreeRoute.
 //
 void McastForwarder::AddGlobalOListElems(BgpOListSpec *olist_spec) {
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Entering McastForwarder::AddGlobalOListElems");
     assert(level_ == McastTreeManager::LevelNative);
 
     // Bail if this is not the forest node for the Local tree.
@@ -335,6 +347,7 @@ void McastForwarder::AddGlobalOListElems(BgpOListSpec *olist_spec) {
             olist_spec->elements.push_back(elem);
         }
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Leaving McastForwarder::AddGlobalOListElems");
 }
 
 //
@@ -349,6 +362,7 @@ void McastForwarder::AddGlobalOListElems(BgpOListSpec *olist_spec) {
 //
 UpdateInfo *McastForwarder::GetUpdateInfo(ErmVpnTable *table) {
     CHECK_CONCURRENCY("db::DBTable");
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Entering McastForwarder::GetUpdateInfo");
 
     assert(level_ == McastTreeManager::LevelNative);
 
@@ -370,6 +384,7 @@ UpdateInfo *McastForwarder::GetUpdateInfo(ErmVpnTable *table) {
             sg_entry_->IsTreeBuilder(McastTreeManager::LevelLocal)) {
         table->GetMvpnSourceAddress(route_, uinfo->roattr.source_address());
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Leaving McastForwarder::GetUpdateInfo");
     return uinfo;
 }
 
@@ -428,6 +443,7 @@ void McastSGEntry::AddForwarder(McastForwarder *forwarder) {
 void McastSGEntry::ChangeForwarder(McastForwarder *forwarder) {
     uint8_t level = forwarder->level();
     update_needed_[level] = true;
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Change forwarder " << forwarder->ToString() << " invoked for sg entry " << this->ToString());
     partition_->EnqueueSGEntry(this);
 }
 
@@ -471,6 +487,7 @@ const RouteDistinguisher &McastSGEntry::GetSourceRd() const {
 // relative order of nodes in the tree.
 //
 void McastSGEntry::AddLocalTreeRoute() {
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: McastSGEntry::AddLocalTreeRoute Entry  ");
     assert(!forest_node_);
     assert(!local_tree_route_);
 
@@ -537,12 +554,14 @@ void McastSGEntry::AddLocalTreeRoute() {
     route->InsertPath(path);
     tbl_partition->Notify(route);
     local_tree_route_ = route;
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: McastSGEntry::AddLocalTreeRoute Exit  ");
 }
 
 //
 // Delete the LocalTreeRoute for this McastSGEntry.
 //
 void McastSGEntry::DeleteLocalTreeRoute() {
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: McastSGEntry::DeleteLocalTreeRoute Entry  ");
     if (!local_tree_route_)
         return;
 
@@ -556,6 +575,7 @@ void McastSGEntry::DeleteLocalTreeRoute() {
         tbl_partition->Notify(local_tree_route_);
     }
     local_tree_route_ = NULL;
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: McastSGEntry::DeleteLocalTreeRoute Exit  ");
 }
 
 //
@@ -580,6 +600,7 @@ void McastSGEntry::UpdateLocalTreeRoute() {
 // Update relevant [Local|Global]TreeRoutes for the McastSGEntry.
 //
 void McastSGEntry::UpdateRoutes(uint8_t level) {
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: McastSGEntry::UpdateRoutes  " << level );
     if (level == McastTreeManager::LevelNative) {
         DeleteLocalTreeRoute();
         AddLocalTreeRoute();
@@ -591,6 +612,7 @@ void McastSGEntry::UpdateRoutes(uint8_t level) {
             (*it)->AddGlobalTreeRoute();
         }
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: McastSGEntry::UpdateRoutes  exit" << level );
 }
 
 ErmVpnRoute *McastSGEntry::GetGlobalTreeRootRoute() const {
@@ -633,6 +655,7 @@ bool McastSGEntry::IsTreeBuilder(uint8_t level) const {
 //
 void McastSGEntry::UpdateTree(uint8_t level) {
     CHECK_CONCURRENCY("db::DBTable");
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Updating tree level  " << level << " triggered from work queue");
 
     if (!update_needed_[level])
         return;
@@ -655,6 +678,7 @@ void McastSGEntry::UpdateTree(uint8_t level) {
        (*it)->ReleaseLabel();
        partition_->GetTablePartition()->Notify((*it)->route());
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Completed deletion of previous tree ");
 
     // Bail if we're not the tree builder.
     if (!IsTreeBuilder(level)) {
@@ -675,6 +699,7 @@ void McastSGEntry::UpdateTree(uint8_t level) {
             continue;
         vec.push_back(forwarder);
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Completed creation of multicast forwarders in order ");
 
     // Go through each McastForwarder in the vector and link it to it's parent
     // McastForwarder in the k-ary tree. We also add a link from the parent to
@@ -692,9 +717,11 @@ void McastSGEntry::UpdateTree(uint8_t level) {
         forwarder->AddLink(parent_forwarder);
         parent_forwarder->AddLink(forwarder);
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Completed linking of multicast forwarders ");
 
     // Update [Local|Global]TreeRoutes.
     UpdateRoutes(level);
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Completed route updation ");
 }
 
 //
@@ -715,6 +742,7 @@ void McastSGEntry::UpdateTree() {
 void McastSGEntry::NotifyForestNode() {
     if (!forest_node_)
         return;
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: NotifyForestNode Trigger rebuild of BGPOlist as GlobalTreeRoute is updated");
     partition_->GetTablePartition()->Notify(forest_node_->route());
 }
 
@@ -948,6 +976,7 @@ UpdateInfo *McastTreeManager::GetUpdateInfo(ErmVpnRoute *route) {
     if (!forwarder)
         return NULL;
 
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: GetUpdateInfo for  " << forwarder->ToString() << " and triggered from McastTreeManager");
     return forwarder->GetUpdateInfo(table_);
 }
 
@@ -962,9 +991,11 @@ UpdateInfo *McastTreeManager::GetUpdateInfo(ErmVpnRoute *route) {
 void McastTreeManager::TreeNodeListener(McastManagerPartition *partition,
         ErmVpnRoute *route) {
     CHECK_CONCURRENCY("db::DBTable");
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: DBListener callback handler invoked for Native and Local routes for route " << route->ToString());
 
     DBState *dbstate = route->GetState(table_, listener_id_);
     if (!dbstate) {
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: DBState not present for the global route");
         // We have no previous DBState for this route.
         // Bail if the route is not valid.
         if (!route->IsValid())
@@ -976,6 +1007,7 @@ void McastTreeManager::TreeNodeListener(McastManagerPartition *partition,
         McastForwarder *forwarder = new McastForwarder(sg_entry, route);
         sg_entry->AddForwarder(forwarder);
         route->SetState(table_, listener_id_, forwarder);
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: New sg entry created " << sg_entry->ToString() << " and updating local tree route");
 
         // Update local tree route if our RouterId has changed. Ideally,
         // we should trigger an update of all local trees routes when we
@@ -998,6 +1030,7 @@ void McastTreeManager::TreeNodeListener(McastManagerPartition *partition,
             delete forwarder;
         } else if (forwarder->Update(route)) {
             // Trigger update of the distribution tree.
+            BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: SG entry exist  " << sg_entry->ToString() << " and changing forwarder");
             sg_entry->ChangeForwarder(forwarder);
         }
     }
@@ -1011,9 +1044,11 @@ void McastTreeManager::TreeNodeListener(McastManagerPartition *partition,
 void McastTreeManager::TreeResultListener(McastManagerPartition *partition,
         ErmVpnRoute *route) {
     CHECK_CONCURRENCY("db::DBTable");
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: DBListener callback handler invoked for GlobalTreeRoutes for route " << route->ToString());
 
     DBState *dbstate = route->GetState(table_, listener_id_);
     if (!dbstate) {
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: DBState not present for the global route");
         // We have no previous DBState for this route.
         // Bail if the route is not valid.
         if (!route->IsValid())
@@ -1028,6 +1063,7 @@ void McastTreeManager::TreeResultListener(McastManagerPartition *partition,
         McastSGEntry *sg_entry = partition->LocateSGEntry(
             route->GetPrefix().group(), route->GetPrefix().source());
         route->SetState(table_, listener_id_, sg_entry);
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: New sg entry created " << sg_entry->ToString() << " and notifying forest node");
         sg_entry->set_tree_result_route(route);
         sg_entry->NotifyForestNode();
     } else {
@@ -1039,8 +1075,10 @@ void McastTreeManager::TreeResultListener(McastManagerPartition *partition,
             route->ClearState(table_, listener_id_);
             partition->EnqueueSGEntry(sg_entry);
         }
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: SG entry exist  " << sg_entry->ToString() << " and notifying forest node");
         sg_entry->NotifyForestNode();
     }
+    BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: Leaving McastTreeManager::TreeResultListener");
 }
 
 //
@@ -1055,8 +1093,10 @@ void McastTreeManager::RouteListener(
     McastManagerPartition *partition = partitions_[tpart->index()];
     ErmVpnRoute *route = dynamic_cast<ErmVpnRoute *>(db_entry);
     if (route->GetPrefix().type() == ErmVpnPrefix::GlobalTreeRoute) {
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: DBListener callback invoked for global tree route");
         TreeResultListener(partition, route);
     } else {
+        BGP_LOG_STR(BgpMessage, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_ALL,  "<Vishnu>: DBListener callback invoked for local/native route");
         TreeNodeListener(partition, route);
     }
 }
