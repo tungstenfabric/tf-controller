@@ -2473,6 +2473,12 @@ void BgpIfmapConfigManager::ProcessBgpPeering(const BgpConfigDelta &delta) {
                   delta.id_name);
             return;
         }
+        if(node->IsDeleted())
+        {
+           BGP_LOG_STR(BgpConfig, SandeshLevel::SYS_DEBUG, BGP_LOG_FLAG_SYSLOG,
+                "ProcessBgpPeering failed. Node is Deleted ");
+           return;
+        }
 
         pair<IFMapNode *, IFMapNode *> routers;
         if (!BgpIfmapPeeringConfig::GetRouterPair(db_graph_, localname_, node,
