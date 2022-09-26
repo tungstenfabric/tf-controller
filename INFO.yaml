@@ -6,7 +6,7 @@ lifecycle_state: 'Incubation'
 project_lead: &tungstenfabric_tf-controller_ptl
     name: 'Chandra Mohan G'
     email: 'cmohan@juniper.net'
-    id: 'cmohan'
+    id: 'chandramohang82'
     company: 'Juniper'
     timezone: 'Asia/Kolkata'
 primary_contact: *tungstenfabric_tf-controller_ptl
