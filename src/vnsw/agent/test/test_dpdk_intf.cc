@@ -22,6 +22,46 @@ public:
     Agent *agent_;
     VnswInterfaceListener *vnswif_;
 };
+TEST_F(DpdkIntfTest, dpdk_phy_intf_mac) {
+    // Check if physical interface mac
+    // is same as present in config file
+    client->WaitForIdle();
+    EXPECT_EQ("0c:e1:49:a5:00:01",client->param_.physical_interface_mac_addr_list()[0]);
+    client->WaitForIdle();
+    // Check again after adding vm port
+    struct PortInfo input[] = {
+        {"vnet1", 1, "1.1.1.1", "00:00:00:01:01:01", 1, 1},
+    };
+    CreateVmportEnv(input, 1);
+    client->WaitForIdle();
+
+    InterfaceTable *table = agent_->interface_table();
+    EXPECT_TRUE(VmPortActive(input, 0));
+    EXPECT_TRUE(VmPortFind(1));
+    VmInterface *vm_interface = static_cast<VmInterface *>(VmPortGet(1));
+    EXPECT_TRUE(vm_interface->IsActive());
+    VnswInterfaceListener::HostInterfaceEntry *host_intf = vnswif_->GetHostInterfaceEntry("vnet1");
+
+    host_intf->link_up_= false;
+
+    vm_interface->set_test_oper_state(false);
+    DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    req.key.reset(new VmInterfaceKey(AgentKey::RESYNC, vm_interface->GetUuid(),
+                                     vm_interface->name()));
+    req.data.reset(new VmInterfaceOsOperStateData(false));
+    table->Enqueue(&req);
+    client->WaitForIdle();
+    EXPECT_FALSE(vm_interface->IsActive());
+
+    host_intf->link_up_= true;
+    client->WaitForIdle();
+    agent_->set_test_mode(false);
+    EXPECT_TRUE(vm_interface->IsActive());
+    agent_->set_test_mode(true);
+    EXPECT_EQ("0c:e1:49:a5:00:01",client->param_.physical_interface_mac_addr_list()[0]);
+    DeleteVmportEnv(input, 1, true);
+    client->WaitForIdle();
+}
 
 TEST_F(DpdkIntfTest, dpdk_intf_status) {
 
