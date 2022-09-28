@@ -430,6 +430,35 @@ TEST_F(VrfTest, NotifyOnConfigAdd) {
 
     EXPECT_TRUE(VrfFind("vrf1", true) == false);
 }
+TEST_F(VrfTest, CheckVrfDefaultVrrpMac) {
+    //Check if Default L2 Route is present in
+    //bridge table of vrf when a interface is added
+    struct PortInfo input1[] = {
+                {"vnet8", 8, "8.1.1.1", "00:00:00:01:01:01", 1, 1}
+                    };
+    client->Reset();
+    //Adding interface with vrf1
+    CreateVmportEnv(input1, 1, 1, "vn1", "vrf1");
+    client->WaitForIdle();
+    EXPECT_TRUE(VmPortActive(input1, 0));
+    EXPECT_TRUE(VmPortFind(8));
+    EXPECT_TRUE(VrfFind("vrf1"));
+    VrfEntry *vrf = VrfGet("vrf1");
+    BridgeRouteEntry* aap_l2_rt = NULL;
+    //Fetching default L2 route from vrf
+    //and check if it exists
+    aap_l2_rt = L2RouteGet("vrf1", client->agent_->vrrp_mac());
+    EXPECT_TRUE(aap_l2_rt != NULL);
+    client->Reset();
+    DeleteVmportEnv(input1, 1, true);
+    client->WaitForIdle();
+    EXPECT_FALSE(VmPortFind(8));
+    VmInterfaceKey key(AgentKey::ADD_DEL_CHANGE, MakeUuid(8), "");
+    WAIT_FOR(100, 1000, (Agent::GetInstance()->interface_table()->Find(&key, true)
+             == NULL));
+    client->Reset();
+
+}
 
 int main(int argc, char **argv) {
     GETUSERARGS();
