@@ -555,24 +555,30 @@ void Interface::GetOsParams(Agent *agent) {
             if (phy_intf) {
                 addr = ether_aton(agent->params()->
                         physical_interface_mac_addr_list()[index].c_str());
+                if(addr==NULL){ 
+                    LOG(ERROR,  "Physical interface MAC not set in DPDK vrouter agent");
+                }
+
             }  else if (vm_intf && vm_intf->vmi_type() == VmInterface::VHOST) {
                 addr = ether_aton(agent->vrrp_mac().ToString().c_str());
+                if(addr==NULL){ 
+                    LOG(ERROR,  "Physical interface MAC not set in DPDK vrouter agent");
+                 }
             }
         } else {
             if (phy_intf || (vm_intf && vm_intf->vmi_type() == VmInterface::VHOST)) {
                 addr = ether_aton(agent->params()->
                         physical_interface_mac_addr_list()[0].c_str());
-            }
+                if(addr==NULL){
+                     LOG(ERROR,  "Physical interface MAC not set in DPDK vrouter agent");
+                }
+             }
         }
         if (addr) {
             os_params_.mac_ = *addr;
-        } else {
-            LOG(ERROR,
-                    "Physical interface MAC not set in DPDK vrouter agent");
-        }
+        } 
         return;
     }
-
     if (transport_ != TRANSPORT_ETHERNET) {
         if (!agent->isVmwareMode()) {
             os_params_.os_oper_state_ = true;
