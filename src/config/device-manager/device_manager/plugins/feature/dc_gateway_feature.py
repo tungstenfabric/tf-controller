@@ -635,7 +635,7 @@ class DcGatewayFeature(FeatureBase):
                            'restrict_proxy_arp': vn_obj.router_external,
                            'is_cgnat_vrf': True,
                            'private_vns': private_vns}
-                self.add_routing_instance(ri_conf)
+                self._add_routing_instance(ri_conf)
 
     def feature_config(self, **kwargs):
         self.ri_map = {}
