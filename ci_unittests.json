@@ -182,7 +182,8 @@
             "vrouter"
         ],
         "scons_test_targets" : [
-            "vrouter-py-ut:test"
+            "vrouter-py-ut:test",
+            "n3k-tests:test"
         ],
         "misc_test_targets" : [ ]
     },
