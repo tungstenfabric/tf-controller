@@ -1072,9 +1072,26 @@ bool ResolverPath::UpdateResolvedPaths() {
         attr = attr_db->ReplaceNexthopAndLocate(attr.get(),
             nh_path->GetAttr()->nexthop());
 
+        // obtain  extcommunities from original attrs and allow
+        // route target type values.
+        ExtCommunityPtr ext_community = attr->ext_community();
+        ExtCommunity::ExtCommunityList export_list;
+        if (ext_community)
+        {
+            BOOST_FOREACH(const ExtCommunity::ExtCommunityValue &v,
+               ext_community->communities()) {
+               if (!ExtCommunity::is_route_target(v))
+                  continue;
+               export_list.push_back(RouteTarget(v).GetExtCommunity());
+            }
+        }
+
         // Update extended community based on the nexthop path and use it.
-        ExtCommunityPtr ext_community =
+        ext_community =
             UpdateExtendedCommunity(extcomm_db, attr.get(), nh_path->GetAttr());
+        if (!export_list.empty()) {
+            ext_community = extcomm_db->AppendAndLocate(ext_community.get(), export_list);
+	}
         attr = attr_db->ReplaceExtCommunityAndLocate(attr.get(), ext_community);
 
         // Locate the resolved path.
