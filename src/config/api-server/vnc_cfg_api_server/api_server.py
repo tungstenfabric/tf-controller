@@ -980,16 +980,17 @@ class VncApiServer(object):
     def http_resource_create(self, obj_type):
         resource_type, r_class = self._validate_resource_type(obj_type)
         obj_dict = get_request().json[resource_type]
+        self._post_validate(obj_type, obj_dict=obj_dict)
+        fq_name = obj_dict.get('fq_name')
+        fq_name_str = ':'.join(obj_dict.get('fq_name', []))
 
         # check visibility
         user_visible = (obj_dict.get('id_perms') or {}).get('user_visible', True)
         if not user_visible and not self.is_admin_request():
             result = 'This object is not visible by users'
-            self.config_object_error(None, None, obj_type, 'http_post', result)
+            self.config_object_error(None, fq_name_str, obj_type, 'http_post', result)
             raise cfgm_common.exceptions.HttpError(400, result)
 
-        self._post_validate(obj_type, obj_dict=obj_dict)
-        fq_name = obj_dict['fq_name']
         try:
             self._extension_mgrs['resourceApi'].map_method(
                  'pre_%s_create' %(obj_type), obj_dict)
@@ -1279,8 +1280,9 @@ class VncApiServer(object):
         (ok, result) = self._get_common(get_request(), id)
         if not ok:
             (code, msg) = result
+            fq_name_str=':'.join(fq_name)
             self.config_object_error(
-                id, None, obj_type, 'http_get', msg)
+                id, fq_name_str, obj_type, 'http_get', msg)
             raise cfgm_common.exceptions.HttpError(code, msg)
 
         db_conn = self._db_conn
@@ -1333,7 +1335,8 @@ class VncApiServer(object):
         if (not result['id_perms'].get('user_visible', True) and
             not self.is_admin_request()):
             result = 'This object is not visible by users: %s' % id
-            self.config_object_error(id, None, obj_type, 'http_get', result)
+            fq_name_str=':'.join(fq_name)
+            self.config_object_error(id, fq_name_str, obj_type, 'http_get', result)
             raise cfgm_common.exceptions.HttpError(404, result)
 
         if not self.is_admin_request():
@@ -1415,7 +1418,9 @@ class VncApiServer(object):
         except NoIdError as e:
             raise cfgm_common.exceptions.HttpError(404, str(e))
         if not ok:
-            self.config_object_error(id, None, obj_type, 'http_resource_update',
+            fq_name = obj_dict.get('fq_name')
+            fq_name_str = ':'.join(obj_dict.get('fq_name', []))
+            self.config_object_error(id, fq_name_str, obj_type, 'http_resource_update',
                                      result[1])
             raise cfgm_common.exceptions.HttpError(result[0], result[1])
         db_obj_dict = result
@@ -1428,8 +1433,10 @@ class VncApiServer(object):
                 db_obj_dict = result
                 id = obj_dict['uuid'] = db_obj_dict['uuid']
             if not ok and result[0] != 404:
+                fq_name = obj_dict.get('fq_name')
+                fq_name_str = ':'.join(obj_dict.get('fq_name', []))
                 self.config_object_error(
-                    id, None, obj_type, 'http_resource_update', result[1])
+                    id, fq_name_str, obj_type, 'http_resource_update', result[1])
                 raise cfgm_common.exceptions.HttpError(result[0], result[1])
 
         self._put_common('http_put', obj_type, id, db_obj_dict,
@@ -1453,7 +1460,7 @@ class VncApiServer(object):
             if req_obj_type != obj_type:
                 raise cfgm_common.exceptions.HttpError(
                     404, 'No %s object found for id %s' %(resource_type, id))
-            _ = db_conn.uuid_to_fq_name(id)
+            fq_name = db_conn.uuid_to_fq_name(id)
         except NoIdError:
             raise cfgm_common.exceptions.HttpError(
                 404, 'ID %s does not exist' %(id))
@@ -1475,16 +1482,17 @@ class VncApiServer(object):
             (read_ok, read_result) = db_conn.dbe_read(obj_type, id)
         except NoIdError as e:
             raise cfgm_common.exceptions.HttpError(404, str(e))
+        fq_name_str=':'.join(fq_name)
         if not read_ok:
             self.config_object_error(
-                id, None, obj_type, 'http_delete', read_result)
+                id, fq_name_str, obj_type, 'http_delete', read_result)
             # proceed down to delete the resource
 
         # check visibility
         if (not read_result['id_perms'].get('user_visible', True) and
             not self.is_admin_request()):
             result = 'This object is not visible by users: %s' % id
-            self.config_object_error(id, None, obj_type, 'http_delete', result)
+            self.config_object_error(id, fq_name_str, obj_type, 'http_delete', result)
             raise cfgm_common.exceptions.HttpError(404, result)
 
         # common handling for all resource delete
@@ -1493,7 +1501,7 @@ class VncApiServer(object):
             get_request(), obj_type, id, parent_uuid)
         if not ok:
             (code, msg) = del_result
-            self.config_object_error(id, None, obj_type, 'http_delete', msg)
+            self.config_object_error(id, fq_name_str, obj_type, 'http_delete', msg)
             raise cfgm_common.exceptions.HttpError(code, msg)
 
         # Permit abort resource deletion and retrun 202 status code
@@ -1505,7 +1513,7 @@ class VncApiServer(object):
             exist_hrefs = [self.generate_url(type, uuid)
                            for type, uuid in result[1]]
             msg = "Delete when resource still referred: %s" % exist_hrefs
-            self.config_object_error(id, None, obj_type, 'http_delete', msg)
+            self.config_object_error(id, fq_name_str, obj_type, 'http_delete', msg)
             raise cfgm_common.exceptions.HttpError(409, msg)
         elif ok and isinstance(result, tuple) and result[0] == 202:
             # Deletion accepted but not applied, pending delete
@@ -1535,7 +1543,7 @@ class VncApiServer(object):
                 err_msg = 'Delete when children still present: %s' %(
                     exist_hrefs)
                 self.config_object_error(
-                    id, None, obj_type, 'http_delete', err_msg)
+                    id, fq_name_str, obj_type, 'http_delete', err_msg)
                 raise cfgm_common.exceptions.HttpError(409, err_msg)
 
         relaxed_refs = set(db_conn.dbe_get_relaxed_refs(id))
@@ -1551,7 +1559,7 @@ class VncApiServer(object):
                 err_msg = 'Delete when resource still referred: %s' %(
                     exist_hrefs)
                 self.config_object_error(
-                    id, None, obj_type, 'http_delete', err_msg)
+                    id, fq_name_str, obj_type, 'http_delete', err_msg)
                 raise cfgm_common.exceptions.HttpError(409, err_msg)
 
         # State modification starts from here. Ensure that cleanup is done for all state changes
@@ -2954,16 +2962,20 @@ class VncApiServer(object):
         (ok, result) = self._get_common(get_request(), obj_uuid)
         if not ok:
             (code, msg) = result
+            fq_name = self._db_conn.uuid_to_fq_name(obj_uuid)
+            fq_name_str=':'.join(fq_name)
             self.config_object_error(
-                obj_uuid, None, None, 'prop_collection_http_get', msg)
+                obj_uuid, fq_name_str, None, 'prop_collection_http_get', msg)
             raise cfgm_common.exceptions.HttpError(code, msg)
 
         try:
             ok, result = self._db_conn.prop_collection_get(
                 obj_type, obj_uuid, obj_fields, fields_position)
             if not ok:
+                fq_name = self._db_conn.uuid_to_fq_name(obj_uuid)
+                fq_name_str=':'.join(fq_name)
                 self.config_object_error(
-                    obj_uuid, None, None, 'prop_collection_http_get', result)
+                    obj_uuid, fq_name_str, None, 'prop_collection_http_get', result)
         except NoIdError as e:
             # Not present in DB
             raise cfgm_common.exceptions.HttpError(404, str(e))
@@ -2974,8 +2986,10 @@ class VncApiServer(object):
         if (not result['id_perms'].get('user_visible', True) and
             not self.is_admin_request()):
             result = 'This object is not visible by users: %s' % id
+            fq_name = self._db_conn.uuid_to_fq_name(obj_uuid)
+            fq_name_str=':'.join(fq_name)
             self.config_object_error(
-                id, None, None, 'prop_collection_http_get', result)
+                id, fq_name_str, None, 'prop_collection_http_get', result)
             raise cfgm_common.exceptions.HttpError(404, result)
 
         # Prepare response
@@ -3063,8 +3077,10 @@ class VncApiServer(object):
             ok = False
             result = cfgm_common.utils.detailed_traceback()
         if not ok:
+            fq_name = self._db_conn.uuid_to_fq_name(obj_uuid)
+            fq_name_str=':'.join(fq_name)
             self.config_object_error(
-                obj_uuid, None, obj_type, 'prop_collection_update', result[1])
+                obj_uuid, fq_name_str, obj_type, 'prop_collection_update', result[1])
             raise cfgm_common.exceptions.HttpError(result[0], result[1])
         db_obj_dict = result
 
@@ -3076,7 +3092,9 @@ class VncApiServer(object):
                 db_obj_dict = result
                 obj_uuid = db_obj_dict['uuid']
             if not ok and result[0] != 404:
-                self.config_object_error(obj_uuid, None, obj_type,
+                fq_name = self._db_conn.uuid_to_fq_name(obj_uuid)
+                fq_name_str=':'.join(fq_name)
+                self.config_object_error(obj_uuid, fq_name_str, obj_type,
                                          'prop_collection_update', result[1])
                 raise cfgm_common.exceptions.HttpError(result[0], result[1])
 
@@ -3142,7 +3160,9 @@ class VncApiServer(object):
             ok = False
             result = cfgm_common.utils.detailed_traceback()
         if not ok:
-            self.config_object_error(obj_uuid, None, obj_type, 'ref_update',
+            fq_name = self._db_conn.uuid_to_fq_name(obj_uuid)
+            fq_name_str=':'.join(fq_name)
+            self.config_object_error(obj_uuid, fq_name_str, obj_type, 'ref_update',
                                      result[1])
             raise cfgm_common.exceptions.HttpError(result[0], result[1])
         db_obj_dict = result
@@ -4382,7 +4402,9 @@ class VncApiServer(object):
         if (not db_obj_dict['id_perms'].get('user_visible', True) and
             not self.is_admin_request()):
             result = 'This object is not visible by users: %s' % obj_uuid
-            self.config_object_error(obj_uuid, None, obj_type, api_name, result)
+            fq_name = db_conn.uuid_to_fq_name(obj_uuid)
+            fq_name_str=':'.join(fq_name)
+            self.config_object_error(obj_uuid, fq_name_str, obj_type, api_name, result)
             raise cfgm_common.exceptions.HttpError(404, result)
 
         # properties validator (for collections validation in caller)
