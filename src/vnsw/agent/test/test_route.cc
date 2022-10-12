@@ -3107,17 +3107,17 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
     EXPECT_TRUE( si_vrf != NULL);
     WAIT_FOR(1000, 1000, (si_vrf->si_vn_ref() == NULL));
     DelVrf(si_to_routing_vn_vrf_name);
-    DelLrBridgeVrf("vn1", 1);
-    DelRoutingVrf(1);
-    DelIPAM("vn1");
-    DelIPAM("vn2");
-    DelNode("project", "admin");
-    DeleteVmportEnv(input1, 2, true);
-    DeleteVmportEnv(input2, 1, true);
     DelLrVmiPort("lr-vmi-vn1", 91, "1.1.1.99", "vrf1", "vn1",
             "instance_ip_1", 1);
     DelLrVmiPort("lr-vmi-vn2", 92, "2.2.2.99", "vrf2", "vn2",
             "instance_ip_2", 2);
+    DeleteVmportEnv(input1, 2, true);
+    DeleteVmportEnv(input2, 1, true);
+    DelIPAM("vn1");
+    DelIPAM("vn2");
+    DelLrBridgeVrf("vn1", 1);
+    DelRoutingVrf(1);
+    DelNode("project", "admin");
     client->WaitForIdle(5);
     EXPECT_TRUE(VrfGet("vrf1") == NULL);
     EXPECT_TRUE(VrfGet("vrf2") == NULL);
@@ -3315,8 +3315,7 @@ TEST_F(RouteTest, evpn_ecmp_type5_add_remote_route) {
     InetUnicastRouteEntry *inet_rt =
         RouteGet(routing_vrf_name, Ip4Address::from_string("1.1.1.20"), 32);
     client->WaitForIdle();
-    EXPECT_TRUE(inet_rt != NULL);
-    EXPECT_TRUE(inet_rt->GetActivePath()->origin_vn() == "vn1");
+    EXPECT_TRUE(inet_rt == NULL);
 
     // Clean up
     EvpnAgentRouteTable *rt_table = static_cast<EvpnAgentRouteTable *>

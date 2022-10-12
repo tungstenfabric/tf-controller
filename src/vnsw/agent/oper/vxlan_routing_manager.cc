@@ -634,17 +634,35 @@ void VxlanRoutingManager::UpdateEvpnType5Route(Agent *agent,
         static_cast<EvpnAgentRouteTable *>(routing_vrf->GetEvpnRouteTable());
     if (!evpn_table)
         return;
+
+    const NextHop * c_nh = path->nexthop();
+    assert(c_nh);
     //Add route in evpn table
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
     NextHopKey * orig_key = dynamic_cast<NextHopKey*>(
         path->nexthop()->GetDBRequestKey().get())->Clone();
     assert(orig_key);
-    InterfaceNHKey *int_orig_key = dynamic_cast<InterfaceNHKey*>(orig_key);
-    if (int_orig_key) //if NH is interface, then update flags
-        int_orig_key->set_flags(int_orig_key->flags() |
-            InterfaceNHFlags::VXLAN_ROUTING);
     nh_req.key.reset(orig_key);
-    nh_req.data.reset(new InterfaceNHData(routing_vrf->GetName()));
+
+    if (c_nh->GetType() == NextHop::INTERFACE){
+        InterfaceNHKey *intf_orig_key = dynamic_cast<InterfaceNHKey*>(orig_key);
+        assert(intf_orig_key);
+        //if NH is an interface, then update flags
+        intf_orig_key->set_flags(intf_orig_key->flags() |
+            InterfaceNHFlags::VXLAN_ROUTING);
+        nh_req.data.reset(new InterfaceNHData(routing_vrf->GetName()));
+    }else if(c_nh->GetType() == NextHop::COMPOSITE){
+        CompositeNHKey* comp_orig_key = 
+            dynamic_cast<CompositeNHKey*>(nh_req.key.get());
+            assert(comp_orig_key);
+        ComponentNHKeyList& cmpts = 
+            const_cast<ComponentNHKeyList&>
+            (comp_orig_key->component_nh_key_list());
+        nh_req.data.reset(new CompositeNHData(cmpts));
+    }else{ //other types of NH are not expected here
+        assert(c_nh->GetType() == NextHop::INTERFACE || c_nh->GetType() == NextHop::COMPOSITE);
+    }
+
     evpn_table->AddType5Route(agent->local_vm_export_peer(),
                               routing_vrf->GetName(),
                               inet_rt->addr(),
@@ -809,7 +827,37 @@ bool VxlanRoutingManager::EvpnType5RouteNotify(DBTablePartBase *partition,
     nh_req.key.reset((static_cast<NextHopKey *>
                      (anh->GetDBRequestKey().get()))->
                      Clone());
-    nh_req.data.reset(new InterfaceNHData(vrf->GetName()));
+    // Update DBRequest::data 
+    // Three types of an NH are expected here: the TunnelNH, 
+    // the CompositeNH, the InterfaceNH(other)
+    if (anh->GetType() == NextHop::TUNNEL){//Tunnel NH
+        nh_req.data.reset(new TunnelNHData);
+
+    }else if(anh->GetType() == NextHop::COMPOSITE){//Composite NH
+        CompositeNHKey* comp_orig_key = 
+            dynamic_cast<CompositeNHKey*>(nh_req.key.get());
+        assert(comp_orig_key);
+        ComponentNHKeyList& cmpts = const_cast<ComponentNHKeyList&>
+            (comp_orig_key->component_nh_key_list());
+        if (evpn_rt->GetActivePath() && evpn_rt->GetActivePath()->peer() 
+            && evpn_rt->GetActivePath()->peer()->GetType() == Peer::BGP_PEER){
+            return true;
+        }
+        nh_req.data.reset(new CompositeNHData(cmpts));
+    }else if(anh->GetType() == NextHop::INTERFACE){
+        nh_req.data.reset(new InterfaceNHData(vrf->GetName()));
+    }else if(anh->GetType() == NextHop::VRF){
+        nh_req.data.reset(new VrfNHData(false, false, false));
+    }else{// Other NH are not expected (we should not get there)
+        //break execution on a wrong type
+        assert
+        (
+            anh->GetType() == NextHop::TUNNEL    ||
+            anh->GetType() == NextHop::COMPOSITE ||
+            anh->GetType() == NextHop::INTERFACE ||
+            anh->GetType() == NextHop::VRF
+        );
+    }
     const AgentPath *p = evpn_rt->GetActivePath();
 
     std::string origin_vn = "";
@@ -866,7 +914,45 @@ void VxlanRoutingManager::DeleteInetRoute(DBTablePartBase *partition,
             static_cast<const EvpnRoutingPath *>(inet_rt->
                                              FindPath(agent_->evpn_routing_peer()));
         if (evpn_routing_path) {
+            //find the corresponding route in the routing vrf table
+            VrfEntry *l3_vrf =
+                const_cast<VrfEntry*>(evpn_routing_path->routing_vrf());
+            InetUnicastAgentRouteTable *rt_inet_uc =
+                l3_vrf->GetInet4UnicastRouteTable();
+            InetUnicastRouteEntry key_rt
+                (l3_vrf, ip_addr, evpn_rt->GetVmIpPlen(), false);
+            InetUnicastRouteEntry *rt_to_delete =
+                rt_inet_uc->FindRouteUsingKey(key_rt);
+            //loop over all paths in the corresponding route of
+            //a bridge vrf and find the one matching the route in a routing vrf
+            if (rt_to_delete){
+                for (Route::PathList::const_iterator it=
+                    inet_rt->GetPathList().begin();
+                    it != inet_rt->GetPathList().end();
+                    it++){
+                        const AgentPath *path =
+                            dynamic_cast<const AgentPath*>(it.operator->());
+                        if (
+                            !path->nexthop() ||
+                            !path->peer() ||
+                            !rt_to_delete->GetActivePath() ||
+                            !rt_to_delete->GetActivePath()->nexthop()){
+                                continue;
+                        }
+                        if (path->nexthop()->GetType() ==
+                            rt_to_delete->GetActivePath()->nexthop()->GetType() &&
+                            (path->peer()->GetType() == Peer::LOCAL_VM_PORT_PEER ||
+                             path->peer()->GetType() == Peer::ECMP_PEER)
+                        ){
+                            return;
+                        }
+                }
+            }
             evpn_routing_path->DeleteEvpnType5Route(agent_, inet_rt);
+            //if other paths are still available
+            if(inet_rt->GetPathList().size() > 1){
+                return;
+            }
         }
     }
 

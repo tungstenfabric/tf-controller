@@ -91,15 +91,15 @@ protected:
     }
 
     void DeleteEnvironment(bool vxlan_enabled) {
-        DelIPAM("vn1");
-        DelIPAM("vn2");
-        DelNode("project", "admin");
-        DeleteVmportEnv(input1, 2, true);
-        DeleteVmportEnv(input2, 1, true);
         DelLrVmiPort("lr-vmi-vn1", 91, "1.1.1.99", "vrf1", "vn1",
                     "instance_ip_1", 1);
         DelLrVmiPort("lr-vmi-vn2", 92, "2.2.2.99", "vrf2", "vn2",
                     "instance_ip_2", 2);
+        DeleteVmportEnv(input1, 2, true);
+        DeleteVmportEnv(input2, 1, true);
+        DelIPAM("vn1");
+        DelIPAM("vn2");
+        DelNode("project", "admin");
         client->WaitForIdle();
         // Verify subnet route is deleted on vn detach as lr vmi port is deleted
         InetUnicastRouteEntry *subnet_rt_vn1 =
