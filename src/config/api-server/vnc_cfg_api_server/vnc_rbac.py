@@ -12,6 +12,7 @@ import json
 import uuid
 import string
 import re
+import copy
 from six.moves.configparser import SafeConfigParser
 from .provision_defaults import *
 from cfgm_common.exceptions import *
@@ -83,7 +84,10 @@ class VncRbac(object):
         rule_list = []
         obj_fields = ['api_access_lists']
         try:
-            (ok, result) = self._db_conn.dbe_read(obj_type, obj_uuid, obj_fields)
+            # read api_access_lists from local cache if available to enhance 
+            # performance of the list and read calls. 
+            # Refer: CEM-26670
+            (ok, result) = self._db_conn.dbe_read(obj_type, obj_uuid, obj_fields, ret_readonly=True)
         except NoIdError:
             ok = False
         if not ok or 'api_access_lists' not in result:
@@ -95,7 +99,7 @@ class VncRbac(object):
         for api_access_list in api_access_lists:
             (ok, result) = self._db_conn.dbe_read('api_access_list',
                                                    api_access_list['uuid'],
-                                                   obj_fields)
+                                                   obj_fields,  ret_readonly=True)
             if not ok or 'api_access_list_entries' not in result:
                 continue
             rule_list.extend(result['api_access_list_entries'].get('rbac_rule'))
@@ -209,6 +213,7 @@ class VncRbac(object):
 
         # rule list for project/domain of the request
         rule_list = self.get_rbac_rules(request)
+        rule_list = copy.deepcopy(rule_list)
         if len(rule_list) == 0:
             msg = 'rbac: rule list empty!!'
             self._server_mgr.config_log(msg, level=SandeshLevel.SYS_NOTICE)
