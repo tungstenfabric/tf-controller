@@ -3,6 +3,7 @@ kombu==4.0.2
 python-novaclient==16.0.0
 contrail-api-server
 gevent<1.5.0
+greenlet<1.1.4
 flexmock==0.10.4
 mock<=4.0.2
 WebTest==2.0.34
