@@ -1,4 +1,5 @@
 gevent<1.5.0
+greenlet<1.1.4
 netaddr>=0.7.5
 contrail-config-common
 jsonpickle
