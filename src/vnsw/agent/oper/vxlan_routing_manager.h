@@ -237,7 +237,8 @@ public:
     bool RouteNotify(DBTablePartBase *partition, DBEntryBase *e);
     bool RouteNotifyInLrEvpnTable(DBTablePartBase *partition,
                                     DBEntryBase *e,const boost::uuids::uuid &uuid,
-                                    const VnEntry *vn, bool update=false, bool withdraw=false);
+                                    const VnEntry *vn, const VrfEntry *del_bridge_vrf,
+                                    bool update=false, bool withdraw=false);
     void HandleSubnetRoute(const VrfEntry *vrf, bool bridge_vrf=false);
     void FillSandeshInfo(VxlanRoutingResp *resp);
     void DeleteSubnetRoute(const VrfEntry *vrf,VnIpam *ipam = NULL);
