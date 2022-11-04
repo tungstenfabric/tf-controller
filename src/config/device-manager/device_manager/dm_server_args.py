@@ -19,8 +19,8 @@ def check_maxbytes_range(arg):
     except ValueError as err:
         raise argparse.ArgumentTypeError(str(err))
 
-    if value < 5000000 or value > 50000000:
-        message = ("Expecting 5000000 <= value <= 50000000,"
+    if value < 5000 or value > 50000000:
+        message = ("Expecting 5000 < value <= 50000000,"
                    " got value = {}").format(value)
         raise argparse.ArgumentTypeError(message)
     return value
@@ -32,8 +32,8 @@ def check_backupcount_range(arg):
     except ValueError as err:
         raise argparse.ArgumentTypeError(str(err))
 
-    if value < 10 or value > 100:
-        message = ("Expecting 10 <= value <= 100,"
+    if value < 1 or value > 100:
+        message = ("Expecting 1 < value <= 100,"
                    " got value = {}").format(value)
         raise argparse.ArgumentTypeError(message)
     return value

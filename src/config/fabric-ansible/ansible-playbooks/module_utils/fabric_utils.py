@@ -13,6 +13,7 @@ import traceback  # noqa
 import uuid
 
 from ansible.module_utils.basic import AnsibleModule
+from six.moves.configparser import SafeConfigParser
 
 from job_manager.fabric_logger import fabric_ansible_logger
 from job_manager.job_log_utils import JobLogUtils
@@ -61,8 +62,15 @@ class FabricAnsibleModule(AnsibleModule):
                                                   **kwargs)
         self.module_name = self._name
         self.job_ctx = self.params.get('job_ctx')
-        self.max_bytes = self.params.get('max_bytes')
-        self.backup_count = self.params.get('backup_count')
+        fabric_ansible_conf_file_dict = dict()
+        if self.job_ctx.get('config_args', {}).get('fabric_ansible_conf_file'):
+            config = SafeConfigParser()
+            config.read(self.job_ctx.get('config_args').get(
+                'fabric_ansible_conf_file'))
+            if 'DEFAULTS' in config.sections():
+                fabric_ansible_conf_file_dict = dict(config.items("DEFAULTS"))
+        self.max_bytes = fabric_ansible_conf_file_dict.get('max_bytes')
+        self.backup_count = fabric_ansible_conf_file_dict.get('backup_count')
         self.logger = fabric_ansible_logger(self.module_name, self.max_bytes,
                                             self.backup_count)
         self.results = dict()

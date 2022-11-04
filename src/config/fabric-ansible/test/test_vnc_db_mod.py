@@ -150,7 +150,7 @@ class TestFabricVncDbModule(TestFabricModule):
                               "default-global-system-config",
                               "device_import_template"],
                           "job_execution_id": "123",
-                          "config_args": "546", "job_input": ""}))
+                          "config_args": {}, "job_input": ""}))
         result = self.execute_module()
         self.assertEqual(result.get('failed'), None)
 
