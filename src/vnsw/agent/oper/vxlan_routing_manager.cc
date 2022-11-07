@@ -159,10 +159,12 @@ void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &uuid,
     } else {
         return;
     }
+    if (vn->GetVrf() == NULL || (vn->GetVrf()->IsDeleted()))
+        return;
     DBTable::DBTableWalkRef walk_ref;
     walk_ref = evpn_table->
             AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotifyInLrEvpnTable,
-                                    mgr_, _1, _2, uuid, vn, update, withdraw),
+                                    mgr_, _1, _2, uuid, vn, vn->GetVrf(), update, withdraw),
                         boost::bind(&VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone,
                                     this, _1, _2));
     evpn_table->WalkAgain(walk_ref);
@@ -718,7 +720,7 @@ bool VxlanRoutingManager::InetRouteNotify(DBTablePartBase *partition,
 
 bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
 (DBTablePartBase *partition, DBEntryBase *e, const boost::uuids::uuid &uuid,
- const VnEntry *vn, bool update, bool withdraw) {
+ const VnEntry *vn, const VrfEntry *del_bridge_vrf, bool update, bool withdraw) {
 
     EvpnRouteEntry *evpn_rt = dynamic_cast<EvpnRouteEntry *>(e);
     if (!evpn_rt || (evpn_rt->vrf()->vn() == NULL) || (!evpn_rt->IsType5()))
@@ -733,7 +735,6 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
        if ((vn== NULL) || (vn->GetVrf()==NULL)) {
             return true;
         }
-        const VrfEntry *del_bridge_vrf = vn->GetVrf();
         InetUnicastAgentRouteTable *deleted_vn_inet_table =
                 del_bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
         deleted_vn_inet_table->Delete(agent_->evpn_routing_peer(),
@@ -803,7 +804,7 @@ bool VxlanRoutingManager::EvpnType5RouteNotify(DBTablePartBase *partition,
     assert(evpn_rt->IsType5());
 
     if (vrf->vn() && vrf->vn()->vxlan_routing_vn() && (!IsHostRoute(evpn_rt))) {
-        RouteNotifyInLrEvpnTable(partition, e, vrf->vn()->logical_router_uuid(), NULL, true, false);
+        RouteNotifyInLrEvpnTable(partition, e, vrf->vn()->logical_router_uuid(), NULL, NULL, true, false);
     }
 
     if (evpn_rt->IsDeleted()) {
