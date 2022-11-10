@@ -546,6 +546,12 @@ void AddVnHealthCheckService(const char *name, int id,
                             const bool target_ip_all,
                             const struct IpStr *target_ip_list,
                             const int target_ip_count);
+void UpdateVnHealthCheckService(const char *name, int id,
+                            uint32_t delay, uint32_t timeout,
+                            uint32_t max_retries,
+                            const bool target_ip_all,
+                            const struct IpStr *target_ip_list,
+                            const int target_ip_count);
 
 void VxLanNetworkIdentifierMode(bool config, const char *encap1 = NULL,
                                 const char *encap2 = NULL,
