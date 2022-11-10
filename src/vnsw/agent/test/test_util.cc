@@ -3387,6 +3387,60 @@ void AddVnHealthCheckService(const char *name, int id,
     AddNode("service-health-check", name, id, buf);
 }
 
+void UpdateVnHealthCheckService(const char *name, int id,
+                            uint32_t delay, uint32_t timeout,
+                            uint32_t max_retries,
+                            const bool target_ip_all,
+                            const struct IpStr *target_ip_list,
+                            const int target_ip_count) {
+
+    char buf[1024];
+    char ip_list[512];
+    int i = 0, ret = 0;
+
+    while (i < target_ip_count) {
+        ret += snprintf(ip_list + ret, 1024 - ret,
+                            "<ip-address>%s</ip-address>",
+                            target_ip_list[i].ipaddr);
+        i++;
+    }
+    ip_list[ret+1] = '\0';
+
+    if (target_ip_count == 0) {
+        sprintf(buf, "<service-health-check-properties>"
+                 "    <enabled>true</enabled>"
+                 "    <health-check-type>%s</health-check-type>"
+                 "    <monitor-type>%s</monitor-type>"
+                 "    <delay>%d</delay>"
+                 "    <timeout>%d</timeout>"
+                 "    <max-retries>%d</max-retries>"
+                 "    <http-method></http-method>"
+                 "    <url-path>%s</url-path>"
+                 "    <expected-codes></expected-codes>"
+                 "    <target-ip-all>%s</target-ip-all>"
+                 "</service-health-check-properties>", "", "BFD",
+                 delay, timeout, max_retries, "http://local-ip/",
+                 target_ip_all ? "true" : "false");
+    } else {
+        sprintf(buf, "<service-health-check-properties>"
+                 "    <enabled>true</enabled>"
+                 "    <health-check-type>%s</health-check-type>"
+                 "    <monitor-type>%s</monitor-type>"
+                 "    <delay>%d</delay>"
+                 "    <timeout>%d</timeout>"
+                 "    <max-retries>%d</max-retries>"
+                 "    <http-method></http-method>"
+                 "    <url-path>%s</url-path>"
+                 "    <expected-codes></expected-codes>"
+                 "    <target-ip-all>%s</target-ip-all>"
+                 "    <target-ip-list>%s</target-ip-list>"
+                 "</service-health-check-properties>", "", "BFD",
+                 delay, timeout, max_retries, "http://local-ip/",
+                 target_ip_all ? "true" : "false", ip_list);
+    }
+    AddNode("service-health-check", name, id, buf);
+}
+
 void send_icmp(int fd, uint8_t smac, uint8_t dmac, uint32_t sip, uint32_t dip) {
     uint8_t dummy_dmac[6], dummy_smac[6];
     memset(dummy_dmac, 0, sizeof(dummy_dmac));
