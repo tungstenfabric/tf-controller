@@ -440,6 +440,57 @@ TEST_F(MacIpLearningHCTest, BfdTest5) {
     DelHealthCheckService("HC-1");
     client->WaitForIdle();
 }
+
+//Create and Attach BFD HealthCheck to VN.
+////Modify the service_type_ of HealthCheck Object
+TEST_F(MacIpLearningHCTest, BfdTest6) {
+
+    const VmInterface *intf = static_cast<const VmInterface *>(VmPortGet(1));
+    TxL2Packet(intf->id(), "00:00:00:11:22:30", "00:00:00:11:22:31",
+               "1.1.1.10", "1.1.1.11", 1, intf->vrf()->vrf_id(), 1, 1);
+    client->WaitForIdle();
+
+    intf = static_cast<const VmInterface *>(VmPortGet(2));
+    TxL2Packet(intf->id(), "00:00:00:11:22:31", "00:00:00:11:22:30",
+               "1.1.1.11", "1.1.1.10", 1, intf->vrf()->vrf_id(), 1, 1);
+    client->WaitForIdle();
+
+    boost::system::error_code ec;
+
+    AddVnHealthCheckService("HC-1", 1, 1, 1, 3, true, NULL, 0);
+    AddLink("virtual-network", "vn1",
+            "service-health-check", "HC-1");
+    client->WaitForIdle();
+
+    AddVnHealthCheckService("HC-1", 1, 1, 1, 3, true, NULL, 0);
+    client->WaitForIdle();
+
+    AddVnHealthCheckService("HC-1", 1, 2, 5, 3, true, NULL, 0);
+    client->WaitForIdle();
+
+    IpAddress ip = IpAddress(Ip4Address::from_string("1.1.1.10", ec));
+    MacIpLearningKey key(GetVrfId("vrf1"), ip);
+    MacIpLearningEntry *entry = agent_->mac_learning_proto()->
+                GetMacIpLearningTable()->Find(key);
+    EXPECT_TRUE(entry != NULL);
+    EXPECT_TRUE(entry->HcService() != NULL);
+    EXPECT_TRUE(entry->HcService()->name() == "HC-1");
+    EXPECT_TRUE(entry->HcInstance() != NULL);
+
+    ip = IpAddress(Ip4Address::from_string("1.1.1.11", ec));
+    MacIpLearningKey key1(GetVrfId("vrf1"), ip);
+    entry = agent_->mac_learning_proto()->
+                GetMacIpLearningTable()->Find(key1);
+    EXPECT_TRUE(entry != NULL);
+    UpdateVnHealthCheckService("HC-1", 1, 1, 1, 3, true, NULL, 0);
+    DelLink("virtual-network", "vn1",
+            "service-health-check", "HC-1");
+    client->WaitForIdle();
+    DelHealthCheckService("HC-1");
+    client->WaitForIdle();
+}
+
+
 // verify that mac-ip are not learnt once limit is reached on interface
 TEST_F(MacIpLearningHCTest, scale_test) {
     //disable arp timeout

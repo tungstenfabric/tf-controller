@@ -736,8 +736,15 @@ void VmInterface::InsertHealthCheckInstance(HealthCheckInstanceBase *hc_inst) {
 }
 
 void VmInterface::DeleteHealthCheckInstance(HealthCheckInstanceBase *hc_inst) {
-    std::size_t ret = hc_instance_set_.erase(hc_inst);
-    assert(ret != 0);
+    //[CEM-29104 for reference]If service_type of HealthCheck instance is "vn-ip-list" 
+    //while creating the BFD HealthCheck and if it is modified before deleting 
+    //the HealthCheck object, then object hc_inst will not present in hc_instance_set 
+    //and assert will fail while erasing hc_inst from hc_instance_set. So,
+    //added a check to see if hc_inst is present in the set.
+    if(hc_instance_set_.find(hc_inst) != hc_instance_set_.end()) {
+         std::size_t ret = hc_instance_set_.erase(hc_inst);
+         assert(ret != 0);
+    }
 }
 
 const VmInterface::HealthCheckInstanceSet &
