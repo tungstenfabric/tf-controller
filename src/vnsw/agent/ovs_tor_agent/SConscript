@@ -30,6 +30,9 @@ env = AgentEnv.RemoveExceptionFlag(env)
 env.AppendUnique(CCFLAGS='-Wno-reorder')
 env.AppendUnique(CCFLAGS='-Wno-return-type')
 
+# Add Contrail agent libraries
+env.Prepend(LIBS = AgentEnv['CONTRAIL_LIBS'])
+
 contrail_tor_agent = env.Program(target = 'contrail-tor-agent',
                         source = [
                                   'buildinfo.cc',
