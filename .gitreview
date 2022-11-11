@@ -1,5 +1,5 @@
 [gerrit]
-host=review.opencontrail.org
+host=gerrit.tungsten.io
 port=29418
 project=tungstenfabric/tf-controller.git
-defaultbranch=R2011
+defaultbranch=R2011.L5.1
