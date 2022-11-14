@@ -12,6 +12,7 @@
 #include <oper/vrf.h>
 #include <oper/mirror_table.h>
 #include <oper/path_preference.h>
+#include <mac_learning/mac_learning_init.h>
 
 namespace sc = boost::statechart;
 namespace mpl = boost::mpl;
@@ -111,6 +112,7 @@ struct WaitForTraffic : sc::state<WaitForTraffic, PathPreferenceSM> {
     sc::result react(const EvSeqChange &event) {
         PathPreferenceSM *state_machine = &context<PathPreferenceSM>();
         state_machine->set_max_sequence(event.sequence_);
+        state_machine->Log("WaitForTraffic EvSeqChange");
         return discard_event();
     }
 
@@ -167,6 +169,7 @@ struct TrafficSeen : sc::state<TrafficSeen, PathPreferenceSM> {
         PathPreferenceSM *state_machine = &context<PathPreferenceSM>();
         if (event.sequence_ > state_machine->sequence()) {
             state_machine->set_max_sequence(event.sequence_);
+            state_machine->Log("TrafficSeen EvSeqChange");
             if (state_machine->IsPathFlapping()) {
                 //If path is continuosly flapping
                 //delay wihtdrawing of route
@@ -228,6 +231,7 @@ struct ActiveActiveState : sc::state<ActiveActiveState, PathPreferenceSM> {
     sc::result react(const EvSeqChange &event) {
         PathPreferenceSM *state_machine = &context<PathPreferenceSM>();
         state_machine->set_max_sequence(event.sequence_);
+        state_machine->Log("ActiveActiveState EvSeqChange");
         return transit<WaitForTraffic>();
     }
 
@@ -361,7 +365,7 @@ void PathPreferenceSM::UpdateDependentRoute() {
 void PathPreferenceSM::Process() {
      uint32_t max_sequence = 0;
      const AgentPath *best_path = NULL;
-
+     bool maciplearning_prefix = false;
      const AgentPath *local_path =  rt_->FindPath(peer_);
      //Dont act on notification of derived routes
      if (is_dependent_rt_) {
@@ -414,7 +418,24 @@ void PathPreferenceSM::Process() {
          return;
      }
 
-     if (max_sequence > sequence()) {
+     //Skip seq number change for macip learning prefix inet rt path in waitfortraffic state to exclude stale paths
+     if ( rt_->vrf() && rt_->vrf()->vn() && rt_->vrf()->vn()->mac_ip_learning_enable()) {
+         MacIpLearningEntry *entry = NULL;
+         const InetUnicastRouteEntry *inet_rt =
+         dynamic_cast<const InetUnicastRouteEntry *>(rt_);
+         if ( inet_rt != NULL) {
+            MacIpLearningKey macip_entry_key(rt_->vrf()->vrf_id(), inet_rt->addr());
+            entry = agent_->mac_learning_proto()->
+                GetMacIpLearningTable()->Find(macip_entry_key);
+         }
+         if (entry != NULL && wait_for_traffic() ==true) {
+             maciplearning_prefix = true;
+             if (max_sequence > sequence()) {
+                 Log("WaitForTraffic EvSeqChange skipped ");
+             }
+         }
+     }
+     if ((max_sequence > sequence()) && (maciplearning_prefix == false)) {
          process_event(EvSeqChange(max_sequence));
      } else if (sequence() == max_sequence &&
              best_path->ComputeNextHop(agent_) ==
@@ -438,7 +459,7 @@ void PathPreferenceSM::Log(std::string state) {
 
     PATH_PREFERENCE_TRACE(rt_->vrf()->GetName(), rt_->GetAddressString(),
                           preference(), sequence(), state, timeout(),
-                          dependent_ip_str, flap_count_);
+                          dependent_ip_str, flap_count_, max_sequence_);
 }
 
 void PathPreferenceSM::EnqueuePathChange() {
