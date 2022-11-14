@@ -175,7 +175,8 @@ AGENT_MULTIPATH_LIBS = [
     'port_ipc',
     'vnswoperdb',
     'vnswcmn',
-    'resource_manager'
+    'resource_manager',
+    'pkt'
 ]
 
 # Set LIBS environment to ensure libraries are built
