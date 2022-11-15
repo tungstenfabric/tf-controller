@@ -1689,6 +1689,7 @@ traceobject sandesh PathPreferenceTrace {
     /** Dependent ip address for agent path */
     7: string dependent_ip;
     8: i32 flap_count;
+    9: i32 max_sequence;
 }
 
 /**
