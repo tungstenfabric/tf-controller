@@ -84,6 +84,7 @@ void ControlNode::SetDefaultSchedulingPolicy() {
         (TaskExclusion(scheduler->GetTaskId("bgp::RouteAggregation")))
         (TaskExclusion(scheduler->GetTaskId("bgp::ServiceChain")))
         (TaskExclusion(scheduler->GetTaskId("bgp::StaticRoute")))
+        (TaskExclusion(scheduler->GetTaskId("bgp::ShowCommand")))
         (TaskExclusion(scheduler->GetTaskId("db::Walker")))
         (TaskExclusion(scheduler->GetTaskId("db::DBTable")));
     scheduler->SetPolicy(scheduler->GetTaskId("bgp::ServiceChain"),
@@ -184,7 +185,8 @@ void ControlNode::SetDefaultSchedulingPolicy() {
         (TaskExclusion(scheduler->GetTaskId("bgp::ResolverNexthop")))
         (TaskExclusion(scheduler->GetTaskId("bgp::RouteAggregation")))
         (TaskExclusion(scheduler->GetTaskId("bgp::ServiceChain")))
-        (TaskExclusion(scheduler->GetTaskId("bgp::StaticRoute")));
+        (TaskExclusion(scheduler->GetTaskId("bgp::StaticRoute")))
+        (TaskExclusion(scheduler->GetTaskId("bgp::ShowCommand")));
     scheduler->SetPolicy(scheduler->GetTaskId("bgp::ResolverPath"),
         resolver_path_policy);
 
@@ -194,7 +196,9 @@ void ControlNode::SetDefaultSchedulingPolicy() {
         (TaskExclusion(scheduler->GetTaskId("bgp::Config")))
         (TaskExclusion(scheduler->GetTaskId("bgp::ConfigHelper")))
         (TaskExclusion(scheduler->GetTaskId("bgp::ResolverPath")))
-        (TaskExclusion(scheduler->GetTaskId("bgp::RouteAggregation")));
+        (TaskExclusion(scheduler->GetTaskId("bgp::RouteAggregation")))
+        (TaskExclusion(scheduler->GetTaskId("bgp::ShowCommand")))
+        (TaskExclusion(scheduler->GetTaskId("bgp::StaticRoute")));
     scheduler->SetPolicy(scheduler->GetTaskId("bgp::ResolverNexthop"),
         resolver_nexthop_policy);
 

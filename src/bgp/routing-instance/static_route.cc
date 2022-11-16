@@ -530,9 +530,11 @@ void StaticRoute<T>::AddStaticRoute(NexthopPathIdList *old_path_ids) {
             nexthop_route_path->GetAttr()->nexthop().to_v4().to_ulong();
         BgpPath *existing_path = static_route->FindPath(BgpPath::StaticRoute,
                                                         NULL, path_id);
+        uint32_t nh_route_flags = (nexthop_route_path->GetFlags()
+                                  & ~BgpPath::ResolvedPath);
         if (existing_path != NULL) {
             if ((new_attr.get() != existing_path->GetAttr()) ||
-                (nexthop_route_path->GetFlags() != existing_path->GetFlags()) ||
+                (nh_route_flags != existing_path->GetFlags()) ||
                 (nexthop_route_path->GetLabel() != existing_path->GetLabel())) {
                 // Update Attributes and notify (if needed)
                 static_route->RemovePath(BgpPath::StaticRoute, NULL, path_id);
@@ -543,7 +545,7 @@ void StaticRoute<T>::AddStaticRoute(NexthopPathIdList *old_path_ids) {
 
         BgpPath *new_path =
             new BgpPath(path_id, BgpPath::StaticRoute, new_attr.get(),
-                nexthop_route_path->GetFlags(), nexthop_route_path->GetLabel());
+                nh_route_flags, nexthop_route_path->GetLabel());
         static_route->InsertPath(new_path);
         partition->Notify(static_route);
 
