@@ -850,5 +850,6 @@ void CreateServiceInstance(const char *service_instance,
             const char *left, const char *left_ip,
             const char *right, const char *right_ip);
 void DeleteServiceInstance(const char *service_instance);
-
+void AddGRParameters(string enable, string gr_time, string llgr_time, string end_of_rib_timeout);
+void DelGRParameters();
 #endif // vnsw_agent_test_cmn_util_h

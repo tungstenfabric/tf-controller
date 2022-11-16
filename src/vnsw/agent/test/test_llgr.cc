@@ -29,13 +29,17 @@
 #include "test_cmn_util.h"
 #include "kstate/test/test_kstate_util.h"
 #include "vr_types.h"
-
+#include <global_system_config.h>
 #include <controller/controller_export.h>
 #include <controller/controller_peer.h>
 #include <controller/controller_ifmap.h>
 #include <controller/controller_vrf_export.h>
 #include <boost/assign/list_of.hpp>
+#include "net/bgp_af.h"
+
 using namespace boost::assign;
+using autogen::EnetItemType;
+
 std::string eth_itf;
 bool dhcp_external;
 
@@ -451,6 +455,78 @@ TEST_F(LlgrTest, timeout_control_node) {
     //Timeout
     TimedOut(bgp_peer_);
     //Cleanup
+    DeleteSingleVmEnvironment();
+    client->WaitForIdle();
+}
+
+// ensure that timers are updated correctly from config
+TEST_F(LlgrTest, timers_update) {
+    AddGRParameters("true", "10", "10", "120");
+    task_util::WaitForIdle(30, true);
+    GracefulRestartParameters gr_params =
+                agent_->oper_db()->global_system_config()->gres_parameters();
+    EXPECT_TRUE(gr_params.enable());
+    EXPECT_TRUE(gr_params.long_lived_restart_time() == 10);
+    EXPECT_TRUE(gr_params.end_of_rib_time() == 120);
+    EXPECT_TRUE(gr_params.xmpp_helper_enable());
+
+    AddGRParameters("true", "10", "30", "110");
+    task_util::WaitForIdle(30, true);
+    gr_params = agent_->oper_db()->global_system_config()->gres_parameters();
+    EXPECT_TRUE(gr_params.long_lived_restart_time() == 30);
+    EXPECT_TRUE(gr_params.end_of_rib_time() == 110);
+
+    DelGRParameters();
+    task_util::WaitForIdle(30, true);
+}
+
+TEST_F(LlgrTest, rt_sequence_number) {
+    AddGRParameters("true", "1000", "10", "120");
+    client->WaitForIdle();
+    SetupSingleVmEnvironment();
+    client->WaitForIdle();
+
+    InetUnicastRouteEntry *local_evpn_rt =
+        RouteGet(VrfGet("vrf1")->GetName(), local_vm_ip4_, 32);
+    EXPECT_TRUE(local_evpn_rt != NULL);
+    EXPECT_TRUE(local_evpn_rt->GetActivePath()->path_preference().sequence() == 0);
+    DelGRParameters();
+    client->WaitForIdle();
+    DeleteSingleVmEnvironment();
+    client->WaitForIdle();
+}
+
+// ensure that rts are deleted when timer finishes
+TEST_F(LlgrTest, rt_delete_after_timer_expires) {
+    AddGRParameters("true", "30", "1", "1");
+    client->WaitForIdle();
+    SetupSingleVmEnvironment();
+    client->WaitForIdle();
+
+    //Ready
+    Ready(bgp_peer_, false);
+    client->WaitForIdle();
+    InetUnicastRouteEntry* local_vm_rt = RouteGet("vrf1", local_vm_ip4_,
+                                                       32);
+    EvpnRouteEntry *local_evpn_rt = EvpnRouteGet("vrf1", local_vm_mac_,
+                                                    local_vm_ip4_, 0);
+    EXPECT_TRUE(local_vm_rt != NULL);
+    EXPECT_TRUE(local_evpn_rt != NULL);
+
+    DeleteBgpPeer(bgp_peer_);
+    client->WaitForIdle();
+
+    bgp_peer_ = NULL;
+    client->WaitForIdle();
+
+    local_vm_rt = RouteGet("vrf1", local_vm_ip4_, 32);
+    local_evpn_rt = EvpnRouteGet("vrf1", local_vm_mac_,
+                                    local_vm_ip4_, 0);
+    EXPECT_TRUE(local_vm_rt == NULL);
+    EXPECT_TRUE(local_evpn_rt == NULL);
+
+    DelGRParameters();
+    client->WaitForIdle();
     DeleteSingleVmEnvironment();
     client->WaitForIdle();
 }

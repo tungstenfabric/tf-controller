@@ -3296,8 +3296,13 @@ void DelBgpaasPortRange() {
 
 void AddFastConvergenceParameters(bool enable, const int tout) {
     std::stringstream str;
+    std::string enable_fast_conv = "true";
+    
+    if(!enable) {
+        enable_fast_conv = "false";
+    }
     str << "<fast-convergence-parameters>" << endl;
-    str << "    <enable>" << "true" << "</enable>";
+    str << "    <enable>" << enable_fast_conv << "</enable>";
     str << "    <xmpp-hold-time>" << tout << "</xmpp-hold-time>";
     str << "</fast-convergence-parameters>";
 
@@ -3305,6 +3310,25 @@ void AddFastConvergenceParameters(bool enable, const int tout) {
 }
 
 void DelFastConvergenceParameters() {
+    DelNode("global-system-config", "system-config");
+}
+
+void AddGRParameters(string enable, string gr_time, string llgr_time, string end_of_rib_timeout) {
+    std::stringstream str;
+    str << "<graceful-restart-parameters>\
+            <enable>" + enable + "</enable>\
+            <restart-time>" + gr_time + "</restart-time>\
+            <long-lived-restart-time>" + llgr_time +
+                "</long-lived-restart-time>\
+            <end-of-rib-timeout>" + end_of_rib_timeout + "</end-of-rib-timeout>\
+            <bgp-helper-enable>true</bgp-helper-enable>\
+            <xmpp-helper-enable>true</xmpp-helper-enable>\
+        </graceful-restart-parameters>";
+
+    AddNode("global-system-config", "system-config", 1, str.str().c_str());
+}
+
+void DelGRParameters() {
     DelNode("global-system-config", "system-config");
 }
 
