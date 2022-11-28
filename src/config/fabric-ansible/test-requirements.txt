@@ -8,6 +8,7 @@ pyaml==20.4.0; python_version=='2.7'
 pyYAML==5.3.1; python_version > '2.7'
 python-keystoneclient==3.22.0
 python-novaclient==16.0.0
+keystoneauth1<5.1.0
 webtest==2.0.34
 contrail-api-server==0.1.dev0
 python-swiftclient==3.9.0
