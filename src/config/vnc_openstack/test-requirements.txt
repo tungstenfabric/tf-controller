@@ -11,6 +11,7 @@ netaddr>=0.7.5,<=0.7.19
 bitarray>=0.8.0,<=1.2.1
 psutil>=0.6.0,<=5.7.0
 python-novaclient==16.0.0
+keystoneauth1<5.1.0
 kombu==4.0.2
 netifaces==0.10.9
 stevedore==1.28.0
