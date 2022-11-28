@@ -1,6 +1,7 @@
 gevent<1.5.0
 greenlet<2.0.0
 python-novaclient==16.0.0
+keystoneauth1<5.1.0
 kombu==4.0.2
 testtools==2.4.0
 mock<=4.0.2

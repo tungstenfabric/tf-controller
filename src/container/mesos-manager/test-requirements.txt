@@ -25,6 +25,7 @@ python-subunit
 webtest
 pyaml
 keystonemiddleware!=4.19.0
+keystoneauth1<5.1.0
 pyOpenSSL
 schema_transformer
 vine==1.1.3

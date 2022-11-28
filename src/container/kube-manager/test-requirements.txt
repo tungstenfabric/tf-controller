@@ -1,5 +1,6 @@
 psutil>=0.4.1
 python-novaclient==16.0.0
+keystoneauth1<5.1.0
 kombu==4.0.2
 coverage
 testtools==2.4.0
