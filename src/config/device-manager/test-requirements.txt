@@ -3,7 +3,7 @@ testrepository==0.0.20
 flexmock==0.10.4
 coverage==5.0.4
 pyaml==20.4.0; python_version=='2.7'
-pyYAML==5.3.1; python_version > '2.7'
+pyYAML==5.4; python_version > '2.7'
 python-keystoneclient==3.22.0
 keystoneauth1<5.1.0
 webtest==2.0.34
