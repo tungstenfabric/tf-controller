@@ -234,8 +234,7 @@ BgpPath *BgpRoute::FindPath(BgpPath::PathSource src, const IPeer *peer,
         if (path->GetFlags() & BgpPath::AliasedPath) {
             continue;
         }
-        if ((src != BgpPath::StaticRoute) &&
-            (path->GetFlags() & BgpPath::ResolvedPath)) {
+        if (path->GetFlags() & BgpPath::ResolvedPath) {
             continue;
         }
         if (path->GetPeer() == peer && path->GetPathId() == path_id &&
