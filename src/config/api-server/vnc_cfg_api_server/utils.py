@@ -441,7 +441,10 @@ def get_filters(data, skips=None):
             pass
         if key in skips:
             continue
-        values = list(set(res.get(key, [])) | set([value]))
+        if isinstance(value, dict):
+            values = list(set(res.get(key, [])) | set([json.dumps(value)]))
+        else:
+            values = list(set(res.get(key, [])) | set([value]))
         if values:
             res[key] = values
     return res
