@@ -12,4 +12,4 @@ keystoneauth1<5.1.0
 webtest==2.0.34
 contrail-api-server==0.1.dev0
 python-swiftclient==3.9.0
-ansible==2.8.2
+ansible==7.0.0
