@@ -748,8 +748,7 @@ class DBInterface(object):
             subnet_to_neutron_tags = json.loads(subnet_to_neutron_tags)
         except vnc_exc.NoIdError:
             subnet_to_neutron_tags = {}
-        else:
-            subnet_to_neutron_tags[subnet_id] = list(tag_names)
+        subnet_to_neutron_tags[subnet_id] = list(tag_names)
 
         # add subnet to tag to subnets map
         try:
@@ -758,11 +757,10 @@ class DBInterface(object):
             neutron_tag_to_subnets = json.loads(neutron_tag_to_subnets)
         except vnc_exc.NoIdError:
             neutron_tag_to_subnets = {}
-        else:
-            for tag_name in tag_names:
-                if tag_name not in neutron_tag_to_subnets:
-                    neutron_tag_to_subnets[tag_name] = []
-                neutron_tag_to_subnets[tag_name].append(subnet_id)
+        for tag_name in tag_names:
+            if tag_name not in neutron_tag_to_subnets:
+                neutron_tag_to_subnets[tag_name] = []
+            neutron_tag_to_subnets[tag_name].append(subnet_id)
 
         # store both maps in kv_store
         self._vnc_lib.kv_store(_SUBNET_TO_NEUTRON_TAGS,
