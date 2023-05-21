@@ -39,6 +39,9 @@
 #include <vrouter/ksync/flowtable_ksync.h>
 #include <vrouter/ksync/ksync_init.h>
 
+#include <services/services_init.h>
+#include <services/metadata_proxy.h>
+
 const Ip4Address PktFlowInfo::kDefaultIpv4;
 const Ip6Address PktFlowInfo::kDefaultIpv6;
 
@@ -1332,6 +1335,34 @@ void PktFlowInfo::IngressProcess(const PktInfo *pkt, PktControlInfo *in,
             dest_vrf = alias_vrf->vrf_id();
             alias_ip_flow = true;
         }
+    }
+
+    // In case of req to fe80::a9fe:a9fe (IPv6 LL Metadata server)
+    // 1. Add routes in case of IPv6 LL Metadata service
+    // AddEvpnRoutingRoute uses Process to handle route
+    // immediately.
+    // 2. Store ll ip and interface index.
+    MetadataProxy *metadata_proxy = NULL;
+    metadata_proxy = agent ?
+        (agent->services() ? agent->services()->metadataproxy() : NULL) : NULL;
+    if (metadata_proxy && pkt &&
+        pkt->ip_saddr.is_v6() &&
+        pkt->ip_daddr.is_v6() &&
+        pkt->ip_daddr == metadata_proxy->Ipv6ServiceAddress()) {
+       Ip6Address ll_ip = pkt->ip_saddr.to_v6();
+        // Step 1. Check port
+        uint16_t nova_port, linklocal_port;
+        Ip4Address nova_server, linklocal_server;
+        std::string nova_hostname;
+        if (agent->oper_db()->global_vrouter()->FindLinkLocalService(
+            GlobalVrouter::kMetadataService, &linklocal_server, &linklocal_port,
+            &nova_hostname, &nova_server, &nova_port)) {
+            metadata_proxy->ResetIp6Server(
+                metadata_proxy->Ipv6ServiceAddress(), linklocal_port);
+        }
+        // Step 2.
+        metadata_proxy->AnnounceMetaDataLinkLocalRoutes(vm_port,
+            ll_ip, in->vrf_);
     }
 
     // We always expect route for source-ip for ingress flows.

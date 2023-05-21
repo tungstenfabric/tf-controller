@@ -81,7 +81,7 @@ public:
         InterfaceTable(Agent::GetInstance()->db(), "test") {}
     ~TestInterfaceTable() {}
 
-    bool FindVmUuidFromMetadataIp(const Ip4Address &ip,
+    bool FindVmUuidFromMetadataIp(const IpAddress &ip,
                                   std::string *vm_ip,
                                   std::string *vm_uuid,
                                   std::string *vm_project_uuid) {

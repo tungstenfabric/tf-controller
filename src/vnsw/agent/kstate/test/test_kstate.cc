@@ -11,6 +11,12 @@
 #include "xmpp/test/xmpp_test_util.h"
 #include "ksync/ksync_sock_user.h"
 
+// This is required to deactivate metadata proxy part, which installs it's
+// own routes
+#include "services/metadata_proxy.h"
+#include "services/metadata_server.h"
+#include "services/services_init.h"
+
 #define vm1_ip "1.1.1.1"
 #define vm2_ip "2.1.1.1"
 #define vm3_ip "3.1.1.1"
@@ -58,6 +64,12 @@ void RouterIdDepInit(Agent *agent) {
 
 class KStateTest : public ::testing::Test {
 public:
+
+    KStateTest() {
+        Agent::GetInstance()->services()->metadataproxy()->Shutdown();
+    }
+
+    ~KStateTest() {}
 
     static void TestSetup(bool ksync_init) {
         ksync_init_ = ksync_init;
@@ -235,7 +247,8 @@ public:
     static bool ksync_init_;
 };
 
-bool KStateTest::ksync_init_;
+bool KStateTest::ksync_init_ = false;
+
 TEST_F(KStateTest, IfDumpTest) {
     int if_count = 0;
     TestIfKState::Init();

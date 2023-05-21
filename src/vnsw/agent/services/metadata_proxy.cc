@@ -36,6 +36,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#define METADATA_IP6_ADDR "fe80::a9fe:a9fe"
+
 #define METADATA_TRACE(obj, arg)                                               \
 do {                                                                           \
     std::ostringstream _str;                                                   \
@@ -84,6 +86,7 @@ MetadataProxy::MetadataProxy(ServicesModule *module,
                              const std::string &secret)
     : services_(module), shared_secret_(secret),
       http_server_(new MetadataServer(services_->agent()->event_manager())),
+      http_server6_(new MetadataServer(services_->agent()->event_manager())),
       http_client_(new MetadataClient(services_->agent()->event_manager())) {
 
     // Register wildcard entry to match any URL coming on the metadata port
@@ -92,6 +95,12 @@ MetadataProxy::MetadataProxy(ServicesModule *module,
     http_server_->Initialize(services_->agent()->params()->metadata_proxy_port(),
         services_->agent()->router_id());
     services_->agent()->set_metadata_server_port(http_server_->GetPort());
+
+    // IPv6
+    RegisterListeners();
+    ipv6_service_address_ = boost::asio::ip::address_v6::
+        from_string(METADATA_IP6_ADDR);
+    ResetIp6Server(ipv6_service_address_);
 
     http_client_->Init();
 }
@@ -119,6 +128,12 @@ MetadataProxy::Shutdown() {
         TcpServerManager::DeleteServer(http_server_);
         http_server_ = NULL;
     }
+    if (http_server6_) {
+        UnregisterListeners();
+        http_server6_->Shutdown();
+        TcpServerManager::DeleteServer(http_server6_);
+        http_server6_ = NULL;
+    }
     if (http_client_) {
         http_client_->Shutdown();
         TcpServerManager::DeleteServer(http_client_);
@@ -132,7 +147,17 @@ MetadataProxy::HandleMetadataRequest(HttpSession *session, const HttpRequest *re
     std::vector<std::string> header_options;
     std::string vm_ip, vm_uuid, vm_project_uuid;
     metadata_stats_.requests++;
-    boost::asio::ip::address_v4 ip = session->remote_endpoint().address().to_v4();
+    IpAddress ip = session->remote_endpoint().address();
+    if (ip.is_v6()) {
+        // if the address is IPv6 link local (starts with fe80...),
+        // then strip off from the address
+        // an interface name added  after '%'
+        if (ip.to_string().find("fe80") == 0) {
+            int i_percent = ip.to_string().find('%');
+            std::string ip_str = ip.to_string().substr(0, i_percent);
+            ip = boost::asio::ip::address::from_string(ip_str);
+        }
+    }
 
     if (!services_->agent()->interface_table()->
          FindVmUuidFromMetadataIp(ip, &vm_ip, &vm_uuid, &vm_project_uuid)) {
@@ -263,7 +288,13 @@ MetadataProxy::HandleMetadataResponse(HttpConnection *conn, HttpSessionPtr sessi
             return;
 
         std::string vm_ip, vm_uuid, vm_project_uuid;
-        boost::asio::ip::address_v4 ip = session->remote_endpoint().address().to_v4();
+        boost::asio::ip::address ip = session->remote_endpoint().address();
+
+        if (ip.to_string().find("fe80") == 0) {
+            int i_percent = ip.to_string().find('%');
+            std::string ip_str = ip.to_string().substr(0, i_percent);
+            ip = boost::asio::ip::address::from_string(ip_str);
+        }
         services_->agent()->interface_table()->
             FindVmUuidFromMetadataIp(ip, &vm_ip, &vm_uuid, &vm_project_uuid);
 

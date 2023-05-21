@@ -384,12 +384,44 @@ public:
     Interface *FindInterface(size_t index);
     Interface *FindInterfaceFromMetadataIp(const Ip4Address &ip);
 
-    // Metadata address management routines
-    virtual bool FindVmUuidFromMetadataIp(const Ip4Address &ip,
+    /// @brief Finds an interface (Interface) to which a given IPv6
+    /// address belongs to
+    /// @param ip is the given IPv6 for which interface is looked
+    /// @return pointer to the found interface or NULL
+    const Interface *FindInterfaceFromMetadataIp(const Ip6Address &ip) const;
+
+    // Metadata address management routines (IPv4 & IPv6)
+
+    /// @brief Finds information about a virtual machine connected to a
+    /// given vm interface with a specified link local IP address
+    /// (both v4 and v6)
+    /// @param ip is a given link local IP address for which a virtual machine
+    /// is searched
+    /// @param vm_ip is a pointer to a string with a primary IP address of 
+    /// the vm interface associated with the virtual machine
+    /// @param vm_uuid is a pointer to a string with a UUID of the
+    /// found virtual machine
+    /// @param vm_project_uuid is a pointer to a string with
+    /// a project UUID of the found virtual machine
+    /// @return true if vm interface is found for the given IP address,
+    /// otherwise returns  false
+    virtual bool FindVmUuidFromMetadataIp(const IpAddress &ip,
                                           std::string *vm_ip,
                                           std::string *vm_uuid,
                                           std::string *vm_project_uuid);
     void VmPortToMetaDataIp(uint32_t ifindex, uint32_t vrfid, Ip4Address *addr);
+
+    /// @brief Creates a link between a given interface (Interface) and
+    /// a given IPv6 address
+    /// @param intf is a pointer to the interface for the new link
+    /// @param addr is the IPv6 address for the new link 
+    void LinkVmPortToMetaDataIp(const Interface* intf, const Ip6Address &addr);
+
+    /// @brief Destroys a link between a given interface (Interface) and
+    /// a given IPv6 address
+    /// @param intf is a pointer to the interface in the link
+    /// @param addr is the IPv6 address in the link
+    void UnlinkVmPortFromMetaDataIp(const Interface* intf, const Ip6Address &addr);
 
     // Dhcp Snoop Map entries
     const Ip4Address GetDhcpSnoopEntry(const std::string &ifname);
@@ -447,6 +479,14 @@ private:
     Agent *agent_;          // Cached entry
     DBTable::DBTableWalkRef global_config_change_walk_ref_;
     IndexVector<Interface *> index_table_;
+
+    /// @brief A map to store correspondence between a link local IPv6 address
+    /// and an Interface, to which this IPv6 address is assigned
+    std::map<Ip6Address, const Interface*> llip6_to_intf_table_;
+
+    /// @brief A mutex to prevent simultaneous access to llip6_to_intf_table_
+    mutable tbb::mutex llip6_to_intf_mutex_;
+
     // On restart, DHCP Snoop entries are read from kernel and updated in the
     // ASIO context. Lock used to synchronize
     tbb::mutex dhcp_snoop_mutex_;

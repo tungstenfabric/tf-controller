@@ -327,14 +327,22 @@ Interface *InterfaceTable::FindInterface(size_t index) {
     return NULL;
 }
 
-bool InterfaceTable::FindVmUuidFromMetadataIp(const Ip4Address &ip,
+bool InterfaceTable::FindVmUuidFromMetadataIp(const IpAddress &ip, 
                                               std::string *vm_ip,
                                               std::string *vm_uuid,
                                               std::string *vm_project_uuid) {
-    Interface *intf = FindInterfaceFromMetadataIp(ip);
+    const Interface *intf = NULL;
+    if (ip.is_v4()) {
+        intf = FindInterfaceFromMetadataIp(ip.to_v4());
+    } else {
+        intf = FindInterfaceFromMetadataIp(ip.to_v6());
+    }
     if (intf && intf->type() == Interface::VM_INTERFACE) {
         const VmInterface *vintf = static_cast<const VmInterface *>(intf);
-        *vm_ip = vintf->primary_ip_addr().to_string();
+        if (ip.is_v4())
+            *vm_ip = vintf->primary_ip_addr().to_string();
+        else
+            *vm_ip = vintf->primary_ip6_addr().to_string();
         if (vintf->vm()) {
             *vm_uuid = UuidToString(vintf->vm()->GetUuid());
             *vm_project_uuid = UuidToString(vintf->vm_project_uuid());
@@ -351,11 +359,43 @@ Interface *InterfaceTable::FindInterfaceFromMetadataIp(const Ip4Address &ip) {
     return index_table_.At(addr & 0xFFFF);
 }
 
+const Interface *InterfaceTable::
+FindInterfaceFromMetadataIp(const Ip6Address &ip) const {
+    tbb::mutex::scoped_lock lock(llip6_to_intf_mutex_);
+    if (llip6_to_intf_table_.count(ip) <= 0) {
+        return NULL;
+    }
+    return llip6_to_intf_table_.at(ip);
+}
+
 void InterfaceTable::VmPortToMetaDataIp(uint32_t index, uint32_t vrfid,
                                         Ip4Address *addr) {
     uint32_t ip = METADATA_IP_ADDR & 0xFFFF0000;
     ip += (index & 0xFFFF);
     *addr = Ip4Address(ip);
+}
+
+void InterfaceTable::LinkVmPortToMetaDataIp(const Interface* intf,
+    const Ip6Address& ll_ip) {
+    if (intf == NULL) {
+        return;
+    }
+    tbb::mutex::scoped_lock lock(llip6_to_intf_mutex_);
+    if (llip6_to_intf_table_.count(ll_ip) > 0) {
+        return;
+    }
+    llip6_to_intf_table_.insert(std::make_pair(ll_ip, intf));
+}
+
+void InterfaceTable::UnlinkVmPortFromMetaDataIp
+(const Interface* intf, const Ip6Address &addr) {
+    if (intf == NULL) {
+        return;
+    }
+    tbb::mutex::scoped_lock lock(llip6_to_intf_mutex_);
+    while (llip6_to_intf_table_.count(addr) > 0) {
+        llip6_to_intf_table_.erase(addr);
+    }
 }
 
 bool InterfaceTable::L2VmInterfaceWalk(DBTablePartBase *partition,

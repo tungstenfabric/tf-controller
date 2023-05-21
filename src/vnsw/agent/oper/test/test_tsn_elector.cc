@@ -22,6 +22,12 @@
 #include <oper/interface_common.h>
 #include <oper/tunnel_nh.h>
 
+// This is required to deactivate metadata proxy part, which installs it's
+// own routes
+#include "services/metadata_proxy.h"
+#include "services/metadata_server.h"
+#include "services/services_init.h"
+
 #include "testing/gunit.h"
 #include "test_cmn_util.h"
 #include "vr_types.h"
@@ -47,6 +53,10 @@ static void ValidateSandeshResponse(Sandesh *sandesh, vector<int> &result) {
 class TsnElectorTest : public ::testing::Test {
 public:
     TsnElectorTest() : agent_(Agent::GetInstance()) {
+        Agent::GetInstance()->services()->metadataproxy()->Shutdown();
+    }
+
+    ~TsnElectorTest() {
     }
 
     virtual void SetUp() {
@@ -167,7 +177,7 @@ TEST_F(TsnElectorTest, Test_1) {
     EXPECT_TRUE(subnet_rt->GetActivePath()->inactive() == false);
 
     EXPECT_FALSE(IsEvpnCompositePresent("vrf1", agent_));
-    //Add evpn
+    // Add evpn
     TunnelOlist olist;
     FillOlist(agent_, "11.1.2.1", olist);
     FillOlist(agent_, "11.1.1.1", olist);
@@ -192,9 +202,10 @@ TEST_F(TsnElectorTest, Test_1) {
 
     DelEvpnList(agent_, bgp_peer_);
     client->WaitForIdle();
-    //Delete
-    DeleteVmportEnv(input, 1, true);
+    // Delete
     DelIPAM("vn1");
+    client->WaitForIdle();
+    DeleteVmportEnv(input, 1, true);
     client->WaitForIdle();
     EXPECT_FALSE(VmPortActive(input, 0));
 }
@@ -234,8 +245,8 @@ TEST_F(TsnElectorTest, Test_2) {
     DelEvpnList(agent_, bgp_peer_);
     client->WaitForIdle();
     //Delete
-    DeleteVmportEnv(input, 1, true);
     DelIPAM("vn1");
+    DeleteVmportEnv(input, 1, true);
     client->WaitForIdle();
     EXPECT_FALSE(VmPortActive(input, 0));
 }
@@ -276,8 +287,8 @@ TEST_F(TsnElectorTest, Test_3) {
     DelEvpnList(agent_, bgp_peer_);
     client->WaitForIdle();
     //Delete
-    DeleteVmportEnv(input, 1, true);
     DelIPAM("vn1");
+    DeleteVmportEnv(input, 1, true);
     client->WaitForIdle();
     EXPECT_FALSE(VmPortActive(input, 0));
 }
@@ -317,8 +328,8 @@ TEST_F(TsnElectorTest, Test_4) {
     DelEvpnList(agent_, bgp_peer_);
     client->WaitForIdle();
     //Delete
-    DeleteVmportEnv(input, 1, true);
     DelIPAM("vn1");
+    DeleteVmportEnv(input, 1, true);
     client->WaitForIdle();
     EXPECT_FALSE(VmPortActive(input, 0));
 }
@@ -359,8 +370,8 @@ TEST_F(TsnElectorTest, Test_5) {
     DelEvpnList(agent_, bgp_peer_);
     client->WaitForIdle();
     //Delete
-    DeleteVmportEnv(input, 1, true);
     DelIPAM("vn1");
+    DeleteVmportEnv(input, 1, true);
     client->WaitForIdle();
     EXPECT_FALSE(VmPortActive(input, 0));
 }
@@ -439,8 +450,8 @@ TEST_F(TsnElectorTest, Test_6) {
     DelEvpnList(agent_, bgp_peer_);
     client->WaitForIdle();
     //Delete
-    DeleteVmportEnv(input, 1, true);
     DelIPAM("vn1");
+    DeleteVmportEnv(input, 1, true);
     client->WaitForIdle();
     EXPECT_FALSE(VmPortActive(input, 0));
 }
@@ -463,8 +474,8 @@ TEST_F(TsnElectorTest, Test_7) {
     EXPECT_FALSE(default_rt->GetActivePath()->inactive());
 
     //Delete
-    DeleteVmportEnv(input, 1, true);
     DelIPAM("vn1");
+    DeleteVmportEnv(input, 1, true);
     client->WaitForIdle();
     EXPECT_FALSE(VmPortActive(input, 0));
 }

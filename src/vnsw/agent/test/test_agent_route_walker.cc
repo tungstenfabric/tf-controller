@@ -21,6 +21,12 @@
 #include "kstate/test/test_kstate_util.h"
 #include "vr_types.h"
 
+// This is required to deactivate metadata proxy part, which installs it's
+// own routes
+#include "services/metadata_proxy.h"
+#include "services/metadata_server.h"
+#include "services/services_init.h"
+
 using namespace std;
 
 void RouterIdDepInit(Agent *agent) {
@@ -147,6 +153,7 @@ public:
         agent_ = Agent::GetInstance();
         agent_->oper_db()->agent_route_walk_manager()->
             RegisterWalker(static_cast<AgentRouteWalker *>(walker_.get()));
+        agent_->services()->metadataproxy()->Shutdown();
     };
     ~Test() {
     }

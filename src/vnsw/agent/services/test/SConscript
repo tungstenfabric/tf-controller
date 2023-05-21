@@ -31,6 +31,7 @@ igmp_evpn_test = AgentEnv.MakeTestCmd(env, 'igmp_evpn_test', service_test_suite)
 igmp_mpolicy_test = AgentEnv.MakeTestCmd(env, 'igmp_mpolicy_test', service_test_suite)
 icmpv6_test = AgentEnv.MakeTestCmd(env, 'icmpv6_test', service_test_suite)
 metadata_test = AgentEnv.MakeTestCmd(env, 'metadata_test', service_test_suite)
+metadata6_test = AgentEnv.MakeTestCmd(env, 'metadata6_test', service_test_suite)
 ndp_test = AgentEnv.MakeTestCmd(env, 'ndp_test', service_test_suite)
 pkt_trace_test = AgentEnv.MakeTestCmd(env, 'pkt_trace_test', service_test_suite)
 arp_path_preference_test = AgentEnv.MakeTestCmd(env, 'arp_path_preference_test',

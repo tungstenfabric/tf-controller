@@ -24,6 +24,13 @@ sandesh_objs = AgentEnv.BuildExceptionCppObj(env, SandeshGenSrcs)
 
 platform_dependent = 'nix/default_dns_list_builder.cc'
 
+# Metadata6  OS-dependent part
+metadata_platform_dependent =''
+if platform.system() == 'FreeBSD':
+    metadata_platform_dependent = 'nix/freebsd/metadata_ipv6_netlink.cc'
+elif platform.system() == 'Linux':
+    metadata_platform_dependent = 'nix/linux/metadata_ipv6_netlink.cc'
+
 libservices = env.Library('agent_services',
                      sandesh_objs +
                      [
@@ -51,6 +58,8 @@ libservices = env.Library('agent_services',
                       'igmp_handler.cc',
                       'igmp_proto.cc',
                       'metadata_proxy.cc',
+                      'metadata_proxy_ip6.cc',
+                      metadata_platform_dependent,
                       'ndp_entry.cc',
                       'services_init.cc',
                       'services_sandesh.cc',
