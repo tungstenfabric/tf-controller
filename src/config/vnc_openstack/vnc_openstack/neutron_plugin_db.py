@@ -1656,7 +1656,7 @@ class DBInterface(object):
 
         remote_subnet = addr.get_subnet()
         remote_sg = addr.get_security_group()
-        if remote_subnet:
+        if remote_subnet and remote_subnet != '0.0.0.0':
             remote_cidr = '%s/%s' % (remote_subnet.get_ip_prefix(),
                                      remote_subnet.get_ip_prefix_len())
         elif remote_sg and remote_sg not in ['any', 'local']:
