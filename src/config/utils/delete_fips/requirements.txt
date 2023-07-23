@@ -1,4 +1,4 @@
-certifi==2020.6.20
+certifi==2022.12.7
 chardet==3.0.4
 contrail-api-client==2005
 future==0.18.2
