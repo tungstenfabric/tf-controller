@@ -1,7 +1,7 @@
 certifi==2020.6.20
 chardet==3.0.4
 contrail-api-client==2005
-future==0.18.2
+future==0.18.3
 idna==2.10
 requests==2.24.0
 six==1.15.0
