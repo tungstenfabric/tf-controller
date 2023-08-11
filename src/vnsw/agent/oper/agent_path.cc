@@ -2145,6 +2145,9 @@ bool EvpnRoutingData::AddChangePathExtended(Agent *agent,
         ret = true;
     }
 
+    // Set dest vn
+    path->set_dest_vn_list(dest_vn_list_);
+
     if (communities_ != path->communities()) {
         path->set_communities(communities_);
         ret =true;

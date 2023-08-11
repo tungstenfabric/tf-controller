@@ -14,6 +14,7 @@ struct BgpExtendedCommunityType {
         Evpn = 0x06,
         Experimental = 0x80,
         Experimental4ByteAs = 0x82,
+        ExperimentalNonTransitive = 0xC0,
     };
 };
 
@@ -53,5 +54,12 @@ struct BgpExtendedCommunityExperimentalSubType {
         Tag = 0x84,
     };
 };
+
+struct BgpExtendedCommunityExperimentalNonTransitiveSubType {
+    enum SubType {
+        LocalSequenceNumber = 0x00,
+    };
+};
+
 
 #endif // SRC_BGP_EXTENDED_COMMUNITY_TYPES_H_

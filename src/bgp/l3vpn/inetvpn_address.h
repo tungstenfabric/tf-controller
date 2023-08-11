@@ -24,7 +24,8 @@ public:
     }
 
     static int FromProtoPrefix(const BgpProtoPrefix &proto_prefix,
-                               InetVpnPrefix *prefix, uint32_t *label);
+                               InetVpnPrefix *prefix,
+                               const BgpAttr *attr, uint32_t *label);
     static int FromProtoPrefix(BgpServer *server,
                                const BgpProtoPrefix &proto_prefix,
                                const BgpAttr *attr,
@@ -42,7 +43,8 @@ public:
     const RouteDistinguisher &route_distinguisher() const { return rd_; }
     Ip4Address addr() const { return addr_; }
     int prefixlen() const { return prefixlen_; }
-    void BuildProtoPrefix(uint32_t label, BgpProtoPrefix *prefix) const;
+    void BuildProtoPrefix(uint32_t label, BgpProtoPrefix *proto_prefix,
+        const BgpAttr *attr = NULL) const;
 
 private:
     RouteDistinguisher rd_;

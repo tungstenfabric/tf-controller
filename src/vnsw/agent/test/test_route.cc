@@ -2949,9 +2949,16 @@ TEST_F(RouteTest, fip_evpn_route_local) {
     client->WaitForIdle();
     WAIT_FOR(1000, 1000, (rt->GetActivePath() != path));
     EXPECT_TRUE(rt->GetActivePath() != path);
-
+    client->WaitForIdle();
+    DelLink("virtual-machine-interface", "vnet1", "floating-ip", "fip1");
+    DelLink("floating-ip-pool", "fip-pool1", "virtual-network",
+            "default-project:vn1");
+    DelLink("floating-ip", "fip1", "floating-ip-pool", "fip-pool1");
+    DelFloatingIp("fip1");
+    DelFloatingIpPool("fip-pool1");
     client->WaitForIdle();
     DeleteVmportFIpEnv(input, 1, true);
+    DelIPAM("vn1");
     client->WaitForIdle();
 }
 
@@ -2999,9 +3006,9 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
     ValidateBridge("vrf1", routing_vrf_name,
             Ip4Address::from_string("0.0.0.0"), 0, false);
 
-    // check to see if the local port route added to the bridge vrf inet
+    // VrfNH are not added back to bridge VRF anymore
     ValidateBridge("vrf1", routing_vrf_name,
-            Ip4Address::from_string("1.1.1.10"), 32, true);
+            Ip4Address::from_string("1.1.1.10"), 32, false);
 
     // since vn2 is ot included in the LR,
     // check to see no route add by peer:EVPN_ROUTING_PEER
@@ -3021,7 +3028,7 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
             si_to_routing_vn_vrf_name);
     client->WaitForIdle();
     VrfEntry *si_vrf= VrfGet(si_to_routing_vn_vrf_name);
-    EXPECT_TRUE( si_vrf != NULL);
+    EXPECT_TRUE(si_vrf != NULL);
     WAIT_FOR(1000, 1000, (si_vrf->si_vn_ref() != NULL));
 
     //Creating CN type route for service-instance vrf and see if its added
@@ -3053,11 +3060,17 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
 
     // check if the route created in serivice-instance vrf
     // with nh type vrf to routing vrf.
-    const VrfNH *si_nh = dynamic_cast<const VrfNH *>
-                         (LPMRouteToNextHop(si_to_routing_vn_vrf_name,
-                                     Ip4Address::from_string("1.1.1.10")));
-    WAIT_FOR(1000, 1000, (si_nh != NULL));
-    EXPECT_TRUE(si_nh->GetVrf() == routing_vrf);
+    const EvpnRouteEntry *si_rt = EvpnRouteGet(si_to_routing_vn_vrf_name,
+        MacAddress(), Ip4Address::from_string("1.1.1.10"), 0);
+    EXPECT_TRUE(si_rt != NULL);
+    const AgentPath *si_path = si_rt ? si_rt->GetActivePath() : NULL;
+    EXPECT_TRUE(si_path != NULL);
+    const NextHop *si_nh = si_path ? si_path->nexthop() : NULL;
+    EXPECT_TRUE(si_nh != NULL);
+    EXPECT_TRUE(si_nh->GetType() == NextHop::VRF);
+    const VrfNH *si_vrf_nh = dynamic_cast<const VrfNH*>(si_nh);
+
+    EXPECT_TRUE(si_vrf_nh->GetVrf() == routing_vrf);
 
     // Adding non-local route.
     item.entry.nlri.af = BgpAf::L2Vpn;
@@ -3075,12 +3088,11 @@ TEST_F(RouteTest, si_evpn_type5_route_add_local) {
             32, &item);
     client->WaitForIdle();
 
+
     // check if the route is not created in serivice-instance vrf
-    si_nh = dynamic_cast<const VrfNH *>
-                         (LPMRouteToNextHop(si_to_routing_vn_vrf_name,
-                                     Ip4Address::from_string("1.1.1.20")));
-    client->WaitForIdle();
-    EXPECT_TRUE(si_nh == NULL);
+    si_rt = EvpnRouteGet(si_to_routing_vn_vrf_name,
+        MacAddress(), Ip4Address::from_string("1.1.1.20"), 0);
+    EXPECT_TRUE(si_rt == NULL);
 
     // simulate route delete request from control and see if the route is
     // cleared in the service chain vrf
@@ -3315,7 +3327,7 @@ TEST_F(RouteTest, evpn_ecmp_type5_add_remote_route) {
     InetUnicastRouteEntry *inet_rt =
         RouteGet(routing_vrf_name, Ip4Address::from_string("1.1.1.20"), 32);
     client->WaitForIdle();
-    EXPECT_TRUE(inet_rt == NULL);
+    EXPECT_TRUE(inet_rt != NULL);
 
     // Clean up
     EvpnAgentRouteTable *rt_table = static_cast<EvpnAgentRouteTable *>

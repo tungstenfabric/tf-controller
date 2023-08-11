@@ -280,6 +280,12 @@ public:
 
     AgentPath *FindLocalPath() const;
     AgentPath *FindLocalVmPortPath() const;
+
+    /// @brief Finds path to an interface or a composite of interfaces and
+    /// returns it. The priority is given to composite: if both an interface
+    /// and a composite are present, then the composite path is returned
+    /// @return the pointer to AgentPath if a proper path found or NULL
+    const AgentPath *FindIntfOrCompLocalVmPortPath() const; 
     AgentPath *GetLocalVmPortPath() const;
     const AgentPath *GetActivePath() const;
     const NextHop *GetActiveNextHop() const;

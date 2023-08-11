@@ -244,7 +244,7 @@ void BgpXmppEvpnTest1::AgentRouteAdd(const string &enet_prefix, int count) {
         TASK_UTIL_EXPECT_TRUE(rt != NULL);
         int label = rt->entry.next_hops.next_hop[0].label;
         string nh = rt->entry.next_hops.next_hop[0].address;
-        TASK_UTIL_EXPECT_NE(0xFFFFF, label);
+        TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label);
         TASK_UTIL_EXPECT_EQ("192.168.1.1", nh);
         TASK_UTIL_EXPECT_EQ("blue", rt->entry.virtual_network);
     }
@@ -495,7 +495,7 @@ TEST_F(BgpXmppEvpnTest1, 1AgentMacOnlyRouteAddDelete1) {
     TASK_UTIL_EXPECT_TRUE(rt != NULL);
     int label = rt->entry.next_hops.next_hop[0].label;
     string nh = rt->entry.next_hops.next_hop[0].address;
-    TASK_UTIL_EXPECT_NE(0xFFFFF, label);
+    TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label);
     TASK_UTIL_EXPECT_EQ("192.168.1.1", nh);
     TASK_UTIL_EXPECT_EQ("blue", rt->entry.virtual_network);
 
@@ -550,7 +550,7 @@ TEST_F(BgpXmppEvpnTest1, 1AgentMacOnlyRouteAddDelete2) {
     TASK_UTIL_EXPECT_TRUE(rt != NULL);
     int label = rt->entry.next_hops.next_hop[0].label;
     string nh = rt->entry.next_hops.next_hop[0].address;
-    TASK_UTIL_EXPECT_NE(0xFFFFF, label);
+    TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label);
     TASK_UTIL_EXPECT_EQ("192.168.1.1", nh);
     TASK_UTIL_EXPECT_EQ("blue", rt->entry.virtual_network);
 
@@ -1445,7 +1445,7 @@ TEST_F(BgpXmppEvpnTest1, 1AgentConnectedInstances) {
     TASK_UTIL_EXPECT_TRUE(rt != NULL);
     int label = rt->entry.next_hops.next_hop[0].label;
     string nh = rt->entry.next_hops.next_hop[0].address;
-    TASK_UTIL_EXPECT_NE(0xFFFFF, label);
+    TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label);
     TASK_UTIL_EXPECT_EQ("192.168.1.1", nh);
     TASK_UTIL_EXPECT_EQ("blue", rt->entry.virtual_network);
 
@@ -1765,7 +1765,7 @@ TEST_F(BgpXmppEvpnTest2, RouteAdd1) {
     TASK_UTIL_EXPECT_TRUE(rt_a != NULL);
     int label_a = rt_a->entry.next_hops.next_hop[0].label;
     string nh_a = rt_a->entry.next_hops.next_hop[0].address;
-    TASK_UTIL_EXPECT_NE(0xFFFFF, label_a);
+    TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label_a);
     TASK_UTIL_EXPECT_EQ("192.168.1.1", nh_a);
     TASK_UTIL_EXPECT_EQ("blue", rt_a->entry.virtual_network);
 
@@ -1777,7 +1777,7 @@ TEST_F(BgpXmppEvpnTest2, RouteAdd1) {
     TASK_UTIL_EXPECT_TRUE(rt_b != NULL);
     int label_b = rt_b->entry.next_hops.next_hop[0].label;
     string nh_b = rt_b->entry.next_hops.next_hop[0].address;
-    TASK_UTIL_EXPECT_NE(0xFFFFF, label_b);
+    TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label_b);
     TASK_UTIL_EXPECT_EQ("192.168.1.1", nh_b);
     TASK_UTIL_EXPECT_EQ("blue", rt_b->entry.virtual_network);
 

@@ -60,7 +60,7 @@ void InetVpnRoute::BuildProtoPrefix(BgpProtoPrefix *prefix,
                                     const BgpAttr *attr,
                                     uint32_t label,
                                     uint32_t l3_label) const {
-    prefix_.BuildProtoPrefix(label, prefix);
+    prefix_.BuildProtoPrefix(label, prefix, attr);
 }
 
 void InetVpnRoute::BuildBgpProtoNextHop(vector<uint8_t> &nh,

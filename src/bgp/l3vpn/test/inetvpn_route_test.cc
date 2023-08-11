@@ -151,7 +151,8 @@ TEST_F(InetVpnRouteTest, FromProtoPrefix1) {
     route.BuildProtoPrefix(&proto_prefix, NULL, 1048575);
     InetVpnPrefix prefix2;
     uint32_t label;
-    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, &label);
+    // We expect here that the label conforms to MPLS standard (< 2^20)
+    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, NULL, &label);
     EXPECT_EQ(0, result);
     EXPECT_EQ(11 * 8, proto_prefix.prefixlen);
     EXPECT_EQ(11, proto_prefix.prefix.size());
@@ -167,7 +168,8 @@ TEST_F(InetVpnRouteTest, FromProtoPrefix2) {
     route.BuildProtoPrefix(&proto_prefix, NULL, 1048575);
     InetVpnPrefix prefix2;
     uint32_t label;
-    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, &label);
+    // We expect here that the label conforms to MPLS standard (< 2^20)
+    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, NULL, &label);
     EXPECT_EQ(0, result);
     EXPECT_EQ(14 * 8, proto_prefix.prefixlen);
     EXPECT_EQ(14, proto_prefix.prefix.size());
@@ -183,7 +185,8 @@ TEST_F(InetVpnRouteTest, FromProtoPrefix3) {
     route.BuildProtoPrefix(&proto_prefix, NULL, 1048575);
     InetVpnPrefix prefix2;
     uint32_t label;
-    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, &label);
+    // We expect here that the label conforms to MPLS standard (< 2^20)
+    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, NULL, &label);
     EXPECT_EQ(0, result);
     EXPECT_EQ(15 * 8, proto_prefix.prefixlen);
     EXPECT_EQ(15, proto_prefix.prefix.size());
@@ -200,7 +203,8 @@ TEST_F(InetVpnRouteTest, FromProtoPrefixError1) {
     InetVpnPrefix prefix2;
     uint32_t label;
     proto_prefix.prefix.resize(10);
-    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, &label);
+    // We expect here that the label conforms to MPLS standard (< 2^20)
+    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, NULL, &label);
     EXPECT_NE(0, result);
 }
 
@@ -213,7 +217,8 @@ TEST_F(InetVpnRouteTest, FromProtoPrefixError2) {
     InetVpnPrefix prefix2;
     uint32_t label;
     proto_prefix.prefix.resize(16);
-    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, &label);
+    // We expect here that the label conforms to MPLS standard (< 2^20)
+    int result = InetVpnPrefix::FromProtoPrefix(proto_prefix, &prefix2, NULL, &label);
     EXPECT_NE(0, result);
 }
 

@@ -205,7 +205,8 @@ public:
                         const PathPreference &path_pref,
                         TunnelType::TypeBmap tunnel_bmap,
                         DBRequest &nh_req,
-                        const std::string &prefix_str);
+                        const std::string &prefix_str,
+                        const std::string vrf_name = "");
     ControllerEcmpRoute(const BgpPeer *peer,
                         const VnListType &vn_list,
                         const EcmpLoadBalance &ecmp_load_balance,
@@ -245,6 +246,7 @@ private:
     std::vector<IpAddress>tunnel_dest_list_;
     std::vector<uint32_t>label_list_;
     string vrf_name_;
+    uint32_t vxlan_id_;
     DISALLOW_COPY_AND_ASSIGN(ControllerEcmpRoute);
 };
 

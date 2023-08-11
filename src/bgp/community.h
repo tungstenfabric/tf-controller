@@ -232,6 +232,10 @@ public:
                (val[1] == BgpExtendedCommunityEvpnSubType::MacMobility);
     }
 
+    static bool is_local_sequence_number(const ExtCommunityValue &val) {
+        return (val[0] == BgpExtendedCommunityType::ExperimentalNonTransitive &&
+                val[1] == BgpExtendedCommunityExperimentalNonTransitiveSubType::LocalSequenceNumber);
+    }
 
     static bool is_etree(const ExtCommunityValue &val) {
         //

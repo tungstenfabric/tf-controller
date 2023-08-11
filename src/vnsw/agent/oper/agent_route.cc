@@ -761,6 +761,86 @@ AgentPath *AgentRoute::FindLocalVmPortPath() const {
     return NULL;
 }
 
+/// @brief returns true if the given path is not null and points
+// to a local composite interface
+bool RtPathHasInterfaceComposite (const AgentPath* a_path) {
+    const NextHop *a_nh = NULL;
+
+    if (!a_path) {
+        return false;
+    }
+
+    a_nh = a_path->nexthop();
+    if (!a_nh) {
+        return false;
+    }
+
+    if (a_path->peer()->export_to_controller() &&
+        a_nh->GetType() == NextHop::COMPOSITE) {
+        return true;
+    }
+
+    if (a_path->peer()->GetType() == Peer::ECMP_PEER) {
+        return true;
+    }
+
+    return false;
+}
+
+/// @brief returns true if the given path is not null and points
+// to a local interface
+bool RtPathHasLocalInterface(const AgentPath* a_path) {
+    const NextHop *a_nh = NULL;
+
+    if (!a_path) {
+        return false;
+    }
+
+    a_nh = a_path->nexthop();
+    if (!a_nh) {
+        return false;
+    }
+
+    if (a_path->peer()->export_to_controller() &&
+        a_nh->GetType() == NextHop::INTERFACE) {
+        return true;
+    }
+
+    if (a_path->peer()->GetType() == Peer::LOCAL_VM_PORT_PEER) {
+        return true;
+    }
+
+    return false;
+}
+ 
+const AgentPath *AgentRoute::FindIntfOrCompLocalVmPortPath() const {
+    const AgentPath *intf_path = NULL;
+    const AgentPath *icom_path = NULL;
+    for (Route::PathList::const_iterator it =
+        this->GetPathList().begin();
+        it != this->GetPathList().end(); it++) {
+        const AgentPath *path = static_cast<const AgentPath *>
+            (it.operator->());
+
+        if (RtPathHasLocalInterface(path)) {
+            intf_path = path;
+            continue;
+        }
+        if (RtPathHasInterfaceComposite(path)) {
+            icom_path = path;
+            continue;
+        }
+    }
+    if (icom_path) {
+        return icom_path;
+    }
+    if (intf_path) {
+        return intf_path;
+    }
+    return NULL;
+}
+
+
 AgentPath *AgentRoute::GetLocalVmPortPath() const {
     for(Route::PathList::const_iterator it = GetPathList().begin();
         it != GetPathList().end(); it++) {

@@ -18,6 +18,7 @@
 #include "bgp/extended-community/etree.h"
 #include "bgp/extended-community/load_balance.h"
 #include "bgp/extended-community/mac_mobility.h"
+#include "bgp/extended-community/local_sequence_number.h"
 #include "bgp/extended-community/router_mac.h"
 #include "bgp/extended-community/site_of_origin.h"
 #include "bgp/extended-community/source_as.h"
@@ -373,6 +374,9 @@ string ExtCommunity::ToString(const ExtCommunityValue &comm) {
     } else if (is_mac_mobility(comm)) {
         MacMobility mm(comm);
         return(mm.ToString());
+    } else if (is_local_sequence_number(comm)) {
+        LocalSequenceNumber lsn(comm);
+        return lsn.ToString();
     } else if (is_etree(comm)) {
         ETree etree(comm);
         return(etree.ToString());

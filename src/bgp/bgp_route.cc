@@ -14,6 +14,7 @@
 #include "bgp/extended-community/etree.h"
 #include "bgp/extended-community/load_balance.h"
 #include "bgp/extended-community/mac_mobility.h"
+#include "bgp/extended-community/local_sequence_number.h"
 #include "bgp/extended-community/multicast_flags.h"
 #include "bgp/extended-community/router_mac.h"
 #include "bgp/extended-community/site_of_origin.h"
@@ -495,6 +496,9 @@ static void FillRoutePathExtCommunityInfo(const BgpTable *table,
             MacMobility mm(*it);
             communities->push_back(mm.ToString());
             show_path->set_sequence_no(integerToString(mm.sequence_number()));
+        } else if (ExtCommunity::is_local_sequence_number(*it)) {
+            LocalSequenceNumber lsn(*it);
+            communities->push_back(lsn.ToString());
         } else if (ExtCommunity::is_etree(*it)) {
             ETree etree(*it);
             communities->push_back(etree.ToString());

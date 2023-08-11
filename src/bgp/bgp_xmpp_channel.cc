@@ -1231,7 +1231,7 @@ bool BgpXmppChannel::ProcessItem(string vrf_name,
             return false;
         }
 
-        if (nit->label > 0xFFFFF ||
+        if (nit->label > EvpnPrefix::kMaxVniSigned ||
             ((master && nit->label) &&
              !(family == Address::INETMPLS))) {
              BGP_LOG_PEER_INSTANCE_WARNING(Peer(), vrf_name,
@@ -1263,10 +1263,11 @@ bool BgpXmppChannel::ProcessItem(string vrf_name,
             TunnelEncap tun_encap(*eit);
             if (tun_encap.tunnel_encap() == TunnelEncapType::UNSPEC)
                 continue;
-            if (family == Address::INET &&
-                tun_encap.tunnel_encap() == TunnelEncapType::VXLAN) {
-                continue;
-            }
+            // Allow vxlan for Inet routes
+            // if (family == Address::INET &&
+            //     tun_encap.tunnel_encap() == TunnelEncapType::VXLAN) {
+            //     continue;
+            // }
             no_valid_tunnel_encap = false;
             ext.communities.push_back(tun_encap.GetExtCommunityValue());
         }
@@ -1534,7 +1535,7 @@ bool BgpXmppChannel::ProcessInet6Item(string vrf_name,
             }
 
             if (family == Address::EVPN) {
-                if (nit->vni > 0xFFFFFF) {
+                if (nit->vni > EvpnPrefix::kMaxVniSigned) {
                     BGP_LOG_PEER_INSTANCE_WARNING(Peer(), vrf_name,
                         BGP_LOG_FLAG_ALL,
                         "Bad label " << nit->vni <<
@@ -1557,7 +1558,7 @@ bool BgpXmppChannel::ProcessInet6Item(string vrf_name,
                 RouterMac router_mac(mac_addr);
                 ext.communities.push_back(router_mac.GetExtCommunityValue());
             } else {
-                if (nit->label > 0xFFFFF || (master && nit->label)) {
+                if (nit->label > EvpnPrefix::kMaxVniSigned || (master && nit->label)) {
                     BGP_LOG_PEER_INSTANCE_WARNING(Peer(), vrf_name,
                         BGP_LOG_FLAG_ALL,
                         "Bad label " << nit->label <<
@@ -1585,14 +1586,15 @@ bool BgpXmppChannel::ProcessInet6Item(string vrf_name,
                 TunnelEncap tun_encap(*eit);
                 if (tun_encap.tunnel_encap() == TunnelEncapType::UNSPEC)
                     continue;
-                if (family == Address::INET6 &&
-                    tun_encap.tunnel_encap() == TunnelEncapType::VXLAN) {
-                    continue;
-                }
-                if (family == Address::EVPN &&
-                    tun_encap.tunnel_encap() != TunnelEncapType::VXLAN) {
-                    continue;
-                }
+                // Allow VxLAN for INET and EVPN tables
+                // if (family == Address::INET6 &&
+                //     tun_encap.tunnel_encap() == TunnelEncapType::VXLAN) {
+                //     continue;
+                // }
+                // if (family == Address::EVPN &&
+                //     tun_encap.tunnel_encap() != TunnelEncapType::VXLAN) {
+                //     continue;
+                // }
                 no_valid_tunnel_encap = false;
                 ext.communities.push_back(tun_encap.GetExtCommunityValue());
             }

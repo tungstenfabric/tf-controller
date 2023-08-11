@@ -220,7 +220,7 @@ public:
     int rd() const {return rd_;}
     void set_rd(int rd) {rd_ = rd;}
     void set_routing_vrf(bool val) {routing_vrf_ = val;}
-    bool routing_vrf() {return routing_vrf_;}
+    bool routing_vrf() const {return routing_vrf_;}
     void set_hbf_rintf(uint32_t idx) {hbf_rintf_ = idx;}
     void set_hbf_lintf(uint32_t idx) {hbf_lintf_ = idx;}
 

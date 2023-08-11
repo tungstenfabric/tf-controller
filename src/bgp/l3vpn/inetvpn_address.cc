@@ -15,7 +15,8 @@ InetVpnPrefix::InetVpnPrefix() : prefixlen_(0) {
 }
 
 int InetVpnPrefix::FromProtoPrefix(const BgpProtoPrefix &proto_prefix,
-                                   InetVpnPrefix *prefix, uint32_t *label) {
+                               InetVpnPrefix *prefix, const BgpAttr *attr,
+                               uint32_t *label) {
     size_t nlri_size = proto_prefix.prefix.size();
     size_t expected_min_nlri_size =
         BgpProtoPrefix::kLabelSize + RouteDistinguisher::kSize;
@@ -25,8 +26,16 @@ int InetVpnPrefix::FromProtoPrefix(const BgpProtoPrefix &proto_prefix,
     if (nlri_size > expected_min_nlri_size + Address::kMaxV4Bytes)
         return -1;
 
+    bool is_vni = false;
+    if (attr != NULL) {
+        const ExtCommunity *extcomm = attr->ext_community();
+        if (extcomm && extcomm->ContainsTunnelEncapVxlan()) {
+            is_vni = true;
+        }
+    }
+
     size_t label_offset = 0;
-    *label = proto_prefix.ReadLabel(label_offset);
+    *label = proto_prefix.ReadLabel(label_offset, is_vni); //was ,false
     size_t rd_offset = label_offset + BgpProtoPrefix::kLabelSize;
     prefix->rd_ = RouteDistinguisher(&proto_prefix.prefix[rd_offset]);
 
@@ -47,11 +56,12 @@ int InetVpnPrefix::FromProtoPrefix(BgpServer *server,
                                    InetVpnPrefix *prefix,
                                    BgpAttrPtr *new_attr, uint32_t *label,
                                    uint32_t *l3_label) {
-    return FromProtoPrefix(proto_prefix, prefix, label);
+    int rval = FromProtoPrefix(proto_prefix, prefix, attr, label);
+    return rval;
 }
 
 void InetVpnPrefix::BuildProtoPrefix(uint32_t label,
-                                     BgpProtoPrefix *proto_prefix) const {
+                                     BgpProtoPrefix *proto_prefix, const BgpAttr *attr) const {
     proto_prefix->prefix.clear();
     size_t prefix_size = (prefixlen_ + 7) / 8;
     size_t nlri_size =
@@ -59,7 +69,16 @@ void InetVpnPrefix::BuildProtoPrefix(uint32_t label,
 
     proto_prefix->prefix.resize(nlri_size, 0);
     size_t label_offset = 0;
-    proto_prefix->WriteLabel(label_offset, label);
+
+    bool is_vni = false;
+    if (attr != NULL) {
+        const ExtCommunity *extcomm = attr->ext_community();
+        if (extcomm && extcomm->ContainsTunnelEncapVxlan()) {
+            is_vni = true;
+        }
+    }
+
+    proto_prefix->WriteLabel(label_offset, label, is_vni); // was false
     size_t rd_offset = label_offset + BgpProtoPrefix::kLabelSize;
     copy(rd_.GetData(), rd_.GetData() + RouteDistinguisher::kSize,
         proto_prefix->prefix.begin() + rd_offset);

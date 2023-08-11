@@ -23,6 +23,7 @@
 #include <controller/controller_init.h>
 #include <controller/controller_export.h>
 #include <controller/controller_types.h>
+#include <oper/vxlan_routing_manager.h>
 #include <oper/agent_sandesh.h>
 #include <xmpp/xmpp_channel.h>
 #include <xmpp_enet_types.h>
@@ -129,6 +130,10 @@ bool ControllerEcmpRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
     CompositeNHKey *comp_key = static_cast<CompositeNHKey *>(nh_req_.key.get());
     bool ret = false;
 
+    if (tunnel_bmap_ == TunnelType::VxlanType() && vxlan_id_ != 0) {
+        path->set_vxlan_id(vxlan_id_);
+    }
+
     //Reorder the component NH list, and add a reference to local composite mpls
     //label if any
     bool comp_nh_policy = comp_key->GetPolicy();
@@ -148,45 +153,11 @@ bool ControllerEcmpRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
                                 ecmp_load_balance_, vn_list_, nh_req_);
     path->set_unresolved(path_unresolved);
 
+    // Set dest vn
+    path->set_dest_vn_list(vn_list_);
+
     return ret;
 }
-
-ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
-                        const VnListType &vn_list,
-                        const EcmpLoadBalance &ecmp_load_balance,
-                        const TagList &tag_list,
-                        const SecurityGroupList &sg_list,
-                        const PathPreference &path_pref,
-                        TunnelType::TypeBmap tunnel_bmap,
-                        DBRequest &nh_req,
-                        const std::string &prefix_str) :
-    ControllerPeerPath(peer), vn_list_(vn_list), sg_list_(sg_list),
-    ecmp_load_balance_(ecmp_load_balance), tag_list_(tag_list),
-    path_preference_(path_pref), tunnel_bmap_(tunnel_bmap),
-    copy_local_path_(false) {
-        nh_req_.Swap(&nh_req);
-    agent_ = peer->agent();
-    vrf_name_ = agent_->fabric_vrf_name();
-}
-
-ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
-                        const VnListType &vn_list,
-                        const EcmpLoadBalance &ecmp_load_balance,
-                        const TagList &tag_list,
-                        const SecurityGroupList &sg_list,
-                        const PathPreference &path_pref,
-                        TunnelType::TypeBmap tunnel_bmap,
-                        std::vector<IpAddress> &tunnel_dest_list,
-                        std::vector<uint32_t> &label_list,
-                        const std::string &prefix_str,
-                        const std::string &vrf_name):
-    ControllerPeerPath(peer), vn_list_(vn_list), sg_list_(sg_list),
-    ecmp_load_balance_(ecmp_load_balance), tag_list_(tag_list),
-    path_preference_(path_pref), tunnel_bmap_(tunnel_bmap),
-    copy_local_path_(false), tunnel_dest_list_(tunnel_dest_list),
-   label_list_(label_list), vrf_name_(vrf_name) {
-    agent_ = peer->agent();
-   }
 
 template <typename TYPE>
 ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
@@ -198,12 +169,13 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
                                          const std::string &prefix_str) :
         ControllerPeerPath(peer), vn_list_(vn_list),
         ecmp_load_balance_(ecmp_load_balance), tag_list_(tag_list),
-        copy_local_path_(false) {
+        copy_local_path_(false), vxlan_id_(0)  {
     const AgentXmppChannel *channel = peer->GetAgentXmppChannel();
     std::string bgp_peer_name = channel->GetBgpPeerName();
     std::string vrf_name = rt_table->vrf_name();
     agent_ = rt_table->agent();
     vrf_name_  = vrf_name;
+    uint32_t label = item->entry.next_hops.next_hop[0].label;
     Composite::Type composite_nh_type = Composite::ECMP;
 
     // use LOW PathPreference if local preference attribute is not set
@@ -217,6 +189,14 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
     //only type supported is underlay
     if (vrf_name == agent_->fabric_vrf_name()) {
         encap = TunnelType::NativeType();
+    }
+
+    const bool is_routing_vrf = VxlanRoutingManager::IsVxlanAvailable(agent_)
+        && VxlanRoutingManager::IsRoutingVrf(vrf_name, agent_);
+    // Override encap type for routing VRF routes
+    if (is_routing_vrf) {
+        encap = TunnelType::VxlanType();
+        vxlan_id_ = label;
     }
 
     PathPreference rp(item->entry.sequence_number, preference, false, false);
@@ -259,7 +239,7 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
             //Get local list of interface and append to the list
             MplsLabel *mpls =
                 agent_->mpls_table()->FindMplsLabel(label);
-            if (mpls != NULL) {
+            if (mpls != NULL && !is_routing_vrf) {
                 if (mpls->nexthop()->GetType() == NextHop::VRF) {
                     ClonedLocalPath *data =
                         new ClonedLocalPath(label, vn_list,
@@ -287,12 +267,24 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
                 }
                 tunnel_dest_list_.push_back(addr);
                 label_list_.push_back(label);
-            } else if (label == 0) {
-                copy_local_path_ = true;
+            } else {
+                if (label == 0) {
+                    copy_local_path_ = true;
+                }
+                if (is_routing_vrf) {
+                    encap = TunnelType::VxlanType();
+                    VxlanRoutingManager::AddInterfaceComponentToList(prefix_str,
+                        vrf_name,
+                        item->entry.next_hops.next_hop[i],
+                        comp_nh_list);
+                }
             }
         } else {
             encap = agent_->controller()->GetTypeBitmap
                 (item->entry.next_hops.next_hop[i].tunnel_encapsulation_list);
+            if (is_routing_vrf){
+                encap = TunnelType::VxlanType();
+            }
             if (vrf_name == agent_->fabric_vrf_name()) {
                 if (label != MplsTable::kInvalidLabel &&
                         label != MplsTable::kInvalidExportLabel) {
@@ -323,7 +315,6 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
                 tunnel_dest_list_.push_back(addr);
                 label_list_.push_back(label);
             } else {
-
                 TunnelNHKey *nh_key = new TunnelNHKey(agent_->fabric_vrf_name(),
                                                     agent_->router_id(),
                                                     addr.to_v4(),
@@ -337,7 +328,7 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
             }
         }
     }
-    
+
     tunnel_bmap_ = encap;
     if ((encap != TunnelType::MplsoMplsType()) ||
             ((encap == TunnelType::MplsoMplsType()) &&
@@ -350,6 +341,56 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
         nh_req_.Swap(&nh_req);
     }
  }
+
+ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
+                        const VnListType &vn_list,
+                        const EcmpLoadBalance &ecmp_load_balance,
+                        const TagList &tag_list,
+                        const SecurityGroupList &sg_list,
+                        const PathPreference &path_pref,
+                        TunnelType::TypeBmap tunnel_bmap,
+                        DBRequest &nh_req,
+                        const std::string &prefix_str,
+                        const std::string vrf_name) :
+    ControllerPeerPath(peer), vn_list_(vn_list), sg_list_(sg_list),
+    ecmp_load_balance_(ecmp_load_balance), tag_list_(tag_list),
+    path_preference_(path_pref), tunnel_bmap_(tunnel_bmap),
+    copy_local_path_(false), vxlan_id_(0) {
+    nh_req_.Swap(&nh_req);
+    agent_ = peer->agent();
+    if (vrf_name.size() == 0) {
+        vrf_name_ = agent_->fabric_vrf_name();
+    } else {
+        vrf_name_ = vrf_name;
+    }
+    const bool is_routing_vrf = VxlanRoutingManager::IsVxlanAvailable(agent_) && VxlanRoutingManager::IsRoutingVrf(vrf_name,
+       agent_);
+    if (is_routing_vrf || tunnel_bmap == TunnelType::VxlanType()) {
+        tunnel_bmap_ = TunnelType::VxlanType();
+        vxlan_id_ = agent_->vrf_table()->
+            FindVrfFromName(vrf_name)->vxlan_id();
+    }
+}
+
+ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
+                        const VnListType &vn_list,
+                        const EcmpLoadBalance &ecmp_load_balance,
+                        const TagList &tag_list,
+                        const SecurityGroupList &sg_list,
+                        const PathPreference &path_pref,
+                        TunnelType::TypeBmap tunnel_bmap,
+                        std::vector<IpAddress> &tunnel_dest_list,
+                        std::vector<uint32_t> &label_list,
+                        const std::string &prefix_str,
+                        const std::string &vrf_name):
+    ControllerPeerPath(peer), vn_list_(vn_list), sg_list_(sg_list),
+    ecmp_load_balance_(ecmp_load_balance), tag_list_(tag_list),
+    path_preference_(path_pref), tunnel_bmap_(tunnel_bmap),
+    copy_local_path_(false), tunnel_dest_list_(tunnel_dest_list),
+    label_list_(label_list), vrf_name_(vrf_name), vxlan_id_(0) {
+    agent_ = peer->agent();
+}
+
 ControllerVmRoute *ControllerVmRoute::MakeControllerVmRoute(
                                          const BgpPeer *bgp_peer,
                                          const string &default_vrf,

@@ -17,32 +17,34 @@
 #include <oper/vn.h>
 #include <oper/vrf.h>
 #include <oper/vxlan_routing_manager.h>
+#include <oper/tunnel_nh.h> //for tunnel interception
 
 using namespace std;
 
 VxlanRoutingState::VxlanRoutingState(VxlanRoutingManager *mgr,
                                      VrfEntry *vrf) {
-    inet4_table_ = vrf->GetInet4UnicastRouteTable();
-    inet6_table_ = vrf->GetInet6UnicastRouteTable();
-    evpn_table_ = vrf->GetEvpnRouteTable();
-    inet4_id_ = inet4_table_->
-        Register(boost::bind(&VxlanRoutingManager::RouteNotify,
-                             mgr, _1, _2));
-    inet6_id_ = inet6_table_->
-        Register(boost::bind(&VxlanRoutingManager::RouteNotify,
-                             mgr, _1, _2));
-    evpn_id_ = evpn_table_->
-        Register(boost::bind(&VxlanRoutingManager::RouteNotify,
-                             mgr, _1, _2));
-    if (vrf->vn() && (vrf->vn()->vxlan_routing_vn() == false)) {
-        is_bridge_vrf_ = true;
-    }
+   inet4_table_ = vrf->GetInet4UnicastRouteTable();
+   inet6_table_ = vrf->GetInet6UnicastRouteTable();
+   evpn_table_ = vrf->GetEvpnRouteTable();
+   std::string nm4 = std::string("vxlan_lstnr.") + inet4_table_->name();
+   std::string nm6 = std::string("vxlan_lstnr.") + inet6_table_->name();
+   std::string nme = std::string("vxlan_lstnr.") + evpn_table_->name();
+
+   inet4_id_ = inet4_table_->
+       Register(boost::bind(&VxlanRoutingManager::RouteNotify,
+       mgr, _1, _2), nm4);
+   inet6_id_ = inet6_table_->
+       Register(boost::bind(&VxlanRoutingManager::RouteNotify,
+       mgr, _1, _2), nm6);
+   evpn_id_ = evpn_table_->
+       Register(boost::bind(&VxlanRoutingManager::RouteNotify,
+       mgr, _1, _2), nme);
 }
 
 VxlanRoutingState::~VxlanRoutingState() {
-    inet4_table_->Unregister(inet4_id_);
-    inet6_table_->Unregister(inet6_id_);
-    evpn_table_->Unregister(evpn_id_);
+   evpn_table_->Unregister(evpn_id_);
+   inet4_table_->Unregister(inet4_id_);
+   inet6_table_->Unregister(inet6_id_);
 }
 
 VxlanRoutingVnState::VxlanRoutingVnState(VxlanRoutingManager *mgr) :
@@ -54,7 +56,11 @@ VxlanRoutingVnState::~VxlanRoutingVnState() {
 }
 
 void VxlanRoutingVnState::AddVmi(const VnEntry *vn, const VmInterface *vmi) {
-    assert(vmi->logical_router_uuid() != boost::uuids::nil_uuid());
+    if (vmi->logical_router_uuid() == boost::uuids::nil_uuid()) {
+        LOG(ERROR, "Error in VxlanRoutingManager::AddVmi"
+        << ", vmi->logical_router_uuid() ==  boost::uuids::nil_uuid()");
+        assert(vmi->logical_router_uuid() != boost::uuids::nil_uuid());
+    }
     VmiListIter it = vmi_list_.find(vmi);
     if (it != vmi_list_.end()) {
         return;
@@ -99,53 +105,75 @@ VxlanRoutingRouteWalker::VxlanRoutingRouteWalker(const std::string &name,
 VxlanRoutingRouteWalker::~VxlanRoutingRouteWalker() {
 }
 
-//Only take notification of evpn type 2 routes.
+//Only take notification of bridge inet routes.
 //Change in them will trigger change in rest.
 bool VxlanRoutingRouteWalker::RouteWalkNotify(DBTablePartBase *partition,
                                               DBEntryBase *e) {
-    const EvpnRouteEntry *evpn_rt =
-        dynamic_cast<const EvpnRouteEntry *>(e);
-    if (!evpn_rt || (evpn_rt->vrf()->vn() == NULL))
-        return true;
-    const VrfEntry *vrf = evpn_rt->vrf();
-    if (evpn_rt->IsType5() && vrf->vn() &&
-        vrf->vn()->vxlan_routing_vn() && (!mgr_->IsHostRoute(evpn_rt)))
-        return true;
-    if (!evpn_rt->IsType2() && !(vrf->vn()->vxlan_routing_vn()))
-        return true;
-    if (!(vrf->vn()->vxlan_routing_vn()))
-        return mgr_->EvpnType2RouteNotify(partition, e);
+    // Now route leaking is triggered by changes in the Inet table of
+    // a bridge VRF instance
+    const InetUnicastRouteEntry *inet_rt =
+        dynamic_cast<const InetUnicastRouteEntry*>(e);
+    if (inet_rt) {
+        const VrfEntry *vrf = inet_rt->vrf();
+        if (vrf && vrf->vn() && !mgr_->IsRoutingVrf(vrf)) {
+            mgr_->InetRouteNotify(partition, e);
+        }
+    }
     return true;
 }
 
 VxlanRoutingVrfMapper::VxlanRoutingVrfMapper(VxlanRoutingManager *mgr) :
-    mgr_(mgr), lr_vrf_info_map_(), vn_lr_set_(), evpn_table_walker_() {
+    mgr_(mgr), lr_vrf_info_map_(), vn_lr_set_(), evpn_table_walker_(),
+    inet4_table_walker_(), inet6_table_walker_() {
 }
 
 VxlanRoutingVrfMapper::~VxlanRoutingVrfMapper() {
 }
 
-void VxlanRoutingVrfMapper::WalkEvpnTable(EvpnAgentRouteTable *table) {
-    DBTable::DBTableWalkRef walk_ref;
-    EvpnTableWalker::iterator it = evpn_table_walker_.find(table);
-    if (it == evpn_table_walker_.end()) {
-        walk_ref = table->
-            AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotify,
-                                    mgr_, _1, _2),
-                        boost::bind(&VxlanRoutingVrfMapper::RouteWalkDone,
-                                    this, _1, _2));
-        evpn_table_walker_[table] = walk_ref;
-    } else {
-        walk_ref = it->second;
+void VxlanRoutingVrfMapper::WalkBridgeInetTables(
+    InetUnicastAgentRouteTable *inet4_table,
+    InetUnicastAgentRouteTable *inet6_table) {
+    // Inet 4
+    {
+        DBTable::DBTableWalkRef walk_ref;
+        InetTableWalker::iterator it = inet4_table_walker_.find(inet4_table);
+        if (it == inet4_table_walker_.end()) {
+            walk_ref = inet4_table->
+                AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotify,
+                                        mgr_, _1, _2),
+                            boost::bind(&VxlanRoutingVrfMapper::BridgeInet4RouteWalkDone,
+                                        this, _1, _2));
+            inet4_table_walker_[inet4_table] = walk_ref;
+        } else {
+            walk_ref = it->second;
+        }
+        inet4_table->WalkAgain(walk_ref);
+        //Every time walk is issued for bridge table revisit subnet routes
+        mgr_->HandleSubnetRoute(inet4_table->vrf_entry());
     }
-    table->WalkAgain(walk_ref);
-    //Every time walk is issued for bridge table revisit subnet routes
-    mgr_->HandleSubnetRoute(table->vrf_entry());
+    // Inet 6
+    {
+        DBTable::DBTableWalkRef walk_ref;
+        InetTableWalker::iterator it = inet6_table_walker_.find(inet6_table);
+        if (it == inet6_table_walker_.end()) {
+            walk_ref = inet6_table->
+                AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotify,
+                                        mgr_, _1, _2),
+                            boost::bind(&VxlanRoutingVrfMapper::BridgeInet6RouteWalkDone,
+                                        this, _1, _2));
+            inet6_table_walker_[inet6_table] = walk_ref;
+        } else {
+            walk_ref = it->second;
+        }
+        inet6_table->WalkAgain(walk_ref);
+        //Every time walk is issued for bridge table revisit subnet routes
+        mgr_->HandleSubnetRoute(inet6_table->vrf_entry());
+    }
 }
 
 void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &uuid,
                     const VnEntry *vn, bool update, bool withdraw) {
-    if ( uuid == boost::uuids::nil_uuid() )
+    if (uuid == boost::uuids::nil_uuid())
         return;
     VxlanRoutingVrfMapper::RoutedVrfInfo &routing_vrf_info =
             lr_vrf_info_map_[uuid];
@@ -159,15 +187,22 @@ void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &uuid,
     } else {
         return;
     }
-    if (vn->GetVrf() == NULL || (vn->GetVrf()->IsDeleted()))
-        return;
     DBTable::DBTableWalkRef walk_ref;
-    walk_ref = evpn_table->
-            AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotifyInLrEvpnTable,
-                                    mgr_, _1, _2, uuid, vn, vn->GetVrf(), update, withdraw),
-                        boost::bind(&VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone,
-                                    this, _1, _2));
-    evpn_table->WalkAgain(walk_ref);
+    if (withdraw) {
+        walk_ref = evpn_table->
+        AllocWalker(boost::bind(&VxlanRoutingManager::WithdrawEvpnRouteFromRoutingVrf,
+            mgr_, _1, _2),
+            boost::bind(&VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone,
+            this, _1, _2));
+        evpn_table->WalkAgain(walk_ref);
+    } else {
+        walk_ref = evpn_table->
+        AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotifyInLrEvpnTable,
+            mgr_, _1, _2, uuid, vn, update),
+            boost::bind(&VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone,
+            this, _1, _2));
+        evpn_table->WalkAgain(walk_ref);
+    }
 }
 
 void VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone(DBTable::DBTableWalkRef walk_ref,
@@ -176,30 +211,65 @@ void VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone(DBTable::DBTableWalkRef walk
         (static_cast<DBTable *>(partition))->ReleaseWalker(walk_ref);
 }
 
+void VxlanRoutingVrfMapper::BridgeInet4RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
+                                          DBTableBase *partition) {
+    const InetUnicastAgentRouteTable *table = static_cast<const InetUnicastAgentRouteTable *>
+        (walk_ref->table());
+    InetTableWalker::iterator it = inet4_table_walker_.find(table);
+    if(it == inet4_table_walker_.end()) {
+        LOG(ERROR, "Error in VxlanRoutingManager::BridgeInet4RouteWalkDone"
+        << ", it == inet4_table_walker_.end()");
+        assert(it != inet4_table_walker_.end());
+    }
+    inet4_table_walker_.erase(it);
+}
+
+void VxlanRoutingVrfMapper::BridgeInet6RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
+                                          DBTableBase *partition) {
+    const InetUnicastAgentRouteTable *table = static_cast<const InetUnicastAgentRouteTable *>
+        (walk_ref->table());
+    InetTableWalker::iterator it = inet6_table_walker_.find(table);
+    if(it == inet6_table_walker_.end()){    
+        LOG(ERROR, "Error in VxlanRoutingManager::BridgeInet6RouteWalkDone"
+        << ", it == inet6_table_walker_.end()");
+        assert(it != inet6_table_walker_.end());
+    }
+
+    inet6_table_walker_.erase(it);
+}
+
 void VxlanRoutingVrfMapper::RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
                                           DBTableBase *partition) {
     const EvpnAgentRouteTable *table = static_cast<const EvpnAgentRouteTable *>
         (walk_ref->table());
     EvpnTableWalker::iterator it = evpn_table_walker_.find(table);
-    assert(it != evpn_table_walker_.end());
+    if(it == evpn_table_walker_.end()){
+        LOG(ERROR, "Error in VxlanRoutingManager::RouteWalkDone"
+        << ", it == evpn_table_walker_.end()");
+        assert(it != evpn_table_walker_.end());
+    }
     evpn_table_walker_.erase(it);
 }
 
 void VxlanRoutingVrfMapper::WalkBridgeVrfs
 (const VxlanRoutingVrfMapper::RoutedVrfInfo &routed_vrf_info)
 {
-    //Start walk on all l2 tables
+    // Start walk on all l3 tables
     VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter it =
         routed_vrf_info.bridge_vn_list_.begin();
     while (it != routed_vrf_info.bridge_vn_list_.end()) {
         const VnEntry *vn = static_cast<const VnEntry *>(*it);
         const VrfEntry *vrf = vn->GetVrf();
         if (vrf) {
-            EvpnAgentRouteTable *evpn_table =
-                static_cast<EvpnAgentRouteTable *>(vrf->GetEvpnRouteTable());
-            if (!evpn_table)
+            InetUnicastAgentRouteTable *inet4_table =
+                static_cast<InetUnicastAgentRouteTable *>
+                (vrf->GetInet4UnicastRouteTable());
+                InetUnicastAgentRouteTable *inet6_table =
+                static_cast<InetUnicastAgentRouteTable *>
+                (vrf->GetInet6UnicastRouteTable());
+            if (!inet4_table || !inet6_table)
                 continue;
-            WalkEvpnTable(evpn_table);
+            WalkBridgeInetTables(inet4_table, inet6_table);
         }
         it++;
     }
@@ -214,8 +284,8 @@ const VrfEntry *VxlanRoutingVrfMapper::GetRoutingVrfUsingVn
     return NULL;
 }
 
-const VrfEntry *VxlanRoutingVrfMapper::GetRoutingVrfUsingEvpnRoute
-(const EvpnRouteEntry *rt) {
+const VrfEntry *VxlanRoutingVrfMapper::GetRoutingVrfUsingAgentRoute
+(const AgentRoute *rt) {
     return GetRoutingVrfUsingUuid(GetLogicalRouterUuidUsingRoute(rt));
 }
 
@@ -232,26 +302,17 @@ const boost::uuids::uuid VxlanRoutingVrfMapper::GetLogicalRouterUuidUsingRoute
 (const AgentRoute *rt) {
     using boost::uuids::nil_uuid;
 
-    //Local VM path provides interface to get LR.
-    AgentPath *path = rt->FindLocalVmPortPath();
-    if (path == NULL) {
-        return nil_uuid();
+    if (VxlanRoutingManager::IsRoutingVrf(rt->vrf())) {
+        return rt->vrf()->vn()->logical_router_uuid();
     }
 
-    const InterfaceNH *nh = dynamic_cast<const InterfaceNH *>
-        (path->nexthop());
-    if (!nh) {
-        return nil_uuid();
-    }
-
-    const VmInterface *vmi = dynamic_cast<const VmInterface *>
-        (nh->GetInterface());
-    if (!vmi || !vmi->vn()) {
+    const VnEntry* rt_vn = rt->vrf()->vn();
+    if (!rt_vn) {
         return nil_uuid();
     }
 
     const VxlanRoutingVnState *vn_state =
-        dynamic_cast<const VxlanRoutingVnState *>(vmi->vn()->
+        dynamic_cast<const VxlanRoutingVnState *>(rt_vn->
                            GetAgentDBEntryState(mgr_->vn_listener_id()));
     if ((vn_state == NULL) || (vn_state->vmi_list_.size() == 0)) {
         return nil_uuid();
@@ -269,40 +330,44 @@ void VxlanRoutingVrfMapper::TryDeleteLogicalRouter(LrVrfInfoMapIter &it) {
     }
 }
 
+const Peer *VxlanRoutingManager::routing_vrf_interface_peer_ = NULL;
 /**
  * VxlanRoutingManager
  */
 VxlanRoutingManager::VxlanRoutingManager(Agent *agent) :
     agent_(agent), walker_(), vn_listener_id_(),
     vrf_listener_id_(), vmi_listener_id_(), vrf_mapper_(this) {
+    //routing_vrf_interface_peer_ = agent_->evpn_routing_peer();
+    routing_vrf_interface_peer_ = agent_->local_vm_export_peer();
 }
 
 VxlanRoutingManager::~VxlanRoutingManager() {
 }
 
 void VxlanRoutingManager::Register() {
-    //Walker to go through routes in bridge evpn tables.
-    walker_.reset(new VxlanRoutingRouteWalker("VxlanRoutingManager", this,
-                                              agent_));
-    agent_->oper_db()->agent_route_walk_manager()->
-        RegisterWalker(static_cast<AgentRouteWalker *>(walker_.get()));
+   // Walker to go through routes in bridge evpn tables.
+   walker_.reset(new VxlanRoutingRouteWalker("VxlanRoutingManager", this,
+                                             agent_));
+   agent_->oper_db()->agent_route_walk_manager()->
+       RegisterWalker(static_cast<AgentRouteWalker *>(walker_.get()));
 
-    //Register all listener ids.
-    vrf_listener_id_ = agent_->vrf_table()->Register(
-        boost::bind(&VxlanRoutingManager::VrfNotify, this, _1, _2));
-    vn_listener_id_ = agent_->vn_table()->
-        Register(boost::bind(&VxlanRoutingManager::VnNotify,
-                             this, _1, _2));
-    vmi_listener_id_ = agent_->interface_table()->Register(
-        boost::bind(&VxlanRoutingManager::VmiNotify, this, _1, _2));
+   // Register all listener ids.
+   vn_listener_id_ = agent_->vn_table()->
+       Register(boost::bind(&VxlanRoutingManager::VnNotify,
+                            this, _1, _2));
+   vrf_listener_id_ = agent_->vrf_table()->Register(
+       boost::bind(&VxlanRoutingManager::VrfNotify, this, _1, _2));
+   vmi_listener_id_ = agent_->interface_table()->Register(
+       boost::bind(&VxlanRoutingManager::VmiNotify, this, _1, _2));
 }
 
 void VxlanRoutingManager::Shutdown() {
-    agent_->vrf_table()->Unregister(vrf_listener_id_);
-    agent_->vrf_table()->Unregister(vn_listener_id_);
-    agent_->oper_db()->agent_route_walk_manager()->
-        ReleaseWalker(walker_.get());
-    walker_.reset(NULL);
+   agent_->vn_table()->Unregister(vn_listener_id_);
+   agent_->vrf_table()->Unregister(vrf_listener_id_);
+   agent_->interface_table()->Unregister(vmi_listener_id_);
+   agent_->oper_db()->agent_route_walk_manager()->
+       ReleaseWalker(walker_.get());
+   walker_.reset(NULL);
 }
 
 /**
@@ -317,13 +382,11 @@ void VxlanRoutingManager::Shutdown() {
  * When delete is seen withdraw from the list of bridge list.
  */
 void VxlanRoutingManager::VnNotify(DBTablePartBase *partition, DBEntryBase *e) {
-    VnEntry *vn = static_cast<VnEntry *>(e);
+    VnEntry *vn = dynamic_cast<VnEntry *>(e);
     VxlanRoutingVnState *vn_state = dynamic_cast<VxlanRoutingVnState *>
         (vn->GetAgentDBEntryState(vn_listener_id_));
-    if (vn->IsDeleted()) {
-        if (!vn_state)
-            return;
 
+    if (vn->IsDeleted() && vn_state != NULL) {
         if (vn_state->is_routing_vn_) {
             RoutingVnNotify(vn, vn_state);
         } else {
@@ -395,7 +458,7 @@ void VxlanRoutingManager::BridgeVnNotify(const VnEntry *vn,
     bool withdraw = false;
     bool update = true;
 
-    //Update lr uuid in case some vmi is deleted or added.
+    // Update lr uuid in case some vmi is deleted or added.
     UpdateLogicalRouterUuid(vn, vn_state);
     if (vn->IsDeleted() || (vn->GetVrf() == NULL)) {
         withdraw = true;
@@ -417,19 +480,22 @@ void VxlanRoutingManager::BridgeVnNotify(const VnEntry *vn,
         routing_info_it = vrf_mapper_.lr_vrf_info_map_.find(it->second);
     }
 
-    //Handles deletion case
+    // Handles deletion case
     if (withdraw) {
         if (routing_info_it != vrf_mapper_.lr_vrf_info_map_.end()) {
-            // Delete subnet route for vn on detach from lr
-            if (vn->GetVrf() != NULL && !(vn->GetVrf()->IsDeleted()))
-                DeleteSubnetRoute(vn->GetVrf());
             VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter br_it =
                 routing_info_it->second.bridge_vn_list_.find(vn);
+            std::string vrf_name = "";
+            if (routing_info_it->second.bridge_vrf_names_list_.count(vn) == 1) {
+                vrf_name = routing_info_it->second.bridge_vrf_names_list_.at(vn);
+                DeleteSubnetRoute(vn, vrf_name);
+            }
             if (br_it != routing_info_it->second.bridge_vn_list_.end()) {
                 vrf_mapper_.WalkRoutingVrf(it->second, vn, false, true);
                 routing_info_it->second.bridge_vn_list_.erase(br_it);
+                routing_info_it->second.bridge_vrf_names_list_.erase(vn);
             }
-            //Trigger delete of logical router
+            // Trigger delete of logical router
             vrf_mapper_.TryDeleteLogicalRouter(routing_info_it);
         }
         vrf_mapper_.vn_lr_set_.erase(vn);
@@ -444,24 +510,70 @@ void VxlanRoutingManager::BridgeVnNotify(const VnEntry *vn,
         VxlanRoutingVrfMapper::RoutedVrfInfo &lr_vrf_info =
             vrf_mapper_.lr_vrf_info_map_[vn_state->logical_router_uuid_];
         lr_vrf_info.bridge_vn_list_.insert(vn);
+        if (vn->GetVrf())
+            lr_vrf_info.bridge_vrf_names_list_[vn] = vn->GetVrf()->GetName();
         vrf_mapper_.WalkRoutingVrf(vrf_mapper_.vn_lr_set_[vn], vn, true, false);
     }
 
-    //Without vrf walks cant be scheduled
+    // Without vrf walks cant be scheduled
     if (!vn_state->vrf_ref_.get()) {
         return;
     }
 
-    //Walk Evpn table if withdraw or update was done
+    // Walk Evpn table if withdraw or update was done
     if (update || withdraw) {
-        EvpnAgentRouteTable *evpn_table =
-            static_cast<EvpnAgentRouteTable *>(vn_state->vrf_ref_.get()->
-                                               GetEvpnRouteTable());
-        if (evpn_table) {
-            vrf_mapper_.WalkEvpnTable(evpn_table);
+        InetUnicastAgentRouteTable *inet4_table =
+            static_cast<InetUnicastAgentRouteTable *>(vn_state->vrf_ref_.get()->
+                                               GetInet4UnicastRouteTable());
+        InetUnicastAgentRouteTable *inet6_table =
+            static_cast<InetUnicastAgentRouteTable *>(vn_state->vrf_ref_.get()->
+                                               GetInet6UnicastRouteTable());
+        if (inet4_table && inet6_table) {
+            vrf_mapper_.WalkBridgeInetTables(inet4_table, inet6_table);
         }
     }
     return;
+}
+
+void VxlanRoutingManager::RoutingVrfDeleteAllRoutes(VrfEntry* rt_vrf) {
+    if (rt_vrf == NULL) {
+        return;
+    }
+    // Loop over all EVPN routes and delete them
+
+    EvpnAgentRouteTable *evpn_table = dynamic_cast<EvpnAgentRouteTable *>
+        (rt_vrf->GetEvpnRouteTable());
+    if (evpn_table == NULL) {
+        return;
+    }
+    EvpnRouteEntry *c_entry = dynamic_cast<EvpnRouteEntry *>
+        (evpn_table->GetTablePartition(0)->GetFirst());
+
+    const std::string vrf_name = rt_vrf->GetName();
+    const uint32_t ethernet_tag = 0;
+    const MacAddress mac_addr;
+    while (c_entry) {
+        const IpAddress prefix_ip = c_entry->ip_addr();
+        const uint32_t plen = c_entry->GetVmIpPlen();
+
+        // Compute next entry in advance
+        if (c_entry && c_entry->get_table_partition())
+            c_entry = dynamic_cast<EvpnRouteEntry *>
+                (c_entry->get_table_partition()->GetNext(c_entry));
+        else
+            break;
+
+        EvpnAgentRouteTable::DeleteReq(routing_vrf_interface_peer_,
+            vrf_name,
+            mac_addr,
+            prefix_ip,
+            plen,
+            ethernet_tag,  // ethernet_tag = 0 for Type5
+            NULL);
+
+        InetUnicastAgentRouteTable::DeleteReq(routing_vrf_interface_peer_,
+            vrf_name, prefix_ip, plen, NULL);
+    }
 }
 
 void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
@@ -479,7 +591,7 @@ void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
     } else {
         update = true;
         if (it != vrf_mapper_.vn_lr_set_.end()) {
-            //LR uuid changed, so withdraw from old and add new.
+            // LR uuid changed, so withdraw from old and add new.
             if (it->second != vn_state->logical_router_uuid_) {
                 withdraw = true;
             }
@@ -489,18 +601,18 @@ void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
     if (withdraw && (it != vrf_mapper_.vn_lr_set_.end())) {
         VxlanRoutingVrfMapper::LrVrfInfoMapIter routing_info_it =
             vrf_mapper_.lr_vrf_info_map_.find(it->second);
-        //Delete only if parent VN is same as notified VN coz it may so happen
-        //that some other VN has taken the ownership  of this LR and
-        //notification of same came before this VN.
+        // Delete only if parent VN is same as notified VN coz it may so happen
+        // that some other VN has taken the ownership  of this LR and
+        // notification of same came before this VN.
         if (routing_info_it != vrf_mapper_.lr_vrf_info_map_.end()) {
             if (routing_info_it->second.parent_vn_entry_ == vn) {
-                //Routing VN/VRF
-                //Reset parent vn and routing vrf
+                RoutingVrfDeleteAllRoutes(vn->GetVrf());
+                // Routing VN/VRF
+                // Reset parent vn and routing vrf
                 routing_info_it->second.parent_vn_entry_ = NULL;
                 routing_info_it->second.routing_vrf_ = NULL;
-                vrf_mapper_.WalkBridgeVrfs(routing_info_it->second);
             }
-            //Trigger delete of logical router
+            // Trigger delete of logical router
             vrf_mapper_.TryDeleteLogicalRouter(routing_info_it);
         }
         vrf_mapper_.vn_lr_set_.erase(it);
@@ -517,7 +629,7 @@ void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
 
         VxlanRoutingVrfMapper::RoutedVrfInfo &routed_vrf_info =
             vrf_mapper_.lr_vrf_info_map_[vn_state->logical_router_uuid_];
-        //Take the ownership of LR
+        // Take the ownership of LR
         routed_vrf_info.parent_vn_entry_ = vn;
         if (routed_vrf_info.routing_vrf_ != vn->GetVrf()) {
             routed_vrf_info.routing_vrf_ = vn->GetVrf();
@@ -527,14 +639,8 @@ void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
 }
 
 /**
- * VrfNotify
- * This listener is used to identify bridge vrf and not routing vrfs.
- * If bridge vrf is associated to a routing vrf, then subnet routes are added
- * in bridge vrf's inet table to redirect all lookupis in routing vrf inet
- * table.
- * Other than that state is added in vrf which tracks the listener for routes in
- * VRF's route table(evpn and inet). For more info in route notification refer
- * to RouteNotify.
+ * Updates (sets or deletes) VxlanRoutingState for the given
+ * modified VrfEntry
  */
 void VxlanRoutingManager::VrfNotify(DBTablePartBase *partition,
                                     DBEntryBase *e) {
@@ -548,13 +654,11 @@ void VxlanRoutingManager::VrfNotify(DBTablePartBase *partition,
                              GetState(partition->parent(), vrf_listener_id_));
     if (vrf->IsDeleted()) {
         if (state) {
-            HandleSubnetRoute(vrf, state->is_bridge_vrf_);
             vrf->ClearState(partition->parent(), vrf_listener_id_);
             delete state;
         }
-        return;
     } else {
-        //Vrf added/changed.
+        // Vrf was added/changed.
         if (!state) {
             state = new VxlanRoutingState(this, vrf);
             vrf->SetState(partition->parent(), vrf_listener_id_, state);
@@ -563,8 +667,6 @@ void VxlanRoutingManager::VrfNotify(DBTablePartBase *partition,
             vrf->set_routing_vrf(true);
         }
     }
-
-    HandleSubnetRoute(vrf, state->is_bridge_vrf_);
 }
 
 void VxlanRoutingManager::VmiNotify(DBTablePartBase *partition,
@@ -602,7 +704,7 @@ void VxlanRoutingManager::VmiNotify(DBTablePartBase *partition,
         return;
     }
 
-    //Without VN no point of update
+    // Without VN no point of update
     if (!vn) {
         return;
     }
@@ -612,13 +714,13 @@ void VxlanRoutingManager::VmiNotify(DBTablePartBase *partition,
         vmi->SetState(partition->parent(), vmi_listener_id_, vmi_state);
         vmi_state->vn_entry_ = vn;
     }
-    //Update logical_router_uuid
+    // Update logical_router_uuid
     vmi_state->logical_router_uuid_ = vmi->logical_router_uuid();
 
-    //Its necessary to add state on VN so as to push VMI. VN notify can come
-    //after VMI notify.
+    // Its necessary to add state on VN so as to push VMI. VN notify can come
+    // after VMI notify.
     VnNotify(vn->get_table_partition(), vn);
-    //Now get VN state and add/delete VMI there
+    // Now get VN state and add/delete VMI there
     vn_state = dynamic_cast<VxlanRoutingVnState *>
         (vn->GetAgentDBEntryState(vn_listener_id_));
     if (vn_state) {
@@ -626,476 +728,34 @@ void VxlanRoutingManager::VmiNotify(DBTablePartBase *partition,
     }
 }
 
-void VxlanRoutingManager::UpdateEvpnType5Route(Agent *agent,
-                                            const AgentRoute *route,
-                                            const AgentPath *path,
-                                            const VrfEntry *routing_vrf) {
-    const InetUnicastRouteEntry *inet_rt =
-        static_cast<const InetUnicastRouteEntry *>(route);
-    EvpnAgentRouteTable *evpn_table =
-        static_cast<EvpnAgentRouteTable *>(routing_vrf->GetEvpnRouteTable());
-    if (!evpn_table)
-        return;
-
-    const NextHop * c_nh = path->nexthop();
-    assert(c_nh);
-    //Add route in evpn table
-    DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    NextHopKey * orig_key = dynamic_cast<NextHopKey*>(
-        path->nexthop()->GetDBRequestKey().get())->Clone();
-    assert(orig_key);
-    nh_req.key.reset(orig_key);
-
-    if (c_nh->GetType() == NextHop::INTERFACE){
-        InterfaceNHKey *intf_orig_key = dynamic_cast<InterfaceNHKey*>(orig_key);
-        assert(intf_orig_key);
-        //if NH is an interface, then update flags
-        intf_orig_key->set_flags(intf_orig_key->flags() |
-            InterfaceNHFlags::VXLAN_ROUTING);
-        nh_req.data.reset(new InterfaceNHData(routing_vrf->GetName()));
-    }else if(c_nh->GetType() == NextHop::COMPOSITE){
-        CompositeNHKey* comp_orig_key = 
-            dynamic_cast<CompositeNHKey*>(nh_req.key.get());
-            assert(comp_orig_key);
-        ComponentNHKeyList& cmpts = 
-            const_cast<ComponentNHKeyList&>
-            (comp_orig_key->component_nh_key_list());
-        nh_req.data.reset(new CompositeNHData(cmpts));
-    }else{ //other types of NH are not expected here
-        assert(c_nh->GetType() == NextHop::INTERFACE || c_nh->GetType() == NextHop::COMPOSITE);
-    }
-
-    evpn_table->AddType5Route(agent->local_vm_export_peer(),
-                              routing_vrf->GetName(),
-                              inet_rt->addr(),
-                              routing_vrf->vxlan_id(),
-                              new EvpnRoutingData(nh_req,
-                                                  path->sg_list(),
-                                                  path->communities(),
-                                                  path->path_preference(),
-                                                  path->ecmp_load_balance(),
-                                                  path->tag_list(),
-                                                  routing_vrf,
-                                                  routing_vrf->vxlan_id(),
-                                                  path->dest_vn_list()));
-}
-
-//Handles change in NH of local vm port path
-//For all host routes with non local vm port path, evpn route in routing vrf
-//need not be added. It should come from CN.
-bool VxlanRoutingManager::InetRouteNotify(DBTablePartBase *partition,
-                                          DBEntryBase *e) {
-    const InetUnicastRouteEntry *inet_rt =
-        dynamic_cast<const InetUnicastRouteEntry*>(e);
-    if (inet_rt->vrf()->vn() == NULL)
-        return true;
-
-    const AgentPath *local_vm_port_path = inet_rt->FindLocalVmPortPath();
-    //Further leaking to type 5 evpn table should be only done for local vmi.
-    if (!local_vm_port_path) {
-        return true;
-    }
-
-    const EvpnRoutingPath *evpn_routing_path =
-        static_cast<const EvpnRoutingPath *>(inet_rt->
-                                             FindPath(agent_->evpn_routing_peer()));
-    //Only routes with evpn_routing_peer path has to be leaked.
-    if (!evpn_routing_path) {
-        return true;
-    }
-
-    const VrfEntry *routing_vrf = evpn_routing_path->routing_vrf();
-    assert(routing_vrf != inet_rt->vrf());
-    //This delete aggresively handles delete on local vm peer port going off
-    //before evpn routing path
-    if (inet_rt->IsDeleted() || (local_vm_port_path == NULL) ||
-        (routing_vrf == NULL)) {
-        evpn_routing_path->DeleteEvpnType5Route(agent_, inet_rt);
-        return true;
-    }
-
-    UpdateEvpnType5Route(agent_, inet_rt, local_vm_port_path, routing_vrf);
-    return true;
-}
-
-bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
-(DBTablePartBase *partition, DBEntryBase *e, const boost::uuids::uuid &uuid,
- const VnEntry *vn, const VrfEntry *del_bridge_vrf, bool update, bool withdraw) {
-
-    EvpnRouteEntry *evpn_rt = dynamic_cast<EvpnRouteEntry *>(e);
-    if (!evpn_rt || (evpn_rt->vrf()->vn() == NULL) || (!evpn_rt->IsType5()))
-        return true;
-    if ( uuid == boost::uuids::nil_uuid() )
-        return true;
-    // Only non /32 gets copied to bridge vrfs
-    if (IsHostRoute(evpn_rt))
-        return true;
-
-    if (withdraw) {
-       if ((vn== NULL) || (vn->GetVrf()==NULL)) {
-            return true;
-        }
-        InetUnicastAgentRouteTable *deleted_vn_inet_table =
-                del_bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
-        deleted_vn_inet_table->Delete(agent_->evpn_routing_peer(),
-                              del_bridge_vrf->GetName(),
-                              evpn_rt->ip_addr(),
-                              evpn_rt->GetVmIpPlen());
-        return true;
-    }
-
-    VxlanRoutingVrfMapper::RoutedVrfInfo &lr_vrf_info =
-        vrf_mapper_.lr_vrf_info_map_[uuid];
-    VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnList update_bridge_vn_list;
-    VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter it;
-    if (update && vn != NULL) {
-        update_bridge_vn_list.insert(vn);
-        it = update_bridge_vn_list.find(vn);
-    } else {
-        update_bridge_vn_list = lr_vrf_info.bridge_vn_list_;
-        it = update_bridge_vn_list.begin();
-    }
-    while (it != update_bridge_vn_list.end()) {
-        VrfEntry *bridge_vrf =  (*it)->GetVrf();
-
-        if (bridge_vrf == NULL) {
-            it++;
-            continue;
-        }
-
-        InetUnicastAgentRouteTable *inet_table =
-                bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
-        if (!(evpn_rt->IsDeleted())) {
-            const AgentPath *p = evpn_rt->GetActivePath();
-            const VrfEntry *routing_vrf = lr_vrf_info.routing_vrf_;
-            if ((p->peer()->GetType() != Peer::BGP_PEER) || (routing_vrf == NULL)) {
-                return true;
-            }
-            DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-            nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
-            nh_req.data.reset(new VrfNHData(false, false, false));
-            inet_table->AddEvpnRoutingRoute(evpn_rt->ip_addr(),
-                                    evpn_rt->GetVmIpPlen(),
-                                    bridge_vrf,
-                                    agent_->evpn_routing_peer(),
-                                    p->sg_list(),
-                                    p->communities(),
-                                    p->path_preference(),
-                                    p->ecmp_load_balance(),
-                                    p->tag_list(),
-                                    nh_req,
-                                    routing_vrf->vxlan_id(),
-                                    p->dest_vn_list());
-        } else {
-            inet_table->Delete(agent_->evpn_routing_peer(),
-                              bridge_vrf->GetName(),
-                              evpn_rt->ip_addr(),
-                              evpn_rt->GetVmIpPlen());
-        }
-        it++;
-    }
-    return true;
-}
-
-bool VxlanRoutingManager::EvpnType5RouteNotify(DBTablePartBase *partition,
-                                               DBEntryBase *e) {
-    EvpnRouteEntry *evpn_rt = dynamic_cast<EvpnRouteEntry *>(e);
-    VrfEntry *vrf = evpn_rt->vrf();
-    assert(evpn_rt->IsType5());
-
-    if (vrf->vn() && vrf->vn()->vxlan_routing_vn() && (!IsHostRoute(evpn_rt))) {
-        RouteNotifyInLrEvpnTable(partition, e, vrf->vn()->logical_router_uuid(), NULL, NULL, true, false);
-    }
-
-    if (evpn_rt->IsDeleted()) {
-        InetUnicastAgentRouteTable *inet_table =
-            vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
-        inet_table->Delete(agent_->evpn_routing_peer(),
-                           vrf->GetName(),
-                           evpn_rt->ip_addr(),
-                           evpn_rt->GetVmIpPlen());
-        return true;
-    }
-    const NextHop *anh = evpn_rt->GetActiveNextHop();
-    if (anh == NULL) {
-        return true;
-    }
-
-    InetUnicastAgentRouteTable *inet_table =
-        evpn_rt->vrf()->GetInetUnicastRouteTable(evpn_rt->ip_addr());
-
-    DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    nh_req.key.reset((static_cast<NextHopKey *>
-                     (anh->GetDBRequestKey().get()))->
-                     Clone());
-    // Update DBRequest::data 
-    // Three types of an NH are expected here: the TunnelNH, 
-    // the CompositeNH, the InterfaceNH(other)
-    if (anh->GetType() == NextHop::TUNNEL){//Tunnel NH
-        nh_req.data.reset(new TunnelNHData);
-
-    }else if(anh->GetType() == NextHop::COMPOSITE){//Composite NH
-        CompositeNHKey* comp_orig_key = 
-            dynamic_cast<CompositeNHKey*>(nh_req.key.get());
-        assert(comp_orig_key);
-        ComponentNHKeyList& cmpts = const_cast<ComponentNHKeyList&>
-            (comp_orig_key->component_nh_key_list());
-        if (evpn_rt->GetActivePath() && evpn_rt->GetActivePath()->peer() 
-            && evpn_rt->GetActivePath()->peer()->GetType() == Peer::BGP_PEER){
-            return true;
-        }
-        nh_req.data.reset(new CompositeNHData(cmpts));
-    }else if(anh->GetType() == NextHop::INTERFACE){
-        nh_req.data.reset(new InterfaceNHData(vrf->GetName()));
-    }else if(anh->GetType() == NextHop::VRF){
-        nh_req.data.reset(new VrfNHData(false, false, false));
-    }else{// Other NH are not expected (we should not get there)
-        //break execution on a wrong type
-        assert
-        (
-            anh->GetType() == NextHop::TUNNEL    ||
-            anh->GetType() == NextHop::COMPOSITE ||
-            anh->GetType() == NextHop::INTERFACE ||
-            anh->GetType() == NextHop::VRF
-        );
-    }
-    const AgentPath *p = evpn_rt->GetActivePath();
-
-    std::string origin_vn = "";
-    if (vrf->vn()) {
-        VxlanRoutingVrfMapper::RoutedVrfInfo &lr_vrf_info =
-            vrf_mapper_.lr_vrf_info_map_[vrf->vn()->logical_router_uuid()];
-        VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter it =
-            lr_vrf_info.bridge_vn_list_.begin();
-        while (it != lr_vrf_info.bridge_vn_list_.end()) {
-            InetUnicastRouteEntry *rt =
-                (*it)->GetVrf()->GetUcRoute(evpn_rt->ip_addr());
-            if (rt && rt->addr() == evpn_rt->ip_addr() &&
-                    rt->plen() == evpn_rt->plen()) {
-                origin_vn = (*it)->GetName();
-                break;
-            }
-            it++;
-        }
-    }
-
-    inet_table->AddEvpnRoutingRoute(evpn_rt->ip_addr(),
-                                    evpn_rt->GetVmIpPlen(),
-                                    vrf,
-                                    agent_->evpn_routing_peer(),
-                                    p->sg_list(),
-                                    p->communities(),
-                                    p->path_preference(),
-                                    p->ecmp_load_balance(),
-                                    p->tag_list(),
-                                    nh_req,
-                                    p->vxlan_id(),
-                                    p->dest_vn_list(),
-                                    origin_vn);
-    return true;
-}
-
-void VxlanRoutingManager::DeleteInetRoute(DBTablePartBase *partition,
-                                          DBEntryBase *e) {
-    EvpnRouteEntry *evpn_rt = dynamic_cast<EvpnRouteEntry *>(e);
-    VrfEntry *bridge_vrf = evpn_rt->vrf();
-    //Add Inet route to point to table NH in l2 vrf inet
-    const IpAddress &ip_addr = evpn_rt->ip_addr();
-    if (ip_addr.is_unspecified())
-        return;
-
-    InetUnicastAgentRouteTable *inet_table =
-        bridge_vrf->GetInetUnicastRouteTable(ip_addr);
-
-    InetUnicastRouteEntry key(bridge_vrf, ip_addr, evpn_rt->GetVmIpPlen(), false);
-    // Find next highest matching route
-    InetUnicastRouteEntry *inet_rt = inet_table->FindRouteUsingKey(key);
-    if (inet_rt) {
-        const EvpnRoutingPath *evpn_routing_path =
-            static_cast<const EvpnRoutingPath *>(inet_rt->
-                                             FindPath(agent_->evpn_routing_peer()));
-        if (evpn_routing_path) {
-            //find the corresponding route in the routing vrf table
-            VrfEntry *l3_vrf =
-                const_cast<VrfEntry*>(evpn_routing_path->routing_vrf());
-            InetUnicastAgentRouteTable *rt_inet_uc =
-                l3_vrf->GetInet4UnicastRouteTable();
-            InetUnicastRouteEntry key_rt
-                (l3_vrf, ip_addr, evpn_rt->GetVmIpPlen(), false);
-            InetUnicastRouteEntry *rt_to_delete =
-                rt_inet_uc->FindRouteUsingKey(key_rt);
-            //loop over all paths in the corresponding route of
-            //a bridge vrf and find the one matching the route in a routing vrf
-            if (rt_to_delete){
-                for (Route::PathList::const_iterator it=
-                    inet_rt->GetPathList().begin();
-                    it != inet_rt->GetPathList().end();
-                    it++){
-                        const AgentPath *path =
-                            dynamic_cast<const AgentPath*>(it.operator->());
-                        if (
-                            !path->nexthop() ||
-                            !path->peer() ||
-                            !rt_to_delete->GetActivePath() ||
-                            !rt_to_delete->GetActivePath()->nexthop()){
-                                continue;
-                        }
-                        if (path->nexthop()->GetType() ==
-                            rt_to_delete->GetActivePath()->nexthop()->GetType() &&
-                            (path->peer()->GetType() == Peer::LOCAL_VM_PORT_PEER ||
-                             path->peer()->GetType() == Peer::ECMP_PEER)
-                        ){
-                            return;
-                        }
-                }
-            }
-            evpn_routing_path->DeleteEvpnType5Route(agent_, inet_rt);
-            //if other paths are still available
-            if(inet_rt->GetPathList().size() > 1){
-                return;
-            }
-        }
-    }
-
-    DBRequest nh_req(DBRequest::DB_ENTRY_DELETE);
-    inet_table->Delete(agent_->evpn_routing_peer(),
-                       bridge_vrf->GetName(), ip_addr,
-                       evpn_rt->GetVmIpPlen(),
-                       new EvpnRoutingData(nh_req,
-                                           SecurityGroupList(),
-                                           CommunityList(),
-                                           PathPreference(),
-                                           EcmpLoadBalance(),
-                                           TagList(),
-                                           NULL,
-                                           0,
-                                           VnListType()));
-}
-
-void VxlanRoutingManager::UpdateInetRoute(DBTablePartBase *partition,
-                                          DBEntryBase *e,
-                                          const VrfEntry *routing_vrf) {
-    EvpnRouteEntry *evpn_rt = dynamic_cast<EvpnRouteEntry *>(e);
-    VrfEntry *bridge_vrf = evpn_rt->vrf();
-    const AgentPath *p = evpn_rt->GetActivePath();
-
-    //Add Inet route to point to table NH in l2 vrf inet
-    InetUnicastAgentRouteTable *inet_table =
-        bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
-    DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-    nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
-    nh_req.data.reset(new VrfNHData(false, false, false));
-    inet_table->AddEvpnRoutingRoute(evpn_rt->ip_addr(),
-                                    evpn_rt->GetVmIpPlen(),
-                                    routing_vrf,
-                                    agent_->evpn_routing_peer(),
-                                    p->sg_list(),
-                                    p->communities(),
-                                    p->path_preference(),
-                                    p->ecmp_load_balance(),
-                                    p->tag_list(),
-                                    nh_req,
-                                    routing_vrf->vxlan_id(),
-                                    p->dest_vn_list());
-}
-
-/**
- * EvpnType2RouteNotify
- * All routes local or non-local should add inet route for IP in bridge vrf inet
- * table.
- * Zero IP address will be ignored.
- */
-bool VxlanRoutingManager::EvpnType2RouteNotify(DBTablePartBase *partition,
-                                               DBEntryBase *e) {
-    EvpnRouteEntry *evpn_rt = dynamic_cast<EvpnRouteEntry *>(e);
-    assert(evpn_rt->IsType2() == true);
-
-    if (evpn_rt->ip_addr().is_unspecified()) {
-        return true;
-    }
-
-    const VrfEntry *routing_vrf =
-        vrf_mapper_.GetRoutingVrfUsingEvpnRoute(evpn_rt);
-    if (evpn_rt->IsDeleted() || !routing_vrf) {
-        DeleteInetRoute(partition, e);
-    } else {
-        UpdateInetRoute(partition, e, routing_vrf);
-    }
-    return true;
-}
-
-bool VxlanRoutingManager::EvpnRouteNotify(DBTablePartBase *partition,
-                                          DBEntryBase *e) {
-    const EvpnRouteEntry *evpn_rt =
-        dynamic_cast<const EvpnRouteEntry *>(e);
-    assert(evpn_rt != NULL);
-
-    if (evpn_rt->is_multicast())
-        return true;
-
-    //In typer 5 mac is always zero
-    if (evpn_rt->IsType5()) {
-        // Allow EVPN type5 route for service-chain vrf. vrf()->vn() might
-        // not be applicable for service-chain vrf.
-        return EvpnType5RouteNotify(partition, e);
-    } else if (evpn_rt->vrf()->vn()) {
-        return EvpnType2RouteNotify(partition, e);
-    }
-
-    return true;
-}
-
-bool VxlanRoutingManager::RouteNotify(DBTablePartBase *partition,
-                                      DBEntryBase *e) {
-    const InetUnicastRouteEntry *inet_rt =
-        dynamic_cast<const InetUnicastRouteEntry*>(e);
-    if (inet_rt) {
-        return InetRouteNotify(partition, e);
-    }
-
-    const EvpnRouteEntry *evpn_rt =
-        dynamic_cast<const EvpnRouteEntry *>(e);
-    if (evpn_rt) {
-        return EvpnRouteNotify(partition, e);
-    }
-    return true;
-}
-
 void VxlanRoutingManager::HandleSubnetRoute(const VrfEntry *vrf, bool bridge_vrf) {
-    if (vrf->vn() && (vrf->vn()->vxlan_routing_vn() == false)) {
+    //
+    // New version
+    //
+    if (vrf->vn() && vrf->vn()->vxlan_routing_vn() == false) {
         const VrfEntry *routing_vrf =
             vrf_mapper_.GetRoutingVrfUsingVn(vrf->vn());
         if (!routing_vrf || vrf->IsDeleted()) {
-            DeleteSubnetRoute(vrf);
-            vrf->vn()->set_lr_vrf(NULL);
+             DeleteSubnetRoute(vrf);
+             vrf->vn()->set_lr_vrf(NULL);
         } else {
             UpdateSubnetRoute(vrf, routing_vrf);
             vrf->vn()->set_lr_vrf(routing_vrf);
         }
-    } else if (bridge_vrf) {
-        if (vrf->IsDeleted()) {
-            DeleteSubnetRoute(vrf);
-        }
     }
 }
 
-void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
-
-    if (vrf == NULL || vrf->vn() == NULL)
+void VxlanRoutingManager::DeleteIpamRoutes(const VnEntry *vn,
+    const std::string& vrf_name,
+    const IpAddress& ipam_prefix,
+    const uint32_t plen) {
+    if (vn == NULL || vrf_name == std::string(""))
         return;
 
-    std::vector<VnIpam> bridge_vn_ipam;
-    if(ipam == NULL)
-        bridge_vn_ipam = vrf->vn()->GetVnIpam();
-    else
-       bridge_vn_ipam.push_back(*ipam);
+    VxlanRoutingVrfMapper::VnLrSetIter lr_it = vrf_mapper_.vn_lr_set_.find(vn);
 
-    if (bridge_vn_ipam.size() == 0)
-        return;
-
-    VxlanRoutingVrfMapper::VnLrSetIter lr_it = vrf_mapper_.vn_lr_set_.find(vrf->vn());
-
-    if (lr_it == vrf_mapper_.vn_lr_set_.end() || lr_it->second == boost::uuids::nil_uuid())
+    if (lr_it == vrf_mapper_.vn_lr_set_.end() ||
+        lr_it->second == boost::uuids::nil_uuid())
         return;
 
     VxlanRoutingVrfMapper::RoutedVrfInfo &lr_vrf_info =
@@ -1107,24 +767,52 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
     VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter it =
         lr_vrf_info.bridge_vn_list_.begin();
     while (it != lr_vrf_info.bridge_vn_list_.end()) {
+        if (vn == *it) {
+            it++;
+            continue;
+        }
 
-        if ( vrf->vn() == *it) {
+        (*it)->GetVrf()->GetInetUnicastRouteTable(ipam_prefix)->
+            Delete(agent_->evpn_routing_peer(), (*it)->GetVrf()->GetName(),
+                ipam_prefix, plen, NULL);
+        it++;
+    }
+}
+
+void VxlanRoutingManager::DeleteSubnetRoute(const VnEntry *vn, const std::string& vrf_name) {
+    if (vn == NULL || vrf_name == std::string(""))
+        return;
+
+    std::vector<VnIpam> bridge_vn_ipam = vn->GetVnIpam();
+
+    if (bridge_vn_ipam.size() == 0)
+        return;
+
+    VxlanRoutingVrfMapper::VnLrSetIter lr_it = vrf_mapper_.vn_lr_set_.find(vn);
+
+    if (lr_it == vrf_mapper_.vn_lr_set_.end() ||
+        lr_it->second == boost::uuids::nil_uuid())
+        return;
+
+    VxlanRoutingVrfMapper::RoutedVrfInfo &lr_vrf_info =
+        vrf_mapper_.lr_vrf_info_map_[lr_it->second];
+
+    if (lr_vrf_info.bridge_vn_list_.size() == 0)
+        return;
+
+    VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter it =
+        lr_vrf_info.bridge_vn_list_.begin();
+    while (it != lr_vrf_info.bridge_vn_list_.end()) {
+        if (vn == *it) {
             it++;
             continue;
         }
 
         for (std::vector<VnIpam>::iterator ipam_itr = bridge_vn_ipam.begin();
             ipam_itr < bridge_vn_ipam.end(); ipam_itr++) {
-
-            if (ipam_itr->IsV4() && (*it)->GetVrf()) {
-                (*it)->GetVrf()->GetInet4UnicastRouteTable()->
+            (*it)->GetVrf()->GetInetUnicastRouteTable(ipam_itr->ip_prefix)->
                 Delete(agent_->evpn_routing_peer(), (*it)->GetVrf()->GetName(),
-                ipam_itr->GetSubnetAddress(), ipam_itr->plen, NULL);
-            } else if (ipam_itr->IsV6() && (*it)->GetVrf()) {
-                (*it)->GetVrf()->GetInet6UnicastRouteTable()->
-                Delete(agent_->evpn_routing_peer(), (*it)->GetVrf()->GetName(),
-                ipam_itr->GetV6SubnetAddress(), ipam_itr->plen, NULL);
-            }
+                    ipam_itr->GetSubnetAddress(), ipam_itr->plen, NULL);
         }
         std::vector<VnIpam> vn_ipam = (*it)->GetVnIpam();
 
@@ -1134,19 +822,18 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
         }
         for (std::vector<VnIpam>::iterator vn_ipam_itr = vn_ipam.begin();
             vn_ipam_itr < vn_ipam.end(); vn_ipam_itr++) {
-
-            if (vn_ipam_itr->IsV4() && vrf) {
-                vrf->GetInet4UnicastRouteTable()->
-                Delete(agent_->evpn_routing_peer(), vrf->GetName(),
-                vn_ipam_itr->GetSubnetAddress(), vn_ipam_itr->plen, NULL);
-            } else if (vn_ipam_itr->IsV6() && vrf) {
-                vrf->GetInet6UnicastRouteTable()->
-                Delete(agent_->evpn_routing_peer(), vrf->GetName(),
-                vn_ipam_itr->GetV6SubnetAddress(), vn_ipam_itr->plen, NULL);
-            }
+            InetUnicastAgentRouteTable::Delete(agent_->evpn_routing_peer(),
+                vrf_name, vn_ipam_itr->GetSubnetAddress(), vn_ipam_itr->plen);
         }
         it++;
     }
+}
+
+//void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam) {
+void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf) {
+    if (vrf == NULL)
+        return;
+    DeleteSubnetRoute(vrf->vn(), vrf->GetName());
 }
 
 void VxlanRoutingManager::UpdateSubnetRoute(const VrfEntry *bridge_vrf,
@@ -1160,9 +847,11 @@ void VxlanRoutingManager::UpdateSubnetRoute(const VrfEntry *bridge_vrf,
     if (bridge_vn_ipam.size() == 0)
         return;
 
-    VxlanRoutingVrfMapper::VnLrSetIter lr_it = vrf_mapper_.vn_lr_set_.find(bridge_vrf->vn());
+    VxlanRoutingVrfMapper::VnLrSetIter lr_it =
+        vrf_mapper_.vn_lr_set_.find(bridge_vrf->vn());
 
-    if (lr_it == vrf_mapper_.vn_lr_set_.end() || lr_it->second == boost::uuids::nil_uuid())
+    if (lr_it == vrf_mapper_.vn_lr_set_.end() ||
+        lr_it->second == boost::uuids::nil_uuid())
         return;
 
     VxlanRoutingVrfMapper::RoutedVrfInfo &lr_vrf_info =
@@ -1174,88 +863,47 @@ void VxlanRoutingManager::UpdateSubnetRoute(const VrfEntry *bridge_vrf,
     VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter it =
         lr_vrf_info.bridge_vn_list_.begin();
     while (it != lr_vrf_info.bridge_vn_list_.end()) {
-
-        if ( bridge_vrf->vn() == *it) {
+        if (bridge_vrf->vn() == *it) {
             it++;
             continue;
         }
 
         for (std::vector<VnIpam>::iterator ipam_itr = bridge_vn_ipam.begin();
             ipam_itr < bridge_vn_ipam.end(); ipam_itr++) {
-
-            if (ipam_itr->IsV4()) {
-                DBRequest v4_nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-                v4_nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
-                v4_nh_req.data.reset(new VrfNHData(false, false, false));
-                (*it)->GetVrf()->GetInet4UnicastRouteTable()->
-                AddEvpnRoutingRoute(ipam_itr->ip_prefix, ipam_itr->plen, routing_vrf,
-                            agent_->evpn_routing_peer(),
-                            SecurityGroupList(),
-                            CommunityList(),
-                            PathPreference(),
-                            EcmpLoadBalance(),
-                            TagList(),
-                            v4_nh_req,
-                            routing_vrf->vxlan_id(),
-                            VnListType());
-            } else if (ipam_itr->IsV6()) {
-                DBRequest v6_nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-                v6_nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
-                v6_nh_req.data.reset(new VrfNHData(false, false, false));
-                (*it)->GetVrf()->GetInet6UnicastRouteTable()->
-                AddEvpnRoutingRoute(ipam_itr->ip_prefix, ipam_itr->plen, routing_vrf,
-                            agent_->evpn_routing_peer(),
-                            SecurityGroupList(),
-                            CommunityList(),
-                            PathPreference(),
-                            EcmpLoadBalance(),
-                            TagList(),
-                            v6_nh_req,
-                            routing_vrf->vxlan_id(),
-                            VnListType());
-            }
+            DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+            nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
+            nh_req.data.reset(new VrfNHData(false, false, false));
+            (*it)->GetVrf()->GetInetUnicastRouteTable(ipam_itr->ip_prefix)->
+            AddEvpnRoutingRoute(ipam_itr->ip_prefix, ipam_itr->plen, routing_vrf,
+                        agent_->evpn_routing_peer(),
+                        SecurityGroupList(),
+                        CommunityList(),
+                        PathPreference(),
+                        EcmpLoadBalance(),
+                        TagList(),
+                        nh_req,
+                        routing_vrf->vxlan_id(),
+                        VnListType());
         }
 
         std::vector<VnIpam> vn_ipam = (*it)->GetVnIpam();
-
-        if (vn_ipam.size() == 0) {
-            it++;
-            continue;
-        }
         for (std::vector<VnIpam>::iterator vn_ipam_itr = vn_ipam.begin();
-            vn_ipam_itr < vn_ipam.end(); vn_ipam_itr++) {
+            vn_ipam_itr != vn_ipam.end(); vn_ipam_itr++) {
 
-            if (vn_ipam_itr->IsV4()) {
-                DBRequest v4_nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-                v4_nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
-                v4_nh_req.data.reset(new VrfNHData(false, false, false));
-                bridge_vrf->GetInet4UnicastRouteTable()->
-                AddEvpnRoutingRoute(vn_ipam_itr->ip_prefix, vn_ipam_itr->plen, routing_vrf,
-                            agent_->evpn_routing_peer(),
-                            SecurityGroupList(),
-                            CommunityList(),
-                            PathPreference(),
-                            EcmpLoadBalance(),
-                            TagList(),
-                            v4_nh_req,
-                            routing_vrf->vxlan_id(),
-                            VnListType());
-            } else if (vn_ipam_itr->IsV6()) {
-                DBRequest v6_nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
-                v6_nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
-                v6_nh_req.data.reset(new VrfNHData(false, false, false));
-                bridge_vrf->GetInet6UnicastRouteTable()->
-                AddEvpnRoutingRoute(vn_ipam_itr->ip_prefix, vn_ipam_itr->plen, routing_vrf,
-                            agent_->evpn_routing_peer(),
-                            SecurityGroupList(),
-                            CommunityList(),
-                            PathPreference(),
-                            EcmpLoadBalance(),
-                            TagList(),
-                            v6_nh_req,
-                            routing_vrf->vxlan_id(),
-                            VnListType());
-            }
+            DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+            nh_req.key.reset(new VrfNHKey(routing_vrf->GetName(), false, false));
+            nh_req.data.reset(new VrfNHData(false, false, false));
+            bridge_vrf->GetInetUnicastRouteTable(vn_ipam_itr->ip_prefix)->
+            AddEvpnRoutingRoute(vn_ipam_itr->ip_prefix, vn_ipam_itr->plen, routing_vrf,
+                        agent_->evpn_routing_peer(),
+                        SecurityGroupList(),
+                        CommunityList(),
+                        PathPreference(),
+                        EcmpLoadBalance(),
+                        TagList(),
+                        nh_req,
+                        routing_vrf->vxlan_id(),
+                        VnListType());
         }
         it++;
     }
@@ -1290,17 +938,6 @@ void VxlanRoutingManager::FillSandeshInfo(VxlanRoutingResp *resp) {
         it1++;
     }
     resp->set_vr_map(vr_map);
-}
-
-bool VxlanRoutingManager::IsHostRoute(const EvpnRouteEntry *evpn_rt) {
-
-    if( evpn_rt != NULL ) {
-        if (evpn_rt->ip_addr().is_v4() && evpn_rt->GetVmIpPlen() == 32)
-            return true;
-        if (evpn_rt->ip_addr().is_v6() && evpn_rt->GetVmIpPlen() == 128)
-            return true;
-    }
-    return false;
 }
 
 void VxlanRoutingReq::HandleRequest() const {

@@ -29,13 +29,14 @@ public:
         LOW = 100,
         HIGH = 200
     };
-    PathPreference(): sequence_(0), preference_(LOW),
+    PathPreference(): loc_sequence_(0), sequence_(0), preference_(LOW),
         wait_for_traffic_(true), ecmp_(false), static_preference_(false),
         dependent_ip_(Ip4Address(0)) {}
     PathPreference(uint32_t sequence, uint32_t preference,
-        bool wait_for_traffic, bool ecmp): sequence_(sequence),
+        bool wait_for_traffic, bool ecmp): loc_sequence_(0), sequence_(sequence),
         preference_(preference), wait_for_traffic_(wait_for_traffic),
         ecmp_(ecmp), static_preference_(false), dependent_ip_(Ip4Address(0)) {}
+    uint32_t loc_sequence() const {return loc_sequence_;}
     uint32_t sequence() const { return sequence_;}
     uint32_t preference() const { return preference_;}
     bool wait_for_traffic() const {
@@ -72,6 +73,9 @@ public:
         return vrf_;
     }
 
+    void set_loc_sequence(uint32_t loc_sequence) {
+        loc_sequence_ = loc_sequence;
+    }
     void set_sequence(uint32_t sequence) {
         sequence_ = sequence;
     }
@@ -98,9 +102,11 @@ public:
     }
 
     bool operator!=(const PathPreference &rhs) const {
-        return (sequence_ != rhs.sequence_ || preference_ != rhs.preference_
-                || wait_for_traffic_ != rhs.wait_for_traffic_
-                || ecmp_ != rhs.ecmp_);
+        return (loc_sequence_ != rhs.loc_sequence_
+            || sequence_ != rhs.sequence_ 
+            || preference_ != rhs.preference_
+            || wait_for_traffic_ != rhs.wait_for_traffic_
+            || ecmp_ != rhs.ecmp_);
     }
 
     bool operator<(const PathPreference &rhs) const {
@@ -111,11 +117,16 @@ public:
         if (sequence_ <  rhs.sequence_) {
             return true;
         }
+    
+        if (loc_sequence_ <  rhs.loc_sequence_) {
+            return true;
+        }
         return false;
     }
 
     bool operator==(const PathPreference &rhs) const {
-        if (preference_ == rhs.preference_ &&
+        if (loc_sequence_ == rhs.loc_sequence_ &&
+            preference_ == rhs.preference_ &&
             sequence_ == rhs.sequence_) {
             return true;
         }
@@ -157,6 +168,7 @@ public:
 
 
 private:
+    uint32_t loc_sequence_;
     uint32_t sequence_;
     uint32_t preference_;
     bool wait_for_traffic_;

@@ -1582,9 +1582,9 @@ EvpnRouteEntry *EvpnRouteGet(const string &vrf_name, const MacAddress &mac,
     EvpnRouteKey key(agent->local_vm_peer(), vrf_name, mac, ip_addr,
                      plen, ethernet_tag);
     EvpnRouteEntry *route =
-        static_cast<EvpnRouteEntry *>
-        (static_cast<EvpnAgentRouteTable *>
-         (vrf->GetEvpnRouteTable())->FindActiveEntry(&key));
+            (static_cast<EvpnAgentRouteTable *>
+            (vrf->GetEvpnRouteTable())->FindRoute(mac,
+            ip_addr, plen, ethernet_tag));
     return route;
 }
 
@@ -1734,12 +1734,72 @@ bool VlanNhFind(int id, uint16_t tag) {
     return (nh != NULL);
 }
 
+class AgentXmppChannelVxlanInterface {
+
+private:
+
+    //
+    AgentXmppChannelVxlanInterface();
+
+    //
+    AgentXmppChannelVxlanInterface(const AgentXmppChannelVxlanInterface&);
+
+    //
+    bool messageWasTransmitted_;
+
+public:
+
+    //
+    AgentXmppChannelVxlanInterface(const IpAddress &vm_addr,
+        uint8_t plen,
+        uint32_t label,
+        const string &vm_vrf,
+        const Ip4Address &server_ip,
+        const BgpPeer *peer) {
+        messageWasTransmitted_ = false;
+        const Agent *agent = Agent::GetInstance();
+        VnListType vn_list;
+        if (VxlanRoutingManager::IsVxlanAvailable(agent) &&
+        VxlanRoutingManager::IsRoutingVrf(vm_vrf, agent)) {
+            agent->oper_db()->vxlan_routing_manager()->
+            XmppAdvertiseEvpnRoute(vm_addr,
+                plen,
+                label,
+                vm_vrf,
+                RouteParameters(server_ip,
+                    vn_list,
+                    SecurityGroupList(),
+                    CommunityList(),
+                    TagList(),
+                    PathPreference(),
+                    EcmpLoadBalance(),
+                    0),   // sequence number
+                peer);
+            messageWasTransmitted_ = true;
+        }
+    };
+
+    //
+    bool messageWasTransmitted() const {
+        return messageWasTransmitted_;
+    }
+
+     //
+    ~AgentXmppChannelVxlanInterface(){};
+};
+
 bool BridgeTunnelRouteAdd(const BgpPeer *peer, const string &vm_vrf,
                           TunnelType::TypeBmap bmap, const Ip4Address &server_ip,
                           uint32_t label, MacAddress &remote_vm_mac,
                           const IpAddress &vm_addr, uint8_t plen,
                           const std::string &rewrite_dmac,
                           uint32_t tag, bool leaf) {
+    if (bmap == TunnelType::VxlanType() &&
+        AgentXmppChannelVxlanInterface(vm_addr,
+            plen, label, vm_vrf, server_ip, peer).
+            messageWasTransmitted()) {
+        return true;
+    }
     VnListType vn_list;
     ControllerVmRoute *data =
         ControllerVmRoute::MakeControllerVmRoute(peer,
@@ -1761,6 +1821,12 @@ bool BridgeTunnelRouteAdd(const BgpPeer *peer, const string &vm_vrf,
                           uint32_t label, MacAddress &remote_vm_mac,
                           const IpAddress &vm_addr, uint8_t plen, uint32_t tag,
                           bool leaf) {
+    if (bmap == TunnelType::VxlanType() &&
+        AgentXmppChannelVxlanInterface(vm_addr,
+            plen, label, vm_vrf, server_ip, peer).
+            messageWasTransmitted()) {
+        return true;
+    }
     VnListType vn_list;
     ControllerVmRoute *data =
         ControllerVmRoute::MakeControllerVmRoute(peer,
