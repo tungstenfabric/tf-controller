@@ -315,12 +315,18 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
                 tunnel_dest_list_.push_back(addr);
                 label_list_.push_back(label);
             } else {
-                TunnelNHKey *nh_key = new TunnelNHKey(agent_->fabric_vrf_name(),
-                                                    agent_->router_id(),
-                                                    addr.to_v4(),
-                                                    false,
-                                                    TunnelType::ComputeType(encap),
-                                                    mac);
+                TunnelNHKey *nh_key = NULL;
+                if (is_routing_vrf) {
+                    nh_key = agent_->oper_db()->vxlan_routing_manager()->
+                        AllocateTunnelNextHopKey(addr, mac);
+                } else {
+                    nh_key = new TunnelNHKey(agent_->fabric_vrf_name(),
+                        agent_->router_id(),
+                        addr.to_v4(),
+                        false,
+                        TunnelType::ComputeType(encap),
+                        mac);
+                }
                 std::auto_ptr<const NextHopKey> nh_key_ptr(nh_key);
                 ComponentNHKeyPtr component_nh_key(new ComponentNHKey(label,
                                                                     nh_key_ptr));

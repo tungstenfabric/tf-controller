@@ -9,14 +9,40 @@
 #include <oper/vrf.h>
 #include <controller/controller_route_path.h>
 #include <oper/vxlan_routing_manager.h>
+#include <oper/tunnel_nh.h>
 
 template<class RouteTable, class RouteEntry>
 static const AgentPath *LocalVmExportInterface(Agent* agent,
     RouteTable *table, RouteEntry *route);
 
+TunnelNHKey* VxlanRoutingManager::AllocateTunnelNextHopKey(
+    const IpAddress& dip, const MacAddress& dmac) const {
+
+    const Ip4Address rtr_dip = dip.to_v4();
+
+    const std::vector<IpAddress> nh_addresses(1, dip);
+    bool is_ext_type5 = IsExternalType5(nh_addresses, agent_);
+    bool is_zero_mac = dmac.IsZero();
+
+    MacAddress rtr_dmac;
+    if (is_ext_type5 && !is_zero_mac) {
+        rtr_dmac = dmac;
+    } else {
+        rtr_dmac = NbComputeMac(rtr_dip, agent_);
+    }
+
+    TunnelNHKey *tun_nh_key = new TunnelNHKey(agent_->fabric_vrf_name(),
+        agent_->router_id(),
+        rtr_dip,
+        false,
+        TunnelType(TunnelType::VXLAN),
+        rtr_dmac);
+    return tun_nh_key;
+}
+
 void VxlanRoutingManager::XmppAdvertiseEvpnRoute(const IpAddress& prefix_ip,
 const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-const RouteParameters& params, const BgpPeer *bgp_peer) {
+const RouteParameters& params, const Peer *bgp_peer) {
     VrfEntry* vrf = agent_->vrf_table()->FindVrfFromName(vrf_name);
     EvpnAgentRouteTable *evpn_table =
         dynamic_cast<EvpnAgentRouteTable*>(vrf->GetEvpnRouteTable());
@@ -37,69 +63,70 @@ const RouteParameters& params, const BgpPeer *bgp_peer) {
 }
 
 void VxlanRoutingManager::XmppAdvertiseInetRoute(const IpAddress& prefix_ip,
-const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-const RouteParameters& params, const BgpPeer *bgp_peer) {
+    const int prefix_len, const std::string vrf_name,
+    const AgentPath* path) {
+
     VrfEntry* vrf = agent_->vrf_table()->FindVrfFromName(vrf_name);
     InetUnicastAgentRouteTable *inet_table =
         vrf->GetInetUnicastRouteTable(prefix_ip);
-    if (inet_table == NULL) {
+
+    if (path->nexthop() && path->nexthop()->GetType() ==
+        NextHop::TUNNEL) {
+            XmppAdvertiseInetTunnel(inet_table,
+                prefix_ip, prefix_len, vrf_name, path);
         return;
     }
 
-    // If the route is a tunnel
-    if (agent_->router_id() != params.nh_addr_.to_v4()) {
-        XmppAdvertiseInetTunnel(inet_table,
-            prefix_ip, prefix_len, vxlan_id, vrf_name, params, bgp_peer);
-        return;
+    if (path->nexthop() &&
+        (path->nexthop()->GetType() == NextHop::INTERFACE ||
+        path->nexthop()->GetType() == NextHop::COMPOSITE)) {
+        XmppAdvertiseInetInterfaceOrComposite(inet_table,
+            prefix_ip, prefix_len, vrf_name, path);
     }
-
-    // If the route is an interface
-    XmppAdvertiseInetInterface(inet_table,
-            prefix_ip, prefix_len, vxlan_id, vrf_name, params, bgp_peer);
 }
 
 void VxlanRoutingManager::XmppAdvertiseEvpnTunnel(
     EvpnAgentRouteTable *evpn_table, const IpAddress& prefix_ip,
     const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-    const RouteParameters& params, const BgpPeer *bgp_peer
+    const RouteParameters& params, const Peer *peer
 ) {
-    ControllerVmRoute *data =
-        ControllerVmRoute::MakeControllerVmRoute(bgp_peer,
-            agent_->fabric_vrf_name(),
-            agent_->router_id(),
-            vrf_name,
-            params.nh_addr_.to_v4(),
-            TunnelType::VxlanType(),
-            vxlan_id,
-            MacAddress(),
-            params.vn_list_,
-            params.sg_list_,
-            params.tag_list_,
-            params.path_preference_,
-            false,  // ecmp_supressed (we expect that arrived route is single)
-            EcmpLoadBalance(),
-            false);  // item->entry.etree_leaf
-    evpn_table->AddRemoteVmRouteReq(bgp_peer,
-        vrf_name, MacAddress(), prefix_ip,
-        prefix_len,
-        0,  // ethernet tag is 0 for Type 5
-        data);
-
-    // Since external routers send route advertisement
-    // only to EVPN table, then Inet table
-    // should be update here manually
-    if (IsExternalType5(params.nh_addresses_, agent_) == true) {
-        InetUnicastAgentRouteTable *inet_table =
-            evpn_table->vrf_entry()->GetInetUnicastRouteTable(prefix_ip);
-        XmppAdvertiseInetTunnel(inet_table,
-            prefix_ip, prefix_len, vxlan_id, vrf_name, params, bgp_peer);
+    const BgpPeer *bgp_peer = dynamic_cast<const BgpPeer*>(peer);
+    if (bgp_peer == NULL) {
+        return;
     }
+    DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    std::auto_ptr<TunnelNHKey> tun_nh_key (AllocateTunnelNextHopKey(
+        params.nh_addr_, params.nh_mac_));
+
+    ControllerVmRoute *data =
+        ControllerVmRoute::MakeControllerVmRoute(dynamic_cast<const BgpPeer*>(bgp_peer),
+        agent_->fabric_vrf_name(),
+        agent_->router_id(),
+        vrf_name,
+        tun_nh_key->dip(),
+        TunnelType::VxlanType(),
+        vxlan_id,
+        tun_nh_key->rewrite_dmac(),
+        params.vn_list_,
+        params.sg_list_,
+        params.tag_list_,
+        params.path_preference_,
+        true,
+        EcmpLoadBalance(),
+        false);
+    evpn_table->AddRemoteVmRouteReq(bgp_peer,
+        vrf_name,
+        MacAddress(),
+        prefix_ip,
+        prefix_len,
+        0,  // ethernet_tag is zero for Type5
+        data);
 }
 
 void VxlanRoutingManager::XmppAdvertiseEvpnInterface(
     EvpnAgentRouteTable *evpn_table, const IpAddress& prefix_ip,
     const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-    const RouteParameters& params, const BgpPeer *bgp_peer
+    const RouteParameters& params, const Peer *bgp_peer
 ) {
     EvpnRouteEntry *route = evpn_table->FindRoute(MacAddress(),
         prefix_ip, prefix_len, 0);
@@ -114,6 +141,7 @@ void VxlanRoutingManager::XmppAdvertiseEvpnInterface(
         prefix_len,
         bgp_peer,
         RouteParameters(IpAddress(),  // NH address, not needed here
+            MacAddress(),
             params.vn_list_,
             params.sg_list_,
             params.communities_,
@@ -125,52 +153,53 @@ void VxlanRoutingManager::XmppAdvertiseEvpnInterface(
 }
 
 void VxlanRoutingManager::XmppAdvertiseInetTunnel(
-    InetUnicastAgentRouteTable *inet_table, const IpAddress& prefix_ip,
-    const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-    const RouteParameters& params, const BgpPeer *bgp_peer) {
-    ControllerVmRoute *data =
-        ControllerVmRoute::MakeControllerVmRoute(bgp_peer,
-            agent_->fabric_vrf_name(),
-            agent_->router_id(),
-            vrf_name,
-            params.nh_addr_.to_v4(),
-            TunnelType::VxlanType(),
-            vxlan_id,
-            MacAddress(),
-            params.vn_list_,
-            params.sg_list_,
-            params.tag_list_,
-            params.path_preference_,
-            false,
-            params.ecmp_load_balance_,
-            false);
-    inet_table->AddRemoteVmRouteReq(bgp_peer, vrf_name, prefix_ip,
-                                    prefix_len, data);
+        InetUnicastAgentRouteTable *inet_table, const IpAddress& prefix_ip,
+        const int prefix_len, const std::string vrf_name,
+        const AgentPath* path) {
+
+    DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+    TunnelNH *tun_nh = dynamic_cast<TunnelNH*>(path->nexthop());
+
+    TunnelNHKey *tun_nh_key = AllocateTunnelNextHopKey(*(tun_nh->GetDip()),
+        tun_nh->rewrite_dmac());
+    std::string origin_vn = "";
+
+    nh_req.key.reset(tun_nh_key);
+    nh_req.data.reset(new TunnelNHData);
+
+    inet_table->AddEvpnRoutingRoute(prefix_ip,
+        prefix_len,
+        inet_table->vrf_entry(),
+        routing_vrf_vxlan_bgp_peer_,
+        path->sg_list(),
+        path->communities(),
+        path->path_preference(),
+        path->ecmp_load_balance(),
+        path->tag_list(),
+        nh_req,
+        path->vxlan_id(),
+        path->dest_vn_list(),
+        origin_vn);
 }
 
-void VxlanRoutingManager::XmppAdvertiseInetInterface(
-    InetUnicastAgentRouteTable *inet_table, const IpAddress& prefix_ip,
-    const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-    const RouteParameters& params, const BgpPeer *bgp_peer) {
+void VxlanRoutingManager::XmppAdvertiseInetInterfaceOrComposite(
+        InetUnicastAgentRouteTable *inet_table, const IpAddress& prefix_ip,
+        const int prefix_len, const std::string vrf_name,
+        const AgentPath* path) {
 
-    VrfEntry *vrf = inet_table->vrf_entry();
-    InetUnicastRouteEntry local_vm_route_key(
-        vrf, prefix_ip, prefix_len, false);
-    InetUnicastRouteEntry *local_vm_route =
-        dynamic_cast<InetUnicastRouteEntry *>
-        (inet_table->FindLPM(local_vm_route_key));
-    if (RoutePrefixIsEqualTo(local_vm_route, prefix_ip, prefix_len) == false) {
-        return;
-    }
-
-    const AgentPath *path =
-        LocalVmExportInterface(agent_, inet_table, local_vm_route);
-
-    CopyInterfacePathToInetTable(path,
+    CopyPathToInetTable(path,
         prefix_ip,
         prefix_len,
-        bgp_peer,
-        params,
+        routing_vrf_vxlan_bgp_peer_,
+        RouteParameters(IpAddress(),
+            MacAddress(),
+            path->dest_vn_list(),
+            path->sg_list(),
+            path->communities(),
+            path->tag_list(),
+            path->path_preference(),
+            path->ecmp_load_balance(),
+            path->peer_sequence_number()),
         inet_table);
 }
 

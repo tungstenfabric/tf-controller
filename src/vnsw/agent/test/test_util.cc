@@ -1755,18 +1755,24 @@ public:
         uint32_t label,
         const string &vm_vrf,
         const Ip4Address &server_ip,
+        const std::string& rewrite_dmac_str,
         const BgpPeer *peer) {
         messageWasTransmitted_ = false;
         const Agent *agent = Agent::GetInstance();
         VnListType vn_list;
         if (VxlanRoutingManager::IsVxlanAvailable(agent) &&
         VxlanRoutingManager::IsRoutingVrf(vm_vrf, agent)) {
+            const MacAddress mac(rewrite_dmac_str);
+            auto_ptr<TunnelNHKey> nh_key
+                (agent->oper_db()->vxlan_routing_manager()->
+                AllocateTunnelNextHopKey(server_ip, mac));
             agent->oper_db()->vxlan_routing_manager()->
             XmppAdvertiseEvpnRoute(vm_addr,
                 plen,
                 label,
                 vm_vrf,
                 RouteParameters(server_ip,
+                    nh_key->rewrite_dmac(),
                     vn_list,
                     SecurityGroupList(),
                     CommunityList(),
@@ -1796,7 +1802,9 @@ bool BridgeTunnelRouteAdd(const BgpPeer *peer, const string &vm_vrf,
                           uint32_t tag, bool leaf) {
     if (bmap == TunnelType::VxlanType() &&
         AgentXmppChannelVxlanInterface(vm_addr,
-            plen, label, vm_vrf, server_ip, peer).
+            plen, label, vm_vrf, server_ip,
+            rewrite_dmac,
+            peer).
             messageWasTransmitted()) {
         return true;
     }
@@ -1823,7 +1831,9 @@ bool BridgeTunnelRouteAdd(const BgpPeer *peer, const string &vm_vrf,
                           bool leaf) {
     if (bmap == TunnelType::VxlanType() &&
         AgentXmppChannelVxlanInterface(vm_addr,
-            plen, label, vm_vrf, server_ip, peer).
+            plen, label, vm_vrf, server_ip,
+            std::string("00:00:00:00:00:00"),
+            peer).
             messageWasTransmitted()) {
         return true;
     }

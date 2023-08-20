@@ -12,18 +12,19 @@
 
 class BgpPeer;
 namespace autogen {
-struct EnetNextHopType;
-struct NextHopType;
+    struct EnetNextHopType;
+    struct NextHopType;
 }
 
 
 /// @brief A structure to hold path parameters during
-/// the transfer of data between VRF instances and tables. The structure
-/// is designed to use references where it is possible.
+/// the transfer (routes leaking) of data between VRF instances and tables.
+/// The structure is designed to use references where it is possible.
 struct RouteParameters {
 
     /// @brief Constructs RouteParameters object from components
     RouteParameters(const IpAddress& nh_addr,
+        const MacAddress& mac,
         const VnListType& vns,
         const SecurityGroupList& sgs,
         const CommunityList& comms,
@@ -33,6 +34,7 @@ struct RouteParameters {
         uint64_t seq_n):
         nh_addresses_(1, nh_addr),
         nh_addr_(nh_addresses_.at(0)),
+        nh_mac_(mac),
         vn_list_(vns), sg_list_(sgs),
         communities_(comms), tag_list_(tags),
         path_preference_(ppref),
@@ -44,6 +46,7 @@ struct RouteParameters {
     RouteParameters(const RouteParameters &rp):
         nh_addresses_(rp.nh_addresses_),
         nh_addr_(rp.nh_addr_),
+        nh_mac_(rp.nh_mac_),
         vn_list_(rp.vn_list_), sg_list_(rp.sg_list_),
         communities_(rp.communities_), tag_list_(rp.tag_list_),
         path_preference_(rp.path_preference_),
@@ -71,12 +74,15 @@ struct RouteParameters {
     //     sequence_number_(seq_n) {
     // }
 
-    /// @brief A list of nexthops IP addreses of the composite tunnel.
+    /// @brief A list of nexthops IP addreses of a composite tunnel.
     const std::vector<IpAddress> nh_addresses_;
 
     /// @brief A nexthop IP address of the tunnel. Contains first IP address
-    /// of nh_addresses_ in case of composite tunnel.
+    /// of nh_addresses_ in case of a composite tunnel.
     const IpAddress& nh_addr_;
+
+    /// @brief A nexthop MAC address (usually it is a MAC of the router).
+    const MacAddress& nh_mac_;
 
     /// @brief A list of path destination virtual networks used in policy
     /// lookups.
@@ -106,75 +112,137 @@ private:
     RouteParameters();
 };
 
-/**
- * VxlanRoutingState
- * State to track inet and evpn table listeners.
- */
+/// @brief This state tracks inet and evpn table listeners.
+/// The state establishes link between Inet tables of a bridge VRF instance
+/// from where routes leak and EVPN table of a routing VRF instance
+/// to which routes leak.
 struct VxlanRoutingState : public DBState {
+
+    /// @brief Construct new instance using the given VxlanRoutingManager and
+    /// VRF instance (VrfEntry).
     VxlanRoutingState(VxlanRoutingManager *mgr,
                       VrfEntry *vrf);
+
+    /// @brief Destroys an instance.
     virtual ~VxlanRoutingState();
 
+    /// @brief ID of a listener that tracks changes in the IPv4 Inet
+    /// table of a bridge VRF instance
     DBTable::ListenerId inet4_id_;
+
+    /// @brief ID of a listener that tracks changes in the IPv6 Inet
+    /// table of a bridge VRF instance
     DBTable::ListenerId inet6_id_;
+
+    /// @brief ID of a listener that tracks changes in the EVPN
+    /// table of a routing VRF instance
     DBTable::ListenerId evpn_id_;
+
+    /// @brief A pointer to the IPv4 Inet table of a bridge VRF instance
     AgentRouteTable *inet4_table_;
+
+    /// @brief A pointer to the IPv6 Inet table of a bridge VRF instance
     AgentRouteTable *inet6_table_;
+
+    /// @brief A pointer to the EVPN table of a routing VRF instance
     AgentRouteTable *evpn_table_;
 };
 
-/**
- * VNstate
- * tracks all VMI attached with the logical router uuid
- */
+/// @brief This state tracks all virtual machine interfaces (VmInterface)
+/// attached to a Logical Router (LR). The state establishes link
+/// between VmInterfaces connected to a LR as
+/// router's ports on behalf of bridge virtual networks (VirtualNetwork).
 struct VxlanRoutingVnState : public DBState {
+
+    /// A typedef for a set of pointers to VmInterface.
     typedef std::set<const VmInterface *> VmiList;
+
+    /// A typedef for the iterator of VxlanRoutingVnState::VmiList.
     typedef VmiList::iterator VmiListIter;
 
+    /// Constructs new instance using VxlanRoutingManager.
     VxlanRoutingVnState(VxlanRoutingManager *mgr);
+
+    /// @brief Destroys a VxlanRoutingVnState object.
     virtual ~VxlanRoutingVnState();
 
+    /// @brief Adds a VmInterface (LR port) to a Logical Router and connects
+    /// the given VirtualNetwork (to which the VmInterface belongs to) to the
+    /// LR.
     void AddVmi(const VnEntry *vn, const VmInterface *vmi);
-    //Deletes VMI from set and checks if all VMI are gone or logical router uuid
-    //changes because remaining VMI is connected to other LR.
+
+    /// @brief Deletes the VmInterface from set of connected interfaces
+    ///  and disconnects the given VirtualNetwork from the Logical Router.
     void DeleteVmi(const VnEntry *vn, const VmInterface *vmi);
+
+    /// @brief Returns the UUID of the Logical Router.
     boost::uuids::uuid logical_router_uuid() const;
 
+    /// @brief A list of VmInterface (router's ports) connected to a Logical
+    /// Router (LR)
     std::set<const VmInterface *> vmi_list_;
+
+    /// @brief Returns true when state is associated with a routing
+    /// VirtualNetwork
     bool is_routing_vn_;
+
+    /// @brief A  UUID of the Logical Router.
     boost::uuids::uuid logical_router_uuid_;
-    //Hold vrf reference to handle vn with null vrf
+
+    /// @brief Holds a reference to a VrfEntry when VirtualNetwork's
+    /// reference stored in VrfGet() is null
     VrfEntryRef vrf_ref_;
+
+    /// @brief A pointer to the instance of VxlanRoutingManager
     VxlanRoutingManager *mgr_;
 };
 
-/**
- * VmiState
- * Captures movement of VMI among LR.
- */
+/// @brief Tracks movement of a VmInterface amongth LRs. This is used
+/// to associate VmInterface with a LR and a VN;
 struct VxlanRoutingVmiState : public DBState {
+
+    /// @brief Constructs new instance of VxlanRoutingVmiState
     VxlanRoutingVmiState();
+
+    /// @brief Destroys an instance of VxlanRoutingVmiState
     virtual ~VxlanRoutingVmiState();
 
+    /// @brief Reference (smart pointer) to the virtual network
+    /// (VirtualNetwork) to which VmInterface belongs to
     VnEntryRef vn_entry_;
+
+    /// @brief UUID of the LR to which this VmInterface is connected.
     boost::uuids::uuid logical_router_uuid_;
 };
 
 /**
  * VxlanRoutingRouteWalker
- * Incarnation of AgentRouteWalker. Listens to evpn type 2 routes.
- * Started when l3vrf is added/deleted or bridge vrf is added/deleted.
+ * Incarnation of AgentRouteWalker. 
+ * 
  */
+/// @brief Listens to Inet routes in a bridge VRF instance.
+/// Started when l3vrf is added/deleted or
+/// when a bridge VRF is attached / detached to/from the LR.
 class VxlanRoutingRouteWalker : public AgentRouteWalker {
 public:
+
+    /// @brief Constructs a new instance using the given name, pointer to
+    /// the VxlanRoutingManager and pointer to the Agent.
     VxlanRoutingRouteWalker(const std::string &name,
-                            VxlanRoutingManager *mgr,
-                            Agent *agent);
+        VxlanRoutingManager *mgr, Agent *agent);
+
+    /// @brief Destructs an instance of VxlanRoutingRouteWalker.
     virtual ~VxlanRoutingRouteWalker();
+
+    /// @brief Runs route leaking process when L3 VRF instance is added/deleted
+    /// or when a bridge VRF is attached / detached to/from the LR
     virtual bool RouteWalkNotify(DBTablePartBase *partition, DBEntryBase *e);
 
 private:
+
+    /// @brief A pointer to the VxlanRoutingManager instance.
     VxlanRoutingManager *mgr_;
+
     DISALLOW_COPY_AND_ASSIGN(VxlanRoutingRouteWalker);
 };
 
@@ -194,90 +262,98 @@ private:
 class VxlanRoutingVrfMapper {
 public:
 
-    /// @brief
+    /// @brief The structure holds information about virtual networks
+    /// connected to a logical router (LR)
     struct RoutedVrfInfo {
 
-        /// @brief
+        /// @brief A typedef to store the list of bridge virtual networks
+        /// connected to a LR.
         typedef std::set<const VnEntry *> BridgeVnList;
 
-        /// @brief
+        /// @brief A typedef to store the correspondence between bridge virtual
+        /// network (VirtualNetwork) pointer and a name of it's VRF instance.
         typedef std::map<const VnEntry *, std::string> BridgeVrfNamesList;
 
-        /// @brief
+        /// @brief A type for iterator of the list of bridge virtual networks
+        /// connected to a LR.
         typedef BridgeVnList::iterator BridgeVnListIter;
 
-        /// @brief
-        RoutedVrfInfo() : parent_vn_entry_(),
+        /// @brief Constructs an instance of RoutedVrfInfo.
+        RoutedVrfInfo() : routing_vn_(),
         routing_vrf_(NULL), bridge_vn_list_() {
         }
 
-        /// @brief
+        /// @brief Destroys an instance of RoutedVrfInfo.
         virtual ~RoutedVrfInfo() {
         }
 
-        /// @brief
-        const VnEntry *parent_vn_entry_;
+        /// @brief A pointer to the routing virtual network (VirtualNetwork)
+        /// connected to a LR.
+        const VnEntry *routing_vn_;
 
-        /// @brief
+        /// @brief A pointer to the routing VRF instance (L3 VRF)
+        /// connected to a LR.
         const VrfEntry *routing_vrf_;
 
-        /// @brief
+        /// @brief The list of bridge virtual networks (VirtualNetwork)
+        /// connected to a LR.
         BridgeVnList bridge_vn_list_;
 
-        /// @brief
+        /// @brief The list of bridge virtual networks (VirtualNetwork) names
+        /// connected to a LR.
         BridgeVrfNamesList bridge_vrf_names_list_;
     };
 
-    /// @brief Logical router - RoutedVrfInfo(Set of l3 vrf and bridge vrf)
+    /// @brief A typedef to store map between Logical router UUID and
+    /// RoutedVrfInfo
     typedef std::map<boost::uuids::uuid, RoutedVrfInfo> LrVrfInfoMap;
 
-    /// @brief
+    /// @brief A typedef for iterator of LrVrfInfoMap
     typedef LrVrfInfoMap::iterator LrVrfInfoMapIter;
 
-    /// @brief VNEntry to LR id
+    /// @brief A typedef to store map between pointer to VirtualNetwork (a
+    /// bridge or routing virtual network connected to some LR) and
+    /// the LR's UUID.
     typedef std::map<const VnEntry *, boost::uuids::uuid> VnLrSet;
 
-    /// @brief
+    /// @brief A typedef for iterator of VnLrSet.
     typedef VnLrSet::iterator VnLrSetIter;
 
-    /// @brief Tracks all walkers on evpn tables, if needed the walk can be restarted
+    /// @brief A typedef for a storage of all walkers on Inet tables,
+    /// if needed the walk can be restarted
     /// instead of spawning new one for a table.
-    typedef std::map<const EvpnAgentRouteTable *, DBTable::DBTableWalkRef>
-        EvpnTableWalker;
-
-    /// @brief
     typedef std::map<const InetUnicastAgentRouteTable *, DBTable::DBTableWalkRef>
         InetTableWalker;
 
-    /// @brief
+    /// @brief Constructs a new instance of VxlanRoutingVrfMapper using
+    /// the given pointer to VxlanRoutingManager.
     VxlanRoutingVrfMapper(VxlanRoutingManager *mgr);
 
-    /// @brief
+    /// @brief Destroys an instance of VxlanRoutingVrfMapper().
     virtual ~VxlanRoutingVrfMapper();
 
-    /// @brief
-    void RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
-                       DBTableBase *partition);
-
-    /// @brief
+    /// @brief Handles completion of route walk in the Inet IPv4 table
+    /// of a bridge VRF instance.
     void BridgeInet4RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
                        DBTableBase *partition);
 
-    /// @brief
+    /// @brief Handles completion of route walk in an Inet IPv6 table
+    /// of a bridge VRF instance.
     void BridgeInet6RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
                        DBTableBase *partition);
 
-    /// @brief
+    /// @brief Handles completion of route walk in the EVPN table
+    /// of a routing VRF instance.
     void RoutingVrfRouteWalkDone(DBTable::DBTableWalkRef walk_ref,
                                           DBTableBase *partition);
 
-    /// @brief
+    /// @brief Attempts to delete the given LR.
     /// @todo better way to release logical router from lr_vrf_info_map_
     /// Easier way will be to add logical router in db and trigger delete of this
     ///via LR delete in same.
     void TryDeleteLogicalRouter(LrVrfInfoMapIter &it);
 
-    /// @brief
+    /// @brief Determines whether object is empty or not.
     bool IsEmpty() const {
         return ((vn_lr_set_.size() == 0) &&
                 (lr_vrf_info_map_.size() == 0));
@@ -285,49 +361,51 @@ public:
 
 private:
 
-    /// @brief
+    /// @brief Allows access to private members for VxlanRoutingManager class.
     friend class VxlanRoutingManager;
-    
-    /// @brief
+
+    /// @brief Walks Inet tables of all bridge VRF instances connected to
+    /// a LR (given in routing_vrf_info parameter).
     void WalkBridgeVrfs(const RoutedVrfInfo &routing_vrf_info);
 
-    /// @brief
-    void WalkRoutingVrf(const boost::uuids::uuid &uuid, const VnEntry *vn, bool update, bool withdraw);
+    /// @brief Walks the EVPN table of the routing VRF instance of a given
+    /// LR.
+    void WalkRoutingVrf(const boost::uuids::uuid &lr_uuid,
+        const VnEntry *vn, bool update, bool withdraw);
 
-    // /// @brief
-    // void WalkEvpnTable(EvpnAgentRouteTable *table);
+    /// @brief Walks given Inet tables (IPv4 and IPv6).
+    void WalkBridgeInetTables(InetUnicastAgentRouteTable *inet4,
+        InetUnicastAgentRouteTable *inet6);
 
-    /// @brief
-    void WalkBridgeInetTables(InetUnicastAgentRouteTable *inet4, InetUnicastAgentRouteTable *inet6);
-
-    /// @brief Using VN's Lr uuid identify the routing vrf
+    /// @brief Find the routing VRF instance using a given virtual network.
     const VrfEntry *GetRoutingVrfUsingVn(const VnEntry *vn);
 
-    /// @brief
+    /// @brief Find the routing VRF instance using a given route
+    /// (AgentRoute).
     const VrfEntry *GetRoutingVrfUsingAgentRoute(const AgentRoute *rt);
 
-    /// @brief
-    const VrfEntry *GetRoutingVrfUsingUuid(const boost::uuids::uuid &uuid);
+    /// @brief Find the routing VRF instance using a given LR UUID.
+    const VrfEntry *GetRoutingVrfUsingUuid(const boost::uuids::uuid &lr_uuid);
 
-    /// @brief
+    /// @brief Find the UUID of the LR using a given route (AgentRoute).
     const boost::uuids::uuid GetLogicalRouterUuidUsingRoute(const AgentRoute *rt);
 
-    /// @brief
+    /// @brief A pointer to the VxlanRoutingManager instance.
     VxlanRoutingManager *mgr_;
 
-    /// @brief
+    /// @brief  The map between Logical router UUID and
+    /// RoutedVrfInfo
     LrVrfInfoMap lr_vrf_info_map_;
 
-    /// @brief
+    /// @brief The map between pointer to VirtualNetwork (a
+    /// bridge or routing virtual network connected to some LR) and
+    /// the LR's UUID.
     VnLrSet vn_lr_set_;
 
-    /// @brief
-    EvpnTableWalker evpn_table_walker_;
-
-    /// @brief
+    /// @brief The set of walkers for Inet IPv4 tables of bridge VRF instances.
     InetTableWalker inet4_table_walker_;
 
-    /// @brief
+    /// @brief The set of walkers for Inet IPv6 tables of bridge VRF instances.
     InetTableWalker inet6_table_walker_;
 
     DISALLOW_COPY_AND_ASSIGN(VxlanRoutingVrfMapper);
@@ -404,12 +482,13 @@ private:
 
     /// @brief Handles deletion of a route in the Inet table of the routing
     /// VRF instance.
-    void WhenRoutingEvpnIntfWasDeleted(const EvpnRouteEntry *routing_evpn_rt);
-
+    void WhenRoutingEvpnRouteWasDeleted(const EvpnRouteEntry *routing_evpn_rt,
+        const Peer* delete_from_peer);
 
 public:
 
-    /// @brief
+    /// @brief Deletes a given EVPN route from EVPN table of the routing
+    /// VRF instance
     bool WithdrawEvpnRouteFromRoutingVrf
     (DBTablePartBase *partition, DBEntryBase *e);
 
@@ -436,11 +515,13 @@ private:
     void DeleteSubnetRoute(const VrfEntry *vrf);
     //void DeleteSubnetRoute(const VrfEntry *vrf, VnIpam *ipam = NULL);
 
-    /// @brief
+    /// @brief Deletes subnet routes from a specified virtual network
+    /// (VirtualNetwork)
     void DeleteSubnetRoute(const VnEntry *vn,
         const std::string& vrf_name);
 
-    /// @brief
+    /// @brief Delete routes to IPAM, specified by IP prefix and prefix
+    /// length
     void DeleteIpamRoutes(const VnEntry *vn,
     const std::string& vrf_name,
     const IpAddress& ipam_prefix,
@@ -489,6 +570,9 @@ private:
     /// interfaces routes in routing VRF are linked to.
     static const Peer *routing_vrf_interface_peer_;
 
+    /// @brief A pointer to the Peer where all BGP routes are stored
+    static const Peer* routing_vrf_vxlan_bgp_peer_;
+
     /// @brief A pointer to the Agent instance.
     Agent *agent_;
 
@@ -506,13 +590,15 @@ private:
     DBTable::ListenerId vmi_listener_id_;
 
     /// @brief A map between LR uuids and associated bridge and
-    /// routing VRF instances
+    /// routing VRF instances.
     VxlanRoutingVrfMapper vrf_mapper_;
 
     /// @brief An always increasing counter for new paths (used to signal
-    /// controoler about new routes)
+    /// controoler about new routes).
     static uint32_t loc_sequence_;
 
+    /// A mutex object to prevent simultaneous update of local sequence
+    /// number property.
     static tbb::mutex mutex_;
 
     /// Friends declarations
@@ -568,9 +654,6 @@ private:
         const IpAddress& prefix_ip,
         const uint32_t prefix_len);
 
-    /// @brief Determines whether prefix is IPv6 link-local address
-    static bool IsLinkLocal(const IpAddress&);
-
     /// @brief Determines whether the prefix address and the prefix length
     /// point to a host route (/32 for IPv4, /128 for IPv6) or
     /// to a subnet route.
@@ -614,6 +697,19 @@ private:
     /// @return true if this VRF is routing, otherwise return value is false.
     static bool IsRoutingVrf(const std::string vrf_name, const Agent *agent);
 
+    /// @brief Finds in the given route the path with a specified Peer type
+    static const AgentPath* FindPathWithGivenPeer(
+        const AgentRoute *inet_rt,
+        const Peer::Type peer_type);
+
+    /// @brief Finds in the given route the path with a specified Peer type
+    /// and a specified nexthop type
+    static const AgentPath* FindPathWithGivenPeerAndNexthop(
+        const AgentRoute *inet_rt,
+        const Peer::Type peer_type,
+        const NextHop::Type nh_type,
+        bool strict_match = true);
+
     /// @brief Finds in the given route the path with the given Peer type
     /// and interface nexthop (InterfaceNH).
     static const AgentPath* FindInterfacePathWithGivenPeer(
@@ -654,45 +750,67 @@ private:
         uint32_t ethernet_tag,
         const Peer* peer);
 
+    /// @brief Returns the MAC address for the IP of a given
+    /// neighbouring compute
+    static MacAddress NbComputeMac(const Ip4Address& compute_ip,
+        const Agent *agent);
+
     /// XMPP Advertising functions
+
+    /// @brief Allocates and returns a new key for the VxLAN tunnel to
+    /// the given router
+    TunnelNHKey* AllocateTunnelNextHopKey(const IpAddress& dip,
+        const MacAddress& dmac) const;
 
     /// @brief Advertises an EVPN route received using XMPP channel
     void XmppAdvertiseEvpnRoute(const IpAddress& prefix_ip,
         const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-        const RouteParameters& params, const BgpPeer *bgp_peer);
+        const RouteParameters& params, const Peer *bgp_peer);
 
     /// @brief Advertises an Inet route received using XMPP channel
     void XmppAdvertiseInetRoute(const IpAddress& prefix_ip,
         const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-        const RouteParameters& params, const BgpPeer *bgp_peer);
+        const RouteParameters& params, const Peer *bgp_peer);
+
+    /// @brief Advertises an Inet route received from EVPN table
+    void XmppAdvertiseInetRoute(const IpAddress& prefix_ip,
+        const int prefix_len, const std::string vrf_name,
+        const AgentPath*);
 
     /// @brief Advertises in the EVPN table a tunnel route that arrived
     /// via XMPP channel. Must be called only from XmppAdvertiseInetRoute.
     void XmppAdvertiseEvpnTunnel(
         EvpnAgentRouteTable *inet_table, const IpAddress& prefix_ip,
         const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-        const RouteParameters& params, const BgpPeer *bgp_peer);
+        const RouteParameters& params, const Peer *bgp_peer);
 
     /// @brief Advertises in the EVPN table an interface route that arrived
     /// via XMPP channel. Must be called only from XmppAdvertiseInetRoute.
     void XmppAdvertiseEvpnInterface(
         EvpnAgentRouteTable *inet_table, const IpAddress& prefix_ip,
         const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-        const RouteParameters& params, const BgpPeer *bgp_peer);
+        const RouteParameters& params, const Peer *bgp_peer);
 
     /// @brief Advertises in the Inet table a tunnel route that arrived
     /// via XMPP channel. Must be called only from XmppAdvertiseInetRoute.
     void XmppAdvertiseInetTunnel(
         InetUnicastAgentRouteTable *inet_table, const IpAddress& prefix_ip,
         const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-        const RouteParameters& params, const BgpPeer *bgp_peer);
+        const RouteParameters& params, const Peer *bgp_peer);
+
+    /// @brief Advertises in the Inet table a tunnel route that arrived
+    /// via XMPP channel. Must be called only from XmppAdvertiseInetRoute.
+    void XmppAdvertiseInetTunnel(
+        InetUnicastAgentRouteTable *inet_table, const IpAddress& prefix_ip,
+        const int prefix_len, const std::string vrf_name,
+        const AgentPath* path);
 
     /// @brief Advertises in the Inet table an interface route that arrived
     /// via XMPP channel. Must be called only from XmppAdvertiseInetRoute.
-    void XmppAdvertiseInetInterface(
+    void XmppAdvertiseInetInterfaceOrComposite(
         InetUnicastAgentRouteTable *inet_table, const IpAddress& prefix_ip,
-        const int prefix_len, uint32_t vxlan_id, const std::string vrf_name,
-        const RouteParameters& params, const BgpPeer *bgp_peer);
+        const int prefix_len, const std::string vrf_name,
+        const AgentPath* path);
 
     /// Templates
 
@@ -734,7 +852,8 @@ private:
 
     /// Routes copying functions
 
-    /// @brief
+    /// @brief Deletes interface path specified with IP prefix, prefix
+    /// length and Peer from the EVPN table.
     static void DeleteOldInterfacePath(const IpAddress &prefix_ip,
         const uint32_t plen,
         const Peer *peer,
@@ -759,7 +878,7 @@ private:
     /// @brief Copies the path to the prefix address into the EVPN table
     /// with the given Peer. The function is used during routes leaking
     /// between routing VRF EVPN and Inet tables.
-    void CopyInterfacePathToInetTable(const AgentPath* path,
+    void CopyPathToInetTable(const AgentPath* path,
         const IpAddress &prefix_ip,
         const uint32_t plen,
         const Peer *peer,
@@ -768,12 +887,14 @@ private:
 
 public:
 
+    /// @brief Prints EVPN table of the given VRF instance.
     static void PrintEvpnTable(const VrfEntry* const_vrf);
 
+    /// @brief Prints IPv4 Inet table of the given VRF instance.
     static void PrintInetTable(const VrfEntry* const_vrf);
 
+    /// @brief Prints all virtual networks attached to logical routers.
     static void ListAttachedVns();
-
 
     DISALLOW_COPY_AND_ASSIGN(VxlanRoutingManager);
 };

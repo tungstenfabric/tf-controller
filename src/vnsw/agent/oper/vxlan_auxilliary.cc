@@ -7,8 +7,8 @@
 #include <oper/vxlan_routing_manager.h>
 #include <oper/bgp_as_service.h>
 
-static bool IsInterfaceCompositeNextHop(const NextHop *nh,
-    bool strict_match = true) {
+static bool IsGivenTypeCompositeNextHop(const NextHop *nh,
+    NextHop::Type nh_type, bool strict_match = true) {
     if (nh->GetType() != NextHop::COMPOSITE) {
         return false;
     }
@@ -19,18 +19,23 @@ static bool IsInterfaceCompositeNextHop(const NextHop *nh,
         const NextHop * c_nh = composite_nh->GetNH(i);
         if (c_nh != NULL) {
             // return true if at least one componet is interface
-            if (c_nh->GetType() == NextHop::INTERFACE &&
+            if (c_nh->GetType() == nh_type &&
                 !strict_match) {
                 return true;
             }
             // return true only if all components are interfaces
-            if (c_nh->GetType() != NextHop::INTERFACE &&
+            if (c_nh->GetType() != nh_type &&
                 strict_match) {
                 return false;
             }
         }
     }
     return strict_match;
+}
+
+static bool IsInterfaceCompositeNextHop(const NextHop *nh,
+    bool strict_match = true) {
+    return IsGivenTypeCompositeNextHop(nh, NextHop::INTERFACE, strict_match);
 }
 
 // A nexthop is counted as BGPaaS when it has MPLS label and this
@@ -170,14 +175,6 @@ bool VxlanRoutingManager::RoutePrefixIsEqualTo(const InetUnicastRouteEntry* rout
         return false;
     }
     return true;
-}
-
-bool VxlanRoutingManager::IsLinkLocal(const IpAddress& prefix_ip) {
-    if (prefix_ip.is_v6()) {
-        return (prefix_ip.to_v6().to_bytes()[0] == 0xFE &&
-            prefix_ip.to_v6().to_bytes()[1] == 0x80);
-    }
-    return false;
 }
 
 bool VxlanRoutingManager::IsHostRoute(const IpAddress& prefix_ip, uint32_t prefix_len) {
@@ -351,9 +348,30 @@ bool VxlanRoutingManager::IsRoutingVrf(const std::string vrf_name,
     return vxlan_rt_mgr->IsRoutingVrf(vrf_cand);
 }
 
-const AgentPath* VxlanRoutingManager::FindInterfacePathWithGivenPeer(
+const AgentPath* VxlanRoutingManager::FindPathWithGivenPeer(
+    const AgentRoute *inet_rt,
+    const Peer::Type peer_type) {
+    if (inet_rt == NULL)
+        return NULL;
+
+    const Route::PathList & path_list = inet_rt->GetPathList();
+    for (Route::PathList::const_iterator it = path_list.begin();
+        it != path_list.end(); ++it) {
+        const AgentPath* path =
+            dynamic_cast<const AgentPath*>(it.operator->());
+
+        if (path != NULL &&
+            path->peer()->GetType() == peer_type) {
+                return path;
+        }
+    }
+    return NULL;
+}
+
+const AgentPath* VxlanRoutingManager::FindPathWithGivenPeerAndNexthop(
     const AgentRoute *inet_rt,
     const Peer::Type peer_type,
+    const NextHop::Type nh_type,
     bool strict_match) {
     if (inet_rt == NULL)
         return NULL;
@@ -368,15 +386,24 @@ const AgentPath* VxlanRoutingManager::FindInterfacePathWithGivenPeer(
             path->nexthop() != NULL &&
             path->peer() != NULL &&
             path->peer()->GetType() == peer_type) {
-            if (path->nexthop()->GetType() == NextHop::INTERFACE) {
+            if (path->nexthop()->GetType() == nh_type) {
                 return path;
             }
-            if (IsInterfaceCompositeNextHop(path->nexthop(), strict_match)) {
+            if (IsGivenTypeCompositeNextHop(path->nexthop(), nh_type,
+                strict_match)) {
                 return path;
             }
         }
     }
     return NULL;
+}
+
+const AgentPath* VxlanRoutingManager::FindInterfacePathWithGivenPeer(
+    const AgentRoute *inet_rt,
+    const Peer::Type peer_type,
+    bool strict_match) {
+    return FindPathWithGivenPeerAndNexthop(inet_rt,
+        peer_type, NextHop::INTERFACE, strict_match);
 }
 
 const AgentPath *VxlanRoutingManager::FindInterfacePathWithBgpPeer(
@@ -401,6 +428,7 @@ const AgentPath *VxlanRoutingManager::FindBGPaaSPath(
     }
     const AgentPath *bgp_cand_path =
             FindInterfacePathWithBgpPeer(inet_rt, true);
+
     if (bgp_cand_path == NULL) {
         return NULL;
     }
@@ -501,6 +529,27 @@ bool VxlanRoutingManager::IsExternalType5(EvpnAgentRouteTable *rt_table,
     return false;
 }
 
+MacAddress VxlanRoutingManager::NbComputeMac(const Ip4Address& compute_ip,
+    const Agent *agent) {
+    MacAddress compute_mac;
+    VrfEntry *underlay_vrf = agent->fabric_policy_vrf();
+    InetUnicastRouteEntry *router_rt = NULL;
+    router_rt = underlay_vrf->GetUcRoute(compute_ip);
+    if (router_rt != NULL &&
+        router_rt->addr() == compute_ip) {
+        const AgentPath *apath = FindPathWithGivenPeerAndNexthop(router_rt,
+            Peer::BGP_PEER, NextHop::TUNNEL);
+        if (apath) {
+            const TunnelNH * tunl_nh =
+                dynamic_cast<const TunnelNH*>(apath->nexthop());
+            if (tunl_nh->GetDmac()) {
+                compute_mac = *(tunl_nh->GetDmac());
+            }
+        }
+    }
+    return compute_mac;
+}
+
 //Finds route in a EVPN table
 AgentRoute *VxlanRoutingManager::FindEvpnOrInetRoute(const Agent *agent,
     const std::string &vrf_name,
@@ -582,9 +631,10 @@ static bool InitializeNhRequest(const NextHop *path_nh,
     } else {  // other types of NH are not expected here
         LOG(ERROR, "Error in InitializeNhRequest"
         << ", Wrong NH type:" << path_nh->GetType());
-        assert(
-        path_nh->GetType() == NextHop::INTERFACE ||
-        path_nh->GetType() == NextHop::COMPOSITE);
+    //    assert(
+    //    path_nh->GetType() == NextHop::INTERFACE ||
+    //    path_nh->GetType() == NextHop::COMPOSITE);
+        return false;
     }
     return true;
 }
@@ -720,8 +770,6 @@ static void AdvertiseLocalRoute(const IpAddress &prefix_ip,
     InetUnicastAgentRouteTable *inet_table,
     const std::string& origin_vn
 ) {
-    // const Agent *agent = Agent::GetInstance();
-
     inet_table->AddEvpnRoutingRoute(prefix_ip,
         plen,
         inet_table->vrf_entry(),
@@ -735,91 +783,6 @@ static void AdvertiseLocalRoute(const IpAddress &prefix_ip,
         inet_table->vrf_entry()->vxlan_id(),
         params.vn_list_,
         origin_vn);
-}
-
-static void AdvertiseInterfaceBgpRoute(const IpAddress &prefix_ip,
-    const uint32_t plen,
-    DBRequest &nh_req,
-    const Peer *peer,
-    const AgentPath* path,
-    InetUnicastAgentRouteTable *inet_table
-) {
-    const NextHop *path_nh = path->nexthop();
-
-    const InterfaceNH *intf_nh = dynamic_cast<const InterfaceNH *>
-        (path_nh);
-    const Interface *intf = intf_nh->GetInterface();
-    if (intf->type() != Interface::VM_INTERFACE) {
-        return;
-    }
-    const VmInterface *vm_intf = dynamic_cast<const VmInterface*>
-        (intf);
-    DBEntryBase::KeyPtr tintf_key_ptr = vm_intf->GetDBRequestKey();
-    const VmInterfaceKey* intf_key_ptr =
-        dynamic_cast<const VmInterfaceKey *>(tintf_key_ptr.get());
-
-    LocalVmRoute *loc_rt_ptr = new LocalVmRoute(
-        *intf_key_ptr,
-        MplsTable::kInvalidLabel,  // mpls_label
-        path->vxlan_id(),
-        path->force_policy(),
-        path->dest_vn_list(),
-        intf_nh->GetFlags(),  // flags
-        path->sg_list(),
-        path->tag_list(),
-        path->communities(),
-        path->path_preference(),
-        path->subnet_service_ip(),
-        path->ecmp_load_balance(),
-        path->is_local(),
-        path->is_health_check_service(),
-        path->sequence(),
-        path->etree_leaf(),
-        false);  // native_encap
-        loc_rt_ptr->set_tunnel_bmap(TunnelType::VxlanType());
-        inet_table->AddLocalVmRouteReq(peer,
-            inet_table->vrf_entry()->GetName(),
-            prefix_ip, plen, loc_rt_ptr);
-}
-
-static void AdvertiseCompositeInterfaceBgpRoute(const IpAddress &prefix_ip,
-    const uint32_t plen,
-    DBRequest &nh_req,
-    const Peer *peer,
-    const AgentPath* path,
-    InetUnicastAgentRouteTable *inet_table
-) {
-    const BgpPeer *bgp_peer = dynamic_cast<const BgpPeer*>(peer);
-    std::stringstream prefix_str;
-    prefix_str << prefix_ip.to_string();
-    prefix_str << "/";
-    prefix_str << plen;
-    std::string vrf_name = inet_table->vrf_name();
-
-    ControllerEcmpRoute *rt_data = new ControllerEcmpRoute(
-        bgp_peer,
-        path->dest_vn_list(),
-        path->ecmp_load_balance(),
-        path->tag_list(),
-        path->sg_list(),
-        path->path_preference(),
-        TunnelType::VxlanType(),
-        nh_req,
-        prefix_str.str(),
-        inet_table->vrf_name());
-
-    ControllerEcmpRoute::ClonedLocalPathListIter iter =
-        rt_data->cloned_local_path_list().begin();
-    while (iter != rt_data->cloned_local_path_list().end()) {
-        inet_table->AddClonedLocalPathReq(bgp_peer, vrf_name,
-            prefix_ip, plen, (*iter));
-        iter++;
-    }
-    inet_table->AddRemoteVmRouteReq(bgp_peer,
-        vrf_name,
-        prefix_ip,
-        plen,
-        rt_data);
 }
 
 void VxlanRoutingManager::DeleteOldInterfacePath(const IpAddress &prefix_ip,
@@ -866,10 +829,6 @@ void VxlanRoutingManager::CopyInterfacePathToEvpnTable(const AgentPath* path,
         return;
     }
 
-    // This is req. 4 update of composites
-    // Not neccessary when routes are updated via path_preference.sequence
-    // DeleteOldInterfacePath(prefix_ip, plen, peer, evpn_table);
-
     if (peer->GetType() == Peer::BGP_PEER) {
         if (path_nh->GetType() == NextHop::INTERFACE) {
             AdvertiseInterfaceBgpRoute(
@@ -905,7 +864,7 @@ void VxlanRoutingManager::DeleteOldInterfacePath(const IpAddress &prefix_ip,
     }
 }
 
-void VxlanRoutingManager::CopyInterfacePathToInetTable(const AgentPath* path,
+void VxlanRoutingManager::CopyPathToInetTable(const AgentPath* path,
     const IpAddress &prefix_ip,
     const uint32_t plen,
     const Peer *peer,
@@ -918,7 +877,9 @@ void VxlanRoutingManager::CopyInterfacePathToInetTable(const AgentPath* path,
 
     // Subnet interface routes leaking is disabled for now
     if (IsHostRoute(prefix_ip, plen) == false) {
-        return;
+        if (path_nh->GetType() == NextHop::INTERFACE ||
+            IsGivenTypeCompositeNextHop(path_nh, NextHop::INTERFACE, false))
+            return;
     }
 
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
@@ -927,24 +888,13 @@ void VxlanRoutingManager::CopyInterfacePathToInetTable(const AgentPath* path,
         return;
     }
 
-    // This is req. for update of composites
-    // Not neccessary when routes are updated via path_preference.sequence
-    // DeleteOldInterfacePath(prefix_ip, plen, peer, inet_table);
-
-    if (peer->GetType() == Peer::BGP_PEER) {
-        if (path_nh->GetType() == NextHop::INTERFACE) {
-            AdvertiseInterfaceBgpRoute(
-                prefix_ip, plen, nh_req, peer, path, inet_table);
-        } else if (path_nh->GetType() == NextHop::COMPOSITE) {
-            AdvertiseCompositeInterfaceBgpRoute(
-                prefix_ip, plen, nh_req, peer, path, inet_table);
-        }
+   std::string origin_vn = "";
+    if (peer->GetType() == Peer::VXLAN_BGP_PEER) {
     } else {
-        std::string origin_vn = GetOriginVn(inet_table->vrf_entry(), prefix_ip,
-            plen);
-        AdvertiseLocalRoute(prefix_ip, plen, nh_req, peer, path, params,
-            inet_table, origin_vn);
+        origin_vn = GetOriginVn(inet_table->vrf_entry(), prefix_ip, plen);
     }
+    AdvertiseLocalRoute(prefix_ip, plen, nh_req, peer, path, params,
+        inet_table, origin_vn);
 }
 
 

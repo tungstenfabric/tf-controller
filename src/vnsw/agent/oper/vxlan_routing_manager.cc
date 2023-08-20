@@ -97,18 +97,17 @@ boost::uuids::uuid VxlanRoutingVnState::logical_router_uuid() const {
 }
 
 VxlanRoutingRouteWalker::VxlanRoutingRouteWalker(const std::string &name,
-                                                 VxlanRoutingManager *mgr,
-                                                 Agent *agent) :
+    VxlanRoutingManager *mgr, Agent *agent) :
     AgentRouteWalker(name, agent), mgr_(mgr) {
 }
 
 VxlanRoutingRouteWalker::~VxlanRoutingRouteWalker() {
 }
 
-//Only take notification of bridge inet routes.
-//Change in them will trigger change in rest.
+// Only take notification of bridge inet routes.
+// Change in them will trigger change in rest.
 bool VxlanRoutingRouteWalker::RouteWalkNotify(DBTablePartBase *partition,
-                                              DBEntryBase *e) {
+    DBEntryBase *e) {
     // Now route leaking is triggered by changes in the Inet table of
     // a bridge VRF instance
     const InetUnicastRouteEntry *inet_rt =
@@ -123,7 +122,7 @@ bool VxlanRoutingRouteWalker::RouteWalkNotify(DBTablePartBase *partition,
 }
 
 VxlanRoutingVrfMapper::VxlanRoutingVrfMapper(VxlanRoutingManager *mgr) :
-    mgr_(mgr), lr_vrf_info_map_(), vn_lr_set_(), evpn_table_walker_(),
+    mgr_(mgr), lr_vrf_info_map_(), vn_lr_set_(),
     inet4_table_walker_(), inet6_table_walker_() {
 }
 
@@ -171,12 +170,12 @@ void VxlanRoutingVrfMapper::WalkBridgeInetTables(
     }
 }
 
-void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &uuid,
+void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &lr_uuid,
                     const VnEntry *vn, bool update, bool withdraw) {
-    if (uuid == boost::uuids::nil_uuid())
+    if (lr_uuid == boost::uuids::nil_uuid())
         return;
     VxlanRoutingVrfMapper::RoutedVrfInfo &routing_vrf_info =
-            lr_vrf_info_map_[uuid];
+            lr_vrf_info_map_[lr_uuid];
     const VrfEntry *routing_vrf = routing_vrf_info.routing_vrf_;
     EvpnAgentRouteTable *evpn_table;
     if (routing_vrf) {
@@ -198,7 +197,7 @@ void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &uuid,
     } else {
         walk_ref = evpn_table->
         AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotifyInLrEvpnTable,
-            mgr_, _1, _2, uuid, vn, update),
+            mgr_, _1, _2, lr_uuid, vn, update),
             boost::bind(&VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone,
             this, _1, _2));
         evpn_table->WalkAgain(walk_ref);
@@ -236,19 +235,6 @@ void VxlanRoutingVrfMapper::BridgeInet6RouteWalkDone(DBTable::DBTableWalkRef wal
     }
 
     inet6_table_walker_.erase(it);
-}
-
-void VxlanRoutingVrfMapper::RouteWalkDone(DBTable::DBTableWalkRef walk_ref,
-                                          DBTableBase *partition) {
-    const EvpnAgentRouteTable *table = static_cast<const EvpnAgentRouteTable *>
-        (walk_ref->table());
-    EvpnTableWalker::iterator it = evpn_table_walker_.find(table);
-    if(it == evpn_table_walker_.end()){
-        LOG(ERROR, "Error in VxlanRoutingManager::RouteWalkDone"
-        << ", it == evpn_table_walker_.end()");
-        assert(it != evpn_table_walker_.end());
-    }
-    evpn_table_walker_.erase(it);
 }
 
 void VxlanRoutingVrfMapper::WalkBridgeVrfs
@@ -290,8 +276,8 @@ const VrfEntry *VxlanRoutingVrfMapper::GetRoutingVrfUsingAgentRoute
 }
 
 const VrfEntry *VxlanRoutingVrfMapper::GetRoutingVrfUsingUuid
-(const boost::uuids::uuid &uuid) {
-    LrVrfInfoMapIter it = lr_vrf_info_map_.find(uuid);
+(const boost::uuids::uuid &lr_uuid) {
+    LrVrfInfoMapIter it = lr_vrf_info_map_.find(lr_uuid);
     if (it != lr_vrf_info_map_.end()) {
         return it->second.routing_vrf_;
     }
@@ -331,6 +317,8 @@ void VxlanRoutingVrfMapper::TryDeleteLogicalRouter(LrVrfInfoMapIter &it) {
 }
 
 const Peer *VxlanRoutingManager::routing_vrf_interface_peer_ = NULL;
+const Peer *VxlanRoutingManager::routing_vrf_vxlan_bgp_peer_ = NULL;
+
 /**
  * VxlanRoutingManager
  */
@@ -339,6 +327,7 @@ VxlanRoutingManager::VxlanRoutingManager(Agent *agent) :
     vrf_listener_id_(), vmi_listener_id_(), vrf_mapper_(this) {
     //routing_vrf_interface_peer_ = agent_->evpn_routing_peer();
     routing_vrf_interface_peer_ = agent_->local_vm_export_peer();
+    routing_vrf_vxlan_bgp_peer_ = agent_->vxlan_bgp_peer();
 }
 
 VxlanRoutingManager::~VxlanRoutingManager() {
@@ -563,15 +552,28 @@ void VxlanRoutingManager::RoutingVrfDeleteAllRoutes(VrfEntry* rt_vrf) {
         else
             break;
 
+        // Delete routes originated from bridge networks
         EvpnAgentRouteTable::DeleteReq(routing_vrf_interface_peer_,
             vrf_name,
             mac_addr,
             prefix_ip,
             plen,
-            ethernet_tag,  // ethernet_tag = 0 for Type5
+            ethernet_tag, // ethernet_tag = 0 for Type5
             NULL);
 
         InetUnicastAgentRouteTable::DeleteReq(routing_vrf_interface_peer_,
+            vrf_name, prefix_ip, plen, NULL);
+
+        // Delete routes originated from BPG peers (EVPN Type5 table)
+        EvpnAgentRouteTable::DeleteReq(routing_vrf_vxlan_bgp_peer_,
+            vrf_name,
+            mac_addr,
+            prefix_ip,
+            plen,
+            ethernet_tag, // ethernet_tag = 0 for Type5
+            NULL);
+
+        InetUnicastAgentRouteTable::DeleteReq(routing_vrf_vxlan_bgp_peer_,
             vrf_name, prefix_ip, plen, NULL);
     }
 }
@@ -605,11 +607,11 @@ void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
         // that some other VN has taken the ownership  of this LR and
         // notification of same came before this VN.
         if (routing_info_it != vrf_mapper_.lr_vrf_info_map_.end()) {
-            if (routing_info_it->second.parent_vn_entry_ == vn) {
+            if (routing_info_it->second.routing_vn_ == vn) {
                 RoutingVrfDeleteAllRoutes(vn->GetVrf());
                 // Routing VN/VRF
                 // Reset parent vn and routing vrf
-                routing_info_it->second.parent_vn_entry_ = NULL;
+                routing_info_it->second.routing_vn_ = NULL;
                 routing_info_it->second.routing_vrf_ = NULL;
             }
             // Trigger delete of logical router
@@ -630,7 +632,7 @@ void VxlanRoutingManager::RoutingVnNotify(const VnEntry *vn,
         VxlanRoutingVrfMapper::RoutedVrfInfo &routed_vrf_info =
             vrf_mapper_.lr_vrf_info_map_[vn_state->logical_router_uuid_];
         // Take the ownership of LR
-        routed_vrf_info.parent_vn_entry_ = vn;
+        routed_vrf_info.routing_vn_ = vn;
         if (routed_vrf_info.routing_vrf_ != vn->GetVrf()) {
             routed_vrf_info.routing_vrf_ = vn->GetVrf();
             vrf_mapper_.WalkBridgeVrfs(routed_vrf_info);
@@ -782,7 +784,6 @@ void VxlanRoutingManager::DeleteIpamRoutes(const VnEntry *vn,
 void VxlanRoutingManager::DeleteSubnetRoute(const VnEntry *vn, const std::string& vrf_name) {
     if (vn == NULL || vrf_name == std::string(""))
         return;
-
     std::vector<VnIpam> bridge_vn_ipam = vn->GetVnIpam();
 
     if (bridge_vn_ipam.size() == 0)
@@ -822,8 +823,9 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VnEntry *vn, const std::string
         }
         for (std::vector<VnIpam>::iterator vn_ipam_itr = vn_ipam.begin();
             vn_ipam_itr < vn_ipam.end(); vn_ipam_itr++) {
-            InetUnicastAgentRouteTable::Delete(agent_->evpn_routing_peer(),
-                vrf_name, vn_ipam_itr->GetSubnetAddress(), vn_ipam_itr->plen);
+            InetUnicastAgentRouteTable::DeleteReq(agent_->evpn_routing_peer(),
+                vrf_name, vn_ipam_itr->GetSubnetAddress(),
+                vn_ipam_itr->plen, NULL);
         }
         it++;
     }
@@ -838,7 +840,6 @@ void VxlanRoutingManager::DeleteSubnetRoute(const VrfEntry *vrf) {
 
 void VxlanRoutingManager::UpdateSubnetRoute(const VrfEntry *bridge_vrf,
                                              const VrfEntry *routing_vrf) {
-
     if (!bridge_vrf->vn())
         return;
 
@@ -921,7 +922,7 @@ void VxlanRoutingManager::FillSandeshInfo(VxlanRoutingResp *resp) {
         vxlan_routing_map.set_logical_router_uuid(UuidToString(it1->first));
         vxlan_routing_map.set_routing_vrf(it1->second.routing_vrf_->
                                             GetName());
-        vxlan_routing_map.set_parent_routing_vn(it1->second.parent_vn_entry_->
+        vxlan_routing_map.set_parent_routing_vn(it1->second.routing_vn_->
                                             GetName());
         VxlanRoutingVrfMapper::RoutedVrfInfo::BridgeVnListIter it2 =
             it1->second.bridge_vn_list_.begin();

@@ -996,8 +996,11 @@ public:
     void set_tunnel_type(TunnelType tunnel_type) {
         tunnel_type_ = tunnel_type;
     }
-    const Ip4Address dip() const {
+    const Ip4Address& dip() const {
         return dip_;
+    }
+    const MacAddress& rewrite_dmac() {
+        return rewrite_dmac_;
     }
 protected:
     friend class TunnelNH;

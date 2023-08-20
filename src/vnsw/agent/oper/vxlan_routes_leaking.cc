@@ -30,8 +30,22 @@ bool VxlanRoutingManager::RouteNotify(DBTablePartBase *partition,
                                       DBEntryBase *e) {
     const InetUnicastRouteEntry *inet_rt =
         dynamic_cast<const InetUnicastRouteEntry*>(e);
-    if (inet_rt && IsBridgeVrf(inet_rt->vrf())) {
-        return InetRouteNotify(partition, e);
+    if (inet_rt) {
+        if (IsBridgeVrf(inet_rt->vrf())) {
+            return InetRouteNotify(partition, e);
+        }
+        // // Deactive redundant bgp paths by moving local peer
+        // // path to top
+        // if (IsRoutingVrf(inet_rt->vrf())) {
+        //     const AgentPath * loc_vm_port =
+        //         FindInterfacePathWithGivenPeer(inet_rt,
+        //         routing_vrf_interface_peer_->GetType(), true);
+        //     if (loc_vm_port) {
+        //         Route::PathList & path_list =
+        //             const_cast<Route::PathList &>(inet_rt->GetPathList());
+        //         path_list.reverse();
+        //     }
+        // }
     }
 
     const EvpnRouteEntry *evpn_rt =
@@ -59,10 +73,6 @@ bool VxlanRoutingManager::InetRouteNotify(DBTablePartBase *partition,
                                           DBEntryBase *e) {
     const InetUnicastRouteEntry *inet_rt =
         dynamic_cast<const InetUnicastRouteEntry*>(e);
-
-    if (IsLinkLocal(inet_rt->addr())) {
-        return true;
-    }
 
     const VrfEntry *routing_vrf =
         vrf_mapper_.GetRoutingVrfUsingAgentRoute(inet_rt);
@@ -92,15 +102,16 @@ bool VxlanRoutingManager::InetRouteNotify(DBTablePartBase *partition,
 
     PathPreference preference = local_vm_port_path->path_preference();
     preference.set_loc_sequence(GetNewLocalSequence());
+    // preference.set_preference(100);
     VnListType dest_vns;
     dest_vns.insert(routing_vrf->vn()->GetName());
-
 
     CopyInterfacePathToEvpnTable(local_vm_port_path,
         inet_rt->addr(),
         inet_rt->plen(),
         routing_vrf_interface_peer_,  // agent->local_vm_export_peer(),
         RouteParameters(IpAddress(),  // not needed here
+            MacAddress(),             // not needed here ?
             dest_vns,
             local_vm_port_path->sg_list(),
             local_vm_port_path->communities(),
@@ -109,6 +120,7 @@ bool VxlanRoutingManager::InetRouteNotify(DBTablePartBase *partition,
             local_vm_port_path->ecmp_load_balance(),
             routing_vrf_interface_peer_->sequence_number()),
         evpn_table);
+
     return true;
 }
 
@@ -122,49 +134,64 @@ bool VxlanRoutingManager::EvpnRouteNotify(DBTablePartBase *partition,
                                           DBEntryBase *e) {
     const EvpnRouteEntry *evpn_rt =
         dynamic_cast<const EvpnRouteEntry *>(e);
-    if(evpn_rt == NULL){
-        LOG(ERROR, "Error in VxlanRoutingManager::EvpnRouteNotify"
-        << ", evpn_rt == NULL");
-        assert(evpn_rt != NULL);
-    }
 
     if (evpn_rt->IsType5() == false) {
         return true;
     }
 
+
     VrfEntry *vrf = evpn_rt->vrf();
     const AgentPath *local_vm_port_path = evpn_rt->FindPath(
         routing_vrf_interface_peer_);
 
+    const AgentPath *bgp_path =
+        FindPathWithGivenPeer(evpn_rt, Peer::BGP_PEER);
+
+    if (bgp_path) {
+        XmppAdvertiseInetRoute(evpn_rt->ip_addr(),
+            evpn_rt->GetVmIpPlen(), vrf->GetName(), bgp_path);
+    }
+
+    if (local_vm_port_path) {
+        const NextHop *anh = local_vm_port_path->nexthop();
+        if (anh == NULL) {
+            return true;
+        }
+        CopyPathToInetTable(local_vm_port_path,
+            evpn_rt->ip_addr(),
+            evpn_rt->GetVmIpPlen(),
+            routing_vrf_interface_peer_,
+                RouteParameters(IpAddress(),
+                MacAddress(),
+                local_vm_port_path->dest_vn_list(),
+                local_vm_port_path->sg_list(),
+                local_vm_port_path->communities(),
+                local_vm_port_path->tag_list(),
+                local_vm_port_path->path_preference(),
+                local_vm_port_path->ecmp_load_balance(),
+                routing_vrf_interface_peer_->sequence_number()),
+            vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr()));
+
+        RouteNotifyInLrEvpnTable(partition,
+            e, vrf->vn()->logical_router_uuid(), NULL, true);
+    }
+
+    if (bgp_path == NULL) {
+        // the route might be deleted
+        WhenRoutingEvpnRouteWasDeleted(evpn_rt,
+            routing_vrf_vxlan_bgp_peer_);
+    }
+
     if (local_vm_port_path == NULL) {
         // the route might be deleted
-        WhenRoutingEvpnIntfWasDeleted(evpn_rt);
+        WhenRoutingEvpnRouteWasDeleted(evpn_rt,
+            routing_vrf_interface_peer_);
         // and/or it requires publishing in bridge
         RouteNotifyInLrEvpnTable(partition, e,
-            vrf->vn()->logical_router_uuid(), NULL, true);
+           vrf->vn()->logical_router_uuid(), NULL, true);
         return true;
     }
 
-    const NextHop *anh = local_vm_port_path->nexthop();
-    if (anh == NULL) {
-        return true;
-    }
-
-    CopyInterfacePathToInetTable(local_vm_port_path,
-        evpn_rt->ip_addr(),
-        evpn_rt->GetVmIpPlen(),
-        routing_vrf_interface_peer_,
-            RouteParameters(IpAddress(),
-            local_vm_port_path->dest_vn_list(),
-            local_vm_port_path->sg_list(),
-            local_vm_port_path->communities(),
-            local_vm_port_path->tag_list(),
-            local_vm_port_path->path_preference(),
-            local_vm_port_path->ecmp_load_balance(),
-            routing_vrf_interface_peer_->sequence_number()),
-        vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr()));
-
-    RouteNotifyInLrEvpnTable(partition, e, vrf->vn()->logical_router_uuid(), NULL, true);
     return true;
 }
 
@@ -234,9 +261,9 @@ void VxlanRoutingManager::WhenBridgeInetIntfWasDeleted(
  * Step 2. Delete the routing VRF Inet route
  * 
  */
-void VxlanRoutingManager::WhenRoutingEvpnIntfWasDeleted
-    (const EvpnRouteEntry *routing_evpn_rt) {
-    //return;
+void VxlanRoutingManager::WhenRoutingEvpnRouteWasDeleted
+    (const EvpnRouteEntry *routing_evpn_rt, const Peer *delete_from_peer) {
+
     if (routing_evpn_rt->FindPath(agent_->evpn_routing_peer())) {
         // Actually, VRF NH Routes are not allowed here
         return;
@@ -266,15 +293,16 @@ void VxlanRoutingManager::WhenRoutingEvpnIntfWasDeleted
     }
 
     bool ok_to_delete = routing_evpn_rt->IsDeleted() ||
-        inet_rt->FindPath(routing_vrf_interface_peer_);
+        inet_rt->FindPath(delete_from_peer);
 
     if (ok_to_delete) {
         // Delete EVPN Type 5 record in the routing VRF
-        InetUnicastAgentRouteTable::Delete(
-            routing_vrf_interface_peer_,
+        InetUnicastAgentRouteTable::DeleteReq(
+            delete_from_peer,
             vrf->GetName(),
             routing_evpn_rt->ip_addr(),
-            routing_evpn_rt->GetVmIpPlen());
+            routing_evpn_rt->GetVmIpPlen(),
+            NULL);
     }
 }
 
@@ -313,11 +341,6 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
         return true;
     if (uuid == boost::uuids::nil_uuid())
         return true;
-
-    // link local routes do not leak into bridge neighboures
-    if (IsLinkLocal(evpn_rt->ip_addr())) {
-        return true;
-    }
     // Only non-local non-/32 and non-/128 routes are
     // copied to bridge vrfs
     if (IsHostRouteFromLocalSubnet(evpn_rt)) { //IsLocalSubnetHostRoute
@@ -343,7 +366,6 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
             continue;
         }
 
-        // do not leak routes that fall into local subnet range
         if (IsLocalInterface(evpn_rt, bridge_vrf)) {
             it++;
             continue;
@@ -353,10 +375,12 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
                 bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
 
         if (evpn_rt->IsDeleted()) {
-            inet_table->Delete(agent_->evpn_routing_peer(),
+            InetUnicastAgentRouteTable::DeleteReq(agent_->evpn_routing_peer(),
+            //inet_table->Delete(agent_->evpn_routing_peer(),
                               bridge_vrf->GetName(),
                               evpn_rt->ip_addr(),
-                              evpn_rt->GetVmIpPlen());
+                              evpn_rt->GetVmIpPlen(),
+                              NULL);
         } else {
             const AgentPath *p = evpn_rt->GetActivePath();
             const VrfEntry *routing_vrf = lr_vrf_info.routing_vrf_;

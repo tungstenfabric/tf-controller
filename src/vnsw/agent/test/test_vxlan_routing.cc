@@ -194,7 +194,7 @@ protected:
                 dynamic_cast<const TunnelNH *>(rt->GetActiveNextHop());
             if (tunnel_nh) {
                 EXPECT_TRUE(tunnel_nh->GetDip()->to_string() == dest_name);
-                // EXPECT_TRUE(tunnel_nh->rewrite_dmac().IsZero() == false);
+                EXPECT_TRUE(tunnel_nh->rewrite_dmac().IsZero() == false);
             }
             const AgentPath *path = rt->GetActivePath();
             if (path) {

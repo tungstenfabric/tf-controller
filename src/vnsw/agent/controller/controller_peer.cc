@@ -49,6 +49,16 @@ using process::ConnectionType;
 using process::ConnectionStatus;
 using process::ConnectionState;
 
+void InetRequestDelete(const IpAddress& ip_address,
+    const int prefix_len,
+    std::string vrf_name,
+    const Peer* bgp_peer) {
+
+    InetUnicastAgentRouteTable::DeleteReq(bgp_peer, vrf_name,
+                        ip_address, prefix_len,
+                        NULL);
+}
+
 // Parses string ipv4-addr/plen or ipv6-addr/plen
 // Stores address in addr and returns plen
 static int ParseEvpnAddress(const string &str, IpAddress *addr,
@@ -331,16 +341,19 @@ void AgentXmppChannel::ReceiveEvpnUpdate(XmlPugi *pugi) {
                                          ethernet_tag,
                              ControllerPeerPath::kInvalidPeerIdentifier);
                 } else {
-                    rt_table->DeleteReq(bgp_peer_id(), vrf_name, mac,
+                    const Peer *bgp_peer = bgp_peer_id();
+                    AgentRouteData *rt_data =
+                        new ControllerVmRoute(bgp_peer_id());
+                    rt_table->DeleteReq(bgp_peer, vrf_name, mac,
                                         ip_addr, plen, ethernet_tag,
-                                        new ControllerVmRoute(bgp_peer_id()));
-                    bool is_external =
-                       VxlanRoutingManager::IsVxlanAvailable(agent_) &&
-                       VxlanRoutingManager::IsExternalType5(rt_table,
-                       ip_addr, plen, ethernet_tag, bgp_peer_id());
-                    if (is_external) {
-                       InetRequestDelete(ip_addr,
-                           plen, vrf_name, bgp_peer_id());
+                                        rt_data);
+
+                    if (VxlanRoutingManager::IsVxlanAvailable(agent_) &&
+                        VxlanRoutingManager::IsRoutingVrf(vrf_name, agent_)) {
+                        bgp_peer =
+                            VxlanRoutingManager::routing_vrf_vxlan_bgp_peer_;
+                        InetRequestDelete(ip_addr,
+                            plen, vrf_name, bgp_peer);
                     }
                 }
             }
@@ -710,6 +723,11 @@ void AgentXmppChannel::ReceiveV4V6Update(XmlPugi *pugi) {
                     CONTROLLER_INFO_TRACE(Trace, GetBgpPeerName(), vrf_name,
                                                 "Delete Node id:" + id);
 
+
+                    if (VxlanRoutingManager::IsVxlanAvailable(agent_) &&
+                        VxlanRoutingManager::IsRoutingVrf(vrf_name, agent_)) {
+                        return;
+                    }
                     boost::system::error_code ec;
                     int prefix_len;
                     if (atoi(af) == BgpAf::IPv4) {
@@ -921,7 +939,11 @@ static void GetEcmpHashFieldsToUse(TYPE *item,
 void AgentXmppChannel::AddInetEcmpRoute(string vrf_name, IpAddress prefix_addr,
                                         uint32_t prefix_len, ItemType *item,
                                         const VnListType &vn_list) {
-    BgpPeer *bgp_peer = bgp_peer_id();
+    const Peer *bgp_peer = bgp_peer_id();
+    if (VxlanRoutingManager::IsVxlanAvailable(agent_) &&
+        VxlanRoutingManager::IsRoutingVrf(vrf_name, agent_)) {
+        return;
+    }
     InetUnicastAgentRouteTable *rt_table = PrefixToRouteTable(vrf_name,
                                                               prefix_addr);
     if (rt_table == NULL) {
@@ -946,7 +968,7 @@ void AgentXmppChannel::AddInetEcmpRoute(string vrf_name, IpAddress prefix_addr,
         iter++;
     }
     //ECMP create component NH
-    rt_table->AddRemoteVmRouteReq(bgp_peer_id(), vrf_name,
+    rt_table->AddRemoteVmRouteReq(bgp_peer, vrf_name,
                                   prefix_addr, prefix_len, data);
 }
 
@@ -994,43 +1016,6 @@ void AgentXmppChannel::AddEvpnEcmpRoute(string vrf_name,
     //ECMP create component NH
     rt_table->AddRemoteVmRouteReq(bgp_peer_id(), vrf_name, mac, prefix_addr,
                                   plen, item->entry.nlri.ethernet_tag, data);
-
-    // in case of external VxLAN route it must be added to Inet here, but using
-    // VxlanRoutingManager
-    if (VxlanRoutingManager::IsVxlanAvailable(agent_) &&
-        VxlanRoutingManager::IsRoutingVrf(vrf_name, agent_)) {
-       // Check that route is advertised by an external to the TF network
-       // router. It means that router_is not in the fabric_policy
-       // vrf_table
-       bool is_external = VxlanRoutingManager::IsExternalType5(item, agent_);
-       if (is_external) {
-           InetUnicastAgentRouteTable *inet_table = NULL;
-           inet_table = vrf->GetInetUnicastRouteTable(prefix_addr);
-
-           if (inet_table == NULL)
-               return;
-           EcmpLoadBalance ecmp_load_balance;
-           ecmp_load_balance.SetAll();
-           // GetEcmpHashFieldsToUse(item, ecmp_load_balance);
-           ControllerEcmpRoute *inet_data = BuildEcmpData(item,
-               vn_list, ecmp_load_balance,
-               inet_table, str.str());
-
-           if (inet_data) {
-               ControllerEcmpRoute::ClonedLocalPathListIter iter =
-                   inet_data->cloned_local_path_list().begin();
-               while (iter != inet_data->cloned_local_path_list().end()) {
-                   inet_table->AddClonedLocalPathReq(bgp_peer, vrf_name,
-                                           prefix_addr, plen,
-                                           (*iter));
-                   iter++;
-               }
-               inet_table->AddRemoteVmRouteReq(bgp_peer_id(),
-                   vrf_name, prefix_addr,
-                   plen, inet_data);
-           }
-       }
-    }
 }
 
 template <typename TYPE>
@@ -1254,7 +1239,8 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
            plen,
            label,  // vrf->vxlan_id(),  // VxLAN ID
            vrf_name,
-           RouteParameters(nh_ip,
+            RouteParameters(nh_ip,
+               MacAddress(item->entry.next_hops.next_hop[0].mac),
                vn_list,
                item->entry.security_group_list.security_group,
                CommunityList(),
@@ -1262,7 +1248,7 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
                path_preference,
                ecmp_load_balance,
                sequence_number()),
-           bgp_peer_id());
+            bgp_peer_id());
        return;
     }
 
@@ -1517,28 +1503,14 @@ void AgentXmppChannel::AddRemoteRoute(string vrf_name, IpAddress prefix_addr,
         }
     }
 
+
     /// Handle VxLAN routes using methods in VxlanRoutingManager
     /// Tunnels, Interfaces and Interface Composites are handled
     /// here when route is destined to the Routing VRF instance.
     VrfEntry* vrf = agent_->vrf_table()->FindVrfFromName(vrf_name);
     if (VxlanRoutingManager::IsVxlanAvailable(agent_) &&
        agent_->oper_db()->vxlan_routing_manager()->IsRoutingVrf(vrf)) {
-       EcmpLoadBalance ecmp_load_balance;
-       GetEcmpHashFieldsToUse(item, ecmp_load_balance);
-       agent_->oper_db()->vxlan_routing_manager()->XmppAdvertiseInetRoute(
-           prefix_addr,
-           prefix_len,
-           label,  // vrf->vxlan_id(),  // VxLAN ID
-           vrf_name,
-           RouteParameters(addr,
-               vn_list,
-               item->entry.security_group_list.security_group,
-               CommunityList(),
-               tag_list,
-               path_preference,
-               ecmp_load_balance,
-               sequence_number()),
-           bgp_peer_id());
+        // Inet routes are now handled inside the VxlanRoutingManager
        return;
     }
 

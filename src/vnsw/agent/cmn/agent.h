@@ -1025,6 +1025,7 @@ public:
     const Peer *ecmp_peer() const {return ecmp_peer_.get();}
     const Peer *vgw_peer() const {return vgw_peer_.get();}
     const Peer *evpn_routing_peer() const {return evpn_routing_peer_.get();}
+    const Peer *vxlan_bgp_peer() const {return vxlan_bgp_peer_.get();}
     const Peer *evpn_peer() const {return evpn_peer_.get();}
     const Peer *multicast_peer() const {return multicast_peer_.get();}
     const Peer *multicast_tor_peer() const {return multicast_tor_peer_.get();}
@@ -1541,6 +1542,7 @@ private:
     std::auto_ptr<Peer> ecmp_peer_;
     std::auto_ptr<Peer> vgw_peer_;
     std::auto_ptr<Peer> evpn_routing_peer_;
+    std::auto_ptr<Peer> vxlan_bgp_peer_;
     std::auto_ptr<Peer> evpn_peer_;
     std::auto_ptr<Peer> multicast_peer_;
     std::auto_ptr<Peer> multicast_tor_peer_;

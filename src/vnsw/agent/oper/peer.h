@@ -63,6 +63,8 @@ public:
         MAC_VM_BINDING_PEER,
         INET_EVPN_PEER,
         MAC_LEARNING_PEER,
+        VXLAN_BGP_PEER, /* The peer has the lowest priority
+                          to prevent interference with other paths */
     };
 
     Peer(Type type, const std::string &name, bool controller_export);
@@ -288,6 +290,19 @@ public:
     bool Compare(const Peer *rhs) const { return false; }
 private:
     DISALLOW_COPY_AND_ASSIGN(EvpnRoutingPeer);
+};
+
+// EVPN routing peer
+class VxlanBgpPeer : public Peer {
+public:
+    typedef boost::shared_ptr<VxlanBgpPeer> VxlanBgpPeerRef;
+
+    VxlanBgpPeer() : Peer(Peer::VXLAN_BGP_PEER, "VxLAN BGP PEER", false) { }
+    virtual ~VxlanBgpPeer() { }
+
+    bool Compare(const Peer *rhs) const { return false; }
+private:
+    DISALLOW_COPY_AND_ASSIGN(VxlanBgpPeer);
 };
 
 #endif // vnsw_agent_peer_h_
