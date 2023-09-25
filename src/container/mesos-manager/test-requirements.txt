@@ -1,4 +1,4 @@
-gevent==1.1.2
+gevent==23.9.1
 pycassa>=1.7.2
 netaddr>=0.7.5
 psutil>=0.4.1
