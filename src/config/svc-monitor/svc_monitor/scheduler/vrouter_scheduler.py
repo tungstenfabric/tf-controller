@@ -168,24 +168,19 @@ class VRouterScheduler(object):
         if vm.virtual_router:
             return [vm.virtual_router]
 
-        vr_list = list(VirtualRouterSM._dict.keys())
+        vr_set = set()
+        for vr in VirtualRouterSM.items():
+            if vr[1].agent_state:
+                vr_set.add(vr[0])
         for vm_id in si.virtual_machines:
             if vm_id == vm.uuid:
                 continue
             anti_affinity_vm = VirtualMachineSM.get(vm_id)
             if anti_affinity_vm:
-                try:
-                    vr_list.remove(anti_affinity_vm.virtual_router)
-                except ValueError:
-                    pass
+                vr_set.discard(anti_affinity_vm.virtual_router)
+        vr_list = list(vr_set)
 
-        for vr in list(VirtualRouterSM.values()):
-            if not vr.agent_state:
-                try:
-                    vr_list.remove(vr.uuid)
-                except ValueError:
-                    pass
-        if len(vr_list) == 0 :
+        if len(vr_list) == 0:
             self._logger.error("No vrouters are available for scheduling")
         return vr_list
 
