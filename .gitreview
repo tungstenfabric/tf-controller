@@ -1,5 +1,5 @@
 [gerrit]
-host=gerrit.tungsten.io
+host=tf-gerrit.gz1.progmaticlab.com
 port=29418
 project=tungstenfabric/tf-controller.git
 defaultbranch=master
