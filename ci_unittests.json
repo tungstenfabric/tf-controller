@@ -12,15 +12,6 @@
         ],
         "misc_test_targets" : [ ]
     },
-    "vcenter-import" : {
-        "source_directories" : [
-            "controller/src/vcenter-import"
-        ],
-        "scons_test_targets" : [
-            "controller/src/vcenter-import:test"
-        ],
-        "misc_test_targets" : [ ]
-    },
     "stats" : {
         "source_directories" : [
             "controller/src/stats"
@@ -207,24 +198,6 @@
         ],
         "misc_test_targets" : [ ]
     },
-    "contrail-vcenter-manager" : {
-        "source_directories" : [
-            "vcenter-manager"
-        ],
-        "scons_test_targets" : [
-            "vcenter-manager:test"
-        ],
-        "misc_test_targets" : [ ]
-    },
-    "contrail-vcenter-fabric-manager" : {
-        "source_directories" : [
-            "vcenter-fabric-manager"
-        ],
-        "scons_test_targets" : [
-            "vcenter-fabric-manager:test"
-        ],
-        "misc_test_targets" : [ ]
-    },
     "contrail-libs" : {
         "source_directories" : [
             "src/contrail-common/base",
@@ -313,8 +286,7 @@
           "src/contrail-analytics/contrail-opserver:test",
           "src/contrail-analytics/contrail-query-engine:test",
           "src/contrail-api-client/schema:test",
-          "src/contrail-analytics/tf-topology:test",
-          "controller/src/vcenter-import:test"
+          "src/contrail-analytics/tf-topology:test"
         ],
         "misc_test_targets" : [ ]
     }
