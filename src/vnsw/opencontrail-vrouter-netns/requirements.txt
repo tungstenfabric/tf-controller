@@ -1,5 +1,5 @@
 contrail-vrouter-api
 eventlet
-netaddr
+netaddr<1
 requests >= 2.20.0
 future

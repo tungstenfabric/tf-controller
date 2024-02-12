@@ -1,6 +1,6 @@
 gevent<1.5.0
 greenlet<2.0.0
-netaddr>=0.7.5
+netaddr>=0.7.5,<1
 contrail-config-common
 jsonpickle
 future

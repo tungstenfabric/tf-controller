@@ -5,4 +5,4 @@ greenlet<2.0.0
 python-keystoneclient
 python-ironicclient
 keystoneauth1<5.1.0
-netaddr
+netaddr<1
