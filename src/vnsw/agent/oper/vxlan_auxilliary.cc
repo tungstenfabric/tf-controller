@@ -7,6 +7,14 @@
 #include <oper/vxlan_routing_manager.h>
 #include <oper/bgp_as_service.h>
 
+
+static void AdvertiseLocalRoute(const IpAddress &prefix_ip,
+    const uint32_t plen,
+    DBRequest &nh_req,
+    const Peer *peer,
+    const RouteParameters& params,
+    EvpnAgentRouteTable *evpn_table);
+
 static bool IsGivenTypeCompositeNextHop(const NextHop *nh,
     NextHop::Type nh_type, bool strict_match = true) {
     if (nh->GetType() != NextHop::COMPOSITE) {
@@ -31,11 +39,6 @@ static bool IsGivenTypeCompositeNextHop(const NextHop *nh,
         }
     }
     return strict_match;
-}
-
-static bool IsInterfaceCompositeNextHop(const NextHop *nh,
-    bool strict_match = true) {
-    return IsGivenTypeCompositeNextHop(nh, NextHop::INTERFACE, strict_match);
 }
 
 // A nexthop is counted as BGPaaS when it has MPLS label and this
@@ -95,14 +98,30 @@ uint32_t VxlanRoutingManager::GetNewLocalSequence() {
 }
 
 bool VxlanRoutingManager::is_ipv4_string(const std::string& prefix_str) {
-    return prefix_str.find(".") != std::string::npos;
+    return (prefix_str.find(".") != std::string::npos);
+}
+
+bool VxlanRoutingManager::is_ipv6_string(const std::string& prefix_str) {
+    return (prefix_str.find(":") != std::string::npos) &&
+            !is_ipv4_string(prefix_str);
+}
+
+uint32_t VxlanRoutingManager::ipv4_prefix_len(const std::string& prefix_str) {
+    const std::string::size_type slash_pos = prefix_str.rfind("/");
+    if (slash_pos == std::string::npos) {
+        return 32;
+    }
+    const std::string len_str = prefix_str.substr(slash_pos + 1);
+    uint32_t prefix_len = 0;
+    std::istringstream(len_str) >> prefix_len;
+    return std::min(uint32_t(32), prefix_len);
 }
 
 std::string VxlanRoutingManager::ipv4_prefix(const std::string& prefix_str) {
-    unsigned int first_dot_pos = 0;
-    unsigned int last_colon_pos =
+    std::string::size_type first_dot_pos = 0;
+    std::string::size_type last_colon_pos =
         prefix_str.rfind(":");
-    unsigned int slash_pos = prefix_str.rfind("/");
+    std::string::size_type slash_pos = prefix_str.rfind("/");
     std::string ip_str = "0.0.0.0";
     if ((first_dot_pos = prefix_str.find(".")) != std::string::npos) {
         if (first_dot_pos - last_colon_pos >= 2 &&
@@ -112,9 +131,39 @@ std::string VxlanRoutingManager::ipv4_prefix(const std::string& prefix_str) {
         if (last_colon_pos == string::npos) {
             ip_str = prefix_str;
         }
+        if (slash_pos != string::npos) {
+            ip_str = ip_str.substr(0, slash_pos);
+        }
     }
-    if (slash_pos != string::npos) {
+    return ip_str;
+}
+
+uint32_t VxlanRoutingManager::ipv6_prefix_len(const std::string& prefix_str) {
+    const std::string::size_type slash_pos = prefix_str.rfind("/");
+    if (slash_pos == std::string::npos) {
+        return 128;
+    }
+    const std::string len_str = prefix_str.substr(slash_pos + 1);
+    uint32_t prefix_len = 0;
+    std::istringstream(len_str) >> prefix_len;
+    return std::min(uint32_t(128), prefix_len);
+}
+
+std::string VxlanRoutingManager::ipv6_prefix(const std::string& prefix_str) {
+    const std::string zero_mac_str = "00:00:00:00:00:00";
+    const std::string::size_type mac_pos = prefix_str.find(zero_mac_str);
+    std::string ip_str = prefix_str;
+
+    if (mac_pos != std::string::npos) {
+        ip_str = prefix_str.substr(mac_pos + zero_mac_str.size() + 1);
+    }
+
+    const std::string::size_type slash_pos = ip_str.rfind("/");
+    if (slash_pos != std::string::npos) {
         ip_str = ip_str.substr(0, slash_pos);
+    }
+    if (ip_str.find(":") == std::string::npos) {
+        ip_str = "::";
     }
     return ip_str;
 }
@@ -230,44 +279,22 @@ bool VxlanRoutingManager::IsHostRouteFromLocalSubnet(const EvpnRouteEntry *rt) {
     return false;
 }
 
-bool VxlanRoutingManager::IsLocalInterface(EvpnRouteEntry *routing_evpn_rt,
+bool VxlanRoutingManager::IsVrfLocalRoute(EvpnRouteEntry *routing_evpn_rt,
     VrfEntry *bridge_vrf) {
-    const AgentPath *local_path = routing_evpn_rt->FindPath(
-        routing_vrf_interface_peer_);
-    if (local_path == NULL) {
-        return false;
-    }
+    // check that the Inet table holds the corresponding route
+    InetUnicastRouteEntry local_vm_route_key(
+        bridge_vrf,
+        routing_evpn_rt->ip_addr(),
+        routing_evpn_rt->GetVmIpPlen(), false);
 
-    const NextHop *path_nh = local_path->nexthop();
-    if (path_nh == NULL) {
-        return NULL;
-    }
-
-    const InterfaceNH *intrf_nh = NULL;
-    if (path_nh->GetType() == NextHop::INTERFACE) {
-        intrf_nh =
-            dynamic_cast<const InterfaceNH*>(path_nh);
-    }
-    if (IsInterfaceCompositeNextHop(path_nh) == true) {
-        const CompositeNH *composite_nh =
-            dynamic_cast<const CompositeNH*>(path_nh);
-        uint32_t comp_nh_count = composite_nh->ComponentNHCount();
-        for (uint32_t i=0; i < comp_nh_count; i++) {
-            const NextHop * c_nh = composite_nh->GetNH(i);
-            if (c_nh != NULL && c_nh->GetType() == NextHop::INTERFACE) {
-                intrf_nh =
-                    dynamic_cast<const InterfaceNH*>(c_nh);
-                break;
-            }
-        }
-    }
-
-    if (intrf_nh != NULL) {
-        if (intrf_nh->GetInterface() != NULL &&
-            intrf_nh->GetInterface()->vrf() ==
-            bridge_vrf) {
-            return true;
-        }
+    InetUnicastAgentRouteTable *inet_table =
+        bridge_vrf->GetInetUnicastRouteTable(routing_evpn_rt->ip_addr());
+    InetUnicastRouteEntry *inet_rt =
+        dynamic_cast<InetUnicastRouteEntry *>
+        (inet_table->FindLPM(local_vm_route_key));
+    if (inet_rt && RoutePrefixIsEqualTo(inet_rt, routing_evpn_rt->ip_addr(),
+        routing_evpn_rt->GetVmIpPlen())) {
+        return inet_rt->FindPath(agent_->evpn_routing_peer()) ? false : true;
     }
     return false;
 }
@@ -369,14 +396,14 @@ const AgentPath* VxlanRoutingManager::FindPathWithGivenPeer(
 }
 
 const AgentPath* VxlanRoutingManager::FindPathWithGivenPeerAndNexthop(
-    const AgentRoute *inet_rt,
+    const AgentRoute *route,
     const Peer::Type peer_type,
     const NextHop::Type nh_type,
     bool strict_match) {
-    if (inet_rt == NULL)
+    if (route == NULL)
         return NULL;
 
-    const Route::PathList & path_list = inet_rt->GetPathList();
+    const Route::PathList & path_list = route->GetPathList();
     for (Route::PathList::const_iterator it = path_list.begin();
         it != path_list.end(); ++it) {
         const AgentPath* path =
@@ -427,8 +454,7 @@ const AgentPath *VxlanRoutingManager::FindBGPaaSPath(
         return NULL;
     }
     const AgentPath *bgp_cand_path =
-            FindInterfacePathWithBgpPeer(inet_rt, true);
-
+            FindInterfacePathWithBgpPeer(inet_rt, false);
     if (bgp_cand_path == NULL) {
         return NULL;
     }
@@ -439,6 +465,119 @@ const AgentPath *VxlanRoutingManager::FindBGPaaSPath(
         return bgp_cand_path;
     }
     return NULL;
+}
+
+void MakeInterfaceNextHopReq(const NextHop* path_nh,
+    const std::string& vrf_name,
+    DBRequest& nh_req) {
+    NextHopKey * orig_key = dynamic_cast<NextHopKey*>(
+        path_nh->GetDBRequestKey().get())->Clone();
+    nh_req.key.reset(orig_key);
+
+    InterfaceNHKey *intf_orig_key =
+        dynamic_cast<InterfaceNHKey*>(orig_key);
+    intf_orig_key->set_flags(intf_orig_key->flags() |
+        InterfaceNHFlags::VXLAN_ROUTING);
+    nh_req.data.reset(new InterfaceNHData(vrf_name));
+}
+
+void VxlanRoutingManager::AdvertiseBGPaaSRoute(const IpAddress& prefix_ip,
+    uint32_t prefix_len, const AgentPath* path,
+    EvpnAgentRouteTable *evpn_table) {
+    if (!path || !path->nexthop()) {
+        return;
+    }
+
+    PathPreference path_preference = path->path_preference();
+    path_preference.set_loc_sequence(GetNewLocalSequence());
+    const RouteParameters params (Ip4Address(),  // nh address is not needed here
+        MacAddress(),  // nh MAC is not needed here
+        path->dest_vn_list(),
+        path->sg_list(),
+        path->communities(),
+        path->tag_list(),
+        path_preference,
+        path->ecmp_load_balance(),
+        routing_vrf_interface_peer_->sequence_number());
+    const std::string& vrf_name = evpn_table->vrf_name();
+    DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
+
+    if (path->nexthop()->GetType() == NextHop::INTERFACE) {
+        MakeInterfaceNextHopReq(path->nexthop(), vrf_name, nh_req);
+    }
+    const EvpnRouteEntry *prev_evpn_rt = evpn_table->FindRoute(MacAddress(),
+        prefix_ip, prefix_len, 0);
+    const AgentPath *prev_path = NULL;
+    const CompositeNH *prev_nh = NULL;
+    if (RoutePrefixIsEqualTo(prev_evpn_rt, prefix_ip, prefix_len)) {
+        prev_path = FindInterfacePathWithGivenPeer(prev_evpn_rt,
+            routing_vrf_interface_peer_->GetType());
+    }
+    if (prev_path && prev_path->nexthop() &&
+        prev_path->nexthop()->GetType() == NextHop::COMPOSITE) {
+        prev_nh = static_cast<const CompositeNH *>(prev_path->nexthop());
+    }
+
+    if (path->nexthop()->GetType() == NextHop::COMPOSITE) {
+        const bool comp_nh_policy = false;
+        NextHopKey *nh_key = NULL;
+        // Create a new composite
+        ComponentNHKeyList new_comp_nh_list;
+        const CompositeNH *composite_nh = dynamic_cast<const CompositeNH*>(
+            path->nexthop());
+        const ComponentNHList &components = composite_nh->component_nh_list();
+        const NextHop *first_intf_nh = NULL;
+        for (uint32_t i=0; i < components.size(); i++) {
+            if (components[i].get() &&
+                components[i]->nh() &&
+                components[i]->nh()->GetType() == NextHop::INTERFACE) {
+                if (first_intf_nh == NULL) {
+                    first_intf_nh = components[i]->nh();
+                }
+                DBEntryBase::KeyPtr key = components[i]->nh()->
+                    GetDBRequestKey();
+                nh_key = static_cast<NextHopKey *>(key.release());
+
+                std::auto_ptr<const NextHopKey> nh_key_ptr(nh_key);
+                ComponentNHKeyPtr component_nh_key(new ComponentNHKey(
+                    MplsTable::kInvalidLabel, nh_key_ptr));
+                new_comp_nh_list.push_back(component_nh_key);
+            }
+        }
+        if (new_comp_nh_list.size() < 1) {
+            // That could mean that route was deleted
+            // The corresponding route will be deleted
+            // from the EVPN table later
+            return;
+        } else if (new_comp_nh_list.size() == 1) {
+            // Advertise as a single interface
+            MakeInterfaceNextHopReq(first_intf_nh, vrf_name, nh_req);
+        } else {
+            // Add NULL components if number of new interface components is less
+            // than number of old interface components
+            if (prev_nh && prev_nh->ComponentNHCount() > new_comp_nh_list.size()) {
+                uint32_t n_nulls = 0;
+                n_nulls = prev_nh->ComponentNHCount() - new_comp_nh_list.size();
+                for (uint32_t i_null=0; i_null < n_nulls; i_null++) {
+                    ComponentNHKeyPtr component_nh_key;
+                    new_comp_nh_list.push_back(component_nh_key);
+                }
+            }
+            CompositeNHKey *new_comp_nh_key =
+                new CompositeNHKey(Composite::ECMP,
+                    comp_nh_policy, new_comp_nh_list, vrf_name);
+            if (prev_nh) {
+                // Keep new components order consistent 
+                // w/ previous configuration
+                new_comp_nh_key->Reorder(agent_, MplsTable::kInvalidLabel,
+                    prev_nh);
+            }
+            nh_req.key.reset(new_comp_nh_key);
+            nh_req.data.reset(new CompositeNHData());
+        }
+    }
+    AdvertiseLocalRoute(prefix_ip, prefix_len, nh_req,
+        routing_vrf_interface_peer_, params, evpn_table);
 }
 
 bool VxlanRoutingManager::IsExternalType5(
@@ -631,9 +770,9 @@ static bool InitializeNhRequest(const NextHop *path_nh,
     } else {  // other types of NH are not expected here
         LOG(ERROR, "Error in InitializeNhRequest"
         << ", Wrong NH type:" << path_nh->GetType());
-    //    assert(
-    //    path_nh->GetType() == NextHop::INTERFACE ||
-    //    path_nh->GetType() == NextHop::COMPOSITE);
+        assert(
+            path_nh->GetType() == NextHop::INTERFACE ||
+            path_nh->GetType() == NextHop::COMPOSITE);
         return false;
     }
     return true;
@@ -647,7 +786,6 @@ static void AdvertiseLocalRoute(const IpAddress &prefix_ip,
     const uint32_t plen,
     DBRequest &nh_req,
     const Peer *peer,
-    const AgentPath* path,
     const RouteParameters& params,
     EvpnAgentRouteTable *evpn_table
 ) {
@@ -708,12 +846,19 @@ static void AdvertiseInterfaceBgpRoute(const IpAddress &prefix_ip,
         path->etree_leaf(),
         false);  // native_encap
         loc_rt_ptr->set_tunnel_bmap(TunnelType::VxlanType());
-        evpn_table->AddLocalVmRouteReq(peer,
+
+    {
+        DBRequest req(DBRequest::DB_ENTRY_ADD_CHANGE);
+
+        req.key.reset(new EvpnRouteKey(peer,
             evpn_table->vrf_entry()->GetName(),
             MacAddress(),
             prefix_ip,
-            0,
-            loc_rt_ptr);
+            plen,
+            0));
+        req.data.reset(loc_rt_ptr);
+        evpn_table->Enqueue(&req);
+    }
 }
 
 static void AdvertiseCompositeInterfaceBgpRoute(const IpAddress &prefix_ip,
@@ -765,7 +910,6 @@ static void AdvertiseLocalRoute(const IpAddress &prefix_ip,
     const uint32_t plen,
     DBRequest &nh_req,
     const Peer *peer,
-    const AgentPath* path,
     const RouteParameters& params,
     InetUnicastAgentRouteTable *inet_table,
     const std::string& origin_vn
@@ -818,11 +962,6 @@ void VxlanRoutingManager::CopyInterfacePathToEvpnTable(const AgentPath* path,
         return;
     }
 
-    // Subnet interface routes leaking is disabled for now
-    if (IsHostRoute(prefix_ip, plen) == false) {
-        return;
-    }
-
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
     if (InitializeNhRequest(path_nh,
         nh_req, evpn_table->vrf_entry()->GetName()) == false) {
@@ -838,7 +977,7 @@ void VxlanRoutingManager::CopyInterfacePathToEvpnTable(const AgentPath* path,
                 prefix_ip, plen, nh_req, peer, path, evpn_table);
         }
     } else {
-        AdvertiseLocalRoute(prefix_ip, plen, nh_req, peer, path, params,
+        AdvertiseLocalRoute(prefix_ip, plen, nh_req, peer, params,
             evpn_table);
     }
 }
@@ -875,12 +1014,6 @@ void VxlanRoutingManager::CopyPathToInetTable(const AgentPath* path,
         return;
     }
 
-    // Subnet interface routes leaking is disabled for now
-    if (IsHostRoute(prefix_ip, plen) == false) {
-        if (path_nh->GetType() == NextHop::INTERFACE ||
-            IsGivenTypeCompositeNextHop(path_nh, NextHop::INTERFACE, false))
-            return;
-    }
 
     DBRequest nh_req(DBRequest::DB_ENTRY_ADD_CHANGE);
     if (InitializeNhRequest(path_nh,
@@ -893,7 +1026,7 @@ void VxlanRoutingManager::CopyPathToInetTable(const AgentPath* path,
     } else {
         origin_vn = GetOriginVn(inet_table->vrf_entry(), prefix_ip, plen);
     }
-    AdvertiseLocalRoute(prefix_ip, plen, nh_req, peer, path, params,
+    AdvertiseLocalRoute(prefix_ip, plen, nh_req, peer, params,
         inet_table, origin_vn);
 }
 

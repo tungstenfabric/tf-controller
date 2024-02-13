@@ -25,9 +25,11 @@
 #include "bgp/extended-community/etree.h"
 #include "bgp/extended-community/load_balance.h"
 #include "bgp/extended-community/mac_mobility.h"
+#include "bgp/extended-community/local_sequence_number.h"
 #include "bgp/extended-community/router_mac.h"
 #include "bgp/extended-community/tag.h"
 #include "bgp/ermvpn/ermvpn_table.h"
+#include "bgp/evpn/evpn_route.h"
 #include "bgp/evpn/evpn_table.h"
 #include "bgp/mvpn/mvpn_table.h"
 #include "bgp/peer_close_manager.h"
@@ -1263,11 +1265,6 @@ bool BgpXmppChannel::ProcessItem(string vrf_name,
             TunnelEncap tun_encap(*eit);
             if (tun_encap.tunnel_encap() == TunnelEncapType::UNSPEC)
                 continue;
-            // Allow vxlan for Inet routes
-            // if (family == Address::INET &&
-            //     tun_encap.tunnel_encap() == TunnelEncapType::VXLAN) {
-            //     continue;
-            // }
             no_valid_tunnel_encap = false;
             ext.communities.push_back(tun_encap.GetExtCommunityValue());
         }
@@ -1307,6 +1304,12 @@ bool BgpXmppChannel::ProcessItem(string vrf_name,
                 ext.communities.push_back(tag4.GetExtCommunityValue());
                 ext.communities.push_back(tag.GetExtCommunityValue());
             }
+        }
+
+        // Process local sequence_number
+        if (nit->local_sequence_number) {
+            LocalSequenceNumber lsn (nit->local_sequence_number);
+            ext.communities.push_back(lsn.GetExtCommunityValue());
         }
 
         BgpAttrLocalPref local_pref(item.entry.local_preference);
@@ -1586,15 +1589,6 @@ bool BgpXmppChannel::ProcessInet6Item(string vrf_name,
                 TunnelEncap tun_encap(*eit);
                 if (tun_encap.tunnel_encap() == TunnelEncapType::UNSPEC)
                     continue;
-                // Allow VxLAN for INET and EVPN tables
-                // if (family == Address::INET6 &&
-                //     tun_encap.tunnel_encap() == TunnelEncapType::VXLAN) {
-                //     continue;
-                // }
-                // if (family == Address::EVPN &&
-                //     tun_encap.tunnel_encap() != TunnelEncapType::VXLAN) {
-                //     continue;
-                // }
                 no_valid_tunnel_encap = false;
                 ext.communities.push_back(tun_encap.GetExtCommunityValue());
             }
@@ -1635,6 +1629,12 @@ bool BgpXmppChannel::ProcessInet6Item(string vrf_name,
                     ext.communities.push_back(tag.GetExtCommunityValue());
                     ext.communities.push_back(tag4.GetExtCommunityValue());
                 }
+            }
+
+            // Process local sequence_number
+            if (nit->local_sequence_number) {
+                LocalSequenceNumber lsn (nit->local_sequence_number);
+                ext.communities.push_back(lsn.GetExtCommunityValue());
             }
 
             BgpAttrLocalPref local_pref(item.entry.local_preference);
@@ -1993,6 +1993,12 @@ bool BgpXmppChannel::ProcessEnetItem(string vrf_name,
                 ext.communities.push_back(tag.GetExtCommunityValue());
                 ext.communities.push_back(tag4.GetExtCommunityValue());
             }
+        }
+
+        // Process local sequence_number
+        if (nit->local_sequence_number) {
+            LocalSequenceNumber lsn (nit->local_sequence_number);
+            ext.communities.push_back(lsn.GetExtCommunityValue());
         }
 
         BgpAttrLocalPref local_pref(item.entry.local_preference);

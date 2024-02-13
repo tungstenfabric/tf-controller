@@ -1927,11 +1927,13 @@ void InetUnicastAgentRouteTable::AddEvpnRoute(const AgentRoute *route) {
     //label and parent-ip for NH need to be picket from parent route
     DBRequest req;
     req.oper = DBRequest::DB_ENTRY_ADD_CHANGE;
+    const uint32_t plen = evpn_route->IsType5() ?
+        evpn_route->GetVmIpPlen() : GetHostPlen(ip_addr);
     //Set key and data
     req.key.reset(new InetUnicastRouteKey(agent()->inet_evpn_peer(),
                                           evpn_route->vrf()->GetName(),
                                           ip_addr,
-                                          GetHostPlen(ip_addr)));
+                                          plen));
     req.data.reset(new InetEvpnRouteData(evpn_route));
     Process(req);
 }
@@ -1945,10 +1947,12 @@ void InetUnicastAgentRouteTable::DeleteEvpnRoute(const AgentRoute *rt) {
     if (evpn_route->IsType5()) {
         peer = agent()->evpn_routing_peer();
     }
+    const uint32_t plen = evpn_route->IsType5() ?
+        evpn_route->GetVmIpPlen() : GetHostPlen(ip_addr);
     req.key.reset(new InetUnicastRouteKey(peer,
                                           evpn_route->vrf()->GetName(),
                                           ip_addr,
-                                          GetHostPlen(ip_addr)));
+                                          plen));
     req.data.reset(new InetEvpnRouteData(evpn_route));
     Process(req);
 }

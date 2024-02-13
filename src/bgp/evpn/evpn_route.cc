@@ -16,7 +16,6 @@ using std::string;
 using std::vector;
 
 const EvpnPrefix EvpnPrefix::kNullPrefix;
-
 const uint32_t EvpnPrefix::kInvalidLabel = 0x01000000;
 const uint32_t EvpnPrefix::kNullTag = 0;
 const uint32_t EvpnPrefix::kMaxTag = 0xFFFFFFFF;

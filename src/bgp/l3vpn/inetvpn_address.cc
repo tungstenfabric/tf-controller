@@ -61,7 +61,7 @@ int InetVpnPrefix::FromProtoPrefix(BgpServer *server,
 }
 
 void InetVpnPrefix::BuildProtoPrefix(uint32_t label,
-                                     BgpProtoPrefix *proto_prefix, const BgpAttr *attr) const {
+    BgpProtoPrefix *proto_prefix, const BgpAttr *attr) const {
     proto_prefix->prefix.clear();
     size_t prefix_size = (prefixlen_ + 7) / 8;
     size_t nlri_size =

@@ -26,7 +26,7 @@ if GetOption('with_libvirt'):
 
 os_specific_src = ['nix/interface_params.cc', 'instance_task.cc']
 
-vnswoperdb = env.Library('vnswoperdb',
+vnswoperdb = env.Library('vnswoperdb', 
                          sandesh_objs +
                          optional_objs +
                          ['agent_sandesh.cc',
@@ -88,9 +88,9 @@ vnswoperdb = env.Library('vnswoperdb',
                           'vrouter.cc',
                           'vxlan.cc',
                           'vxlan_routing_manager.cc',
-                          'vxlan_auxilliary.cc',
                           'vxlan_routes_leaking.cc',
                           'vxlan_xmpp_routes.cc',
+                          'vxlan_auxilliary.cc',
                           'multicast_policy.cc',
                           'hbf.cc',
                           os_specific_src,

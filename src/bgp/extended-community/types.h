@@ -61,5 +61,4 @@ struct BgpExtendedCommunityExperimentalNonTransitiveSubType {
     };
 };
 
-
 #endif // SRC_BGP_EXTENDED_COMMUNITY_TYPES_H_

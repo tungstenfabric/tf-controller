@@ -2783,7 +2783,7 @@ bool CompositeNHKey::Reorder(Agent *agent,
     CompositeNHKey *composite_nh_key;
     DBEntryBase::KeyPtr key = nh->GetDBRequestKey();
     composite_nh_key = static_cast<CompositeNHKey *>(key.get());
-    //Delete entries not present in the new composite NH key
+    // Delete entries not present in the new composite NH key
     BOOST_FOREACH(ComponentNHKeyPtr component_nh_key,
                   composite_nh_key->component_nh_key_list()) {
         if (component_nh_key != NULL &&
@@ -2792,14 +2792,14 @@ bool CompositeNHKey::Reorder(Agent *agent,
         }
     }
 
-    //Add new entries
+    // Add new entries
     BOOST_FOREACH(ComponentNHKeyPtr component_nh_key,
                   component_nh_key_list()) {
         if (component_nh_key != NULL) {
             composite_nh_key->insert(component_nh_key);
         }
     }
-    //Copy over the list
+    // Copy over the list
     component_nh_key_list_ = composite_nh_key->component_nh_key_list();
     return policy;
 }

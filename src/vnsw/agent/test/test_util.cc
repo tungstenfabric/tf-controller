@@ -1579,8 +1579,6 @@ EvpnRouteEntry *EvpnRouteGet(const string &vrf_name, const MacAddress &mac,
     uint32_t plen = 32;
     if (ip_addr.is_v6())
         plen = 128;
-    EvpnRouteKey key(agent->local_vm_peer(), vrf_name, mac, ip_addr,
-                     plen, ethernet_tag);
     EvpnRouteEntry *route =
             (static_cast<EvpnAgentRouteTable *>
             (vrf->GetEvpnRouteTable())->FindRoute(mac,
@@ -1795,7 +1793,8 @@ public:
 };
 
 bool BridgeTunnelRouteAdd(const BgpPeer *peer, const string &vm_vrf,
-                          TunnelType::TypeBmap bmap, const Ip4Address &server_ip,
+                          TunnelType::TypeBmap bmap,
+                          const Ip4Address &server_ip,
                           uint32_t label, MacAddress &remote_vm_mac,
                           const IpAddress &vm_addr, uint8_t plen,
                           const std::string &rewrite_dmac,

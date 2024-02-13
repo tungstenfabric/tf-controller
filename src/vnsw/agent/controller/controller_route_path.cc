@@ -139,8 +139,9 @@ bool ControllerEcmpRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
     bool comp_nh_policy = comp_key->GetPolicy();
     bool new_comp_nh_policy = false;
     if (path->ReorderCompositeNH(agent, comp_key, new_comp_nh_policy,
-                                 rt->FindLocalVmPortPath()) == false)
+                                 rt->FindLocalVmPortPath()) == false) {
         return false;
+    }
     if (!comp_nh_policy) {
         comp_key->SetPolicy(new_comp_nh_policy);
     }
@@ -169,7 +170,7 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
                                          const std::string &prefix_str) :
         ControllerPeerPath(peer), vn_list_(vn_list),
         ecmp_load_balance_(ecmp_load_balance), tag_list_(tag_list),
-        copy_local_path_(false), vxlan_id_(0)  {
+        copy_local_path_(false), vxlan_id_(0) {
     const AgentXmppChannel *channel = peer->GetAgentXmppChannel();
     std::string bgp_peer_name = channel->GetBgpPeerName();
     std::string vrf_name = rt_table->vrf_name();
@@ -273,7 +274,7 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
                 }
                 if (is_routing_vrf) {
                     encap = TunnelType::VxlanType();
-                    VxlanRoutingManager::AddInterfaceComponentToList(prefix_str,
+                    VxlanRoutingManager::AddInterfaceComponentToList(item->entry.nlri.address,
                         vrf_name,
                         item->entry.next_hops.next_hop[i],
                         comp_nh_list);
@@ -327,7 +328,8 @@ ControllerEcmpRoute::ControllerEcmpRoute(const BgpPeer *peer,
                         TunnelType::ComputeType(encap),
                         mac);
                 }
-                std::auto_ptr<const NextHopKey> nh_key_ptr(nh_key);
+
+               std::auto_ptr<const NextHopKey> nh_key_ptr(nh_key);
                 ComponentNHKeyPtr component_nh_key(new ComponentNHKey(label,
                                                                     nh_key_ptr));
                 comp_nh_list.push_back(component_nh_key);
@@ -561,9 +563,8 @@ bool ControllerVmRoute::AddChangePathExtended(Agent *agent, AgentPath *path,
 
     //Interpret label sent by control node
     if (tunnel_bmap_ == TunnelType::VxlanType()) {
-        //Only VXLAN encap is sent, so label is VXLAN
-        // For vxlan routing vn external route label can change , add path change, for non
-        // vxlan routing vn vxlan id in route update for vmi rt prefix is not expected to change
+        // Only VXLAN encap is sent, so label is VXLAN
+        // For vxlan routing vn external route label can change , add path change
         if (rt->vrf() && rt->vrf()->vn() &&
             rt->vrf()->vn()->vxlan_routing_vn() && path->vxlan_id() != label_) {
             ret = true;

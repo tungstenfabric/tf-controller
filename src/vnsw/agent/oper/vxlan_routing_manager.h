@@ -475,6 +475,12 @@ private:
     /// VRF instance and the Inet table of the routing VRF instance.
     bool EvpnRouteNotify(DBTablePartBase *partition, DBEntryBase *e);
 
+    /// @brief Removes redundant VrfNH path from a given route. These routes
+    /// might arise with small chance in a bridge VRF inet tables when
+    /// tunnels in the routing VRF instance arrive later then in the bridge VRF
+    /// instance.
+    void ClearRedundantVrfPath(DBEntryBase *e);
+
     /// @brief Handles deletion of a route in the EVPN table of the routing
     /// VRF instance.
     void WhenBridgeInetIntfWasDeleted(const InetUnicastRouteEntry *inet_rt,
@@ -493,9 +499,10 @@ public:
     (DBTablePartBase *partition, DBEntryBase *e);
 
     /// @brief Performs advertisement and deletion of routing routes
-    /// (with VrfNH) in bridge VRF instances. Bridge IPAM's subnet routes
-    /// and non-subnet routes are selected for advertisement.
-    bool RouteNotifyInLrEvpnTable(DBTablePartBase *partition,
+    /// (with VrfNH) in bridge VRF instances. External tunnels and routes
+    /// with a prefix that is not present in bridge VRF instance are
+    /// selected for leaking
+    bool LeakRoutesIntoBridgeTables(DBTablePartBase *partition,
         DBEntryBase *e,
         const boost::uuids::uuid &uuid,
         const VnEntry *vn,
@@ -620,17 +627,33 @@ private:
     /// this class.
     friend class VxlanRoutingVrfMapper;
 
+    /// @brief Allows MetadataProxy to use private members of this class.
+    friend class MetadataProxy;
+
     /// Auxilliary functions
 
     /// @brief Returns new value of a local sequence. Thread safe version
     static uint32_t GetNewLocalSequence();
 
-    /// @brief Determines whether the address string contains as substring
-    /// an IPv4 address or not.
+    /// @brief Determines whether the address string contains an IPv4 address
+    ///  as substring or not.
     static bool is_ipv4_string(const std::string& prefix_str);
+
+    /// @brief Determines whether the address string contains an IPv6 address
+    ///  as substring or not.
+    static bool is_ipv6_string(const std::string& prefix_str);
+
+    /// @brief Extracts length of IPv4 subnet address from the prefix string.
+    static uint32_t ipv4_prefix_len(const std::string& prefix_str);
 
     /// @brief Extracts an IPv4 address string from the prefix string.
     static std::string ipv4_prefix(const std::string& prefix_str);
+
+    /// @brief Extracts length of IPv6 subnet address from the prefix string.
+    static uint32_t ipv6_prefix_len(const std::string& prefix_str);
+
+    /// @brief Extracts an IPv6 address string from the prefix string.
+    static std::string ipv6_prefix(const std::string& prefix_str);
 
     /// @brief Checks whether VxLAN routing manager is enabled or not.
     static bool IsVxlanAvailable(const Agent* agent);
@@ -671,7 +694,12 @@ private:
     /// @brief Determines if the given EVPN route has an interface NH or
     /// a composite of interfaces NH that belongs to the given
     /// bridge VRF instance.
-    bool IsLocalInterface(EvpnRouteEntry *routing_evpn_rt,
+    bool IsVrfLocalRoute(EvpnRouteEntry *routing_evpn_rt,
+        VrfEntry *bridge_vrf);
+
+    /// @brief Determines if the given EVPN route is already present
+    /// in the given VRF
+    bool IsLocalRoute(EvpnRouteEntry *routing_evpn_rt,
         VrfEntry *bridge_vrf);
 
     /// @brief Determines whether the given route has the path with
@@ -734,6 +762,12 @@ private:
     /// BGPaaS. It is expected that this path has BGP_PEER peer type
     /// and the interface or composite nexthop.
     const AgentPath *FindBGPaaSPath(const InetUnicastRouteEntry *rt);
+
+    /// @brief Advertises BGPaaS interface path in the routing VRF instance
+    /// by selecting corresponding path components in a path from
+    /// the bridge VRF instance
+    void AdvertiseBGPaaSRoute(const IpAddress& prefix_ip, uint32_t prefix_len,
+        const AgentPath* path, EvpnAgentRouteTable *evpn_table);
 
     /// @brief Checks whether IP prefixes correspond to external
     /// EVPN Type5 tunnel routes.

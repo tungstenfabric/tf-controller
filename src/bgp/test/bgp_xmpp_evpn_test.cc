@@ -4016,7 +4016,7 @@ TEST_F(BgpXmppEvpnTest2, ConnectedInstances) {
     TASK_UTIL_EXPECT_TRUE(rt_a != NULL);
     int label_a = rt_a->entry.next_hops.next_hop[0].label;
     string nh_a = rt_a->entry.next_hops.next_hop[0].address;
-    TASK_UTIL_EXPECT_NE(0xFFFFF, label_a);
+    TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label_a);
     TASK_UTIL_EXPECT_EQ("192.168.1.1", nh_a);
     TASK_UTIL_EXPECT_EQ("blue", rt_a->entry.virtual_network);
 
@@ -4027,7 +4027,7 @@ TEST_F(BgpXmppEvpnTest2, ConnectedInstances) {
     TASK_UTIL_EXPECT_TRUE(rt_b != NULL);
     int label_b = rt_b->entry.next_hops.next_hop[0].label;
     string nh_b = rt_b->entry.next_hops.next_hop[0].address;
-    TASK_UTIL_EXPECT_NE(0xFFFFF, label_b);
+    TASK_UTIL_EXPECT_NE(EvpnPrefix::kMaxVniSigned, label_b);
     TASK_UTIL_EXPECT_EQ("192.168.1.1", nh_b);
     TASK_UTIL_EXPECT_EQ("blue", rt_b->entry.virtual_network);
 

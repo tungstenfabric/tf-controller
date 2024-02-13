@@ -61,8 +61,8 @@ test_ksync = AgentEnv.MakeTestCmd(env, 'test_ksync', agent_suite)
 test_vmport_cfg = AgentEnv.MakeTestCmd(env, 'test_vmport_cfg', agent_suite)
 test_alias_ip_cfg = AgentEnv.MakeTestCmd(env, 'test_alias_ip_cfg', agent_suite)
 test_evpn_route = AgentEnv.MakeTestCmd(env, 'test_evpn_route', agent_suite)
-test_forwarding_mode = AgentEnv.MakeTestCmd(env, 'test_forwarding_mode', agent_suite)
 test_fip_rt_leaking = AgentEnv.MakeTestCmd(env, 'test_fip_rt_leaking', agent_suite)
+test_forwarding_mode = AgentEnv.MakeTestCmd(env, 'test_forwarding_mode', agent_suite)
 test_route = AgentEnv.MakeTestCmd(env, 'test_route', agent_suite)
 test_route_l3mh = AgentEnv.MakeTestCmd(env, 'test_route_l3mh', agent_suite)
 test_agent_no_gw = AgentEnv.MakeTestCmd(env, 'test_agent_no_gw', agent_suite)
@@ -150,6 +150,7 @@ env.Prepend(LIBPATH = [ '../../../db/test'])
 test = env.TestSuite('agent-test', agent_suite)
 env.Alias('agent:agent_test', test)
 env.Alias('controller/src/vnsw/agent:test', test)
+
 Return('agent_suite')
 
 # Local Variables:

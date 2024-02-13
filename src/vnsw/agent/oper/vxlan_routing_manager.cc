@@ -196,7 +196,7 @@ void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &lr_uuid,
         evpn_table->WalkAgain(walk_ref);
     } else {
         walk_ref = evpn_table->
-        AllocWalker(boost::bind(&VxlanRoutingManager::RouteNotifyInLrEvpnTable,
+        AllocWalker(boost::bind(&VxlanRoutingManager::LeakRoutesIntoBridgeTables,
             mgr_, _1, _2, lr_uuid, vn, update),
             boost::bind(&VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone,
             this, _1, _2));

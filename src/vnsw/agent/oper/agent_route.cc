@@ -840,7 +840,6 @@ const AgentPath *AgentRoute::FindIntfOrCompLocalVmPortPath() const {
     return NULL;
 }
 
-
 AgentPath *AgentRoute::GetLocalVmPortPath() const {
     for(Route::PathList::const_iterator it = GetPathList().begin();
         it != GetPathList().end(); it++) {

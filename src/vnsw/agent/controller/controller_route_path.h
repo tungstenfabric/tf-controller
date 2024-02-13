@@ -232,6 +232,12 @@ public:
     void set_copy_local_path(bool copy_local_path) {
         copy_local_path_ = copy_local_path;
     }
+
+    DBRequest& nh_req() {
+        return nh_req_;
+    }
+
+    friend class AgentXmppChannel;
 private:
     VnListType vn_list_;
     SecurityGroupList sg_list_;

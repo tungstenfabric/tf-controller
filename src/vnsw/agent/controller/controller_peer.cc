@@ -29,15 +29,16 @@
 #include "cmn/agent_stats.h"
 #include <pugixml/pugixml.hpp>
 #include "xml/xml_pugi.h"
-#include "xmpp/xmpp_init.h"
-#include <xmpp_enet_types.h>
-#include <xmpp_unicast_types.h>
-#include "xmpp_multicast_types.h"
-#include "xmpp_mvpn_types.h"
 #include "ifmap/ifmap_agent_table.h"
 #include "controller/controller_types.h"
 #include <oper/vxlan_routing_manager.h>
+#include "xmpp/xmpp_init.h"
+#include <xmpp_enet_types.h>
+#include <xmpp_unicast_types.h>
+#include <xmpp_multicast_types.h>
+#include <xmpp_mvpn_types.h>
 #include <assert.h>
+#include <oper/nexthop.h>
 
 using namespace boost::asio;
 using namespace autogen;
@@ -48,16 +49,6 @@ using std::stringstream;
 using process::ConnectionType;
 using process::ConnectionStatus;
 using process::ConnectionState;
-
-void InetRequestDelete(const IpAddress& ip_address,
-    const int prefix_len,
-    std::string vrf_name,
-    const Peer* bgp_peer) {
-
-    InetUnicastAgentRouteTable::DeleteReq(bgp_peer, vrf_name,
-                        ip_address, prefix_len,
-                        NULL);
-}
 
 // Parses string ipv4-addr/plen or ipv6-addr/plen
 // Stores address in addr and returns plen
@@ -195,11 +186,11 @@ void AgentXmppChannel::CreateBgpPeer() {
 void InetRequestDelete(const IpAddress& ip_address,
     const int prefix_len,
     std::string vrf_name,
-    const BgpPeer* bgp_peer) {
+    const Peer* bgp_peer) {
 
     InetUnicastAgentRouteTable::DeleteReq(bgp_peer, vrf_name,
                         ip_address, prefix_len,
-                        new ControllerVmRoute(bgp_peer));
+                        NULL);
 }
 
 bool AgentXmppChannel::SendUpdate(const uint8_t *msg, size_t size) {
@@ -714,7 +705,6 @@ void AgentXmppChannel::ReceiveV4V6Update(XmlPugi *pugi) {
     }
 
     if (!pugi->IsNull(node)) {
-
         pugi::xml_node node_check = pugi->FindNode("retract");
         if (!pugi->IsNull(node_check)) {
             for (node = node.first_child(); node; node = node.next_sibling()) {
@@ -723,13 +713,13 @@ void AgentXmppChannel::ReceiveV4V6Update(XmlPugi *pugi) {
                     CONTROLLER_INFO_TRACE(Trace, GetBgpPeerName(), vrf_name,
                                                 "Delete Node id:" + id);
 
+                    boost::system::error_code ec;
+                    int prefix_len;
 
                     if (VxlanRoutingManager::IsVxlanAvailable(agent_) &&
                         VxlanRoutingManager::IsRoutingVrf(vrf_name, agent_)) {
                         return;
                     }
-                    boost::system::error_code ec;
-                    int prefix_len;
                     if (atoi(af) == BgpAf::IPv4) {
                         Ip4Address prefix_addr;
                         ec = Ip4PrefixParse(id, &prefix_addr, &prefix_len);
@@ -738,7 +728,6 @@ void AgentXmppChannel::ReceiveV4V6Update(XmlPugi *pugi) {
                                     "Error parsing v4 prefix for delete");
                             return;
                         }
-
                         rt_table->DeleteReq(bgp_peer_id(), vrf_name,
                                             prefix_addr, prefix_len,
                                             new ControllerVmRoute(bgp_peer_id()));
@@ -967,7 +956,7 @@ void AgentXmppChannel::AddInetEcmpRoute(string vrf_name, IpAddress prefix_addr,
                                         (*iter));
         iter++;
     }
-    //ECMP create component NH
+    // ECMP create component NH
     rt_table->AddRemoteVmRouteReq(bgp_peer, vrf_name,
                                   prefix_addr, prefix_len, data);
 }
@@ -989,7 +978,8 @@ void AgentXmppChannel::AddEvpnEcmpRoute(string vrf_name,
         return;
     }
 
-    BgpPeer *bgp_peer = bgp_peer_id();
+    const Peer *bgp_peer = bgp_peer_id();
+
     EvpnAgentRouteTable *rt_table = static_cast<EvpnAgentRouteTable *>
         (agent_->vrf_table()->GetEvpnRouteTable(vrf_name));
     if (rt_table == NULL || rt_table->vrf_entry() == NULL) {
@@ -1002,6 +992,7 @@ void AgentXmppChannel::AddEvpnEcmpRoute(string vrf_name,
     str << mac.ToString();
     str << ":";
     str << prefix_addr.to_string();
+
     ControllerEcmpRoute *data = BuildEcmpData(item, vn_list, EcmpLoadBalance(),
                                               rt_table, str.str());
     ControllerEcmpRoute::ClonedLocalPathListIter iter =
@@ -1014,7 +1005,7 @@ void AgentXmppChannel::AddEvpnEcmpRoute(string vrf_name,
         iter++;
     }
     //ECMP create component NH
-    rt_table->AddRemoteVmRouteReq(bgp_peer_id(), vrf_name, mac, prefix_addr,
+    rt_table->AddRemoteVmRouteReq(bgp_peer, vrf_name, mac, prefix_addr,
                                   plen, item->entry.nlri.ethernet_tag, data);
 }
 
@@ -1231,6 +1222,7 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
     if (VxlanRoutingManager::IsVxlanAvailable(agent_) &&
        agent_->oper_db()->vxlan_routing_manager()->IsRoutingVrf(vrf) &&
        si_ref_vn == NULL) {
+
        EcmpLoadBalance ecmp_load_balance;
        VnListType vn_list;
        vn_list.insert(item->entry.virtual_network);
@@ -1349,7 +1341,7 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
         rt_table->AddType5Route(bgp_peer_id(),
                                 vrf_name,
                                 ip_addr,
-                                item->entry.nlri.ethernet_tag,
+                                0,  // item->entry.nlri.ethernet_tag, is 0
                                 data);
 
         return;
@@ -1359,7 +1351,9 @@ void AgentXmppChannel::AddEvpnRoute(const std::string &vrf_name,
     // Route originated by us and reflected back by control-node
     // When encap is MPLS based, the nexthop can be found by label lookup
     // When encapsulation used is VXLAN, nexthop cannot be found from message
-    // To have common design, get nexthop from the route already present
+    // To have common design, get nexthop from the route already present.
+    // VxLAN routes destined to a Routing VRF instance are handled
+    // above
 
     EvpnRouteKey key(agent_->local_vm_peer(), vrf_name, mac,
                      ip_addr, plen, item->entry.nlri.ethernet_tag);

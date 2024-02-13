@@ -24,14 +24,28 @@ void VxlanRoutingManager::AddInterfaceComponentToList(
     ComponentNHKeyList& comp_nh_list) {
     const Agent *agent = Agent::GetInstance();
     IpAddress ip_addr;
-    unsigned int prefix_len;
+    uint32_t prefix_len;
+    boost::system::error_code ec;
 
     if (is_ipv4_string(prefix_str)) {
-        ip_addr = Ip4Address::from_string(ipv4_prefix(prefix_str));
-        prefix_len = 32;
+        ip_addr = Ip4Address::from_string(ipv4_prefix(prefix_str), ec);
+        prefix_len = ipv4_prefix_len(prefix_str);
+    } else if (is_ipv6_string(prefix_str)) {
+        std::string addr_str = ipv6_prefix(prefix_str);
+        prefix_len = ipv6_prefix_len(prefix_str);
+        ip_addr = Ip6Address::from_string(addr_str, ec);
     } else {
         LOG(ERROR, "Error in VxlanRoutingManager::AddInterfaceComponentToList"
-            << ", prefix_str = " << prefix_str << " is not an IPv4 prefix");
+            << ", prefix_str = " << prefix_str
+            << " is not an IPv4 or IPv6 prefix");
+        return;
+    }
+
+    if (ec) {
+        LOG(ERROR, "Possible error in "
+            << "VxlanRoutingManager::AddInterfaceComponentToList"
+            << ", cannot convert prefix_str = " << prefix_str
+            << " to IPv4 or IPv6 address");
         return;
     }
 
@@ -91,6 +105,7 @@ void VxlanRoutingManager::AddInterfaceComponentToList(
             // nullptr means deleted component, which
             // can be reused later
             std::auto_ptr<const NextHopKey> nh_key_ptr;
+            ComponentNHKeyPtr component_nh_key;
             if (it_nh->get() == NULL) {
                 // component_nh_key.reset(NULL);
             } else {
@@ -99,9 +114,9 @@ void VxlanRoutingManager::AddInterfaceComponentToList(
                 NextHopKey *nh_key =
                     static_cast<NextHopKey *>(key.release());
                 nh_key_ptr.reset(nh_key);
+                component_nh_key.reset(
+                    new ComponentNHKey(MplsTable::kInvalidLabel, nh_key_ptr));
             }
-            ComponentNHKeyPtr component_nh_key
-                (new ComponentNHKey(MplsTable::kInvalidLabel, nh_key_ptr));
             comp_nh_list.push_back(component_nh_key);
         }
     }

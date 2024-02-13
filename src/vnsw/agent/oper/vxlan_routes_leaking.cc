@@ -74,29 +74,42 @@ bool VxlanRoutingManager::InetRouteNotify(DBTablePartBase *partition,
     const InetUnicastRouteEntry *inet_rt =
         dynamic_cast<const InetUnicastRouteEntry*>(e);
 
+    if (inet_rt->addr().is_v6() &&
+        inet_rt->addr().to_v6().is_link_local()) {
+        return true;
+    }
+
     const VrfEntry *routing_vrf =
         vrf_mapper_.GetRoutingVrfUsingAgentRoute(inet_rt);
     if (routing_vrf == NULL || routing_vrf == inet_rt->vrf()) {
         return true;
     }
 
+    EvpnAgentRouteTable *evpn_table =
+        dynamic_cast<EvpnAgentRouteTable *>(routing_vrf->GetEvpnRouteTable());
+    if (evpn_table == NULL) {
+        return true;
+    }
+    
     const AgentPath *local_vm_port_path = NULL;
     local_vm_port_path = inet_rt->FindIntfOrCompLocalVmPortPath();
 
     if (local_vm_port_path == NULL) {
+        // If BGPaaS path with interface (or interface/mixed composite) is
+        // found, then it is extracted and copied into EVPN Type5 table
         local_vm_port_path = FindBGPaaSPath(inet_rt);
+        if (local_vm_port_path != NULL) {
+            AdvertiseBGPaaSRoute(inet_rt->addr(), inet_rt->plen(),
+                local_vm_port_path, evpn_table);
+            return true;
+        }
     }
 
     // if path with LOCAL_VM_PORT hasn't been found, then
     // this probably may mean that it was deleted
     if (local_vm_port_path == NULL) {
+        ClearRedundantVrfPath(e);
         WhenBridgeInetIntfWasDeleted(inet_rt, routing_vrf);
-        return true;
-    }
-
-    EvpnAgentRouteTable *evpn_table =
-        dynamic_cast<EvpnAgentRouteTable *>(routing_vrf->GetEvpnRouteTable());
-    if (evpn_table == NULL) {
         return true;
     }
 
@@ -115,8 +128,8 @@ bool VxlanRoutingManager::InetRouteNotify(DBTablePartBase *partition,
             dest_vns,
             local_vm_port_path->sg_list(),
             local_vm_port_path->communities(),
-            local_vm_port_path->tag_list(), //tag_list, // 
-            preference, // local_vm_port_path->path_preference(),
+            local_vm_port_path->tag_list(),
+            preference,
             local_vm_port_path->ecmp_load_balance(),
             routing_vrf_interface_peer_->sequence_number()),
         evpn_table);
@@ -138,7 +151,6 @@ bool VxlanRoutingManager::EvpnRouteNotify(DBTablePartBase *partition,
     if (evpn_rt->IsType5() == false) {
         return true;
     }
-
 
     VrfEntry *vrf = evpn_rt->vrf();
     const AgentPath *local_vm_port_path = evpn_rt->FindPath(
@@ -172,7 +184,7 @@ bool VxlanRoutingManager::EvpnRouteNotify(DBTablePartBase *partition,
                 routing_vrf_interface_peer_->sequence_number()),
             vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr()));
 
-        RouteNotifyInLrEvpnTable(partition,
+        LeakRoutesIntoBridgeTables(partition,
             e, vrf->vn()->logical_router_uuid(), NULL, true);
     }
 
@@ -187,7 +199,7 @@ bool VxlanRoutingManager::EvpnRouteNotify(DBTablePartBase *partition,
         WhenRoutingEvpnRouteWasDeleted(evpn_rt,
             routing_vrf_interface_peer_);
         // and/or it requires publishing in bridge
-        RouteNotifyInLrEvpnTable(partition, e,
+        LeakRoutesIntoBridgeTables(partition, e,
            vrf->vn()->logical_router_uuid(), NULL, true);
         return true;
     }
@@ -200,6 +212,20 @@ bool VxlanRoutingManager::EvpnRouteNotify(DBTablePartBase *partition,
  * Routes Deletion
  *
  */
+void VxlanRoutingManager::ClearRedundantVrfPath(DBEntryBase *e) {
+    InetUnicastRouteEntry *inet_route =
+        dynamic_cast<InetUnicastRouteEntry*>(e);
+    if (inet_route == NULL) {
+        return;
+    }
+    if (inet_route->GetPathList().size() > 1 &&
+        inet_route->FindPath(agent_->evpn_routing_peer())) {
+        InetUnicastAgentRouteTable::Delete(agent_->evpn_routing_peer(),
+            inet_route->vrf()->GetName(),
+            inet_route->addr(),
+            inet_route->plen());
+    }
+}
 
 /*
  *
@@ -332,7 +358,7 @@ bool VxlanRoutingManager::WithdrawEvpnRouteFromRoutingVrf
     return true;
 }
 
-bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
+bool VxlanRoutingManager::LeakRoutesIntoBridgeTables
 (DBTablePartBase *partition, DBEntryBase *e, const boost::uuids::uuid &uuid,
  const VnEntry *vn, bool update) {
 
@@ -366,7 +392,7 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
             continue;
         }
 
-        if (IsLocalInterface(evpn_rt, bridge_vrf)) {
+        if (IsVrfLocalRoute(evpn_rt, bridge_vrf)) {
             it++;
             continue;
         }
@@ -376,7 +402,6 @@ bool VxlanRoutingManager::RouteNotifyInLrEvpnTable
 
         if (evpn_rt->IsDeleted()) {
             InetUnicastAgentRouteTable::DeleteReq(agent_->evpn_routing_peer(),
-            //inet_table->Delete(agent_->evpn_routing_peer(),
                               bridge_vrf->GetName(),
                               evpn_rt->ip_addr(),
                               evpn_rt->GetVmIpPlen(),
