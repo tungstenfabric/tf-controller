@@ -90,6 +90,8 @@ public:
     bool VrfTranslate(const PktInfo *pkt, PktControlInfo *ctrl,
                       PktControlInfo *rev_flow, const IpAddress &src_ip,
                       bool nat_flow);
+    void NatVxlanVrfTranslate(const PktInfo *pkt, PktControlInfo *in,
+        PktControlInfo *out);
     void UpdateFipStatsInfo(FlowEntry *flow, FlowEntry *rflow, const PktInfo *p,
                             const PktControlInfo *in, const PktControlInfo *o);
     const NextHop *TunnelToNexthop(const PktInfo *pkt);
