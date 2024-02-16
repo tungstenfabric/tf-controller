@@ -51,6 +51,9 @@ class FloatingIpServer(ResourceMixin, FloatingIp):
         req_ip = obj_dict.get('floating_ip_address')
         if req_ip and cls.addr_mgmt.is_ip_allocated(req_ip, vn_fq_name):
             return False, (409, 'IP address already in use')
+        req_ip_version = 4
+        if req_ip and req_ip.find(':') > -1:
+            req_ip_version = 6
         try:
             ok, result = cls.addr_mgmt.get_ip_free_args(vn_fq_name)
             if not ok:
@@ -75,6 +78,7 @@ class FloatingIpServer(ResourceMixin, FloatingIp):
                 fip_addr, sn_uuid, s_name = cls.addr_mgmt.ip_alloc_req(
                     vn_fq_name,
                     asked_ip_addr=req_ip,
+                    asked_ip_version=req_ip_version,
                     alloc_id=obj_dict['uuid'])
             else:
                 fip_addr = None
@@ -91,6 +95,7 @@ class FloatingIpServer(ResourceMixin, FloatingIp):
                             vn_fq_name,
                             sub=fip_pool_subnet,
                             asked_ip_addr=req_ip,
+                            asked_ip_version=req_ip_version,
                             alloc_id=obj_dict['uuid'])
 
                     except cls.addr_mgmt.AddrMgmtSubnetExhausted:

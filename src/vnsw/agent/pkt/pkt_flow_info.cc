@@ -824,8 +824,15 @@ void PktFlowInfo::FloatingIpDNat(const PktInfo *pkt, PktControlInfo *in,
         vm_port->floating_ip_list().list_;
 
     // We must NAT if the IP-DA is not same as Primary-IP on interface
-    if (pkt->ip_daddr.to_v4() == vm_port->primary_ip_addr()) {
-        return;
+    if (pkt->ip_daddr.is_v4()) {
+        if (pkt->ip_daddr.to_v4() == vm_port->primary_ip_addr()) {
+            return;
+        }
+    }
+    if (pkt->ip_daddr.is_v6()) {
+        if (pkt->ip_daddr.to_v6() == vm_port->primary_ip6_addr()) {
+            return;
+        }
     }
 
     // Look for matching floating-ip
@@ -836,7 +843,7 @@ void PktFlowInfo::FloatingIpDNat(const PktInfo *pkt, PktControlInfo *in,
             continue;
         }
 
-        if (pkt->ip_daddr.to_v4() != it->floating_ip_) {
+        if (pkt->ip_daddr != it->floating_ip_) {
             continue;
         }
 
@@ -880,6 +887,9 @@ void PktFlowInfo::FloatingIpDNat(const PktInfo *pkt, PktControlInfo *in,
     }
 
     if (underlay_flow) {
+        if (pkt->ip_daddr.is_v6()) {
+            return;
+        }
         if (it->vrf_->forwarding_vrf()) {
             //Pick the underlay ip-fabric VRF for forwarding
             nat_dest_vrf = it->vrf_->forwarding_vrf()->vrf_id();
@@ -930,10 +940,6 @@ void PktFlowInfo::FloatingIpDNat(const PktInfo *pkt, PktControlInfo *in,
 
 void PktFlowInfo::FloatingIpSNat(const PktInfo *pkt, PktControlInfo *in,
                                  PktControlInfo *out) {
-    if (pkt->family == Address::INET6) {
-        return;
-        //TODO: V6 FIP
-    }
     const VmInterface *intf =
         static_cast<const VmInterface *>(in->intf_);
     const VmInterface::FloatingIpSet &fip_list = intf->floating_ip_list().list_;
@@ -951,7 +957,7 @@ void PktFlowInfo::FloatingIpSNat(const PktInfo *pkt, PktControlInfo *in,
             continue;
         }
 
-        if (it->fixed_ip_ != Ip4Address(0) && (pkt->ip_saddr != it->fixed_ip_))  {
+        if (it->fixed_ip_ != IpAddress() && (pkt->ip_saddr != it->fixed_ip_))  {
             continue;
         }
 
@@ -1315,6 +1321,50 @@ bool PktFlowInfo::VrfTranslate(const PktInfo *pkt, PktControlInfo *in,
     return true;
 }
 
+// Changes VRF of in/out routes in case of DNAT and
+// VRF NH pointing to Interface NH in the routing VRF instance
+void PktFlowInfo::NatVxlanVrfTranslate(const PktInfo *pkt, PktControlInfo *in,
+    PktControlInfo *out) {
+    if (out == NULL ||
+        in == NULL ||
+        out->rt_ == NULL ||
+        in->vrf_ == NULL ||
+        in->vrf_->routing_vrf()) {
+        return;
+    }
+
+    const NextHop *nh = out->rt_->GetActiveNextHop();
+    if (nh == NULL || nh->GetType() != NextHop::VRF) {
+        return;
+    }
+
+    const VrfNH *vrf_nh = static_cast<const VrfNH *>(nh);
+    const VrfEntry *vrf = vrf_nh->GetVrf();
+    if (vrf == NULL || vrf->routing_vrf() == false) {
+        return;
+    }
+
+    InetUnicastRouteEntry *inet_rt = vrf->GetUcRoute(pkt->ip_daddr);
+    const NextHop *rt_nh = inet_rt ?
+        inet_rt->GetActiveNextHop() : NULL;
+    if (rt_nh == NULL || rt_nh->GetType() != NextHop::INTERFACE) {
+        return;
+    }
+
+    const Interface *intf = static_cast<const InterfaceNH*>
+        (rt_nh)->GetInterface();
+    if (intf == NULL || intf->type() != Interface::VM_INTERFACE ||
+        static_cast<const VmInterface*>(intf)->FloatingIpCount() == 0) {
+        return;
+    }
+
+    ChangeVrf(pkt, out, vrf);
+    UpdateRoute(&out->rt_, vrf, pkt->ip_daddr, pkt->dmac,
+        flow_dest_plen_map);
+    UpdateRoute(&in->rt_, vrf, pkt->ip_saddr, pkt->smac,
+        flow_source_plen_map);
+}
+
 void PktFlowInfo::IngressProcess(const PktInfo *pkt, PktControlInfo *in,
                                  PktControlInfo *out) {
     // Flow packets are expected only on VMPort interfaces
@@ -1378,6 +1428,11 @@ void PktFlowInfo::IngressProcess(const PktInfo *pkt, PktControlInfo *in,
     out->vrf_ = in->vrf_;
     UpdateRoute(&out->rt_, out->vrf_, pkt->ip_daddr, pkt->dmac,
                 flow_dest_plen_map);
+
+    // Change VRF if a packet travels between a bridge and the
+    // routing VRF instances with destination pointed by FIP
+    NatVxlanVrfTranslate(pkt, in, out);
+
     //Native VRF of the interface and acl assigned vrf would have
     //exact same route with different nexthop, hence if both ingress
     //route and egress route are present in native vrf, acl match condition
