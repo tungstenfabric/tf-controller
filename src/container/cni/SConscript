@@ -8,7 +8,6 @@ env = CfgmEnv.Clone()
 
 subdirs=[
     'kube_cni',
-    'mesos_cni',
 ]
 
 env.SConscript(dirs=subdirs, exports='CfgmEnv', duplicate = 0)
