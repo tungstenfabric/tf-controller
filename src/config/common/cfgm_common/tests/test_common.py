@@ -103,13 +103,6 @@ try:
 except ImportError:
     kube_manager = 'kube_manager could not be imported'
 
-try:
-    from mesos_manager import mesos_manager
-    if not hasattr(mesos_manager, 'main'):
-        from mesos_manager import mesos_manager
-except ImportError:
-    mesos_manager = 'mesos_manager could not be imported'
-
 def generate_conf_file_contents(conf_sections):
     cfg_parser = RawConfigParser()
     for (section, var, val) in conf_sections:
@@ -181,24 +174,6 @@ def launch_kube_manager(test_id, conf_sections, kube_api_skip, event_queue,
                           event_queue=event_queue,
                           vnc_kubernetes_config_dict=vnc_kubernetes_config_dict)
 #end launch_kube_manager
-
-def launch_mesos_manager(test_id, conf_sections, mesos_api_skip, event_queue):
-    args_str = ""
-    vnc_cgitb.enable(format='text')
-
-    wait_for_mesos_manager_down()
-    with tempfile.NamedTemporaryFile(mode='w+') as conf, tempfile.NamedTemporaryFile(mode='w+') as logconf:
-        cfg_parser = generate_conf_file_contents(conf_sections)
-        cfg_parser.write(conf)
-        conf.flush()
-
-        cfg_parser = generate_logconf_file_contents()
-        cfg_parser.write(logconf)
-        logconf.flush()
-
-        args_str= ["-c", conf.name]
-        mesos_manager.main(args_str, mesos_api_skip=mesos_api_skip, event_queue=event_queue)
-#end launch_mesos_manager
 
 def retry_exc_handler(tries_remaining, exception, delay):
     print("Caught '%s', %d tries remaining, sleeping for %s seconds" % (exception, tries_remaining, delay), file=sys.stderr)
@@ -381,10 +356,6 @@ def kill_kube_manager(glet):
     glet.kill()
     kube_manager.KubeNetworkManager.destroy_instance()
 
-def kill_mesos_manager(glet):
-    glet.kill()
-    mesos_manager.MesosNetworkManager.destroy_instance()
-
 def reinit_schema_transformer():
     for obj_cls in list(to_bgp.ResourceBaseST.get_obj_type_map().values()):
         obj_cls.reset()
@@ -470,16 +441,6 @@ def wait_for_kube_manager_up():
 def wait_for_kube_manager_down():
     if kube_manager.KubeNetworkManager.get_instance():
         raise Exception("KM instance is up, no new instances allowed")
-
-@retries(5, hook=retry_exc_handler)
-def wait_for_mesos_manager_up():
-    if not mesos_manager.MesosNetworkManager.get_instance():
-        raise Exception("MM instance is not up")
-
-@retries(5, hook=retry_exc_handler)
-def wait_for_mesos_manager_down():
-    if mesos_manager.MesosNetworkManager.get_instance():
-        raise Exception("MM instance is up, no new instances allowed")
 
 @contextlib.contextmanager
 def flexmocks(mocks):

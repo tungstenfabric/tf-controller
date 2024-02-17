@@ -19,7 +19,7 @@ class VncObjectDBClient(object):
                  debug_obj_cache_types=None, connection=None,
                  db_engine='cassandra', ssl_enabled=False, ca_certs=None,
                  # TODO(sahid): For projects that are using
-                 # VncObjectDBClient like: kube-manager, mesos-manager
+                 # VncObjectDBClient like: kube-manager,
                  # db-loader, schema_transformer, device_manager,
                  # svc_monitor, we consider to continue using `thrift`
                  # until we are sure they are compliant with other
