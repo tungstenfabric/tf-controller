@@ -1271,9 +1271,9 @@ void FipVdnsDataReq::HandleRequest() const {
     while (it != fip_list.end()) {
         FipVdnsEntry entry;
         const DnsProto::DnsFipEntry *fip = (*it).get();
-        Ip4Address ip4(fip->floating_ip_);
+        IpAddress ip(fip->floating_ip_);
         entry.set_vn(fip->vn_->GetName());
-        entry.set_ip(ip4.to_string());
+        entry.set_ip(ip.to_string());
         entry.set_vm_interface(fip->interface_->name());
         entry.set_vdns_name(fip->vdns_name_);
         list.push_back(entry);

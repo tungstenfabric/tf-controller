@@ -322,7 +322,7 @@ public:
     // floating ip in-sync. This callback is defined to avoid linking error
     // when DNS is not enabled
     typedef boost::function<void(VmInterface *, const VnEntry *,
-                                 const Ip4Address &, bool)> UpdateFloatingIpFn;
+                                 const IpAddress &, bool)> UpdateFloatingIpFn;
 
     InterfaceTable(DB *db, const std::string &name);
     virtual ~InterfaceTable() { }

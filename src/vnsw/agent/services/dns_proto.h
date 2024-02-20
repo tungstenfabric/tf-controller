@@ -13,6 +13,10 @@ class VmInterface;
 class IFMapNode;
 
 class DnsProto : public Proto {
+
+    static const Ip4Address ip4_unspec_;
+    static const Ip6Address ip6_unspec_;
+
 public:
     static const uint32_t kDnsDefaultTtl = 84600;
     static const uint32_t kDnsDefaultSlistInterval =
@@ -114,12 +118,12 @@ public:
     };
 
     struct DnsFipEntry {
-        DnsFipEntry(const VnEntry *vn, const Ip4Address &fip,
+        DnsFipEntry(const VnEntry *vn, const IpAddress &fip,
                     const VmInterface *itf);
         virtual ~DnsFipEntry();
         bool IsLess(const DnsFipEntry *rhs) const;
         const VnEntry *vn_;
-        Ip4Address floating_ip_;
+        IpAddress floating_ip_;
         const VmInterface *interface_;
         std::string vdns_name_;
         std::string fip_name_;
@@ -159,7 +163,7 @@ public:
                             const autogen::VirtualDnsType &vdns_type,
                             bool is_floating, bool is_delete);
     bool UpdateFloatingIp(const VmInterface *vmitf, const VnEntry *vn,
-                          const Ip4Address &ip, bool is_deleted);
+                          const IpAddress &ip, bool is_deleted);
     void IpamNotify(IFMapNode *node);
     void VdnsNotify(IFMapNode *node);
     uint16_t GetTransId();
@@ -246,7 +250,7 @@ private:
                      autogen::VirtualDnsType &vdns_type);
     bool GetFipName(const VmInterface *vmitf,
                     const  autogen::VirtualDnsType &vdns_type,
-                    const Ip4Address &ip, std::string &fip_name) const;
+                    const IpAddress &ip, std::string &fip_name) const;
 
     uint16_t xid_;
     DnsUpdateSet update_set_;

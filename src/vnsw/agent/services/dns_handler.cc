@@ -970,6 +970,16 @@ void DnsHandler::SendDnsResponse() {
 
 void DnsHandler::UpdateQueryNames() {
     for (DnsItems::iterator it = items_.begin(); it != items_.end(); ++it) {
+        // do not append domain for empty string (request to root ns)
+        if (it->name.size() == 0) {
+            return;
+        }
+
+        // do not append domain in case of NS query
+        if (it->type == DNS_NS_RECORD) {
+            return;
+        }
+
         if (it->name.find('.', 0) == std::string::npos) {
             it->name.append(".");
             it->name.append(vdns_type_.domain_name);

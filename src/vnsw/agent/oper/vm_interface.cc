@@ -2155,9 +2155,9 @@ bool VmInterface::FloatingIp::AddL3(const Agent *agent,
                   CommunityList(), vmi->label(), kInterface);
 
     InterfaceTable *table = static_cast<InterfaceTable *>(vmi->get_table());
-    if (floating_ip_.is_v4() && table->update_floatingip_cb().empty()==false) {
-        table->update_floatingip_cb()(vmi, vn_.get(), floating_ip_.to_v4(),
-                                      false);
+    if (table->update_floatingip_cb().empty()==false) {
+        table->update_floatingip_cb()(vmi, vn_.get(), floating_ip_,
+            false);
         //TODO:: callback for DNS handling
     }
 
@@ -2174,9 +2174,9 @@ bool VmInterface::FloatingIp::DeleteL3(const Agent *agent,
     vmi->DeleteRoute(vrf_.get()->GetName(), floating_ip_, plen);
 
     InterfaceTable *table = static_cast<InterfaceTable *>(vmi->get_table());
-    if (floating_ip_.is_v4() && table->update_floatingip_cb().empty()==false) {
-        table->update_floatingip_cb()(vmi, vn_.get(), floating_ip_.to_v4(),
-                                      true);
+    if (table->update_floatingip_cb().empty()==false) {
+        table->update_floatingip_cb()(vmi, vn_.get(), floating_ip_,
+            true);
         //TODO:: callback for DNS handling
     }
     return true;
