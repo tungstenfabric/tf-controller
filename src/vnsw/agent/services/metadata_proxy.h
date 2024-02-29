@@ -7,6 +7,8 @@
 
 #include "http/client/http_client.h"
 #include "http/http_session.h"
+#include "oper/vm_interface.h"
+#include <map>
 
 class MetadataServer;
 class MetadataClient;
@@ -64,7 +66,9 @@ public:
     /// @brief Adds an IP address specified in vhost_ll_ip to vhost0 interface
     /// inet6 addresses
     /// @param vhost_ll_ip is a new IP address for vhost0 interface
-    void NetlinkAddVhostIp(const IpAddress& vhost_ll_ip);
+    /// @return true if address has been successfully bound to the
+    /// interface and false otherwise
+    bool NetlinkAddVhostIp(const IpAddress& vhost_ll_ip);
 
     /// @brief Deletes an IP address specified in vhost_ll_ip from vhost0
     //// interface inet6 addresses
@@ -77,37 +81,14 @@ public:
     /// @param via_mac - the MAC address of a neighbour
     void NetlinkAddVhostNb(const IpAddress& nb_ip, const MacAddress& via_mac);
 
-    /// @brief Announces a route to the vhost0 interface via IPv6 Metadata
-    /// service address
-    /// @param s is a string with the name of a VRF entry where route is to be
-    /// announced
-    void AnnounceVhostRoute(const std::string& s);
-
-    /// @brief Announces a route to the vhost0 interface via IPv6 Metadata
-    /// service address
-    /// @param vrf_entry is a pointer to a VRF entry where route is to be
-    /// announced
-    void AnnounceVhostRoute(const VrfEntry* vrf_entry);
-
-    // Called in ResetIp6Server
-    void AnnounceVhostRoutes();
-
-    /// @brief Deletes route to vhost0 interface announced via IPv6 link local
-    /// Metadata address in a specified VRF inet6 unicast table
-    /// @param vrf_entry is a pointer to a VRF entry (VrfEntry object)
-    void DeleteVhostRoute(const VrfEntry* vrf_entry);
-
-    /// @brief Loops over all VRF entries and erases routes to vhost0 interface
-    void DeleteVhostRoutes();
-
-    /// @brief Announces routes to a given vm-interface via a given IPv6
+    /// @brief Advertises routes to a given vm-interface via a given IPv6
     /// address. Routes are announced in the fabric VRF entry and in a given
     /// VRF entry.
     /// @param vm is a pointer to the vm interface 
     /// @param ll_ip is an IPv6 address (prefix) to announce route to
     /// @param intf_vrf is a pointer to the VRF entry to which the 
     /// vm interface belongs to
-    void AnnounceMetaDataLinkLocalRoutes(const VmInterface* vm,
+    void AdvertiseMetaDataLinkLocalRoutes(const VmInterface* vm,
         const Ip6Address& ll_ip, const VrfEntry* intf_vrf);
     
     /// @brief Deletes an announced earlier route to a vm interface via
@@ -120,12 +101,8 @@ public:
     /// @return Ip6Address structure containing the IPv6 address
     const Ip6Address& Ipv6ServiceAddress() const;
 
-    /// @brief Resets IPv6 metadata link local service to accept incoming
-    ///  requests from a new IP address and a new port
-    /// @param new_ip is a new IPv6 address
-    /// @param port is a new IP port
-    void ResetIp6Server(const Ip6Address& new_ip,
-        const int port = METADATA_NAT_PORT);
+    /// @brief Initializes an HTTP server for IPv6 requests
+    void InitializeHttp6Server(const VmInterface *vhost0);
 
     /// @brief A callback that is invoked each time when a VRF entry is
     /// modified: added, changed or deleted
@@ -142,7 +119,7 @@ public:
     /// @param part is a pointer to a table partititon containing corresponding
     /// modified route
     /// @param e is a pointer to the modified InetUnicastRouteEntry
-    void OnAFabricPolicyRouteChange(DBTablePartBase *part, DBEntryBase *e);
+    void OnAFabricRouteChange(DBTablePartBase *part, DBEntryBase *e);
 
     /// @brief A callback which is invoked everytime any vm interface is 
     /// changed.
@@ -163,14 +140,18 @@ public:
     void UnregisterListeners();
 
 private:
-    HttpConnection *GetProxyConnection(HttpSession *session, bool conn_close,
-                                       std::string *nova_hostname);
+    HttpConnection *GetProxyConnection(HttpSession *session,
+        bool conn_close,
+        std::string *nova_hostname);
     void CloseServerSession(HttpSession *session);
     void CloseClientSession(HttpConnection *conn);
     void ErrorClose(HttpSession *sesion, uint16_t error);
 
     ServicesModule *services_;
     std::string shared_secret_;
+
+    /// @brief A pointer to a HTTP server listening on a IPv4 socket
+    /// for Metadata requests from tenants / virtual machines
     MetadataServer *http_server_;
 
     /// @brief A pointer to a HTTP server listening on a IPv6 socket
@@ -182,7 +163,8 @@ private:
     ConnectionSessionMap metadata_proxy_sessions_;
     MetadataStats metadata_stats_;
 
-    /// @brief An IPv6 address on which Metadata link local service listens on
+    /// @brief An IPv6 address on which Metadata6 link local service listens on.
+    /// We use it instead of IPv4 compute IP.
     Ip6Address ipv6_service_address_;
 
     /// @brief an ID of a listener (callback) that acts when the VRF Table is
@@ -191,7 +173,7 @@ private:
 
     /// @brief an ID of a listener (callback) that acts when a Fabric Policy
     /// VRF entry is modified
-    DBTableBase::ListenerId fabric_policy_notify_id_;
+    DBTableBase::ListenerId fabric_notify_id_;
 
     /// @brief an ID of a listener (callback) that acts when an InterfaceTable
     ///entry is modified
@@ -203,15 +185,10 @@ private:
     /// interface in the MetadataProxy::DeleteMetaDataLinkLocalRoute function.
     std::map<std::string, Ip6Address> ll_ipv6_addresses_;
 
-    /// @brief A mutex which prevents parallel execution of
-    /// MetadataProxy::OnAVrfChange and
-    /// MetadataProxy::OnAFabricPolicyRouteChange methods
-    tbb::mutex mutex_;
-
     /// @brief A mutex which prevents simultaneous access to
     /// MetadataProxy::ll_ipv6_addresses_ table and member functions:
     /// MetadataProxy::DeleteMetaDataLinkLocalRoute,
-    /// MetadataProxy::AnnounceMetaDataLinkLocalRoutes
+    /// MetadataProxy::AdvertiseMetaDataLinkLocalRoutes
     tbb::mutex ll_ipv6_addr_mutex_;
 
     DISALLOW_COPY_AND_ASSIGN(MetadataProxy);

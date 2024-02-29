@@ -12,6 +12,11 @@ extern "C" {
     #include <linux/if_addr.h>
     #include <arpa/inet.h>
 }
+
+#ifndef  NLM_F_DUMP_FILTERED
+#define  NLM_F_DUMP_FILTERED 0x20
+#endif
+
 #include <cstring>
 #include <cmn/agent_cmn.h>
 #include <oper/interface_common.h>
@@ -60,7 +65,7 @@ struct NetlinkRequest
 
     /// @brief A block of memory of memory carrying attributes
     /// of this request
-    char payload[8192];
+    char payload[16384];
 
     /// @brief A reference to the total length of this Netlink request
     unsigned int& msg_len;
@@ -69,10 +74,10 @@ struct NetlinkRequest
     /// using this class
     msghdr* message (sockaddr_nl& s_nl) {
         if (this->msg_len < NLMSG_LENGTH(sizeof(T))) {
-            LOG(ERROR, "too short msg_len in"
+            LOG(ERROR, " too short msg_len, "
             "NetlinkRequest::message, metadata_ipv6_netlink.cc, "<<
-            "this->msg_len" << this->msg_len <<
-            "NLMSG_LENGTH(sizeof(T))" << NLMSG_LENGTH(sizeof(T)));
+            "this->msg_len = " << this->msg_len <<
+            ", NLMSG_LENGTH(sizeof(T)) = " << NLMSG_LENGTH(sizeof(T)));
             return NULL;
         }
 
@@ -192,8 +197,72 @@ public:
     }
 };
 
+struct NetlinkResponse {
+
+    /// @brief A pointer to the begin of the response
+    struct nlmsghdr *resp_nh_;
+
+    /// @brief The number of received bytes in the response
+    int n_recv_;
+
+    /// @brief contains message with response
+    struct msghdr msg_;
+
+    /// @brief Contains response data
+    struct iovec iov_;
+
+    /// @brief A buffer for response data
+    char buffer_[16384];
+
+private:
+
+    /// @brief Forbid default ctor for NetlinkResponse
+    NetlinkResponse();
+
+public:
+
+    /// @brief Construct a NetlinkResponse object from the request
+    /// message and the Netlink socket
+    NetlinkResponse(msghdr* req_msg, NetlinkSocket& nl_sock) {
+        resp_nh_ = NULL;
+        memset(buffer_, 0, sizeof(buffer_));
+        memset(&iov_, 0, sizeof(iov_));
+
+        msg_.msg_name = req_msg->msg_name;
+        msg_.msg_namelen = req_msg->msg_namelen;
+        msg_.msg_iov = &iov_;
+        msg_.msg_iovlen = 1;
+        iov_.iov_base = buffer_;
+        iov_.iov_len = sizeof(buffer_);
+        n_recv_ = recvmsg(nl_sock.fd(), &msg_, 0);
+        if (n_recv_ < 0) {
+            LOG(ERROR, "Error receiving message from netlink: "
+                << strerror(errno) << std::endl);
+        } else {
+            resp_nh_ = reinterpret_cast<struct nlmsghdr *>(&buffer_[0]);
+        }
+    }
+
+    /// @brief NetlinkResponse dtor
+    ~NetlinkResponse() {}
+
+    /// @brief Iterates over all response parts
+    template <class T>
+    int response_iterate(T handler_func) {
+        for (;
+            NLMSG_OK(resp_nh_, n_recv_);
+            resp_nh_ = NLMSG_NEXT(resp_nh_, n_recv_)) {
+                int handle_res = handler_func(resp_nh_);
+                if (handle_res >= 0) {
+                    return handle_res;
+                }
+        }
+        return -1;
+    }
+};
+
 /// @brief Reads a response (ack/nock) after a Netlink request
-bool read_ack_response(
+static bool read_ack_response(
     const msghdr *msg,
     int send_n,
     NetlinkSocket& nl_sock,
@@ -227,27 +296,40 @@ bool read_ack_response(
     return false;
 }
 
+/// @brief Checks whether specified flag is active for the given
+/// interface address (netlink RTM_GETADDR response).
+/// @return 1, if flag is present, 0, if flag is not present, -1
+/// if netlink response doesn't contain requested information
+template<int FLAG>
+static int check_address_flags(const struct nlmsghdr *resp_nh) {
+    struct rtattr *resp_attr = NULL;
+    if (resp_nh->nlmsg_type == RTM_NEWADDR) {
+        ifaddrmsg *ifa_resp =
+            static_cast<struct ifaddrmsg *>(NLMSG_DATA(resp_nh));
+        if (ifa_resp == NULL) {
+            return -1;
+        }
+        int attr_len = resp_nh->nlmsg_len - NLMSG_LENGTH(sizeof(*ifa_resp));
+        for (resp_attr = IFA_RTA(ifa_resp);
+            RTA_OK(resp_attr, attr_len);
+            resp_attr = RTA_NEXT(resp_attr, attr_len)) {
+            if (resp_attr->rta_type == IFA_ADDRESS) {
+                if (ifa_resp->ifa_flags & FLAG) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
 } //namespace aux
 
-// void MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
-
-//     std::string addr_cmd_str = "ip addr add " + vhost_ll_ip.to_string()
-//         + " dev " + this->services_->agent()->vhost_interface_name();
-    
-//     int ret = system(addr_cmd_str.c_str());
-
-//     if (ret) {
-//         std::cout<< "ret = " << std::endl;
-//         std::cout<< "Execution of " << addr_cmd_str << " failed "
-//                  << "with errno = " << errno << std::endl;
-//     }
-
-//     usleep(2000000); 
-// }
-
-void MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
+bool MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
     if (!vhost_ll_ip.is_v6()) {
-        return;
+        return false;
     }
 
     // set ip address
@@ -257,13 +339,13 @@ void MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
         LOG(ERROR, "An error has occured during address initialization,"
         "MetadataProxy::NetlinkAddVhostIp, metadata_ipv6_netlink.cc, "
         "errno = " << errno << std::endl);
-        return;
+        return false;
     }
     if (addr_res == 0) {
         LOG(ERROR, "A wrong address has been specified,"
         "MetadataProxy::NetlinkAddVhostIp, metadata_ipv6_netlink.cc, "
         "address = " << vhost_ll_ip.to_string().c_str() << std::endl);
-        return;
+        return false;
     }
     // set device index
     const int dev_idx =
@@ -272,6 +354,7 @@ void MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
         LOG(ERROR, "Error while retreiving device index,"
         "MetadataProxy::NetlinkAddVhostIp, metadata_ipv6_netlink.cc, "
         "dev_idx = " << dev_idx << std::endl);
+        return false;
     }
 
     // open a socket
@@ -279,7 +362,6 @@ void MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
 
     // create a request
     aux::NetlinkRequest<ifaddrmsg> ifa_req;
-    unsigned int &msg_len = ifa_req.msg_len;
 
     // set ifaddrmsg header
     ifaddrmsg &ifa_message_hdr    = ifa_req.nl_req_hdr;
@@ -287,14 +369,15 @@ void MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
     ifa_message_hdr.ifa_prefixlen = 128;
     ifa_message_hdr.ifa_index     = dev_idx;
     ifa_message_hdr.ifa_scope     = RT_SCOPE_UNIVERSE;
+    ifa_message_hdr.ifa_flags     = IFA_F_PERMANENT | IFA_F_SECONDARY;
 
     // set nlmsghdr (the main header)
-    nlmsghdr &nl_message_hdr = ifa_req.nl_message_hdr;
-    nl_message_hdr.nlmsg_type = RTM_NEWADDR;
-    nl_message_hdr.nlmsg_flags = NLM_F_CREATE | NLM_F_EXCL | NLM_F_REQUEST
+    nlmsghdr &nl_message_hdr      = ifa_req.nl_message_hdr;
+    nl_message_hdr.nlmsg_type     = RTM_NEWADDR;
+    nl_message_hdr.nlmsg_flags    = NLM_F_CREATE | NLM_F_EXCL | NLM_F_REQUEST
         | NLM_F_ACK;
     // nl_message_hdr.nlmsg_seq
-    msg_len = NLMSG_LENGTH(sizeof(ifa_message_hdr));
+    ifa_req.msg_len = NLMSG_LENGTH(sizeof(ifa_message_hdr));
 
     ifa_req.insert_attr(IFA_LOCAL, sizeof(addr6), &addr6);
 
@@ -304,14 +387,52 @@ void MetadataProxy::NetlinkAddVhostIp(const IpAddress& vhost_ll_ip) {
         // send a request to the kernel
         send_n = sendmsg(nl_sock.fd(), msg, 0);
         if (send_n <= 0) {
-            LOG(ERROR, "Sendmsg failed,"
+            LOG(ERROR, "sendmsg failed, "
             "MetadataProxy::NetlinkAddVhostIp, metadata_ipv6_netlink.cc, "
             "errno = " << errno << std::endl);
-            return;
+            return false;
         }
     }
 
-    aux::read_ack_response(msg, send_n, nl_sock, "NetlinkAddVhostIp");
+    if (aux::read_ack_response(msg, send_n, nl_sock, "NetlinkAddVhostIp")) {
+        int has_tentative = -1;
+        do {
+            aux::NetlinkRequest<ifaddrmsg> addr_nl_req;
+            ifaddrmsg &nl_req_param    = addr_nl_req.nl_req_hdr;
+            nl_req_param.ifa_family    = AF_INET6;
+            nl_req_param.ifa_prefixlen = 128;
+            nl_req_param.ifa_index     = dev_idx;
+
+            nlmsghdr &msg_hdr          = addr_nl_req.nl_message_hdr;
+            msg_hdr.nlmsg_type         = RTM_GETADDR;
+            msg_hdr.nlmsg_flags        = NLM_F_REQUEST | NLM_F_DUMP_FILTERED;
+            addr_nl_req.msg_len = NLMSG_LENGTH(sizeof(nl_req_param));
+            addr_nl_req.insert_attr(IFA_LOCAL, sizeof(addr6), &addr6);
+
+            msg = addr_nl_req.message(nl_sock.netlink_socket());
+            send_n = -1;
+            if (msg == NULL) {
+                return false;
+            }
+            // send a request to the kernel
+            send_n = sendmsg(nl_sock.fd(), msg, 0);
+            if (send_n <= 0) {
+                LOG(ERROR, "sendmsg failed (address request), "
+                "MetadataProxy::NetlinkAddVhostIp, metadata_ipv6_netlink.cc, "
+                "errno = " << errno << std::endl);
+                return false;
+            }
+
+            // read the response
+            aux::NetlinkResponse addr_resp(msg, nl_sock);
+            has_tentative = addr_resp.
+                response_iterate(aux::check_address_flags<IFA_F_TENTATIVE>);
+        } while (has_tentative > 0);
+        if (!has_tentative) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void MetadataProxy::NetlinkDelVhostIp(const IpAddress& vhost_ll_ip) {
@@ -347,7 +468,6 @@ void MetadataProxy::NetlinkDelVhostIp(const IpAddress& vhost_ll_ip) {
     aux::NetlinkSocket nl_sock;
 
     aux::NetlinkRequest<ifaddrmsg> ifa_req;
-    unsigned int &msg_len = ifa_req.msg_len;
 
     // set ifaddrmsg header
     ifaddrmsg &ifa_message_hdr    = ifa_req.nl_req_hdr;
@@ -361,7 +481,7 @@ void MetadataProxy::NetlinkDelVhostIp(const IpAddress& vhost_ll_ip) {
     nl_message_hdr.nlmsg_type = RTM_DELADDR;
     nl_message_hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
     // nl_message_hdr.nlmsg_seq
-    msg_len = NLMSG_LENGTH(sizeof(ifa_message_hdr));
+    ifa_req.msg_len = NLMSG_LENGTH(sizeof(ifa_message_hdr));
 
     ifa_req.insert_attr(IFA_LOCAL, sizeof(addr6), &addr6);
 
@@ -419,7 +539,6 @@ NetlinkAddVhostNb(const IpAddress& nb_ip, const MacAddress& via_mac) {
     aux::NetlinkSocket nl_sock;
 
     aux::NetlinkRequest<ndmsg> nd_req;
-    unsigned int &msg_len = nd_req.msg_len;
 
     ndmsg &nd_message_hdr = nd_req.nl_req_hdr;
     nd_message_hdr.ndm_family   = AF_INET6;  // AF_INET/AF_INET6/AF_UNSPEC
@@ -432,7 +551,7 @@ NetlinkAddVhostNb(const IpAddress& nb_ip, const MacAddress& via_mac) {
         NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE  // route might be already
         | NLM_F_ACK;                                  // in the table
 
-    msg_len = NLMSG_LENGTH(sizeof(nd_message_hdr));
+    nd_req.msg_len = NLMSG_LENGTH(sizeof(nd_message_hdr));
 
     // insert lladdr (MAC)
     nd_req.insert_attr(NDA_LLADDR, sizeof(nb_mac_addr), &nb_mac_addr[0]);
@@ -452,24 +571,6 @@ NetlinkAddVhostNb(const IpAddress& nb_ip, const MacAddress& via_mac) {
     }
 
     aux::read_ack_response(msg, send_n, nl_sock, "NetlinkAddVhostNb");
-
-    // std::string cmd_del_str = "ip neigh del " + nb_ip.to_string();
-    // int ret_del = system(cmd_del_str.c_str());
-    // if (ret_del) {
-    //     std::cout<< "ret = " << ret_del << std::endl;
-    //     std::cout<< "Execution of " << cmd_del_str << " failed "
-    //              << "with errno = " << errno << std::endl;
-    // }
-
-    // std::string cmd_add_str = "ip neigh add " + nb_ip.to_string()
-    //     + " lladdr " + via_mac.ToString()
-    //     + " dev " + this->services_->agent()->vhost_interface_name();
-    // int ret_add = system(cmd_add_str.c_str());
-    // if (ret_add) {
-    //     std::cout<< "ret = " << ret_add << std::endl;
-    //     std::cout<< "Execution of " << cmd_add_str << " failed "
-    //              << "with errno = " << errno << std::endl;
-    // }
 }
 
 //

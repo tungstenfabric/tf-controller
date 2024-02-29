@@ -764,7 +764,7 @@ Agent::Agent() :
     db_(NULL), task_scheduler_(NULL), agent_init_(NULL), fabric_vrf_(NULL),
     fabric_policy_vrf_(NULL),
     intf_table_(NULL), health_check_table_(NULL), metadata_ip_allocator_(NULL),
-    nh_table_(NULL), uc_rt_table_(NULL), mc_rt_table_(NULL),
+    metadata_ip6_allocator_(NULL), nh_table_(NULL), uc_rt_table_(NULL), mc_rt_table_(NULL),
     evpn_rt_table_(NULL), l2_rt_table_(NULL), vrf_table_(NULL),
     vm_table_(NULL), vn_table_(NULL), sg_table_(NULL), mpls_table_(NULL),
     acl_table_(NULL), mirror_table_(NULL), vrf_assign_table_(NULL),
@@ -951,6 +951,14 @@ MetaDataIpAllocator *Agent::metadata_ip_allocator() const {
 
 void Agent::set_metadata_ip_allocator(MetaDataIpAllocator *allocator) {
     metadata_ip_allocator_.reset(allocator);
+}
+
+MetaDataIpAllocator *Agent::metadata_ip6_allocator() const {
+    return metadata_ip6_allocator_.get();
+}
+
+void Agent::set_metadata_ip6_allocator(MetaDataIpAllocator *allocator) {
+    metadata_ip6_allocator_.reset(allocator);
 }
 
 PktModule *Agent::pkt() const {

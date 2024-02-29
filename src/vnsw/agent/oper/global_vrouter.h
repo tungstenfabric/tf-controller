@@ -29,11 +29,11 @@ namespace autogen {
 struct LinkLocalDBState : DBState {
     const VrfEntry *vrf_;
     // set of linklocal addresses added to the VN
-    std::set<Ip4Address> addresses_;
+    std::set<IpAddress> addresses_;
 
     LinkLocalDBState(const VrfEntry *vrf) : DBState(), vrf_(vrf) {}
-    void Add(const Ip4Address &address) { addresses_.insert(address); }
-    void Delete(const Ip4Address &address) { addresses_.erase(address); }
+    void Add(const IpAddress &address) { addresses_.insert(address); }
+    void Delete(const IpAddress &address) { addresses_.erase(address); }
 };
 
 struct PortConfig {
@@ -61,15 +61,16 @@ public:
         CRYPT_NONE
     };
     static const std::string kMetadataService;
+    static const std::string kMetadataService6;
     static const Ip4Address kLoopBackIp;
     static const int32_t kDefaultFlowExportRate = 0;
     static const int32_t kDisableSampling = -1;
 
     struct LinkLocalServiceKey {
-        Ip4Address linklocal_service_ip;
+        IpAddress linklocal_service_ip;
         uint16_t   linklocal_service_port;
 
-        LinkLocalServiceKey(const Ip4Address &addr, uint16_t port)
+        LinkLocalServiceKey(const IpAddress &addr, uint16_t port)
             : linklocal_service_ip(addr), linklocal_service_port(port) {}
         bool operator<(const LinkLocalServiceKey &rhs) const;
     };
@@ -147,20 +148,36 @@ public:
 
     void GlobalVrouterConfig(IFMapNode *node);
     void UpdateSLOConfig(IFMapNode *node);
+
+    /// @brief Get link local service configuration info, for a
+    /// given service name
     bool FindLinkLocalService(const std::string &service_name,
-                              Ip4Address *service_ip, uint16_t *service_port,
-                              std::string *fabric_hostname,
-                              Ip4Address *fabric_ip, uint16_t *fabric_port) const;
-    bool FindLinkLocalService(const Ip4Address &service_ip,
-                              uint16_t service_port, std::string *service_name,
-                              Ip4Address *fabric_ip, uint16_t *fabric_port) const;
+        IpAddress *service_ip,
+        uint16_t *service_port,
+        std::string *fabric_hostname,
+        Ip4Address *fabric_ip,
+        uint16_t *fabric_port) const;
+
+    /// @brief Get link local service info for a given linklocal
+    /// service <ip, port>
+    bool FindLinkLocalService(const IpAddress &service_ip,
+        uint16_t service_port,
+        std::string *service_name,
+        Ip4Address *fabric_ip,
+        uint16_t *fabric_port) const;
+
+    /// @brief Get link local services, for a given service name
     bool FindLinkLocalService(const std::string &service_name,
-                              std::set<Ip4Address> *service_ip) const;
-    bool FindLinkLocalService(const Ip4Address &service_ip,
-                              std::set<std::string> *service_names) const;
+        std::set<IpAddress> *service_ip) const;
+
+    /// @brief Get link local services info for a given linklocal
+    /// service <ip>
+    bool FindLinkLocalService(const IpAddress &service_ip,
+        std::set<std::string> *service_names) const;
+
     void LinkLocalRouteUpdate(const std::vector<Ip4Address> &addr_list);
     bool IsAddressInUse(const Ip4Address &ip) const;
-    bool IsLinkLocalAddressInUse(const Ip4Address &ip) const;
+    bool IsLinkLocalAddressInUse(const IpAddress &ip) const;
     Agent::ForwardingMode forwarding_mode() const {return forwarding_mode_;}
     boost::uuids::uuid slo_uuid() const {return slo_uuid_;}
 

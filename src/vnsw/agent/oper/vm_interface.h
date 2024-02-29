@@ -277,7 +277,9 @@ struct NextHopState : public VmInterfaceState {
 };
 
 struct MetaDataIpState : public VmInterfaceState {
-    MetaDataIpState();
+
+    /// @brief Creates a new instance of MetaDataIpState.
+    MetaDataIpState(bool ipv4 = true);
     virtual ~MetaDataIpState();
 
     VmInterfaceState::Op GetOpL3(const Agent *agent,
@@ -286,6 +288,7 @@ struct MetaDataIpState : public VmInterfaceState {
     bool AddL3(const Agent *agent, VmInterface *vmi) const;
 
     mutable std::auto_ptr<MetaDataIp> mdata_ip_;
+    bool ipv4_;
 };
 
 struct ResolveRouteState : public VmInterfaceState {
@@ -459,7 +462,7 @@ public:
         HBS_INTF_MGMT,
     };
 
-    typedef std::map<Ip4Address, MetaDataIp*> MetaDataIpMap;
+    typedef std::map<IpAddress, MetaDataIp*> MetaDataIpMap;
     typedef std::set<HealthCheckInstanceBase *> HealthCheckInstanceSet;
 
     struct List {
@@ -1472,7 +1475,8 @@ public:
     }
 
     Ip4Address mdata_ip_addr() const;
-    MetaDataIp *GetMetaDataIp(const Ip4Address &ip) const;
+    Ip6Address mdata_ip6_addr() const;
+    MetaDataIp *GetMetaDataIp(const IpAddress &ip) const;
     void InsertMetaDataIpInfo(MetaDataIp *mip);
     void DeleteMetaDataIpInfo(MetaDataIp *mip);
     void UpdateMetaDataIpInfo();
@@ -1744,6 +1748,7 @@ private:
     std::auto_ptr<NextHopState> nexthop_state_;
     std::auto_ptr<VrfTableLabelState> vrf_table_label_state_;
     std::auto_ptr<MetaDataIpState> metadata_ip_state_;
+    std::auto_ptr<MetaDataIpState> metadata_ip6_state_;
     std::auto_ptr<ResolveRouteState> resolve_route_state_;
     std::auto_ptr<VmiRouteState> interface_route_state_;
 

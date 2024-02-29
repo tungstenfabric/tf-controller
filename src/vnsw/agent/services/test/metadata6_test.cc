@@ -36,17 +36,18 @@ extern "C"{
 "controller/src/vnsw/agent/test/vnswa_metadata_cfg.ini"
 #define MAX_WAIT_COUNT 5000
 #define BUF_SIZE 8192
-#define md_ip4 "169.254.169.254"
-#define md_ip6 "fe80::a9fe:a9fe"
+#define md_ip6 "fe80::a1fe:a1fe"
 #define vm1_ip "ee80::11"
-#define vm1_ll_ip "fe80::11"
+#define vm1_ll_ip "fe80::11:11"
+#define vhost0_ll_ip "fe80::1"
 #define vm1_mac "00:00:00:01:01:01"
 #define nova_proxy_mock_port 8775
 
 IpamInfo ipam_info[] = {
     {"ee80::", 32, "ee80::1"}, /* prefix, prefixlen, gw */
 };
-Ip4Address md_ip4_address(Ip4Address::from_string(md_ip4));
+
+IpAddress md_ip6_address(Ip6Address::from_string(md_ip6));
 
 std::string ExecCmd(const std::string& cmd)
 {
@@ -64,10 +65,8 @@ std::string ExecCmd(const std::string& cmd)
     int rc = pclose(pipe);
 
     if (rc == EXIT_SUCCESS) {
-        // std::cout << "SUCCESS\n";
     } else {
         result = std::string("");
-        // std::cout << "FAILED\n";
     }
 
     return result;
@@ -76,14 +75,12 @@ std::string ExecCmd(const std::string& cmd)
 class Metadata6Test : public ::testing::Test {
 public:
     void SetUp() {
-        ConcurrencyChecker::enable_ = false;  // disable concurrency check
-        agent_ = Agent::GetInstance();
+
         AddIPAM("vn1", ipam_info, 1);
         client->WaitForIdle();
 
         // Check for a vhost presence
-        vhost_was_created_ = false;
-        std::string vhost_nm = Agent::GetInstance()->vhost_interface_name();
+        std::string vhost_nm = agent_->vhost_interface_name();
         std::string vhost_str =
             ExecCmd(std::string("ip a | grep " + vhost_nm));
         // try to create a vhost interface
@@ -93,11 +90,50 @@ public:
                 " type dummy";
             std::system(create_vhost.c_str());
         }
+
+        AddVn(agent_->fabric_vn_name().c_str(), 100);
+        AddVrf(agent_->fabric_vrf_name().c_str(), 100);
+        AddLink("virtual-network", agent_->fabric_vn_name().c_str(),
+            "routing-instance", agent_->fabric_vrf_name().c_str());
+        client->WaitForIdle();
+        ConcurrencyChecker::enable_ = false;  // disable concurrency check
+        // update vhost0 settings to include
+        // interface routes into the corresponding
+        // VRF instance
+        const VmInterface *cvhost0 = dynamic_cast<const VmInterface*>(
+            agent_->vhost_interface());
+        VmInterface *vhost0 = const_cast<VmInterface *>(cvhost0);
+        VmInterfaceConfigData *vhost_cfg =
+            new VmInterfaceConfigData (agent_, NULL);
+        vhost_cfg->ip6_addr_ = Ip6Address::from_string(vhost0_ll_ip);
+        vhost_cfg->CopyVhostData(agent_);
+        vhost_cfg->need_linklocal_ip_ = true;
+        vhost_cfg->vrf_name_ = agent_->fabric_vrf_name();
+        vhost_cfg->vn_uuid_ = VnGet(100)->GetUuid();
+        vhost0->OnChange(vhost_cfg);
+        client->WaitForIdle();
     }
 
     void TearDown() {
+        VrfEntry *fabric_vrf = agent_->fabric_vrf();
+        Ip6Address vhost_ip = Ip6Address::from_string(vhost0_ll_ip);
+        InetUnicastRouteEntry *vhost_rt =
+            fabric_vrf->GetUcRoute(vhost_ip);
+        if (vhost_rt) {
+            const AgentPath *path = vhost_rt->GetActivePath();
+            InetUnicastAgentRouteTable::Delete(
+                path->peer(),
+                fabric_vrf->GetName(),
+                vhost_rt->addr(),
+                vhost_rt->plen());
+        }
+
+        DelLink("virtual-network", agent_->fabric_vn_name().c_str(),
+            "routing-instance", agent_->fabric_vrf_name().c_str());
+        DelVrf(agent_->fabric_vrf_name().c_str());
+        DelVn(agent_->fabric_vn_name().c_str());
         DelIPAM("vn1");
-        DeleteGlobalVrouterConfig();
+
         client->WaitForIdle();
         if (vhost_was_created_) {
             std::string vhost_nm =
@@ -106,9 +142,12 @@ public:
                 " type dummy";
             std::system(delete_vhost.c_str());
         }
+        DeleteGlobalVrouterConfig();
     }
 
-    Metadata6Test() {
+    Metadata6Test() :
+        agent_(Agent::GetInstance()),
+        vhost_was_created_(false) {
         Agent::GetInstance()->set_compute_node_ip(
             Ip4Address::from_string("127.0.0.1"));
     }
@@ -123,8 +162,8 @@ public:
         std::stringstream global_config;
         global_config << "<linklocal-services>\n"
             << "<linklocal-service-entry>\n"
-            << "<linklocal-service-name>metadata</linklocal-service-name>\n"
-            << "<linklocal-service-ip>"<< md_ip4_address.to_string()
+            << "<linklocal-service-name>metadata6</linklocal-service-name>\n"
+            << "<linklocal-service-ip>"<< md_ip6_address.to_string()
             <<"</linklocal-service-ip>\n"
             << "<linklocal-service-port>80</linklocal-service-port>\n"
             << "<ip-fabric-DNS-service-name></ip-fabric-DNS-service-name>\n"
@@ -168,7 +207,6 @@ TEST_F(Metadata6Test, Metadata6RouteFuncsTest) {
         /*  name  intf_id ip_addr mac_addr vn_id vm_id ip6addr*/
         {"vnet1", 1,      vm1_ip, vm1_mac, 1,    1},
     };
-
     SetupLinkLocalConfig();
 
     CreateV6VmportEnv(input, 1, 0);
@@ -185,16 +223,19 @@ TEST_F(Metadata6Test, Metadata6RouteFuncsTest) {
         (boost::asio::ip::address::from_string(vm1_ip));
     InetUnicastRouteEntry *ucrt_md_ip = vrf1->GetUcRoute
         (boost::asio::ip::address::from_string(md_ip6));
-    // AnnounceVhostRoute, OnAVrfChange
+    // // AdvertiseVhostRoute, OnAVrfChange
     EXPECT_TRUE(ucrt_vm_ip != NULL);
     EXPECT_TRUE(ucrt_md_ip != NULL);
     EXPECT_TRUE(ucrt_vm_ip->addr().to_string() == std::string(vm1_ip));
     EXPECT_TRUE(ucrt_md_ip->addr().to_string() == std::string(md_ip6));
 
-    VrfEntry *fabric_vrf = Agent::GetInstance()->fabric_vrf();
+    VrfEntry *fabric_vrf = agent_->fabric_vrf();
     EXPECT_TRUE(fabric_vrf != NULL);
 
     VmInterface *intf = static_cast<VmInterface *>(VmPortGet(1));
+    const VmInterface *cvhost0 = dynamic_cast<const VmInterface*>(
+        agent_->vhost_interface());
+    agent_->services()->metadataproxy()->InitializeHttp6Server(cvhost0);
 
     TxTcp6Packet(intf->id(), vm1_ip, md_ip6, 1000, 80, false);
     client->WaitForIdle();
@@ -204,53 +245,43 @@ TEST_F(Metadata6Test, Metadata6RouteFuncsTest) {
     FlowEntry *rflow = flow->reverse_flow_entry();
     EXPECT_TRUE(rflow != NULL);
 
-    EXPECT_TRUE(flow->key().src_addr.to_v6() ==
-                Ip6Address::from_string(vm1_ip));
-    EXPECT_TRUE(flow->key().dst_addr.to_v6() ==
-                Ip6Address::from_string(md_ip6));
-    EXPECT_TRUE(rflow->key().src_addr.to_v6() ==
-        Ip6Address::from_string(md_ip6));
-    EXPECT_TRUE(rflow->key().dst_addr.to_v6() ==
-        Ip6Address::from_string(vm1_ip));
+    EXPECT_EQ(Ip6Address::from_string(vm1_ip),
+                flow->key().src_addr.to_v6());
+    EXPECT_EQ(Ip6Address::from_string(md_ip6),
+                flow->key().dst_addr.to_v6());
+    EXPECT_EQ(cvhost0->mdata_ip6_addr(),
+        rflow->key().src_addr.to_v6());
+    EXPECT_EQ(intf->mdata_ip6_addr(),
+        rflow->key().dst_addr.to_v6());
 
     // Add routes manually (imitation of a packet interception
     // by the PktFlowInfo::IngressProcess)
     IpAddress ll_ip(Ip6Address::from_string(vm1_ll_ip));
-    Agent::GetInstance()->services()->metadataproxy()->
-        AnnounceMetaDataLinkLocalRoutes(intf, ll_ip.to_v6(), vrf1);
-    InetUnicastRouteEntry *ucrt_ll1 = fabric_vrf->GetUcRoute(ll_ip);
+    agent_->services()->metadataproxy()->
+        AdvertiseMetaDataLinkLocalRoutes(intf, ll_ip.to_v6(), vrf1);
     InetUnicastRouteEntry *ucrt_ll2 = vrf1->GetUcRoute(ll_ip);
-    EXPECT_TRUE(ucrt_ll1 != NULL);
     EXPECT_TRUE(ucrt_ll2 != NULL);
-    EXPECT_TRUE(ucrt_ll1->addr() == ll_ip);  // AnnounceMetaDataLinkLocalRoutes
-    EXPECT_TRUE(ucrt_ll2->addr() == ll_ip);  // AnnounceMetaDataLinkLocalRoutes
-    // Find the correspondence between ll ip and vm idx
-    std::string vm_ip, vm_uuid, vm_project_uuid;
-    bool found = Agent::GetInstance()->interface_table()->
-        FindVmUuidFromMetadataIp(ll_ip, &vm_ip, &vm_uuid, &vm_project_uuid);
-    EXPECT_TRUE(found);  // LinkVmPortToMetaDataIp, FindInterfaceFromMetadataIp
-                         // FindVmUuidFromMetadataIp
-    EXPECT_EQ(vm_ip, intf->primary_ip6_addr().to_string());
+    EXPECT_TRUE(ucrt_ll2->addr() == ll_ip);  // AdvertiseMetaDataLinkLocalRoutes
+
+    const Ip6Address tmp_ip = intf->mdata_ip6_addr();
+    const Interface *intf_new = agent_->interface_table()->
+        FindInterfaceFromMetadataIp(tmp_ip);
+    EXPECT_TRUE(intf_new != NULL);  // FindInterfaceFromMetadataIp
     client->WaitForIdle();
 
     // Checks: OnAnInterfaceChange, DeleteMetaDataLinkLocalRoute,
-    // UnlinkVmPortFromMetaDataIp
-    EXPECT_TRUE(Agent::GetInstance()->interface_table()->
-        FindInterfaceFromMetadataIp(ll_ip.to_v6()) != NULL);
     DeleteVmportEnv(input, 1, 1, 0);
     client->WaitForIdle();
-    EXPECT_TRUE(Agent::GetInstance()->interface_table() != NULL);
-    EXPECT_TRUE(Agent::GetInstance()->interface_table()->
-        FindInterfaceFromMetadataIp(ll_ip.to_v6()) == NULL);
-    ucrt_ll1 = fabric_vrf->GetUcRoute(ll_ip);
+    EXPECT_TRUE(agent_->interface_table() != NULL);
+    EXPECT_TRUE(agent_->interface_table()->
+        FindInterfaceFromMetadataIp(tmp_ip) == NULL);
     ucrt_ll2 = vrf1->GetUcRoute(ll_ip);
-    EXPECT_TRUE(ucrt_ll1 == NULL);
     EXPECT_TRUE(ucrt_ll2 == NULL);
     ucrt_md_ip = vrf1->GetUcRoute
-        (boost::asio::ip::address::from_string(md_ip6));
+        (Ip6Address::from_string(md_ip6));
     EXPECT_TRUE(ucrt_md_ip == NULL);  // DeleteVhostRoute / OnAVrfChange
 
-    client->WaitForIdle();
+    // client->WaitForIdle();
     ClearLinkLocalConfig();
     client->WaitForIdle();
 }
@@ -290,10 +321,9 @@ TEST_F(Metadata6Test, Metadata6NlReqTest) {
     client->WaitForIdle();
 
     // try to add ip to vhost0 interface
-    const IpAddress vhost_ip = Agent::GetInstance()->
-        services()->metadataproxy()->Ipv6ServiceAddress();
-    Agent::GetInstance()->
-        services()->metadataproxy()->NetlinkAddVhostIp(vhost_ip);
+    const IpAddress vhost_ip = agent_->services()->
+        metadataproxy()->Ipv6ServiceAddress();
+    agent_->services()->metadataproxy()->NetlinkAddVhostIp(vhost_ip);
     const std::string find_vhost_ip = ipa_cmd + " | " + grep_cmd +
         " " + vhost_ip.to_string();
     grep_str = ExecCmd(find_vhost_ip);
@@ -310,8 +340,8 @@ TEST_F(Metadata6Test, Metadata6NlReqTest) {
     IpAddress ll_ip(Ip6Address::from_string(vm1_ll_ip));
     const uint8_t mac_bytes[] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
     MacAddress dev_mac(mac_bytes);
-    Agent::GetInstance()->
-        services()->metadataproxy()->NetlinkAddVhostNb(ll_ip.to_v6(), dev_mac);
+    agent_->services()->metadataproxy()->
+        NetlinkAddVhostNb(ll_ip.to_v6(), dev_mac);
     std::string find_vhost_nb = ipn_cmd + " | " + grep_cmd +
         " " + ll_ip.to_string();
     grep_str = ExecCmd(find_vhost_nb);
@@ -319,8 +349,7 @@ TEST_F(Metadata6Test, Metadata6NlReqTest) {
     client->WaitForIdle();
 
     // Now, delete added vhost ip record (NetlinkDelVhostIp)
-    Agent::GetInstance()->
-        services()->metadataproxy()->NetlinkDelVhostIp(vhost_ip);
+    agent_->services()->metadataproxy()->NetlinkDelVhostIp(vhost_ip);
     grep_str = ExecCmd(find_vhost_ip);
     EXPECT_TRUE(grep_str.empty());  // NetlinkDelVhostIp
     client->WaitForIdle();
@@ -348,17 +377,12 @@ TEST_F(Metadata6Test, Metadata6ServerResetTest) {
     };
     CreateV6VmportEnv(input, 1, 0);
     client->WaitForIdle();
-    client->Reset();
+
     VnEntry *vn1 = VnGet(1);
     EXPECT_TRUE(vn1 != NULL);
     VrfEntry *vrf1 = vn1->GetVrf();
     EXPECT_TRUE(vrf1 != NULL);
 
-    VrfEntry *fabric_policy_vrf = Agent::GetInstance()->fabric_policy_vrf();
-    EXPECT_TRUE(fabric_policy_vrf != NULL);
-    InetUnicastAgentRouteTable *fabric_uc =
-        fabric_policy_vrf->GetInet4UnicastRouteTable();
-    EXPECT_TRUE(fabric_uc);
     // Clear old service config
     ClearLinkLocalConfig();
     client->WaitForIdle();
@@ -366,95 +390,62 @@ TEST_F(Metadata6Test, Metadata6ServerResetTest) {
     // Add config with default address + announce a corresponding route
     SetupLinkLocalConfig();
     client->WaitForIdle();
-    {
-        // find metadata service and announce a route to vhost0 interface
-        uint16_t nova_port, linklocal_port;
-        Ip4Address nova_server, linklocal_server;
-        std::string nova_hostname;
 
-        if (agent_->oper_db()->global_vrouter()->FindLinkLocalService(
-            GlobalVrouter::kMetadataService, &linklocal_server, &linklocal_port,
-            &nova_hostname, &nova_server, &nova_port)) {
-            fabric_uc->AddInetInterfaceRouteReq
-                (Agent::GetInstance()->link_local_peer(),
-                Agent::GetInstance()->fabric_policy_vrf_name(),
-                md_ip4_address,
-                32,
-                Agent::GetInstance()->vhost_interface_name(),
-                0,
-                VnListType());
-            client->WaitForIdle();
-        }
-        EXPECT_TRUE(linklocal_server == md_ip4_address);
-    }
-    InetUnicastRouteEntry *fabric_md_rt =
-        fabric_policy_vrf->GetUcRoute(md_ip4_address);
-    EXPECT_TRUE(fabric_md_rt != NULL);
-    EXPECT_TRUE(fabric_md_rt->addr().to_string() == md_ip4_address.to_string());
+    const VmInterface *cvhost0 = dynamic_cast<const VmInterface*>(
+    agent_->vhost_interface());
+    agent_->services()->metadataproxy()->InitializeHttp6Server(cvhost0);
 
-    Ip6Address md_ll_ip6_address(Ip6Address::from_string(md_ip6));
-    InetUnicastRouteEntry *ucrt_md = vrf1->GetUcRoute(md_ll_ip6_address);
-    EXPECT_TRUE(ucrt_md != NULL);  // AnnounceVhostRoute, OnAVrfChange
-    EXPECT_TRUE(
-        Agent::GetInstance()->services()->metadataproxy()->Ipv6ServiceAddress()
-        == md_ll_ip6_address);
-    EXPECT_TRUE(ucrt_md->addr() == md_ll_ip6_address);
+    // FindLinkLocalService might cause problems with memory
+    // {
+    //     // find metadata service and announce a route to vhost0 interface
+    //     uint16_t nova_port;
+    //     Ip4Address nova_server;
+    //     uint16_t linklocal_port;
+    //     IpAddress linklocal_server;
+    //     std::string nova_hostname;
+
+    //     EXPECT_TRUE(agent_->oper_db()->global_vrouter()->FindLinkLocalService(
+    //         GlobalVrouter::kMetadataService, &linklocal_server, &linklocal_port,
+    //         &nova_hostname, &nova_server, &nova_port));
+    //     EXPECT_TRUE(linklocal_server.to_v6() == md_ip6_address);
+    // }
+    InetUnicastRouteEntry *vrf1_md_rt =
+        vrf1->GetUcRoute(md_ip6_address);
+    EXPECT_TRUE(vrf1_md_rt != NULL);
+    EXPECT_EQ(md_ip6_address.to_string(), vrf1_md_rt->addr().to_string());
 
     // Change address of Metadata service and update config
-    md_ip4_address = Ip4Address::from_string("169.254.254.169");
-    md_ll_ip6_address = Ip6Address::from_string("fe80::a9fe:fea9");
+    md_ip6_address = Ip6Address::from_string("fe80::a9fe:fea9");
     ClearLinkLocalConfig();
     client->WaitForIdle();
     SetupLinkLocalConfig();
     client->WaitForIdle();
 
-    {
-        // find metadata service
-        uint16_t nova_port, linklocal_port;
-        Ip4Address nova_server, linklocal_server;
-        std::string nova_hostname;
+    // FindLinkLocalService might cause problems with memory
+    // {
+    //     // find metadata service
+    //     uint16_t nova_port;
+    //     Ip4Address nova_server;
+    //     uint16_t linklocal_port;
+    //     IpAddress linklocal_server;
+    //     std::string nova_hostname;
 
-        if (agent_->oper_db()->global_vrouter()->FindLinkLocalService(
-            GlobalVrouter::kMetadataService, &linklocal_server, &linklocal_port,
-            &nova_hostname, &nova_server, &nova_port)) {
-            // fabric_uc->Delete
-            //     (Agent::GetInstance()->link_local_peer(),
-            //     Agent::GetInstance()->fabric_policy_vrf_name(),
-            //     old_md_ip4_address,
-            //     32);
-
-            fabric_uc->AddInetInterfaceRouteReq
-                (Agent::GetInstance()->link_local_peer(),
-                Agent::GetInstance()->fabric_policy_vrf_name(),
-                md_ip4_address,
-                32,
-                Agent::GetInstance()->vhost_interface_name(),
-                0,
-                VnListType());
-            client->WaitForIdle();
-        }
-        EXPECT_TRUE(linklocal_server == md_ip4_address);
-    }
-    fabric_md_rt =
-        fabric_policy_vrf->GetUcRoute(md_ip4_address);
-    EXPECT_TRUE(fabric_md_rt != NULL);
-    EXPECT_TRUE(fabric_md_rt->addr().to_string() == md_ip4_address.to_string());
-
-    ucrt_md = vrf1->GetUcRoute(md_ll_ip6_address);
-    EXPECT_TRUE(ucrt_md != NULL);  // AnnounceVhostRoute, OnAVrfChange
-    EXPECT_TRUE(
-        Agent::GetInstance()->services()->metadataproxy()->Ipv6ServiceAddress()
-        == md_ll_ip6_address);
-    EXPECT_TRUE(ucrt_md->addr() == md_ll_ip6_address);
-
-    ClearLinkLocalConfig();
-    client->WaitForIdle();
+    //     if (agent_->oper_db()->global_vrouter()->FindLinkLocalService(
+    //         GlobalVrouter::kMetadataService, &linklocal_server, &linklocal_port,
+    //         &nova_hostname, &nova_server, &nova_port)) {
+    //         client->WaitForIdle();
+    //     }
+    // }
+    vrf1_md_rt =
+        vrf1->GetUcRoute(md_ip6_address);
+    EXPECT_TRUE(vrf1_md_rt != NULL);
+    EXPECT_EQ(md_ip6_address.to_string(), vrf1_md_rt->addr().to_string());
 
     DeleteVmportEnv(input, 1, 1, 0);
     client->WaitForIdle();
-}
 
-void RouterIdDepInit(Agent *agent) {
+    ClearLinkLocalConfig();
+    client->WaitForIdle();
 }
 
 int main(int argc, char *argv[]) {

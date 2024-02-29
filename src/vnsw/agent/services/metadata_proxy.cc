@@ -36,8 +36,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define METADATA_IP6_ADDR "fe80::a9fe:a9fe"
-
 #define METADATA_TRACE(obj, arg)                                               \
 do {                                                                           \
     std::ostringstream _str;                                                   \
@@ -92,20 +90,20 @@ MetadataProxy::MetadataProxy(ServicesModule *module,
     // Register wildcard entry to match any URL coming on the metadata port
     http_server_->RegisterHandler(HTTP_WILDCARD_ENTRY,
         boost::bind(&MetadataProxy::HandleMetadataRequest, this, _1, _2));
-    http_server_->Initialize(services_->agent()->params()->metadata_proxy_port(),
+    http_server_->Initialize
+        (services_->agent()->params()->metadata_proxy_port(),
         services_->agent()->router_id());
+
+    ipv6_service_address_ = Ip6Address::from_string("::");
     services_->agent()->set_metadata_server_port(http_server_->GetPort());
 
-    // IPv6
     RegisterListeners();
-    ipv6_service_address_ = boost::asio::ip::address_v6::
-        from_string(METADATA_IP6_ADDR);
-    ResetIp6Server(ipv6_service_address_);
 
     http_client_->Init();
 }
 
 MetadataProxy::~MetadataProxy() {
+    this->Shutdown();
 }
 
 void MetadataProxy::CloseSessions() {
@@ -164,7 +162,12 @@ MetadataProxy::HandleMetadataRequest(HttpSession *session, const HttpRequest *re
         METADATA_TRACE(Trace, "Error: Interface Config not available; "
                        << "; Request for VM : " << ip);
         ErrorClose(session, 500);
-        http_server_->DeleteSession(session);
+        if (ip.is_v6()) {
+            http_server6_->DeleteSession(session);
+        }
+        if (ip.is_v4()) {
+            http_server_->DeleteSession(session);
+        }
         delete request;
         return;
     }
@@ -261,7 +264,12 @@ MetadataProxy::HandleMetadataRequest(HttpSession *session, const HttpRequest *re
                                    << "; Request for VM: " << vm_ip);
                     CloseClientSession(conn);
                     ErrorClose(session, 501);
-                    http_server_->DeleteSession(session);
+                    if (ip.is_v6()) {
+                        http_server6_->DeleteSession(session);
+                    }
+                    if (ip.is_v4()) {
+                        http_server_->DeleteSession(session);
+                    }
                     break;
             }
         } else {
@@ -269,7 +277,12 @@ MetadataProxy::HandleMetadataRequest(HttpSession *session, const HttpRequest *re
                            << "Request Method: " << request->GetMethod()
                            << "; Request for VM : " << vm_ip);
             ErrorClose(session, 500);
-            http_server_->DeleteSession(session);
+            if (ip.is_v6()) {
+                http_server6_->DeleteSession(session);
+            }
+            if (ip.is_v4()) {
+                http_server_->DeleteSession(session);
+            }
         }
     }
 
@@ -281,6 +294,7 @@ void
 MetadataProxy::HandleMetadataResponse(HttpConnection *conn, HttpSessionPtr session,
                                       std::string &msg, boost::system::error_code &ec) {
     bool delete_session = false;
+    boost::asio::ip::address ip = session->remote_endpoint().address();
     {
         // Ignore if session is closed in the meantime
         SessionMap::iterator it = metadata_sessions_.find(session.get());
@@ -288,15 +302,20 @@ MetadataProxy::HandleMetadataResponse(HttpConnection *conn, HttpSessionPtr sessi
             return;
 
         std::string vm_ip, vm_uuid, vm_project_uuid;
-        boost::asio::ip::address ip = session->remote_endpoint().address();
 
         if (ip.to_string().find("fe80") == 0) {
             int i_percent = ip.to_string().find('%');
             std::string ip_str = ip.to_string().substr(0, i_percent);
             ip = boost::asio::ip::address::from_string(ip_str);
         }
-        services_->agent()->interface_table()->
-            FindVmUuidFromMetadataIp(ip, &vm_ip, &vm_uuid, &vm_project_uuid);
+
+        if(!services_->agent()->interface_table()->
+            FindVmUuidFromMetadataIp(ip, &vm_ip, &vm_uuid, &vm_project_uuid)) {
+            LOG(ERROR, "UUID was not found for ip=" << ip.to_string() <<
+                       ", in MetadataProxy::HandleMetadataResponse" <<
+                       std::endl);
+            return;
+        }
 
         if (!ec) {
             METADATA_TRACE(Trace, "Metadata for VM : " << vm_ip << " Response : " << msg);
@@ -338,7 +357,12 @@ MetadataProxy::HandleMetadataResponse(HttpConnection *conn, HttpSessionPtr sessi
 
 done:
     if (delete_session) {
-        http_server_->DeleteSession(session.get());
+        if (ip.is_v6()) {
+            http_server6_->DeleteSession(session.get());
+        }
+        if (ip.is_v4()) {
+            http_server_->DeleteSession(session.get());
+        }
     }
 }
 
@@ -361,6 +385,7 @@ MetadataProxy::OnServerSessionEvent(HttpSession *session, TcpSession::Event even
 
 void
 MetadataProxy::OnClientSessionEvent(HttpClientSession *session, TcpSession::Event event) {
+    boost::asio::ip::address ip = session->remote_endpoint().address();
     switch (event) {
         case TcpSession::CLOSE: {
             {
@@ -371,7 +396,12 @@ MetadataProxy::OnClientSessionEvent(HttpClientSession *session, TcpSession::Even
                 CloseServerSession(it->second);
                 CloseClientSession(session->Connection());
             }
-            http_server_->DeleteSession(session);
+            if (ip.is_v6()) {
+                http_server6_->DeleteSession(session);
+            }
+            if (ip.is_v4()) {
+                http_server_->DeleteSession(session);
+            }
             break;
         }
 
@@ -389,12 +419,25 @@ MetadataProxy::GetProxyConnection(HttpSession *session, bool conn_close,
         return it->second.conn;
     }
 
-    uint16_t nova_port, linklocal_port;
-    Ip4Address nova_server, linklocal_server;
-    if (!services_->agent()->oper_db()->global_vrouter()->FindLinkLocalService(
+    uint16_t linklocal_port = session->local_port();
+    IpAddress linklocal_server = session->local_endpoint().address();
+    uint16_t nova_port;
+    Ip4Address nova_server;
+    std::string md_service_name;
+
+    if (linklocal_server.is_v4() &&
+        !services_->agent()->oper_db()->global_vrouter()->FindLinkLocalService(
         GlobalVrouter::kMetadataService, &linklocal_server, &linklocal_port,
-        nova_hostname, &nova_server, &nova_port))
+        nova_hostname, &nova_server, &nova_port)) {
         return NULL;
+    }
+
+    if (linklocal_server.is_v6() &&
+        !services_->agent()->oper_db()->global_vrouter()->FindLinkLocalService(
+        GlobalVrouter::kMetadataService6, &linklocal_server, &linklocal_port,
+        nova_hostname, &nova_server, &nova_port)) {
+        return NULL;
+    }
 
     HttpConnection *conn = (nova_hostname != 0 && !nova_hostname->empty()) ? 
        http_client_->CreateConnection(*nova_hostname, nova_port) :

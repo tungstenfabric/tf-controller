@@ -92,7 +92,7 @@ TEST_F(LinkLocalTest, LinkLocalServiceReqTest) {
 
     /* Get link local services, for a given service name */
     const std::string svc_name = "metadata";
-    std::set<Ip4Address> service_ip;
+    std::set<IpAddress> service_ip;
     ret = gv->FindLinkLocalService(svc_name, &service_ip);
     EXPECT_EQ(ret, true);
 

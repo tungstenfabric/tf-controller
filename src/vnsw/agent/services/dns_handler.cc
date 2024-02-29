@@ -450,11 +450,11 @@ bool DnsHandler::ResolveLinkLocalRequest(DnsItems::iterator &item,
     case DNS_A_RECORD: {
         std::string base_name;
         GetBaseName(item->name, &base_name);
-        std::set<Ip4Address> service_ips;
+        std::set<IpAddress> service_ips;
         if (global_vrouter->FindLinkLocalService(item->name, &service_ips) ||
             (!base_name.empty() &&
              global_vrouter->FindLinkLocalService(base_name, &service_ips))) {
-            for (std::set<Ip4Address>::iterator it = service_ips.begin();
+            for (std::set<IpAddress>::iterator it = service_ips.begin();
                  it != service_ips.end(); ++it) {
                 item->data = it->to_string();
                 linklocal_items->push_back(*item);

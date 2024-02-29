@@ -37,23 +37,37 @@ public:
     };
 
     MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
-               MetaDataIpType type, bool insert_metadata_ip);
+               MetaDataIpType type, bool insert_metadata_ip, bool ipv4 = true);
     MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
-               uint16_t index);
+               uint16_t index, bool ipv4 = true);
     ~MetaDataIp();
 
-    Ip4Address GetLinkLocalIp() const;
+    template<class IpT>
+    static IpT IndexToIpAddress(uint32_t idx){return IpT();};
+
+    template<class IpT>
+    static uint32_t IpAddressToIndex(const IpT& ip){return 0xFFFF + 1;};
+
+    IpAddress GetLinkLocalIp() const;
+
+    Ip4Address GetLinkLocalIp4() const;
+
+    Ip6Address GetLinkLocalIp6() const;
 
     IpAddress service_ip() const;
 
     IpAddress destination_ip() const;
+
     void set_destination_ip(const IpAddress &dst_ip);
 
     void set_active(bool active);
 
     void UpdateInterfaceCb();
 
+    const Interface *GetInterface() const;
+
 private:
+
     friend class MetaDataIpAllocator;
 
     void UpdateRoute();
@@ -69,8 +83,19 @@ private:
     bool active_;
     MetaDataIpType type_;
     bool insert_metadata_ip_;
+    bool ipv4_;
     DISALLOW_COPY_AND_ASSIGN(MetaDataIp);
 };
+
+template<> Ip4Address
+MetaDataIp::IndexToIpAddress<Ip4Address>(uint32_t idx);
+template<> Ip6Address
+MetaDataIp::IndexToIpAddress<Ip6Address>(uint32_t idx);
+
+template<> uint32_t
+MetaDataIp::IpAddressToIndex<Ip4Address>(const Ip4Address& ip);
+template<> uint32_t
+MetaDataIp::IpAddressToIndex<Ip6Address>(const Ip6Address& ip);
 
 class MetaDataIpAllocator {
 public:
@@ -85,6 +110,7 @@ private:
     uint16_t AllocateIndex(MetaDataIp *ip);
     void  AllocateIndex(MetaDataIp *ipi, uint16_t index);
     void ReleaseIndex(MetaDataIp *ip);
+    bool CanAddRoute(MetaDataIp* ip);
     void AddFabricRoute(MetaDataIp *ip);
     void DelFabricRoute(MetaDataIp *ip);
 

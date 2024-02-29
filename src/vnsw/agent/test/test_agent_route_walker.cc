@@ -120,10 +120,10 @@ public:
                              uint32_t total_rt_vrf_walk_done) {
         client->WaitForIdle(10);
         WAIT_FOR(100, 1000, (route_notifications_ == route_notifications_));
-        ASSERT_TRUE(route_notifications_ == route_notifications);
-        ASSERT_TRUE(vrf_notifications_ == vrf_notifications);
-        ASSERT_TRUE(vrf_notifications_count_ == vrf_notifications_count);
-        ASSERT_TRUE(total_rt_vrf_walk_done_ == total_rt_vrf_walk_done);
+        ASSERT_EQ(route_notifications_, route_notifications);
+        ASSERT_EQ(vrf_notifications_, vrf_notifications);
+        ASSERT_EQ(vrf_notifications_count_, vrf_notifications_count);
+        ASSERT_EQ(total_rt_vrf_walk_done_, total_rt_vrf_walk_done);
     }
 
     uint32_t route_notifications_;
@@ -343,7 +343,7 @@ TEST_F(Test, walk_all_routes_wih_1_vrf) {
     client->Reset();
     SetupEnvironment(1);
     walker()->StartVrfWalk();
-    VerifyNotifications(29, 3, 1, ((Agent::ROUTE_TABLE_MAX - 1) * 3));
+    VerifyNotifications(30, 3, 1, ((Agent::ROUTE_TABLE_MAX - 1) * 3));
     EXPECT_TRUE(walker()->walk_task_context_mismatch_ == false);
     walker()->walk_task_context_mismatch_ = true;
     DeleteEnvironment(1);
@@ -353,7 +353,7 @@ TEST_F(Test, walk_all_routes_with_2_vrf) {
     client->Reset();
     SetupEnvironment(2);
     walker()->StartVrfWalk();
-    VerifyNotifications(44, 4, 1, ((Agent::ROUTE_TABLE_MAX - 1) * 4));
+    VerifyNotifications(46, 4, 1, ((Agent::ROUTE_TABLE_MAX - 1) * 4));
     EXPECT_TRUE(walker()->walk_task_context_mismatch_ == false);
     walker()->walk_task_context_mismatch_ = true;
     DeleteEnvironment(2);
@@ -363,7 +363,7 @@ TEST_F(Test, walk_all_routes_with_3_vrf) {
     client->Reset();
     SetupEnvironment(3);
     walker()->StartVrfWalk();
-    VerifyNotifications(59, 5, 1, ((Agent::ROUTE_TABLE_MAX - 1) * 5));
+    VerifyNotifications(62, 5, 1, ((Agent::ROUTE_TABLE_MAX - 1) * 5));
     EXPECT_TRUE(walker()->walk_task_context_mismatch_ == false);
     walker()->walk_task_context_mismatch_ = true;
     DeleteEnvironment(3);

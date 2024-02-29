@@ -1069,6 +1069,9 @@ public:
     MetaDataIpAllocator *metadata_ip_allocator() const;
     void set_metadata_ip_allocator(MetaDataIpAllocator *allocator);
 
+    MetaDataIpAllocator *metadata_ip6_allocator() const;
+    void set_metadata_ip6_allocator(MetaDataIpAllocator *allocator);
+
     PktModule *pkt() const;
     void set_pkt(PktModule *pkt);
 
@@ -1453,6 +1456,7 @@ private:
     HealthCheckTable *health_check_table_;
     BridgeDomainTable *bridge_domain_table_;
     std::auto_ptr<MetaDataIpAllocator> metadata_ip_allocator_;
+    std::auto_ptr<MetaDataIpAllocator> metadata_ip6_allocator_;
     NextHopTable *nh_table_;
     InetUnicastAgentRouteTable *uc_rt_table_;
     InetUnicastAgentRouteTable *mpls_rt_table_;

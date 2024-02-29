@@ -67,6 +67,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     nexthop_state_(new NextHopState()),
     vrf_table_label_state_(new VrfTableLabelState()),
     metadata_ip_state_(new MetaDataIpState()),
+    metadata_ip6_state_(new MetaDataIpState(false)),
     resolve_route_state_(new ResolveRouteState()),
     interface_route_state_(new VmiRouteState()),
     sg_list_(), tag_list_(), floating_ip_list_(), alias_ip_list_(), service_vlan_list_(),
@@ -124,6 +125,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
     nexthop_state_(new NextHopState()),
     vrf_table_label_state_(new VrfTableLabelState()),
     metadata_ip_state_(new MetaDataIpState()),
+    metadata_ip6_state_(new MetaDataIpState(false)),
     resolve_route_state_(new ResolveRouteState()),
     interface_route_state_(new VmiRouteState()),
     sg_list_(), tag_list_(),
@@ -154,6 +156,7 @@ VmInterface::VmInterface(const boost::uuids::uuid &uuid,
 VmInterface::~VmInterface() {
     // Release metadata first to ensure metadata_ip_map_ is empty
     metadata_ip_state_.reset(NULL);
+    metadata_ip6_state_.reset(NULL);
     assert(metadata_ip_map_.empty());
     assert(hc_instance_set_.empty());
 }
@@ -442,8 +445,9 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active,
     UpdateState(nexthop_state_.get(), l2_force_op, l3_force_op);
     GetNextHopInfo();
 
-    // Add/Update L3 Metadata
+    // Add/Update L3 Metadata for v4 and v6 standards
     UpdateState(metadata_ip_state_.get(), l2_force_op, l3_force_op);
+    UpdateState(metadata_ip6_state_.get(), l2_force_op, l3_force_op);
 
     /////////////////////////////////////////////////////////////////////////
     // PHASE-3 Updates follows.
@@ -501,6 +505,7 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active,
 
     // Del L3 Metadata after deleting L3 information
     DeleteState(metadata_ip_state_.get());
+    DeleteState(metadata_ip6_state_.get());
 
     // Remove floating-ip entries marked for deletion
     CleanupFloatingIpList();
@@ -1209,7 +1214,9 @@ void VmInterface::GetNextHopInfo() {
 ////////////////////////////////////////////////////////////////////////////
 // MetaData Ip Routines
 ////////////////////////////////////////////////////////////////////////////
-MetaDataIpState::MetaDataIpState() : VmInterfaceState(), mdata_ip_() {
+MetaDataIpState::MetaDataIpState(bool ipv4)
+:
+VmInterfaceState(), mdata_ip_(), ipv4_(ipv4) {
 }
 
 MetaDataIpState::~MetaDataIpState() {
@@ -1229,8 +1236,11 @@ VmInterfaceState::Op MetaDataIpState::GetOpL3(const Agent *agent,
 
 bool MetaDataIpState::AddL3(const Agent *agent, VmInterface *vmi) const {
     if (mdata_ip_.get() == NULL) {
-        mdata_ip_.reset(new MetaDataIp(agent->metadata_ip_allocator(), vmi,
-                                       vmi->id()));
+        mdata_ip_.reset(new MetaDataIp(
+            ipv4_ ? agent->metadata_ip_allocator() :
+                agent->metadata_ip6_allocator(),
+            vmi,
+            vmi->id(), ipv4_));
     }
     mdata_ip_->set_active(true);
     vmi->UpdateMetaDataIpInfo();
@@ -1260,7 +1270,18 @@ Ip4Address VmInterface::mdata_ip_addr() const {
         return Ip4Address(0);
     }
 
-    return metadata_ip_state_->mdata_ip_->GetLinkLocalIp();
+    return metadata_ip_state_->mdata_ip_->GetLinkLocalIp4();
+}
+
+Ip6Address VmInterface::mdata_ip6_addr() const {
+    if (metadata_ip6_state_.get() == NULL)
+        return Ip6Address();
+
+    if (metadata_ip6_state_->mdata_ip_.get() == NULL) {
+        return Ip6Address();
+    }
+
+    return metadata_ip6_state_->mdata_ip_->GetLinkLocalIp6();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -2155,7 +2176,7 @@ bool VmInterface::FloatingIp::AddL3(const Agent *agent,
                   CommunityList(), vmi->label(), kInterface);
 
     InterfaceTable *table = static_cast<InterfaceTable *>(vmi->get_table());
-    if (table->update_floatingip_cb().empty()==false) {
+    if (table->update_floatingip_cb().empty() == false) {
         table->update_floatingip_cb()(vmi, vn_.get(), floating_ip_,
             false);
         //TODO:: callback for DNS handling
@@ -2174,7 +2195,7 @@ bool VmInterface::FloatingIp::DeleteL3(const Agent *agent,
     vmi->DeleteRoute(vrf_.get()->GetName(), floating_ip_, plen);
 
     InterfaceTable *table = static_cast<InterfaceTable *>(vmi->get_table());
-    if (table->update_floatingip_cb().empty()==false) {
+    if (table->update_floatingip_cb().empty() == false) {
         table->update_floatingip_cb()(vmi, vn_.get(), floating_ip_,
             true);
         //TODO:: callback for DNS handling

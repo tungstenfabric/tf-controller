@@ -37,6 +37,7 @@
 #include <vnc_cfg_types.h>
 #include <oper/agent_sandesh.h>
 #include <oper/sg.h>
+#include <oper/metadata_ip.h>
 #include <sandesh/sandesh_trace.h>
 #include <sandesh/common/vns_types.h>
 #include <sandesh/common/vns_constants.h>
@@ -319,6 +320,14 @@ DBTableBase *InterfaceTable::CreateTable(DB *db, const std::string &name) {
     return interface_table_;
 };
 
+const Interface *InterfaceTable::FindInterface(size_t index) const {
+    Interface *intf = index_table_.At(index);
+    if (intf && intf->IsDeleted() != true) {
+        return intf;
+    }
+    return NULL;
+}
+
 Interface *InterfaceTable::FindInterface(size_t index) {
     Interface *intf = index_table_.At(index);
     if (intf && intf->IsDeleted() != true) {
@@ -337,6 +346,13 @@ bool InterfaceTable::FindVmUuidFromMetadataIp(const IpAddress &ip,
     } else {
         intf = FindInterfaceFromMetadataIp(ip.to_v6());
     }
+    if (!intf) {
+        LOG(ERROR, "Interface in table was not found, ip = " <<
+                   ip.to_string() << ", in: " <<
+                   "InterfaceTable::FindVmUuidFromMetadataIp" <<
+                   std::endl);
+        return false;
+    }
     if (intf && intf->type() == Interface::VM_INTERFACE) {
         const VmInterface *vintf = static_cast<const VmInterface *>(intf);
         if (ip.is_v4())
@@ -352,50 +368,16 @@ bool InterfaceTable::FindVmUuidFromMetadataIp(const IpAddress &ip,
     return false;
 }
 
-Interface *InterfaceTable::FindInterfaceFromMetadataIp(const Ip4Address &ip) {
-    uint32_t addr = ip.to_ulong();
-    if ((addr & 0xFFFF0000) != (METADATA_IP_ADDR & 0xFFFF0000))
-        return NULL;
-    return index_table_.At(addr & 0xFFFF);
+const Interface *InterfaceTable::FindInterfaceFromMetadataIp(const Ip4Address &ip) const {
+    uint32_t idx = MetaDataIp::IpAddressToIndex(ip);
+    const MetaDataIp *mip = agent_->metadata_ip_allocator()->FindIndex(idx);
+    return mip != NULL ? mip->GetInterface() : NULL;
 }
 
-const Interface *InterfaceTable::
-FindInterfaceFromMetadataIp(const Ip6Address &ip) const {
-    tbb::mutex::scoped_lock lock(llip6_to_intf_mutex_);
-    if (llip6_to_intf_table_.count(ip) <= 0) {
-        return NULL;
-    }
-    return llip6_to_intf_table_.at(ip);
-}
-
-void InterfaceTable::VmPortToMetaDataIp(uint32_t index, uint32_t vrfid,
-                                        Ip4Address *addr) {
-    uint32_t ip = METADATA_IP_ADDR & 0xFFFF0000;
-    ip += (index & 0xFFFF);
-    *addr = Ip4Address(ip);
-}
-
-void InterfaceTable::LinkVmPortToMetaDataIp(const Interface* intf,
-    const Ip6Address& ll_ip) {
-    if (intf == NULL) {
-        return;
-    }
-    tbb::mutex::scoped_lock lock(llip6_to_intf_mutex_);
-    if (llip6_to_intf_table_.count(ll_ip) > 0) {
-        return;
-    }
-    llip6_to_intf_table_.insert(std::make_pair(ll_ip, intf));
-}
-
-void InterfaceTable::UnlinkVmPortFromMetaDataIp
-(const Interface* intf, const Ip6Address &addr) {
-    if (intf == NULL) {
-        return;
-    }
-    tbb::mutex::scoped_lock lock(llip6_to_intf_mutex_);
-    while (llip6_to_intf_table_.count(addr) > 0) {
-        llip6_to_intf_table_.erase(addr);
-    }
+const Interface *InterfaceTable::FindInterfaceFromMetadataIp(const Ip6Address &ip) const {
+    uint32_t idx = MetaDataIp::IpAddressToIndex(ip);
+    const MetaDataIp *mip = agent_->metadata_ip6_allocator()->FindIndex(idx);
+    return mip != NULL ? mip->GetInterface() : NULL;
 }
 
 bool InterfaceTable::L2VmInterfaceWalk(DBTablePartBase *partition,

@@ -233,7 +233,11 @@ bool VmInterface::IsActive()  const {
     return mac_set_;
 }
 
-bool VmInterface::IsMetaDataIPActive() const {
+bool VmInterface::IsMetaDataIPActive() const {    
+    if (vmi_type_ == VHOST) {
+        return IsActive();
+    }
+
     if (!layer3_forwarding()) {
         return false;
     }
@@ -1446,7 +1450,7 @@ uint32_t VmInterface::GetPbbLabel() const {
 /////////////////////////////////////////////////////////////////////////////
 // Metadata related routines
 /////////////////////////////////////////////////////////////////////////////
-MetaDataIp *VmInterface::GetMetaDataIp(const Ip4Address &ip) const {
+MetaDataIp *VmInterface::GetMetaDataIp(const IpAddress &ip) const {
     MetaDataIpMap::const_iterator it = metadata_ip_map_.find(ip);
     if (it != metadata_ip_map_.end()) {
         return it->second;
@@ -1457,7 +1461,7 @@ MetaDataIp *VmInterface::GetMetaDataIp(const Ip4Address &ip) const {
 
 void VmInterface::InsertMetaDataIpInfo(MetaDataIp *mip) {
     std::pair<MetaDataIpMap::iterator, bool> ret;
-    ret = metadata_ip_map_.insert(std::pair<Ip4Address, MetaDataIp*>
+    ret = metadata_ip_map_.insert(std::pair<IpAddress, MetaDataIp*>
                                   (mip->GetLinkLocalIp(), mip));
     assert(ret.second);
 }

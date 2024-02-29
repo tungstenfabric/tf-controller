@@ -585,7 +585,7 @@ void PktFlowInfo::CheckLinkLocal(const PktInfo *pkt) {
         Ip4Address nat_server;
         std::string service_name;
         GlobalVrouter *global_vrouter = agent->oper_db()->global_vrouter();
-        if (global_vrouter->FindLinkLocalService(pkt->ip_daddr.to_v4(),
+        if (global_vrouter->FindLinkLocalService(pkt->ip_daddr,
                                                  pkt->dport, &service_name,
                                                  &nat_server, &nat_port)) {
             // it is link local service request, treat it as l3
@@ -597,21 +597,15 @@ void PktFlowInfo::CheckLinkLocal(const PktInfo *pkt) {
 void PktFlowInfo::LinkLocalServiceFromVm(const PktInfo *pkt, PktControlInfo *in,
                                          PktControlInfo *out) {
 
-    // Link local services supported only for IPv4 for now
-    if (pkt->family != Address::INET) {
-        in->rt_ = NULL;
-        out->rt_ = NULL;
-        return;
-    }
-
     const VmInterface *vm_port =
         static_cast<const VmInterface *>(in->intf_);
 
     uint16_t nat_port;
-    Ip4Address nat_server;
+    Ip4Address nat_server4;
+    IpAddress nat_server;
     std::string service_name;
     if (!agent->oper_db()->global_vrouter()->FindLinkLocalService
-        (pkt->ip_daddr.to_v4(), pkt->dport, &service_name, &nat_server,
+        (pkt->ip_daddr, pkt->dport, &service_name, &nat_server4,
          &nat_port)) {
         // link local service not configured, drop the request
         in->rt_ = NULL;
@@ -622,28 +616,55 @@ void PktFlowInfo::LinkLocalServiceFromVm(const PktInfo *pkt, PktControlInfo *in,
     out->vrf_ = agent->vrf_table()->FindVrfFromName(agent->fabric_vrf_name());
     dest_vrf = out->vrf_->vrf_id();
 
-    // Set NAT flow fields
-    linklocal_flow = true;
-    nat_done = true;
-    underlay_flow = false;
-    if (nat_server == agent->router_id()) {
-        // In case of metadata or when link local destination is local host,
-        // set VM's metadata address as NAT source address. This is required
-        // to avoid response from the linklocal service being looped back and
-        // the packet not coming to vrouter for reverse NAT.
-        // Destination would be local host (FindLinkLocalService returns this)
-        nat_ip_saddr = vm_port->mdata_ip_addr();
-        // Services such as metadata will run on compute_node_ip. Set nat
-        // address to compute_node_ip
-        nat_server = agent->compute_node_ip();
-        nat_sport = pkt->sport;
-    } else {
-        nat_ip_saddr = agent->router_id();
-        // we bind to a local port & use it as NAT source port (cannot use
-        // incoming src port); init here and bind in Add;
-        nat_sport = 0;
-        linklocal_bind_local_port = true;
+    MetadataProxy *metadata_proxy = NULL;
+    metadata_proxy = agent ?
+        (agent->services() ? agent->services()->metadataproxy() : NULL) : NULL;
+    if (metadata_proxy && pkt &&
+        pkt->ip_saddr.is_v6() &&
+        pkt->ip_daddr.is_v6()) {
+       Ip6Address ll_ip = pkt->ip_saddr.to_v6();
+        // Announce the route to the interface LL address
+        metadata_proxy->AdvertiseMetaDataLinkLocalRoutes(vm_port,
+            ll_ip, in->vrf_);
     }
+
+    // Set NAT flow fields
+    if (pkt->ip_daddr.is_v4()) {
+        linklocal_flow = true;
+        nat_done = true;
+        underlay_flow = false;
+        if (nat_server4 == agent->router_id()) {
+            // In case of metadata or when link local destination is local host,
+            // set VM's metadata address as NAT source address. This is required
+            // to avoid response from the linklocal service being looped back and
+            // the packet not coming to vrouter for reverse NAT.
+            // Destination would be local host (FindLinkLocalService returns this)
+            nat_ip_saddr = vm_port->mdata_ip_addr();
+            // Services such as metadata will run on compute_node_ip. Set nat
+            // address to compute_node_ip
+            nat_server4 = agent->compute_node_ip();
+            nat_sport = pkt->sport;
+        } else {
+            nat_ip_saddr = agent->router_id();
+            // we bind to a local port & use it as NAT source port (cannot use
+            // incoming src port); init here and bind in Add;
+            nat_sport = 0;
+            linklocal_bind_local_port = true;
+        }
+        nat_server = nat_server4;
+    } else {
+        if (nat_server4 == agent->router_id()) {
+            linklocal_flow = true;
+            nat_done = true;
+            underlay_flow = false;
+            nat_server = metadata_proxy ?
+                metadata_proxy->Ipv6ServiceAddress() :
+                Ip6Address::from_string("::");
+            nat_ip_saddr = vm_port->mdata_ip6_addr();
+            nat_sport = pkt->sport;
+        }
+    }
+
     nat_ip_daddr = nat_server;
     nat_dport = nat_port;
 
@@ -957,7 +978,7 @@ void PktFlowInfo::FloatingIpSNat(const PktInfo *pkt, PktControlInfo *in,
             continue;
         }
 
-        if (it->fixed_ip_ != IpAddress() && (pkt->ip_saddr != it->fixed_ip_))  {
+        if (it->fixed_ip_ != IpAddress() && (pkt->ip_saddr != it->fixed_ip_)) {
             continue;
         }
 
@@ -1387,34 +1408,6 @@ void PktFlowInfo::IngressProcess(const PktInfo *pkt, PktControlInfo *in,
         }
     }
 
-    // In case of req to fe80::a9fe:a9fe (IPv6 LL Metadata server)
-    // 1. Add routes in case of IPv6 LL Metadata service
-    // AddEvpnRoutingRoute uses Process to handle route
-    // immediately.
-    // 2. Store ll ip and interface index.
-    MetadataProxy *metadata_proxy = NULL;
-    metadata_proxy = agent ?
-        (agent->services() ? agent->services()->metadataproxy() : NULL) : NULL;
-    if (metadata_proxy && pkt &&
-        pkt->ip_saddr.is_v6() &&
-        pkt->ip_daddr.is_v6() &&
-        pkt->ip_daddr == metadata_proxy->Ipv6ServiceAddress()) {
-       Ip6Address ll_ip = pkt->ip_saddr.to_v6();
-        // Step 1. Check port
-        uint16_t nova_port, linklocal_port;
-        Ip4Address nova_server, linklocal_server;
-        std::string nova_hostname;
-        if (agent->oper_db()->global_vrouter()->FindLinkLocalService(
-            GlobalVrouter::kMetadataService, &linklocal_server, &linklocal_port,
-            &nova_hostname, &nova_server, &nova_port)) {
-            metadata_proxy->ResetIp6Server(
-                metadata_proxy->Ipv6ServiceAddress(), linklocal_port);
-        }
-        // Step 2.
-        metadata_proxy->AnnounceMetaDataLinkLocalRoutes(vm_port,
-            ll_ip, in->vrf_);
-    }
-
     // We always expect route for source-ip for ingress flows.
     // If route not present, return from here so that a short flow is added
     UpdateRoute(&in->rt_, in->vrf_, pkt->ip_saddr, pkt->smac,
@@ -1766,7 +1759,9 @@ bool PktFlowInfo::ValidateConfig(const PktInfo *pkt, PktControlInfo *in) {
 
     const VmInterface *vm_intf = dynamic_cast<const VmInterface *>(in->intf_);
     if (l3_flow == true && !disable_validation) {
-        if (vm_intf && in->intf_->ip_active(pkt->family) == false) {
+        if (vm_intf && in->intf_->ip_active(pkt->family) == false &&
+            (pkt->ip_saddr.is_v6() && !pkt->ip_saddr.to_v6().is_link_local()) &&
+            (pkt->ip_daddr.is_v6() && !pkt->ip_daddr.to_v6().is_link_local())) {
             in->intf_ = NULL;
             LogError(pkt, this, "IP protocol inactive on interface");
             short_flow = true;

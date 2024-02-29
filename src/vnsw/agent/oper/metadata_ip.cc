@@ -12,10 +12,11 @@
 const IpAddress MetaDataIp::kDefaultIp;
 
 MetaDataIp::MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
-                       MetaDataIpType type, bool insert_metadata_ip) :
+                       MetaDataIpType type, bool insert_metadata_ip, bool ipv4) :
     allocator_(allocator), index_(-1), intf_(intf),
     intf_label_(MplsTable::kInvalidLabel), service_ip_(), destination_ip_(),
-    active_(false), type_(type), insert_metadata_ip_(insert_metadata_ip) {
+    active_(false), type_(type), insert_metadata_ip_(insert_metadata_ip),
+    ipv4_(ipv4) {
     if (insert_metadata_ip_) {
         index_ = allocator_->AllocateIndex(this);
         intf->InsertMetaDataIpInfo(this);
@@ -23,10 +24,10 @@ MetaDataIp::MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
 }
 
 MetaDataIp::MetaDataIp(MetaDataIpAllocator *allocator, VmInterface *intf,
-                       uint16_t index) :
+                       uint16_t index, bool ipv4) :
     allocator_(allocator), index_(index), intf_(intf),
     intf_label_(MplsTable::kInvalidLabel), service_ip_(), destination_ip_(),
-    active_(false), type_(LINKLOCAL) {
+    active_(false), type_(LINKLOCAL), ipv4_(ipv4) {
     allocator_->AllocateIndex(this, index_);
     intf_->InsertMetaDataIpInfo(this);
 }
@@ -44,10 +45,50 @@ MetaDataIp::~MetaDataIp() {
     set_active(false);
 }
 
-Ip4Address MetaDataIp::GetLinkLocalIp() const {
+template<>
+Ip4Address MetaDataIp::IndexToIpAddress<Ip4Address>(uint32_t idx) {
     uint32_t ip = METADATA_IP_ADDR & 0xFFFF0000;
-    ip += (((uint32_t)index_) & 0xFFFF);
+    ip += (((uint32_t)idx) & 0xFFFF);
     return Ip4Address(ip);
+}
+
+template<>
+Ip6Address MetaDataIp::IndexToIpAddress<Ip6Address>(uint32_t idx) {
+    Ip6Address::bytes_type ip_bytes =
+        {0xFE, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        (uint32_t)idx & 0xFF00,
+        (uint32_t)idx & 0x00FF};
+    return Ip6Address(ip_bytes);
+}
+
+template<>
+uint32_t MetaDataIp::IpAddressToIndex<Ip4Address>(const Ip4Address& ip) {
+    uint32_t idx = ip.to_ulong();
+    if ((idx & 0xFFFF0000) != (METADATA_IP_ADDR & 0xFFFF0000))
+        return (0xFFFF + 1);
+    idx &= 0xFFFF;
+    return idx;
+}
+
+template<>
+uint32_t MetaDataIp::IpAddressToIndex<Ip6Address>(const Ip6Address& ip) {
+    uint32_t idx = ip.to_bytes()[15] + (ip.to_bytes()[14] << 8);
+    return idx;
+}
+
+IpAddress MetaDataIp::GetLinkLocalIp() const {
+    if (ipv4_) {
+        return GetLinkLocalIp4();
+    }
+    return GetLinkLocalIp6();
+}
+
+Ip4Address MetaDataIp::GetLinkLocalIp4() const {
+    return IndexToIpAddress<Ip4Address>(index_);
+}
+
+Ip6Address MetaDataIp::GetLinkLocalIp6() const {
+    return IndexToIpAddress<Ip6Address>(index_);
 }
 
 IpAddress MetaDataIp::service_ip() const {
@@ -87,10 +128,12 @@ void MetaDataIp::set_destination_ip(const IpAddress &dst_ip) {
 }
 
 void MetaDataIp::set_active(bool active) {
-    if (active_ != active) {
-        active_ = active;
-        UpdateRoute();
+    if (active_ == active ||
+        (active & !allocator_->CanAddRoute(this))) {
+        return;
     }
+    active_ = active;
+    UpdateRoute();
 }
 
 void MetaDataIp::UpdateInterfaceCb() {
@@ -98,6 +141,10 @@ void MetaDataIp::UpdateInterfaceCb() {
         intf_label_ = intf_->label();
         UpdateRoute();
     }
+}
+
+const Interface *MetaDataIp::GetInterface() const {
+    return intf_;
 }
 
 void MetaDataIp::UpdateRoute() {
@@ -119,7 +166,6 @@ MetaDataIpAllocator::~MetaDataIpAllocator() {
 }
 
 MetaDataIp *MetaDataIpAllocator::FindIndex(uint16_t id) {
-    assert(id <= end_ && id >= start_);
     uint16_t index = end_ - id;
     return index_table_.At(index);
 }
@@ -141,36 +187,63 @@ void MetaDataIpAllocator::ReleaseIndex(MetaDataIp *ip) {
     index_table_.Remove(index);
 }
 
-void MetaDataIpAllocator::AddFabricRoute(MetaDataIp *ip) {
-    if (ip->intf_->vn() == NULL || ip->intf_->vrf() == NULL)
-        return;
+bool MetaDataIpAllocator::CanAddRoute(MetaDataIp* ip) {
+    if (ip->intf_->vn() == NULL || ip->intf_->vrf() == NULL) {
+        return false;
+    }
 
+    return true;
+}
+
+void MetaDataIpAllocator::AddFabricRoute(MetaDataIp *ip) {
+    if (!CanAddRoute(ip)) {
+        return;
+    }
     PathPreference path_preference;
     EcmpLoadBalance ecmp_load_balance;
     ip->intf_->SetPathPreference(&path_preference, false, Ip4Address(0));
 
     VnListType vn_list;
-    if (ip->intf_->vn()) {
-        vn_list.insert(ip->intf_->vn()->GetName());
+    vn_list.insert(ip->intf_->vn()->GetName());
+
+    if (ip->ipv4_) {
+        InetUnicastAgentRouteTable *table =
+            static_cast<InetUnicastAgentRouteTable*>
+            (agent_->vrf_table()->GetInet4UnicastRouteTable(
+                                            agent_->fabric_vrf_name()));
+
+        table->AddLocalVmRouteReq(
+            agent_->link_local_peer(), agent_->fabric_vrf_name(),
+            ip->GetLinkLocalIp(), 32, ip->intf_->GetUuid(),
+            vn_list, ip->intf_->label(), SecurityGroupList(),
+            TagList(), CommunityList(), true, path_preference,
+            Ip4Address(0), ecmp_load_balance, false, false, false,
+            ip->intf_->name());
+    } else {
+        InetUnicastAgentRouteTable *table =
+            static_cast<InetUnicastAgentRouteTable*>
+            (agent_->vrf_table()->GetInet6UnicastRouteTable(
+                                            agent_->fabric_vrf_name()));
+
+        table->AddLocalVmRouteReq(
+            agent_->link_local_peer(), agent_->fabric_vrf_name(),
+            ip->GetLinkLocalIp(), 128, ip->intf_->GetUuid(),
+            vn_list, ip->intf_->label(), SecurityGroupList(),
+            TagList(), CommunityList(), true, path_preference,
+            Ip6Address(), ecmp_load_balance, false, false, false,
+            ip->intf_->name());
     }
-
-    InetUnicastAgentRouteTable *table =
-        static_cast<InetUnicastAgentRouteTable*>
-        (agent_->vrf_table()->GetInet4UnicastRouteTable(
-                                        agent_->fabric_vrf_name()));
-
-    table->AddLocalVmRouteReq(
-         agent_->link_local_peer(), agent_->fabric_vrf_name(),
-         ip->GetLinkLocalIp(), 32, ip->intf_->GetUuid(),
-         vn_list, ip->intf_->label(), SecurityGroupList(),
-         TagList(), CommunityList(), true, path_preference,
-         Ip4Address(0), ecmp_load_balance, false, false, false,
-         ip->intf_->name());
 }
 
 void MetaDataIpAllocator::DelFabricRoute(MetaDataIp *ip) {
-    InetUnicastAgentRouteTable::Delete(agent_->link_local_peer(),
-                                       agent_->fabric_vrf_name(),
-                                       ip->GetLinkLocalIp(), 32);
+    if (ip->ipv4_) {
+        InetUnicastAgentRouteTable::Delete(agent_->link_local_peer(),
+            agent_->fabric_vrf_name(),
+            ip->GetLinkLocalIp(), 32);
+    } else {
+        InetUnicastAgentRouteTable::Delete(agent_->link_local_peer(),
+            agent_->fabric_vrf_name(),
+            ip->GetLinkLocalIp(), 128);
+    }
 }
 
