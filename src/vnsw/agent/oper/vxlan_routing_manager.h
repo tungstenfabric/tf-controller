@@ -496,7 +496,7 @@ public:
     /// @brief Deletes a given EVPN route from EVPN table of the routing
     /// VRF instance
     bool WithdrawEvpnRouteFromRoutingVrf
-    (DBTablePartBase *partition, DBEntryBase *e);
+    (const VrfEntry *routing_vrf, DBTablePartBase *partition, DBEntryBase *e);
 
     /// @brief Performs advertisement and deletion of routing routes
     /// (with VrfNH) in bridge VRF instances. External tunnels and routes

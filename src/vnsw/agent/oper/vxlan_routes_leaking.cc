@@ -332,29 +332,31 @@ void VxlanRoutingManager::WhenRoutingEvpnRouteWasDeleted
     }
 }
 
-bool VxlanRoutingManager::WithdrawEvpnRouteFromRoutingVrf
-(DBTablePartBase *partition, DBEntryBase *e) {
+bool VxlanRoutingManager::WithdrawEvpnRouteFromRoutingVrf(
+    const VrfEntry *routing_vrf,
+    DBTablePartBase *partition, DBEntryBase *e) {
+
     EvpnRouteEntry *evpn_rt = dynamic_cast<EvpnRouteEntry *>(e);
-    if (!evpn_rt || (evpn_rt->vrf()->vn() == NULL) || (!evpn_rt->IsType5()))
+
+    if (!routing_vrf || !routing_vrf->GetEvpnRouteTable()  ||  !evpn_rt) {
         return true;
-
-    // Remove deleted EVPN Type 5 record in the routing VRF
-    EvpnAgentRouteTable::DeleteReq(
-        routing_vrf_interface_peer_,
-        evpn_rt->vrf()->GetName(),
-        MacAddress(),
-        evpn_rt->ip_addr(),
-        evpn_rt->GetVmIpPlen(),
-        0,  // ethernet_tag = 0 for Type5
-        NULL);
-
-    // const VrfEntry *del_bridge_vrf = vn->GetVrf();
-    // InetUnicastAgentRouteTable *deleted_vn_inet_table =
-    //         del_bridge_vrf->GetInetUnicastRouteTable(evpn_rt->ip_addr());
-    // deleted_vn_inet_table->Delete(agent_->evpn_routing_peer(),
-    //                       del_bridge_vrf->GetName(),
-    //                       evpn_rt->ip_addr(),
-    //                       evpn_rt->GetVmIpPlen());
+    }
+    EvpnAgentRouteTable *routing_evpn = static_cast<EvpnAgentRouteTable*>(
+        routing_vrf->GetEvpnRouteTable());
+    const EvpnRouteEntry *rt_route = routing_evpn->FindRoute(
+        MacAddress(), evpn_rt->ip_addr(), evpn_rt->GetVmIpPlen(), 0);
+    if (RoutePrefixIsEqualTo(rt_route, evpn_rt->ip_addr(),
+        evpn_rt->GetVmIpPlen())) {
+        // Remove deleted EVPN Type 5 record in the routing VRF
+        EvpnAgentRouteTable::DeleteReq(
+            routing_vrf_interface_peer_,
+            routing_vrf->GetName(),
+            MacAddress(),
+            evpn_rt->ip_addr(),
+            evpn_rt->GetVmIpPlen(),
+            0,  // ethernet_tag = 0 for Type5
+            NULL);
+    }
     return true;
 }
 

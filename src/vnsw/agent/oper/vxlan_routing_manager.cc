@@ -177,24 +177,34 @@ void VxlanRoutingVrfMapper::WalkRoutingVrf(const boost::uuids::uuid &lr_uuid,
     VxlanRoutingVrfMapper::RoutedVrfInfo &routing_vrf_info =
             lr_vrf_info_map_[lr_uuid];
     const VrfEntry *routing_vrf = routing_vrf_info.routing_vrf_;
-    EvpnAgentRouteTable *evpn_table;
-    if (routing_vrf) {
-        evpn_table =
-            static_cast<EvpnAgentRouteTable *>(routing_vrf->GetEvpnRouteTable());
-        if (!evpn_table)
-            return;
-    } else {
-        return;
-    }
     DBTable::DBTableWalkRef walk_ref;
+    EvpnAgentRouteTable *evpn_table = NULL;
     if (withdraw) {
+        const VrfEntry *bridge_vrf = vn->GetVrf();
+        if (bridge_vrf && routing_vrf) {
+            evpn_table =
+            static_cast<EvpnAgentRouteTable *>(
+                bridge_vrf->GetEvpnRouteTable());
+        }
+        if (!evpn_table) {
+            return;
+        }
         walk_ref = evpn_table->
         AllocWalker(boost::bind(&VxlanRoutingManager::WithdrawEvpnRouteFromRoutingVrf,
-            mgr_, _1, _2),
+            mgr_, routing_vrf, _1, _2),
             boost::bind(&VxlanRoutingVrfMapper::RoutingVrfRouteWalkDone,
             this, _1, _2));
         evpn_table->WalkAgain(walk_ref);
     } else {
+        if (routing_vrf) {
+            evpn_table =
+            static_cast<EvpnAgentRouteTable *>(
+                routing_vrf->GetEvpnRouteTable());
+        }
+        if (!evpn_table) {
+            return;
+        }
+
         walk_ref = evpn_table->
         AllocWalker(boost::bind(&VxlanRoutingManager::LeakRoutesIntoBridgeTables,
             mgr_, _1, _2, lr_uuid, vn, update),
