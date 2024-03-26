@@ -1,3 +1,7 @@
+# ** THIS REPOSITORY IS NO LONGER USED **
+
+# PLEASE SEE OPENSDN.IO INSTEAD
+
 contrail-controller
 ===================
 
