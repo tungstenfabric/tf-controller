@@ -1,6 +1,6 @@
 # ** THIS REPOSITORY IS NO LONGER USED **
 
-# PLEASE SEE OPENSDN.IO INSTEAD
+# PLEASE SEE https://OpenSDN.io INSTEAD
 
 contrail-controller
 ===================
