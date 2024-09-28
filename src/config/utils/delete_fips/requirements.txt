@@ -3,6 +3,6 @@ chardet==3.0.4
 contrail-api-client==2005
 future==0.18.2
 idna==2.10
-requests==2.24.0
+requests==2.31.0
 six==1.15.0
 urllib3==1.25.10
